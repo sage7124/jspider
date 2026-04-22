@@ -8,7 +8,6 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "CommonJS",
-    "moduleResolution": "node10",
     "target": "esnext",
     "types": [],
     // For nodejs:
@@ -41,7 +40,6 @@
     "noUncheckedSideEffectImports": false,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "ignoreDeprecations": "5.0",
   },
   "exclude": ["node_modules", "prisma", "prisma.config.ts"]
 }
