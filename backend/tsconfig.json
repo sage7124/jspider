@@ -41,6 +41,7 @@
     "noUncheckedSideEffectImports": false,
     "moduleDetection": "force",
     "skipLibCheck": true,
+    "ignoreDeprecations": "5.0",
   },
   "exclude": ["node_modules", "prisma", "prisma.config.ts"]
 }
