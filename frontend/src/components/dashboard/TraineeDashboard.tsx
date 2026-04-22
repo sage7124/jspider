@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { QrCode, MapPin } from 'lucide-react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { MapPin } from 'lucide-react';
 import axios from 'axios';
 
 interface TraineeDashboardProps {
@@ -10,7 +9,6 @@ interface TraineeDashboardProps {
 const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState('');
-  const [scanning, setScanning] = useState(false);
   const [punchType, setPunchType] = useState<'IN' | 'OUT' | null>(null);
   const [status, setStatus] = useState<any>(null); // To store current punch status from backend
 
@@ -32,31 +30,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     }
   };
 
-  useEffect(() => {
-    if (scanning) {
-      const scanner = new Html5QrcodeScanner(
-        "reader",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        /* verbose= */ false
-      );
 
-      scanner.render(
-        async (decodedText) => {
-          // On successful scan
-          scanner.clear();
-          setScanning(false);
-          await submitPunch(decodedText);
-        },
-        (error) => {
-          // Ignore scanning errors, they happen continuously until a QR is found
-        }
-      );
-
-      return () => {
-        scanner.clear().catch(console.error);
-      };
-    }
-  }, [scanning, location, punchType]);
 
   const submitPunch = async (lat: number, lng: number, type: 'IN' | 'OUT') => {
     try {

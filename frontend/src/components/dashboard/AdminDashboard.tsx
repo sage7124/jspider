@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2 } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;

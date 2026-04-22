@@ -242,7 +242,7 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
 
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const [year, mon] = month.split('-').map(Number);
+    const [year, mon] = (month as string).split('-').map(Number);
     const startOfMonth = new Date(year, mon - 1, 1);
     const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
 
