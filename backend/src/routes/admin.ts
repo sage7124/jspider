@@ -214,7 +214,7 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
       });
     }
 
-    const monthLabel = month ? month.replace('-', '_') : 'All';
+    const monthLabel = month ? (month as string).replace('-', '_') : 'All';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Attendance_${monthLabel}.xlsx`);
     await workbook.xlsx.write(res);
