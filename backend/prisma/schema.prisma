@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite does not support enums natively
+
+model User {
+  id             Int          @id @default(autoincrement())
+  role           String       @default("TRAINEE")
+  fullName       String
+  identifier     String       @unique // Mobile for Admin, Registration No for Trainee
+  email          String?      @unique
+  department     String?
+  password       String
+  isApproved     Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  slots          Slot[]       // Slots assigned to this trainee
+  attendances    Attendance[]
+}
+
+model Slot {
+  id             Int          @id @default(autoincrement())
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id])
+  dayOfWeek      String       // e.g., "MON", "TUE"
+  slotNo         Int          @default(1) // 1, 2, or 3
+  startTime      String       // e.g., "07:00 AM"
+  endTime        String       // e.g., "08:00 PM"
+  createdAt      DateTime     @default(now())
+  
+  @@unique([userId, dayOfWeek, slotNo])
+}
+
+model Attendance {
+  id             Int          @id @default(autoincrement())
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id])
+  date           DateTime     
+
+  inTime         DateTime?
+  outTime        DateTime?
+  status         String       @default("IN") // IN, OUT
+  isLate         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@unique([userId, date])
+}
+
+model InstituteSettings {
+  id             Int      @id @default(1)
+  lat            Float    @default(12.9716)
+  lng            Float    @default(77.5946)
+  radius         Int      @default(500) // Meters
+  updatedAt      DateTime @updatedAt
+}

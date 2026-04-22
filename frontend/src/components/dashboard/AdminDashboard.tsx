@@ -1,0 +1,638 @@
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+
+const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_MAP: Record<string, string> = {
+  Monday: 'MON', Tuesday: 'TUE', Wednesday: 'WED', Thursday: 'THU',
+  Friday: 'FRI', Saturday: 'SAT', Sunday: 'SUN',
+};
+const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+const MINS = ['00', '15', '30', '45'];
+const AMPM = ['AM', 'PM'];
+const SLOT_COUNT = 5; // 5 slots per day
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface Slot { day: string; start: string; end: string; slotNo: number }
+interface Trainee {
+  id: number; empCode: string; name: string; email: string | null; department: string | null;
+  slots: Slot[]; status: string; date: string; in: string; out: string;
+  isLate: boolean; isApproved: boolean;
+}
+interface PendingTeacher {
+  id: number; identifier: string; fullName: string; email: string | null;
+  department: string | null; createdAt: string;
+}
+
+// ── Time field helpers ────────────────────────────────────────────────────────
+type TimeField = { h: string; m: string; p: string };
+type SlotRow = { from: TimeField; to: TimeField };
+type DaySlots = SlotRow[];
+
+function emptyField(): TimeField { return { h: '--', m: '--', p: '--' }; }
+function emptyRow(): SlotRow { return { from: emptyField(), to: emptyField() }; }
+function emptyDaySlots(): DaySlots { return Array.from({ length: SLOT_COUNT }, emptyRow); }
+
+function parseTime(t: string): TimeField {
+  if (!t || t === '--') return emptyField();
+  const [time, p] = t.split(' ');
+  const [h, m] = time.split(':');
+  return { h, m, p };
+}
+
+function fieldToStr(f: TimeField): string {
+  if (f.h === '--' || f.m === '--' || f.p === '--') return '--';
+  return `${f.h}:${f.m} ${f.p}`;
+}
+
+function buildInitSlots(slots: Slot[]): Record<string, DaySlots> {
+  const init: Record<string, DaySlots> = {};
+  DAYS.forEach((d) => { init[d] = emptyDaySlots(); });
+  slots.forEach((s) => {
+    const fullDay = Object.entries(DAY_MAP).find(([, v]) => v === s.day)?.[0];
+    if (!fullDay) return;
+    const idx = (s.slotNo ?? 1) - 1;
+    if (idx >= 0 && idx < SLOT_COUNT) {
+      init[fullDay][idx].from = parseTime(s.start);
+      init[fullDay][idx].to = parseTime(s.end);
+    }
+  });
+  return init;
+}
+
+// ── Select component ──────────────────────────────────────────────────────────
+const Sel = ({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) => (
+  <select value={value} onChange={(e) => onChange(e.target.value)}
+    className="border border-gray-300 rounded px-0.5 py-1 text-xs w-full bg-white">
+    <option value="--">--</option>
+    {options.map((o) => <option key={o} value={o}>{o}</option>)}
+  </select>
+);
+
+// ── Edit User Modal ───────────────────────────────────────────────────────────
+const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  const [name, setName] = useState(trainee.name);
+  const [mobile, setMobile] = useState(trainee.empCode);
+  const [email, setEmail] = useState(trainee.email || '');
+
+  const handleUpdate = async () => {
+    const token = localStorage.getItem('token');
+    await axios.put(`${API}/user/${trainee.id}`, { fullName: name, identifier: mobile, email }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    onSave(); onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 relative">
+        <h2 className="text-lg font-bold text-center mb-6">Edit User Information</h2>
+        <div className="flex flex-col gap-4">
+          {[['Name', name, setName], ['Mobile', mobile, setMobile], ['Email', email, setEmail]].map(([label, val, setter]) => (
+            <div key={label as string}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{label as string}</label>
+              <input value={val as string} onChange={(e) => (setter as any)(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-3 mt-6 justify-center">
+          <button onClick={handleUpdate} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded font-medium transition-colors">Update</button>
+          <button onClick={onClose} className="bg-gray-500 hover:bg-gray-600 text-white px-8 py-2 rounded font-medium transition-colors">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Time Slots Modal (5 slots) ────────────────────────────────────────────────
+const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  const [daySlots, setDaySlots] = useState<Record<string, DaySlots>>(buildInitSlots(trainee.slots));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const update = (day: string, slotIdx: number, side: 'from' | 'to', field: keyof TimeField, val: string) => {
+    setDaySlots((prev) => {
+      const copy = JSON.parse(JSON.stringify(prev));
+      copy[day][slotIdx][side][field] = val;
+      return copy;
+    });
+  };
+
+  const handleUpdate = async () => {
+    setSaving(true);
+    const slots: any[] = [];
+    DAYS.forEach((day) => {
+      daySlots[day].forEach((row, idx) => {
+        const from = fieldToStr(row.from);
+        const to = fieldToStr(row.to);
+        if (from !== '--' && to !== '--') {
+          slots.push({ dayOfWeek: DAY_MAP[day], slotNo: idx + 1, startTime: from, endTime: to });
+        }
+      });
+    });
+    try {
+      await axios.put(`${API}/slots/${trainee.id}`, { slots }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      setSaved(true);
+      onSave();
+      setTimeout(() => onClose(), 800);
+    } catch (e) {
+      alert('Failed to update slots');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 overflow-y-auto py-6">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl mx-4 p-6">
+        <h2 className="text-lg font-bold text-center mb-4">Update Time Slots – {trainee.name}</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="py-2 px-2 text-left font-semibold w-24">Day</th>
+                {Array.from({ length: SLOT_COUNT }, (_, si) => (
+                  <React.Fragment key={si}>
+                    <th className="py-2 px-1 text-center font-bold text-gray-700 border-l" colSpan={6}>
+                      Slot-{si + 1}
+                    </th>
+                  </React.Fragment>
+                ))}
+              </tr>
+              <tr className="bg-gray-50 border-b text-gray-500">
+                <th className="py-1 px-2"></th>
+                {Array.from({ length: SLOT_COUNT }, (_, si) => (
+                  <React.Fragment key={si}>
+                    <th className="py-1 px-1 text-center border-l" colSpan={3}>From</th>
+                    <th className="py-1 px-1 text-center" colSpan={3}>To</th>
+                  </React.Fragment>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {DAYS.map((day) => (
+                <tr key={day} className="border-b hover:bg-gray-50">
+                  <td className="py-2 px-2 font-medium text-gray-700">{day}</td>
+                  {Array.from({ length: SLOT_COUNT }, (_, si) => (
+                    <React.Fragment key={si}>
+                      {(['from', 'to'] as const).map((side) => (
+                        <React.Fragment key={side}>
+                          <td className={`py-1 px-0.5 ${side === 'from' ? 'border-l' : ''}`}>
+                            <Sel value={daySlots[day][si][side].h} onChange={(v) => update(day, si, side, 'h', v)} options={HOURS} />
+                          </td>
+                          <td className="py-1 px-0.5">
+                            <Sel value={daySlots[day][si][side].m} onChange={(v) => update(day, si, side, 'm', v)} options={MINS} />
+                          </td>
+                          <td className="py-1 px-0.5">
+                            <Sel value={daySlots[day][si][side].p} onChange={(v) => update(day, si, side, 'p', v)} options={AMPM} />
+                          </td>
+                        </React.Fragment>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex gap-3 mt-5 justify-center">
+          <button onClick={handleUpdate} disabled={saving}
+            className={`px-10 py-2 rounded font-medium text-white transition-colors ${saved ? 'bg-green-600' : 'bg-green-600 hover:bg-green-700'} disabled:opacity-60`}>
+            {saved ? '✓ Saved!' : saving ? 'Saving...' : 'Update'}
+          </button>
+          <button onClick={onClose} className="bg-gray-500 hover:bg-gray-600 text-white px-10 py-2 rounded font-medium transition-colors">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Reset Password Modal ──────────────────────────────────────────────────────
+const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+  const [done, setDone] = useState(false);
+
+  const handleReset = async () => {
+    const token = localStorage.getItem('token');
+    await axios.post(`${API}/reset-password/${trainee.id}`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setDone(true);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-8 text-center">
+        <div className="w-16 h-16 rounded-full border-4 border-orange-400 flex items-center justify-center mx-auto mb-4">
+          <span className="text-orange-400 text-3xl font-bold">!</span>
+        </div>
+        {done ? (
+          <>
+            <h2 className="text-lg font-bold mb-2 text-green-600">Password Reset!</h2>
+            <p className="text-gray-600 text-sm mb-2">
+              Password for <strong>{trainee.name}</strong> has been reset to their mobile number:
+            </p>
+            <p className="text-blue-600 font-bold text-lg mb-6">{trainee.empCode}</p>
+            <button onClick={onClose} className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-2 rounded font-medium">Close</button>
+          </>
+        ) : (
+          <>
+            <h2 className="text-lg font-bold mb-2">Reset Password?</h2>
+            <p className="text-gray-500 text-sm mb-1">Are you sure you want to Reset Password for</p>
+            <p className="font-bold mb-1">{trainee.name}?</p>
+            <p className="text-xs text-gray-400 mb-6">Password will be reset to their mobile number: <strong>{trainee.empCode}</strong></p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={onClose} className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded font-medium">Cancel</button>
+              <button onClick={handleReset} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded font-medium">Yes, Reset</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Download Modal (month picker) ─────────────────────────────────────────────
+const DownloadModal = ({ onClose }: { onClose: () => void }) => {
+  const now = new Date();
+  const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/monthly?month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Attendance_${month}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      onClose();
+    } catch (e) {
+      alert('Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+        <h2 className="text-lg font-bold mb-4">Download Attendance Report</h2>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Select Month</label>
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-6" />
+        <button onClick={handleDownload} disabled={downloading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition-colors disabled:opacity-60">
+          {downloading ? 'Downloading...' : '⬇ Download'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── Pending Approvals Page ────────────────────────────────────────────────────
+const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApprove: () => void }) => {
+  const [pending, setPending] = useState<PendingTeacher[]>([]);
+
+  useEffect(() => { fetchPending(); }, []);
+
+  const fetchPending = async () => {
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API}/pending`, { headers: { Authorization: `Bearer ${token}` } });
+    setPending(res.data);
+  };
+
+  const handleApprove = async (id: number) => {
+    const token = localStorage.getItem('token');
+    await axios.post(`${API}/approve`, { traineeId: id }, { headers: { Authorization: `Bearer ${token}` } });
+    fetchPending();
+    onApprove();
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm">
+      <div className="p-4 border-b flex items-center gap-3">
+        <button onClick={onBack} className="text-gray-500 hover:text-gray-800 transition-colors"><ArrowLeft size={20} /></button>
+        <h2 className="text-xl font-bold">Pending Teachers Approvals</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="px-6 py-4 font-semibold text-gray-600">Emp Code</th>
+              <th className="px-6 py-4 font-semibold text-gray-600">Name</th>
+              <th className="px-6 py-4 font-semibold text-gray-600">Contact</th>
+              <th className="px-6 py-4 font-semibold text-gray-600">Location</th>
+              <th className="px-6 py-4 font-semibold text-gray-600">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pending.length === 0 ? (
+              <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-400">No pending Teachers 🎉</td></tr>
+            ) : (
+              pending.map((t) => (
+                <tr key={t.id} className="border-b hover:bg-gray-50">
+                  <td className="px-6 py-4 font-medium">{t.identifier}</td>
+                  <td className="px-6 py-4 font-bold">{t.fullName}</td>
+                  <td className="px-6 py-4 text-gray-600">{t.email || '--'}</td>
+                  <td className="px-6 py-4 text-gray-600">{t.department || '--'}</td>
+                  <td className="px-6 py-4">
+                    <button onClick={() => handleApprove(t.id)}
+                      className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors">
+                      <CheckCircle size={14} /> Approve
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// ── Main Admin Dashboard ──────────────────────────────────────────────────────
+const AdminDashboard: React.FC = () => {
+  const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [qrToken, setQrToken] = useState('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
+
+  // View state
+  const [view, setView] = useState<'main' | 'pending'>('main');
+
+  // Modal states
+  const [editUser, setEditUser] = useState<Trainee | null>(null);
+  const [slotsUser, setSlotsUser] = useState<Trainee | null>(null);
+  const [resetUser, setResetUser] = useState<Trainee | null>(null);
+  const [deleteUser, setDeleteUser] = useState<Trainee | null>(null);
+  const [showDownload, setShowDownload] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const regenerateQr = () => {
+    setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
+  };
+
+  useEffect(() => {
+    fetchTrainees();
+    fetchPendingCount();
+  }, []);
+
+  const fetchTrainees = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/attendance`, { headers: { Authorization: `Bearer ${token}` } });
+      setTrainees(res.data);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchPendingCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/pending`, { headers: { Authorization: `Bearer ${token}` } });
+      setPendingCount(res.data.length);
+    } catch (err) { console.error(err); }
+  };
+
+  if (view === 'pending') {
+    return (
+      <PendingApprovalsPage
+        onBack={() => { setView('main'); fetchTrainees(); fetchPendingCount(); }}
+        onApprove={() => fetchPendingCount()}
+      />
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm">
+      {/* Header Row */}
+      <div className="p-4 border-b flex flex-wrap justify-between items-center gap-4 bg-[#f8fafc]">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-6 bg-pink-500 rounded-sm"></div>
+            <div className="w-2 h-6 bg-green-500 rounded-sm -ml-1"></div>
+          </div>
+          <h2 className="text-xl font-bold">Teacher Attendance</h2>
+
+          {/* 🔔 Notification Bell */}
+          <button onClick={() => setView('pending')} className="relative ml-2 text-gray-500 hover:text-yellow-500 transition-colors" title="Pending Approvals">
+            <Bell size={22} />
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="bg-white p-2 rounded shadow border flex items-center gap-3">
+            <div>
+              <p className="text-xs text-gray-500 font-bold uppercase mb-1">Active QR Code</p>
+              <p className="text-xs font-mono bg-gray-100 px-2 py-1 rounded mb-1">{qrToken}</p>
+              <button
+                onClick={regenerateQr}
+                className="text-xs text-blue-600 hover:text-blue-800 font-semibold underline"
+              >
+                🔄 Regenerate
+              </button>
+            </div>
+            <QRCodeSVG value={qrToken} size={64} />
+          </div>
+          <button onClick={() => setShowSettings(true)}
+            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
+            Settings
+          </button>
+          <button onClick={() => setShowDownload(true)}
+            className="flex items-center gap-2 bg-[#1976D2] hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
+            <Download size={18} /> Download
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
+            <tr>
+              <th className="px-4 py-4">Emp Code</th>
+              <th className="px-4 py-4">Name</th>
+              <th className="px-4 py-4">Time Slot</th>
+              <th className="px-4 py-4">Status</th>
+              <th className="px-4 py-4">Date</th>
+              <th className="px-4 py-4">In</th>
+              <th className="px-4 py-4">Out</th>
+              <th className="px-4 py-4 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trainees.map((t) => (
+              <tr key={t.id} className="border-b hover:bg-gray-50">
+                <td className="px-4 py-4 font-medium text-gray-700">{t.empCode}</td>
+                <td className="px-4 py-4 font-bold">{t.name}</td>
+                <td className="px-4 py-4">
+                  <div className="flex flex-col gap-1">
+                    {t.slots.map((s, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs">
+                        <span className="text-blue-600 font-semibold w-8">📅 {s.day}</span>
+                        <span className="text-red-500">🕐 {s.start} – {s.end}</span>
+                      </div>
+                    ))}
+                    {t.slots.length === 0 && <span className="text-gray-400 italic text-xs">No slots</span>}
+                  </div>
+                </td>
+                <td className="px-4 py-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    t.status === 'IN' ? 'bg-green-500 text-white' :
+                    t.status === 'OUT' ? 'bg-gray-200 text-gray-700' : 'bg-red-100 text-red-700'
+                  }`}>{t.status}</span>
+                  {t.isLate && <span className="ml-1 text-xs font-bold text-red-500">LATE</span>}
+                </td>
+                <td className="px-4 py-4 text-gray-600">{t.date}</td>
+                <td className="px-4 py-4 font-medium">{t.in}</td>
+                <td className="px-4 py-4 font-medium">{t.out}</td>
+                <td className="px-4 py-4">
+                  <div className="flex items-center justify-center gap-2">
+                    <button onClick={() => setEditUser(t)} className="text-emerald-600 hover:text-emerald-800 transition-colors" title="Edit User Info"><Edit size={16} /></button>
+                    <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots"><Clock size={16} /></button>
+                    <button onClick={() => setResetUser(t)} className="text-yellow-600 hover:text-yellow-800 transition-colors" title="Reset Password"><Key size={16} /></button>
+                    <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>
+                    <button className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>
+                    <button className="text-red-600 hover:text-red-800 transition-colors" title="Force Logout"><LogOut size={16} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {trainees.length === 0 && (
+              <tr><td colSpan={8} className="px-6 py-10 text-center text-gray-400">No trainees registered yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modals */}
+      {editUser && <EditUserModal trainee={editUser} onClose={() => setEditUser(null)} onSave={fetchTrainees} />}
+      {slotsUser && <SlotsModal trainee={slotsUser} onClose={() => setSlotsUser(null)} onSave={fetchTrainees} />}
+      {resetUser && <ResetPasswordModal trainee={resetUser} onClose={() => setResetUser(null)} />}
+      {deleteUser && <DeleteConfirmModal trainee={deleteUser} onClose={() => setDeleteUser(null)} onDeleted={fetchTrainees} />}
+      {showDownload && <DownloadModal onClose={() => setShowDownload(false)} />}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+    </div>
+  );
+};
+
+// ── Delete Confirmation Modal ────────────────────────────────────────────────
+const DeleteConfirmModal = ({ trainee, onClose, onDeleted }: { trainee: Trainee; onClose: () => void; onDeleted: () => void }) => {
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`${API}/user/${trainee.id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      onDeleted();
+      onClose();
+    } catch (e) {
+      alert('Failed to delete user');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-8 text-center border-t-4 border-red-500">
+        <h2 className="text-xl font-bold mb-4 text-red-600">Delete Account?</h2>
+        <p className="text-gray-600 mb-2 text-sm">Are you sure you want to permanently delete</p>
+        <p className="font-bold text-lg mb-1">{trainee.name}</p>
+        <p className="text-xs text-gray-400 mb-8 italic">This will also delete all their attendance records and slots.</p>
+        <div className="flex gap-3 justify-center">
+          <button onClick={onClose} className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2 rounded font-medium">Cancel</button>
+          <button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded font-medium">Yes, Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Settings Modal ────────────────────────────────────────────────────────────
+const SettingsModal = ({ onClose }: { onClose: () => void }) => {
+  const [settings, setSettings] = useState({ lat: '', lng: '', radius: '' });
+  const [passwords, setPasswords] = useState({ current: '', new: '' });
+  const [activeTab, setActiveTab] = useState<'gps' | 'password'>('gps');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    const res = await axios.get(`${API}/settings`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    setSettings({ lat: res.data.lat.toString(), lng: res.data.lng.toString(), radius: res.data.radius.toString() });
+  };
+
+  const saveSettings = async () => {
+    setSaving(true);
+    await axios.put(`${API}/settings`, settings, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+    setSaving(false);
+    onClose();
+  };
+
+  const changePassword = async () => {
+    try {
+      setSaving(true);
+      await axios.post(`${API}/change-password`, { currentPassword: passwords.current, newPassword: passwords.new }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      alert('Password changed successfully');
+      onClose();
+    } catch (e) {
+      alert('Failed to change password. Check current password.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
+        <div className="flex border-b mb-4">
+          <button onClick={() => setActiveTab('gps')} className={`flex-1 py-2 font-bold ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>GPS Settings</button>
+          <button onClick={() => setActiveTab('password')} className={`flex-1 py-2 font-bold ${activeTab === 'password' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Change Password</button>
+        </div>
+
+        {activeTab === 'gps' ? (
+          <div className="space-y-4">
+            <div><label className="block text-xs font-bold text-gray-500 mb-1">LATITUDE</label><input value={settings.lat} onChange={e => setSettings({...settings, lat: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
+            <div><label className="block text-xs font-bold text-gray-500 mb-1">LONGITUDE</label><input value={settings.lng} onChange={e => setSettings({...settings, lng: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
+            <div><label className="block text-xs font-bold text-gray-500 mb-1">RADIUS (METERS)</label><input value={settings.radius} onChange={e => setSettings({...settings, radius: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
+            <button onClick={saveSettings} disabled={saving} className="w-full bg-blue-600 text-white py-2 rounded font-bold">{saving ? 'Saving...' : 'Save Settings'}</button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div><label className="block text-xs font-bold text-gray-500 mb-1">CURRENT PASSWORD</label><input type="password" value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
+            <div><label className="block text-xs font-bold text-gray-500 mb-1">NEW PASSWORD</label><input type="password" value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
+            <button onClick={changePassword} disabled={saving} className="w-full bg-blue-600 text-white py-2 rounded font-bold">{saving ? 'Saving...' : 'Update Password'}</button>
+          </div>
+        )}
+        <button onClick={onClose} className="w-full mt-2 text-gray-500 text-sm">Cancel</button>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;
