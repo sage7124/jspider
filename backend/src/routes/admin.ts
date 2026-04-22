@@ -228,7 +228,7 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
 // ── Download Individual Excel Report ──────────────────────────────────────────
 router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
   try {
-    const userId = parseInt(req.params.userId);
+    const userId = parseInt(req.params.userId as string);
     const { month } = req.query; // e.g., "2026-04"
 
     if (!month || typeof month !== 'string') {
