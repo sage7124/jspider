@@ -60,10 +60,12 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'You are outside the institute premises.' });
     }
 
-    // 2. Verify QR Token (Mock validation, should match the Admin's current dynamic QR)
+    // 2. QR Token validation removed as requested by user
+    /*
     if (!qrToken || qrToken.length < 5) {
       return res.status(400).json({ error: 'Invalid QR Code' });
     }
+    */
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

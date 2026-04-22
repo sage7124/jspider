@@ -258,8 +258,55 @@ const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: (
   );
 };
 
-// ── Download Modal (month picker) ─────────────────────────────────────────────
-const DownloadModal = ({ onClose }: { onClose: () => void }) => {
+// ── Individual Download Modal ──────────────────────────────────────────────
+const IndividualDownloadModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+  const now = new Date();
+  const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/individual/${trainee.id}?month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Report_${trainee.name}_${month}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      onClose();
+    } catch (e) {
+      alert('Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+        <h2 className="text-lg font-bold mb-2">Download Report</h2>
+        <p className="text-sm text-gray-500 mb-4">{trainee.name}</p>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Select Month</label>
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-6" />
+        <button onClick={handleDownload} disabled={downloading}
+          className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold transition-colors disabled:opacity-60">
+          {downloading ? 'Downloading...' : '⬇ Download Excel'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── Monthly Download Modal ────────────────────────────────────────────────────
+const MonthlyDownloadModal = ({ onClose }: { onClose: () => void }) => {
   const now = new Date();
   const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
   const [downloading, setDownloading] = useState(false);
@@ -291,13 +338,13 @@ const DownloadModal = ({ onClose }: { onClose: () => void }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
-        <h2 className="text-lg font-bold mb-4">Download Attendance Report</h2>
+        <h2 className="text-lg font-bold mb-4">Download Monthly Report</h2>
         <label className="block text-sm font-medium text-gray-700 mb-2">Select Month</label>
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
           className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-6" />
         <button onClick={handleDownload} disabled={downloading}
           className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition-colors disabled:opacity-60">
-          {downloading ? 'Downloading...' : '⬇ Download'}
+          {downloading ? 'Downloading...' : '⬇ Download All Data'}
         </button>
       </div>
     </div>
@@ -381,6 +428,7 @@ const AdminDashboard: React.FC = () => {
   const [resetUser, setResetUser] = useState<Trainee | null>(null);
   const [deleteUser, setDeleteUser] = useState<Trainee | null>(null);
   const [showDownload, setShowDownload] = useState(false);
+  const [individualReport, setIndividualReport] = useState<Trainee | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
   const regenerateQr = () => {
@@ -440,18 +488,12 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="bg-white p-2 rounded shadow border flex items-center gap-3">
+          <div className="bg-white p-3 rounded shadow-sm border border-blue-100 flex items-center gap-3">
+            <MapPin className="text-blue-600" size={24} />
             <div>
-              <p className="text-xs text-gray-500 font-bold uppercase mb-1">Active QR Code</p>
-              <p className="text-xs font-mono bg-gray-100 px-2 py-1 rounded mb-1">{qrToken}</p>
-              <button
-                onClick={regenerateQr}
-                className="text-xs text-blue-600 hover:text-blue-800 font-semibold underline"
-              >
-                🔄 Regenerate
-              </button>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Geofence Status</p>
+              <p className="text-xs font-bold text-green-600">Active & Secure</p>
             </div>
-            <QRCodeSVG value={qrToken} size={64} />
           </div>
           <button onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
@@ -511,7 +553,7 @@ const AdminDashboard: React.FC = () => {
                     <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots"><Clock size={16} /></button>
                     <button onClick={() => setResetUser(t)} className="text-yellow-600 hover:text-yellow-800 transition-colors" title="Reset Password"><Key size={16} /></button>
                     <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>
-                    <button className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>
+                    <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>
                     <button className="text-red-600 hover:text-red-800 transition-colors" title="Force Logout"><LogOut size={16} /></button>
                   </div>
                 </td>
@@ -529,7 +571,8 @@ const AdminDashboard: React.FC = () => {
       {slotsUser && <SlotsModal trainee={slotsUser} onClose={() => setSlotsUser(null)} onSave={fetchTrainees} />}
       {resetUser && <ResetPasswordModal trainee={resetUser} onClose={() => setResetUser(null)} />}
       {deleteUser && <DeleteConfirmModal trainee={deleteUser} onClose={() => setDeleteUser(null)} onDeleted={fetchTrainees} />}
-      {showDownload && <DownloadModal onClose={() => setShowDownload(false)} />}
+      {showDownload && <MonthlyDownloadModal onClose={() => setShowDownload(false)} />}
+      {individualReport && <IndividualDownloadModal trainee={individualReport} onClose={() => setIndividualReport(null)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   );

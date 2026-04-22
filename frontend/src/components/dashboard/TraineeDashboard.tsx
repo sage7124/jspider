@@ -58,26 +58,26 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     }
   }, [scanning, location, punchType]);
 
-  const submitPunch = async (qrToken: string) => {
+  const submitPunch = async (lat: number, lng: number, type: 'IN' | 'OUT') => {
     try {
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       await axios.post(`${API_URL}/api/attendance/punch`, {
-        type: punchType,
-        qrToken,
-        lat: location?.lat,
-        lng: location?.lng
+        type,
+        lat,
+        lng,
+        qrToken: 'BUTTON_PUNCH' // Dummy token since requirement removed
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert(`Successfully punched ${punchType}`);
+      alert(`Successfully punched ${type}`);
       fetchStatus();
     } catch (err: any) {
       alert(`Failed to punch: ${err.response?.data?.error || err.message}`);
     }
   };
 
-  const requestLocation = (type: 'IN' | 'OUT') => {
+  const handlePunch = (type: 'IN' | 'OUT') => {
     setPunchType(type);
     if (!navigator.geolocation) {
       setLocationError('Geolocation is not supported by your browser');
@@ -86,15 +86,13 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
+        const { latitude, longitude } = position.coords;
+        setLocation({ lat: latitude, lng: longitude });
         setLocationError('');
-        setScanning(true); // Open scanner after getting location
+        submitPunch(latitude, longitude, type);
       },
       (err) => {
-        setLocationError('Unable to retrieve your location. Please allow location access.');
+        setLocationError('Unable to retrieve your location. Please allow location access to punch.');
       }
     );
   };
@@ -104,7 +102,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       {/* Attendance Actions */}
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <QrCode className="text-[#1976D2]" /> 
+          <MapPin className="text-[#1976D2]" /> 
           Attendance Punch
         </h3>
         
@@ -114,42 +112,31 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
           </div>
         )}
 
-        {location && !scanning && (
-          <div className="mb-4 flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
-            <MapPin size={16} /> Location verified.
-          </div>
-        )}
+        <p className="text-sm text-gray-500 mb-6 italic">
+          Note: You can only punch in/out when you are inside the institute premises.
+        </p>
 
-        {!scanning && (
-          <div className="flex gap-4 mt-6">
-            <button 
-              onClick={() => requestLocation('IN')}
-              className="flex-1 bg-[#1976D2] hover:bg-blue-700 text-white font-bold py-4 rounded transition-colors disabled:opacity-50"
-              disabled={status?.status === 'IN'}
-            >
-              PUNCH IN
-            </button>
-            <button 
-              onClick={() => requestLocation('OUT')}
-              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded transition-colors disabled:opacity-50"
-              disabled={status?.status === 'OUT' || !status?.inTime}
-            >
-              PUNCH OUT
-            </button>
-          </div>
-        )}
-
-        {scanning && (
-          <div className="mt-6 p-4 rounded-lg text-center bg-gray-50 border border-gray-200">
-            <div id="reader" className="w-full"></div>
-            <button 
-              onClick={() => setScanning(false)}
-              className="mt-4 text-sm text-red-500 underline"
-            >
-              Cancel Scan
-            </button>
-          </div>
-        )}
+        <div className="flex flex-col gap-4">
+          <button 
+            onClick={() => handlePunch('IN')}
+            className={`w-full text-white font-bold py-4 rounded transition-all transform active:scale-95 shadow-lg flex items-center justify-center gap-2 ${
+              status?.status === 'IN' ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-green-200'
+            }`}
+            disabled={status?.status === 'IN'}
+          >
+            {status?.status === 'IN' ? '✅ ALREADY IN' : 'PUNCH IN'}
+          </button>
+          
+          <button 
+            onClick={() => handlePunch('OUT')}
+            className={`w-full text-white font-bold py-4 rounded transition-all transform active:scale-95 shadow-lg flex items-center justify-center gap-2 ${
+              status?.status === 'OUT' || !status?.inTime ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 shadow-red-200'
+            }`}
+            disabled={status?.status === 'OUT' || !status?.inTime}
+          >
+            PUNCH OUT
+          </button>
+        </div>
       </div>
 
       {/* Status Summary */}

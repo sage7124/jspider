@@ -225,6 +225,139 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
   }
 });
 
+// ── Download Individual Excel Report ──────────────────────────────────────────
+router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const { month } = req.query; // e.g., "2026-04"
+
+    if (!month || typeof month !== 'string') {
+      return res.status(400).json({ error: 'Month is required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { slots: true }
+    });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const [year, mon] = month.split('-').map(Number);
+    const startOfMonth = new Date(year, mon - 1, 1);
+    const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
+
+    const attendances = await prisma.attendance.findMany({
+      where: {
+        userId,
+        date: { gte: startOfMonth, lte: endOfMonth }
+      },
+      orderBy: { date: 'asc' }
+    });
+
+    const workbook = new exceljs.Workbook();
+    const ws = workbook.addWorksheet(`${user.fullName} Report`);
+
+    ws.columns = [
+      { header: 'SI No', key: 'si', width: 8 },
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Emp Code', key: 'empCode', width: 15 },
+      { header: 'Name', key: 'name', width: 25 },
+      { header: 'Department', key: 'dept', width: 20 },
+      { header: 'In Time', key: 'inTime', width: 15 },
+      { header: 'Out Time', key: 'outTime', width: 15 },
+      { header: 'Slot-1 Start', key: 's1Start', width: 15 },
+      { header: 'Slot-1 End', key: 's1End', width: 15 },
+      { header: 'Worked Hours', key: 'worked', width: 15 },
+      { header: 'Late Time', key: 'late', width: 15 },
+      { header: 'Status', key: 'status', width: 15 }
+    ];
+
+    ws.getRow(1).font = { bold: true };
+
+    const daysInMonth = endOfMonth.getDate();
+    let totalWorkedMinutes = 0;
+    let totalLateMinutes = 0;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const currentDate = new Date(year, mon - 1, day);
+      const dayStr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
+      
+      const daySlots = user.slots.filter(s => s.dayOfWeek === dayStr).sort((a,b) => a.slotNo - b.slotNo);
+      const att = attendances.find(a => a.date.getDate() === day && a.date.getMonth() === (mon - 1));
+
+      let workedHours = '--';
+      let lateTime = '--';
+      let status = '';
+
+      if (daySlots.length === 0) {
+        status = 'No Schedule';
+      } else if (!att) {
+        status = 'ABSENT';
+      } else {
+        status = att.status === 'IN' ? 'STILL IN' : 'PRESENT';
+        
+        if (att.inTime && att.outTime) {
+          const diff = att.outTime.getTime() - att.inTime.getTime();
+          const mins = Math.floor(diff / 60000);
+          totalWorkedMinutes += mins;
+          workedHours = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+        }
+
+        const firstSlot = daySlots[0];
+        if (att.inTime && firstSlot) {
+          const [time, mod] = firstSlot.startTime.split(' ');
+          let [h, m] = time.split(':').map(Number);
+          if (mod === 'PM' && h < 12) h += 12;
+          if (mod === 'AM' && h === 12) h = 0;
+          
+          const slotStart = new Date(currentDate);
+          slotStart.setHours(h, m, 0, 0);
+
+          if (att.inTime.getTime() > slotStart.getTime()) {
+            const diff = att.inTime.getTime() - slotStart.getTime();
+            const mins = Math.floor(diff / 60000);
+            totalLateMinutes += mins;
+            lateTime = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+          } else {
+            lateTime = '0m';
+          }
+        }
+      }
+
+      ws.addRow({
+        si: day,
+        date: currentDate.toLocaleDateString('en-IN'),
+        empCode: day === 1 ? user.identifier : '',
+        name: day === 1 ? user.fullName : '',
+        dept: day === 1 ? (user.department || '--') : '',
+        inTime: att?.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime: att?.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        s1Start: daySlots[0]?.startTime || '--',
+        s1End: daySlots[0]?.endTime || '--',
+        worked: workedHours,
+        late: lateTime,
+        status: status
+      });
+    }
+
+    // Add total row
+    const totalRow = ws.addRow({
+      si: 'TOTAL',
+      worked: `${Math.floor(totalWorkedMinutes / 60)}h ${totalWorkedMinutes % 60}m`,
+      late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`
+    });
+    totalRow.font = { bold: true };
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Report_${user.fullName}_${month}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 router.get('/settings', async (_req: AuthRequest, res) => {
   try {
