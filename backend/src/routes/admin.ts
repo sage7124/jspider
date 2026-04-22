@@ -151,7 +151,7 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
 
     let dateFilter: any = {};
     if (month && typeof month === 'string') {
-      const [year, mon] = month.split('-').map(Number);
+      const [year, mon] = (month as string).split('-').map(Number);
       const start = new Date(year, mon - 1, 1);
       const end = new Date(year, mon, 0, 23, 59, 59);
       dateFilter = { date: { gte: start, lte: end } };
