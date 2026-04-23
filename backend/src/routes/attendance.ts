@@ -140,4 +140,64 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+// ── Leave Requests ───────────────────────────────────────────────────────────
+router.post('/leave', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { startDate, endDate, reason } = req.body;
+    const userId = req.user!.id;
+
+    // Validate dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid dates' });
+    }
+    if (start > end) {
+      return res.status(400).json({ error: 'Start date must be before end date' });
+    }
+
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    // Check balance
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.leaveBalance < days) {
+      return res.status(400).json({ error: `Insufficient leave balance. You have ${user.leaveBalance} days left, but requested ${days}.` });
+    }
+
+    await prisma.leaveRequest.create({
+      data: {
+        userId,
+        startDate: start,
+        endDate: end,
+        reason,
+        status: 'PENDING'
+      }
+    });
+
+    res.json({ message: 'Leave request submitted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/leave/status', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { leaveBalance: true, totalLeaves: true }
+    });
+    const requests = await prisma.leaveRequest.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ balance: user?.leaveBalance, total: user?.totalLeaves, requests });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

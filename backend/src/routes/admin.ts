@@ -427,4 +427,72 @@ router.delete('/user/:id', async (req: AuthRequest, res) => {
   }
 });
 
+// ── Leave Management ─────────────────────────────────────────────────────────
+router.put('/leaves/:userId', async (req: AuthRequest, res) => {
+  try {
+    const { userId } = req.params;
+    const { totalLeaves } = req.body;
+    await prisma.user.update({
+      where: { id: Number(userId) },
+      data: { 
+        totalLeaves: Number(totalLeaves),
+        leaveBalance: Number(totalLeaves) // Reset balance to total when updating? Or just set? 
+        // User requested: "admin can decide the number of leaves for trainee in a year"
+      }
+    });
+    res.json({ message: 'Leave balance updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/leaves/requests', async (_req: AuthRequest, res) => {
+  try {
+    const requests = await prisma.leaveRequest.findMany({
+      include: { user: { select: { fullName: true, identifier: true, department: true, leaveBalance: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/leaves/process', async (req: AuthRequest, res) => {
+  try {
+    const { requestId, status } = req.body; // status: APPROVED or REJECTED
+    const request = await prisma.leaveRequest.findUnique({
+      where: { id: requestId },
+      include: { user: true }
+    });
+
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+    if (request.status !== 'PENDING') return res.status(400).json({ error: 'Request already processed' });
+
+    if (status === 'APPROVED') {
+      // Calculate days
+      const days = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      
+      if (request.user.leaveBalance < days) {
+        return res.status(400).json({ error: 'Insufficient leave balance' });
+      }
+
+      await prisma.$transaction([
+        prisma.leaveRequest.update({ where: { id: requestId }, data: { status: 'APPROVED' } }),
+        prisma.user.update({
+          where: { id: request.userId },
+          data: { leaveBalance: { decrement: days } }
+        })
+      ]);
+    } else {
+      await prisma.leaveRequest.update({ where: { id: requestId }, data: { status: 'REJECTED' } });
+    }
+
+    res.json({ message: `Leave ${status.toLowerCase()} successfully` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

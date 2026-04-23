@@ -24,8 +24,24 @@ model User {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  leaveBalance   Int          @default(0)
+  totalLeaves    Int          @default(0)
+  
   slots          Slot[]       // Slots assigned to this trainee
   attendances    Attendance[]
+  leaveRequests  LeaveRequest[]
+}
+
+model LeaveRequest {
+  id             Int          @id @default(autoincrement())
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id])
+  startDate      DateTime
+  endDate        DateTime
+  reason         String?
+  status         String       @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model Slot {

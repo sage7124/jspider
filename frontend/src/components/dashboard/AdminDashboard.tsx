@@ -19,7 +19,12 @@ interface Slot { day: string; start: string; end: string; slotNo: number }
 interface Trainee {
   id: number; empCode: string; name: string; email: string | null; department: string | null;
   slots: Slot[]; status: string; date: string; in: string; out: string;
-  isLate: boolean; isApproved: boolean;
+  isLate: boolean; isApproved: boolean; leaveBalance: number; totalLeaves: number;
+}
+interface LeaveRequest {
+  id: number; userId: number; startDate: string; endDate: string; reason: string | null;
+  status: string; createdAt: string;
+  user: { fullName: string; identifier: string; department: string | null; leaveBalance: number };
 }
 interface PendingTeacher {
   id: number; identifier: string; fullName: string; email: string | null;
@@ -77,9 +82,15 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
   const [mobile, setMobile] = useState(trainee.empCode);
   const [email, setEmail] = useState(trainee.email || '');
 
+  const [leaves, setLeaves] = useState(trainee.totalLeaves || 0);
+
   const handleUpdate = async () => {
     const token = localStorage.getItem('token');
     await axios.put(`${API}/user/${trainee.id}`, { fullName: name, identifier: mobile, email }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    // Update leaves separately to match the new backend route
+    await axios.put(`${API}/leaves/${trainee.id}`, { totalLeaves: leaves }, {
       headers: { Authorization: `Bearer ${token}` },
     });
     onSave(); onClose();
@@ -97,6 +108,12 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           ))}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Yearly Leave Quota</label>
+            <input type="number" value={leaves} onChange={(e) => setLeaves(Number(e.target.value))}
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <p className="text-[10px] text-gray-400 mt-1">Updating this will reset the balance to this total.</p>
+          </div>
         </div>
         <div className="flex gap-3 mt-6 justify-center">
           <button onClick={handleUpdate} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded font-medium transition-colors">Update</button>
@@ -427,6 +444,7 @@ const AdminDashboard: React.FC = () => {
   const [slotsUser, setSlotsUser] = useState<Trainee | null>(null);
   const [resetUser, setResetUser] = useState<Trainee | null>(null);
   const [deleteUser, setDeleteUser] = useState<Trainee | null>(null);
+  const [showLeaves, setShowLeaves] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [individualReport, setIndividualReport] = useState<Trainee | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -495,6 +513,10 @@ const AdminDashboard: React.FC = () => {
               <p className="text-xs font-bold text-green-600">Active & Secure</p>
             </div>
           </div>
+          <button onClick={() => setShowLeaves(true)}
+            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-medium transition-colors">
+            Leaves
+          </button>
           <button onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
             Settings
@@ -571,6 +593,7 @@ const AdminDashboard: React.FC = () => {
       {slotsUser && <SlotsModal trainee={slotsUser} onClose={() => setSlotsUser(null)} onSave={fetchTrainees} />}
       {resetUser && <ResetPasswordModal trainee={resetUser} onClose={() => setResetUser(null)} />}
       {deleteUser && <DeleteConfirmModal trainee={deleteUser} onClose={() => setDeleteUser(null)} onDeleted={fetchTrainees} />}
+      {showLeaves && <LeaveManagementModal onClose={() => setShowLeaves(null as any)} onProcessed={fetchTrainees} />}
       {showDownload && <MonthlyDownloadModal onClose={() => setShowDownload(false)} />}
       {individualReport && <IndividualDownloadModal trainee={individualReport} onClose={() => setIndividualReport(null)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
@@ -608,6 +631,96 @@ const DeleteConfirmModal = ({ trainee, onClose, onDeleted }: { trainee: Trainee;
   );
 };
 
+// ── Leave Management Modal ──────────────────────────────────────────────────
+const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; onProcessed: () => void }) => {
+  const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { fetchRequests(); }, []);
+
+  const fetchRequests = async () => {
+    const token = localStorage.getItem('token');
+    const res = await axios.get(`${API}/leaves/requests`, { headers: { Authorization: `Bearer ${token}` } });
+    setRequests(res.data);
+    setLoading(false);
+  };
+
+  const handleProcess = async (id: number, status: 'APPROVED' | 'REJECTED') => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/leaves/process`, { requestId: id, status }, { headers: { Authorization: `Bearer ${token}` } });
+      fetchRequests();
+      onProcessed();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to process request');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">Leave Requests Management</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+        </div>
+
+        {loading ? <p className="text-center py-10">Loading requests...</p> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Trainee</th>
+                  <th className="px-4 py-3 font-semibold">Dates</th>
+                  <th className="px-4 py-3 font-semibold">Reason</th>
+                  <th className="px-4 py-3 font-semibold text-center">Status</th>
+                  <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">No leave requests found</td></tr>
+                ) : requests.map((r) => (
+                  <tr key={r.id} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="font-bold">{r.user.fullName}</div>
+                      <div className="text-[10px] text-gray-500">{r.user.identifier} • {r.user.department}</div>
+                      <div className="text-[10px] text-blue-600 font-bold mt-1">Balance: {r.user.leaveBalance} Days</div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-xs font-medium">
+                        {new Date(r.startDate).toLocaleDateString()} – {new Date(r.endDate).toLocaleDateString()}
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        {Math.ceil((new Date(r.endDate).getTime() - new Date(r.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} Days
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 text-xs italic">"{r.reason || 'No reason'}"</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        r.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                        r.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {r.status === 'PENDING' && (
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => handleProcess(r.id, 'APPROVED')} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1 rounded">Approve</button>
+                          <button onClick={() => handleProcess(r.id, 'REJECTED')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1 rounded">Reject</button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 // ── Settings Modal ────────────────────────────────────────────────────────────
 const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const [settings, setSettings] = useState({ lat: '', lng: '', radius: '' });
