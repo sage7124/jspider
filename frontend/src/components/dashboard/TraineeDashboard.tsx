@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Clock, Send } from 'lucide-react';
+import { MapPin, Calendar, Clock, Send, Lock, X, Settings } from 'lucide-react';
 import axios from 'axios';
 
 interface TraineeDashboardProps {
@@ -12,8 +12,10 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [punchType, setPunchType] = useState<'IN' | 'OUT' | null>(null);
   const [status, setStatus] = useState<any>(null);
   const [leaves, setLeaves] = useState<any>(null);
-  const [leaveForm, setLeaveForm] = useState({ start: '', end: '', reason: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
+  const [changingPass, setChangingPass] = useState(false);
 
   useEffect(() => {
     fetchStatus();
@@ -41,6 +43,25 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       });
       setLeaves(res.data);
     } catch (err) { console.error(err); }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwords.new !== passwords.confirm) return alert('New passwords do not match');
+    setChangingPass(true);
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.post(`${API_URL}/api/attendance/change-password`, {
+        currentPassword: passwords.current,
+        newPassword: passwords.new
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      alert('Password changed successfully!');
+      setShowPasswordModal(false);
+      setPasswords({ current: '', new: '', confirm: '' });
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to change password');
+    } finally { setChangingPass(false); }
   };
 
   const handleApplyLeave = async (e: React.FormEvent) => {
@@ -104,7 +125,14 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-4xl mx-auto py-8 px-4 relative">
+      <div className="flex justify-end mb-4">
+        <button onClick={() => setShowPasswordModal(true)}
+          className="flex items-center gap-2 text-gray-500 hover:text-gray-800 text-sm font-medium transition-colors">
+          <Settings size={16} /> Security Settings
+        </button>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-6">
         {/* Attendance Actions */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
@@ -244,7 +272,40 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
             ))}
           </div>
         </div>
-      </div>
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 relative">
+            <button onClick={() => setShowPasswordModal(false)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+              <X size={20} />
+            </button>
+            <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+              <Lock className="text-blue-600" size={20} /> Change Password
+            </h3>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">CURRENT PASSWORD</label>
+                <input type="password" value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})}
+                  className="w-full border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">NEW PASSWORD</label>
+                <input type="password" value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})}
+                  className="w-full border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">CONFIRM NEW PASSWORD</label>
+                <input type="password" value={passwords.confirm} onChange={e => setPasswords({...passwords, confirm: e.target.value})}
+                  className="w-full border rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" required />
+              </div>
+              <button type="submit" disabled={changingPass}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition-all active:scale-95 disabled:opacity-50 mt-4">
+                {changingPass ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

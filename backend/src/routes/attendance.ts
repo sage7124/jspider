@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken, AuthRequest } from '../middleware/authMiddleware';
 import { getDistance } from 'geolib';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -195,6 +196,24 @@ router.get('/leave/status', authenticateToken, async (req: AuthRequest, res) => 
       orderBy: { createdAt: 'desc' }
     });
     res.json({ balance: user?.leaveBalance, total: user?.totalLeaves, requests });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/change-password', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user!.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) return res.status(401).json({ error: 'Invalid current password' });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+    res.json({ message: 'Password changed successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
