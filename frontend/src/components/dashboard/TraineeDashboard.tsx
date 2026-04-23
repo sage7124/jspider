@@ -12,6 +12,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [punchType, setPunchType] = useState<'IN' | 'OUT' | null>(null);
   const [status, setStatus] = useState<any>(null);
   const [leaves, setLeaves] = useState<any>(null);
+  const [leaveForm, setLeaveForm] = useState({ start: '', end: '', reason: '' });
   const [submitting, setSubmitting] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
@@ -272,6 +273,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
             ))}
           </div>
         </div>
+      </div>
+
       {/* Password Change Modal */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
