@@ -85,15 +85,21 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
   const [leaves, setLeaves] = useState(trainee.totalLeaves || 0);
 
   const handleUpdate = async () => {
-    const token = localStorage.getItem('token');
-    await axios.put(`${API}/user/${trainee.id}`, { fullName: name, identifier: mobile, email }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    // Update leaves separately to match the new backend route
-    await axios.put(`${API}/leaves/${trainee.id}`, { totalLeaves: leaves }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    onSave(); onClose();
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/user/${trainee.id}`, { 
+        fullName: name, 
+        identifier: mobile, 
+        email,
+        totalLeaves: leaves
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      onSave(); 
+      onClose();
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to update user information');
+    }
   };
 
   return (

@@ -48,6 +48,8 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
           : '--',
         isLate: attendance?.isLate || false,
         isApproved: user.isApproved,
+        totalLeaves: user.totalLeaves,
+        leaveBalance: user.leaveBalance,
       };
     });
 
@@ -88,10 +90,19 @@ router.post('/approve', async (req: AuthRequest, res) => {
 router.put('/user/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { fullName, identifier, email } = req.body;
+    const { fullName, identifier, email, totalLeaves } = req.body;
+    const updateData: any = { fullName, identifier, email };
+    
+    if (totalLeaves !== undefined) {
+      updateData.totalLeaves = Number(totalLeaves);
+      // If updating total leaves, we usually want to reset/adjust the balance too.
+      // For now, let's keep it simple and reset balance to total if total is changed.
+      updateData.leaveBalance = Number(totalLeaves);
+    }
+
     const user = await prisma.user.update({
       where: { id: Number(id) },
-      data: { fullName, identifier, email },
+      data: updateData,
     });
     res.json({ message: 'User updated', user });
   } catch (error) {
