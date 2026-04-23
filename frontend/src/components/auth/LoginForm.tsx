@@ -19,10 +19,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
       // Map TEACHER tab → TRAINEE role for backend
       const backendRole = role === 'TEACHER' ? 'TRAINEE' : 'ADMIN';
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      // Device Locking Logic
+      let deviceId = localStorage.getItem('deviceId');
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem('deviceId', deviceId);
+      }
+      const platform = window.innerWidth <= 768 ? 'mobile' : 'desktop';
+
       const response = await axios.post(`${API_URL}/api/auth/login`, {
         role: backendRole,
         identifier,
-        password
+        password,
+        deviceId,
+        platform
       });
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));

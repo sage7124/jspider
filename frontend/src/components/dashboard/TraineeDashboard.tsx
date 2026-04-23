@@ -90,11 +90,16 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     try {
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const deviceId = localStorage.getItem('deviceId');
+      const platform = window.innerWidth <= 768 ? 'mobile' : 'desktop';
+
       await axios.post(`${API_URL}/api/attendance/punch`, {
         type,
         lat,
         lng,
-        qrToken: 'BUTTON_PUNCH' // Dummy token since requirement removed
+        qrToken: 'BUTTON_PUNCH',
+        deviceId,
+        platform
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });

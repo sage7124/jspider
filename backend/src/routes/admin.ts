@@ -508,4 +508,19 @@ router.post('/leaves/process', async (req: AuthRequest, res) => {
   }
 });
 
+// ── Reset Device Locks ───────────────────────────────────────────────────────
+router.post('/reset-device/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { type } = req.body; // 'mobile', 'desktop', or 'both'
+    const data: any = {};
+    if (type === 'mobile' || type === 'both') data.mobileDeviceId = null;
+    if (type === 'desktop' || type === 'both') data.desktopDeviceId = null;
+    await prisma.user.update({ where: { id: Number(id) }, data });
+    res.json({ message: `Device lock (${type}) reset successfully` });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

@@ -120,6 +120,32 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
               className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <p className="text-[10px] text-gray-400 mt-1">Updating this will reset the balance to this total.</p>
           </div>
+          
+          <div className="mt-2 border-t pt-4">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Security & Devices</label>
+            <div className="flex gap-2">
+              <button 
+                onClick={async () => {
+                  if(!confirm('Reset Mobile lock?')) return;
+                  const token = localStorage.getItem('token');
+                  await axios.post(`${API}/reset-device/${trainee.id}`, { type: 'mobile' }, { headers: { Authorization: `Bearer ${token}` } });
+                  alert('Mobile lock reset');
+                }}
+                className="flex-1 bg-orange-50 text-orange-700 border border-orange-200 py-2 rounded text-xs font-bold hover:bg-orange-100 transition-colors">
+                Reset Mobile Lock
+              </button>
+              <button 
+                onClick={async () => {
+                  if(!confirm('Reset Laptop lock?')) return;
+                  const token = localStorage.getItem('token');
+                  await axios.post(`${API}/reset-device/${trainee.id}`, { type: 'desktop' }, { headers: { Authorization: `Bearer ${token}` } });
+                  alert('Laptop lock reset');
+                }}
+                className="flex-1 bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded text-xs font-bold hover:bg-blue-100 transition-colors">
+                Reset Laptop Lock
+              </button>
+            </div>
+          </div>
         </div>
         <div className="flex gap-3 mt-6 justify-center">
           <button onClick={handleUpdate} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded font-medium transition-colors">Update</button>

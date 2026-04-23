@@ -42,7 +42,7 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
 
 router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { type, qrToken, lat, lng } = req.body;
+    const { type, qrToken, lat, lng, deviceId, platform } = req.body;
     const userId = req.user!.id;
 
     // 1. Verify Geofence
@@ -51,6 +51,14 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     const settings = await prisma.instituteSettings.findFirst() || { lat: 12.9716, lng: 77.5946, radius: 500 };
+    
+    // 1. Verify Device Lock (Strict Mobile Only for Punch)
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (platform !== 'mobile' || deviceId !== user.mobileDeviceId) {
+      return res.status(403).json({ error: 'Attendance can only be marked from your registered mobile device.' });
+    }
 
     const distance = getDistance(
       { latitude: lat, longitude: lng },

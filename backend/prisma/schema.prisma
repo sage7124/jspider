@@ -27,6 +27,9 @@ model User {
   leaveBalance   Int          @default(0)
   totalLeaves    Int          @default(0)
   
+  mobileDeviceId String?      @unique
+  desktopDeviceId String?     @unique
+  
   slots          Slot[]       // Slots assigned to this trainee
   attendances    Attendance[]
   leaveRequests  LeaveRequest[]
