@@ -247,6 +247,6 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       </div>
     </div>
   );
-};</div>
+};
 
 export default TraineeDashboard;
