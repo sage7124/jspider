@@ -234,40 +234,76 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
 // ── Reset Password Modal ──────────────────────────────────────────────────────
 const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
   const [done, setDone] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleReset = async () => {
-    const token = localStorage.getItem('token');
-    await axios.post(`${API}/reset-password/${trainee.id}`, {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    setDone(true);
+  const handleReset = async (isManual: boolean) => {
+    if (isManual && !newPassword) return alert('Please enter a password');
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/reset-password/${trainee.id}`, { 
+        newPassword: isManual ? newPassword : null 
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setDone(true);
+    } catch (e) {
+      alert('Failed to reset password');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-8 text-center">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-8 text-center relative">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
         <div className="w-16 h-16 rounded-full border-4 border-orange-400 flex items-center justify-center mx-auto mb-4">
           <span className="text-orange-400 text-3xl font-bold">!</span>
         </div>
         {done ? (
           <>
-            <h2 className="text-lg font-bold mb-2 text-green-600">Password Reset!</h2>
-            <p className="text-gray-600 text-sm mb-2">
-              Password for <strong>{trainee.name}</strong> has been reset to their mobile number:
+            <h2 className="text-lg font-bold mb-2 text-green-600">Successfully Reset!</h2>
+            <p className="text-gray-600 text-sm mb-6">
+              Password for <strong>{trainee.name}</strong> has been updated.
             </p>
-            <p className="text-blue-600 font-bold text-lg mb-6">{trainee.empCode}</p>
-            <button onClick={onClose} className="bg-gray-600 hover:bg-gray-700 text-white px-8 py-2 rounded font-medium">Close</button>
+            <button onClick={onClose} className="w-full bg-gray-600 hover:bg-gray-700 text-white px-8 py-2 rounded font-medium">Close</button>
           </>
         ) : (
           <>
             <h2 className="text-lg font-bold mb-2">Reset Password?</h2>
-            <p className="text-gray-500 text-sm mb-1">Are you sure you want to Reset Password for</p>
-            <p className="font-bold mb-1">{trainee.name}?</p>
-            <p className="text-xs text-gray-400 mb-6">Password will be reset to their mobile number: <strong>{trainee.empCode}</strong></p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={onClose} className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded font-medium">Cancel</button>
-              <button onClick={handleReset} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded font-medium">Yes, Reset</button>
+            <p className="text-gray-500 text-sm mb-4">For trainee <strong>{trainee.name}</strong></p>
+            
+            <div className="mb-6 text-left">
+              <label className="block text-xs font-bold text-gray-400 mb-1">SET NEW PASSWORD DIRECTLY</label>
+              <input 
+                type="text" 
+                placeholder="Enter custom password..." 
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <button 
+                onClick={() => handleReset(true)} 
+                disabled={loading}
+                className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-xs font-bold transition-all disabled:opacity-50">
+                Update to this Password
+              </button>
             </div>
+
+            <div className="relative flex items-center justify-center mb-6">
+              <div className="border-t w-full"></div>
+              <span className="absolute bg-white px-2 text-[10px] text-gray-400 font-bold">OR</span>
+            </div>
+
+            <button 
+              onClick={() => handleReset(false)} 
+              disabled={loading}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded font-medium text-sm transition-all disabled:opacity-50">
+              Reset to Mobile Number
+            </button>
+            <p className="text-[10px] text-gray-400 mt-2">Mobile: {trainee.empCode}</p>
           </>
         )}
       </div>

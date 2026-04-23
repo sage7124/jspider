@@ -132,12 +132,14 @@ router.put('/slots/:userId', async (req: AuthRequest, res) => {
 // ── Reset Password (resets to mobile number) ──────────────────────────────────
 router.post('/reset-password/:id', async (req: AuthRequest, res) => {
   try {
+    const { newPassword } = req.body;
     const user = await prisma.user.findUnique({ where: { id: Number(req.params.id) } });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const hashed = await bcrypt.hash(user.identifier, 10);
+    const passwordToSet = newPassword || user.identifier;
+    const hashed = await bcrypt.hash(passwordToSet, 10);
     await prisma.user.update({ where: { id: Number(req.params.id) }, data: { password: hashed } });
-    res.json({ message: `Password has been reset to their mobile number: ${user.identifier}` });
+    res.json({ message: newPassword ? 'Password updated successfully' : `Password has been reset to their mobile number: ${user.identifier}` });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
