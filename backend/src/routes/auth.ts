@@ -69,6 +69,23 @@ router.post('/login', async (req, res) => {
       const currentLockedId = isMobile ? user.mobileDeviceId : user.desktopDeviceId;
 
       if (!currentLockedId) {
+        // Check if this deviceId is already taken by ANY OTHER user
+        const otherUserWithDevice = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { mobileDeviceId: deviceId },
+              { desktopDeviceId: deviceId }
+            ],
+            NOT: { id: user.id }
+          }
+        });
+
+        if (otherUserWithDevice) {
+          return res.status(403).json({ 
+            error: 'This device is already associated with another account. Please contact Admin to clear it.' 
+          });
+        }
+
         // First login on this platform, lock it
         await prisma.user.update({
           where: { id: user.id },

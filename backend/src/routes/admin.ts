@@ -588,4 +588,25 @@ router.post('/reset-device/:id', async (req: AuthRequest, res) => {
   }
 });
 
+// ── Find User by Device ID ───────────────────────────────────────────────────
+router.get('/device/:deviceId', async (req: AuthRequest, res) => {
+  try {
+    const { deviceId } = req.params;
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { mobileDeviceId: deviceId },
+          { desktopDeviceId: deviceId }
+        ]
+      },
+      select: { id: true, identifier: true, fullName: true, role: true }
+    });
+
+    if (!user) return res.status(404).json({ error: 'No user found with this device ID' });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
