@@ -595,8 +595,8 @@ router.get('/device/:deviceId', async (req: AuthRequest, res) => {
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { mobileDeviceId: deviceId },
-          { desktopDeviceId: deviceId }
+          { mobileDeviceId: deviceId as string },
+          { desktopDeviceId: deviceId as string }
         ]
       },
       select: { id: true, identifier: true, fullName: true, role: true }
