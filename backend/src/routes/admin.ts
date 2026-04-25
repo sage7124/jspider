@@ -182,8 +182,14 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
       { header: 'Date', key: 'date', width: 15 },
       { header: 'In Time', key: 'inTime', width: 15 },
       { header: 'Out Time', key: 'outTime', width: 15 },
-      { header: 'Status', key: 'status', width: 12 },
+      { header: 'Slot-1 Start', key: 's1Start', width: 15 },
+      { header: 'Slot-1 End', key: 's1End', width: 15 },
+      { header: 'Slot-2 Start', key: 's2Start', width: 15 },
+      { header: 'Slot-2 End', key: 's2End', width: 15 },
+      { header: 'Slot-3 Start', key: 's3Start', width: 15 },
+      { header: 'Slot-3 End', key: 's3End', width: 15 },
       { header: 'Late', key: 'isLate', width: 10 },
+      { header: 'Early Departure', key: 'isEarly', width: 15 },
     ];
 
     // Style header row
@@ -193,13 +199,13 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
 
     const attendances = await prisma.attendance.findMany({
       where: dateFilter,
-      include: { user: true },
+      include: { user: { include: { slots: true } } },
       orderBy: [{ date: 'asc' }, { user: { fullName: 'asc' } }],
     });
 
     // If no attendances for month, still include all trainees as ABSENT
     if (attendances.length === 0) {
-      const trainees = await prisma.user.findMany({ where: { role: 'TRAINEE' } });
+      const trainees = await prisma.user.findMany({ where: { role: 'TRAINEE' }, include: { slots: true } });
       trainees.forEach((t) => {
         ws.addRow({
           empCode: t.identifier,
@@ -208,12 +214,40 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
           date: month ? `${month}` : '--',
           inTime: '--',
           outTime: '--',
-          status: 'ABSENT',
+          s1Start: '--',
+          s1End: '--',
+          s2Start: '--',
+          s2End: '--',
+          s3Start: '--',
+          s3End: '--',
           isLate: 'No',
+          isEarly: 'No'
         });
       });
     } else {
       attendances.forEach((att) => {
+        const dayStr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][att.date.getDay()];
+        const daySlots = att.user.slots.filter(s => s.dayOfWeek === dayStr).sort((a, b) => a.slotNo - b.slotNo);
+        const s1 = daySlots.find(s => s.slotNo === 1);
+        const s2 = daySlots.find(s => s.slotNo === 2);
+        const s3 = daySlots.find(s => s.slotNo === 3);
+
+        let isEarly = 'No';
+        if (att.outTime && daySlots.length > 0) {
+          const lastSlot = daySlots[daySlots.length - 1];
+          const [time, mod] = lastSlot.endTime.split(' ');
+          let [h, m] = time.split(':').map(Number);
+          if (mod === 'PM' && h < 12) h += 12;
+          if (mod === 'AM' && h === 12) h = 0;
+          
+          const slotEnd = new Date(att.date);
+          slotEnd.setHours(h, m, 0, 0);
+          
+          if (att.outTime.getTime() < slotEnd.getTime()) {
+            isEarly = 'Yes';
+          }
+        }
+
         ws.addRow({
           empCode: att.user.identifier,
           name: att.user.fullName,
@@ -221,8 +255,14 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
           date: att.date.toLocaleDateString('en-IN'),
           inTime: att.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
           outTime: att.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-          status: att.status,
+          s1Start: s1?.startTime || '--',
+          s1End: s1?.endTime || '--',
+          s2Start: s2?.startTime || '--',
+          s2End: s2?.endTime || '--',
+          s3Start: s3?.startTime || '--',
+          s3End: s3?.endTime || '--',
           isLate: att.isLate ? 'Yes' : 'No',
+          isEarly: isEarly
         });
       });
     }
@@ -280,9 +320,13 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       { header: 'Out Time', key: 'outTime', width: 15 },
       { header: 'Slot-1 Start', key: 's1Start', width: 15 },
       { header: 'Slot-1 End', key: 's1End', width: 15 },
+      { header: 'Slot-2 Start', key: 's2Start', width: 15 },
+      { header: 'Slot-2 End', key: 's2End', width: 15 },
+      { header: 'Slot-3 Start', key: 's3Start', width: 15 },
+      { header: 'Slot-3 End', key: 's3End', width: 15 },
       { header: 'Worked Hours', key: 'worked', width: 15 },
       { header: 'Late Time', key: 'late', width: 15 },
-      { header: 'Status', key: 'status', width: 15 }
+      { header: 'Early Departure', key: 'earlyDeparture', width: 15 }
     ];
 
     ws.getRow(1).font = { bold: true };
@@ -298,17 +342,15 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       const daySlots = user.slots.filter(s => s.dayOfWeek === dayStr).sort((a,b) => a.slotNo - b.slotNo);
       const att = attendances.find(a => a.date.getDate() === day && a.date.getMonth() === (mon - 1));
 
+      const s1 = daySlots.find(s => s.slotNo === 1);
+      const s2 = daySlots.find(s => s.slotNo === 2);
+      const s3 = daySlots.find(s => s.slotNo === 3);
+
       let workedHours = '--';
       let lateTime = '--';
-      let status = '';
+      let earlyDeparture = '--';
 
-      if (daySlots.length === 0) {
-        status = 'No Schedule';
-      } else if (!att) {
-        status = 'ABSENT';
-      } else {
-        status = att.status === 'IN' ? 'STILL IN' : 'PRESENT';
-        
+      if (att) {
         if (att.inTime && att.outTime) {
           const diff = att.outTime.getTime() - att.inTime.getTime();
           const mins = Math.floor(diff / 60000);
@@ -335,6 +377,25 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
             lateTime = '0m';
           }
         }
+
+        const lastSlot = daySlots[daySlots.length - 1];
+        if (att.outTime && lastSlot) {
+          const [time, mod] = lastSlot.endTime.split(' ');
+          let [h, m] = time.split(':').map(Number);
+          if (mod === 'PM' && h < 12) h += 12;
+          if (mod === 'AM' && h === 12) h = 0;
+          
+          const slotEnd = new Date(currentDate);
+          slotEnd.setHours(h, m, 0, 0);
+
+          if (att.outTime.getTime() < slotEnd.getTime()) {
+            const diff = slotEnd.getTime() - att.outTime.getTime();
+            const mins = Math.floor(diff / 60000);
+            earlyDeparture = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+          } else {
+            earlyDeparture = '0m';
+          }
+        }
       }
 
       ws.addRow({
@@ -345,11 +406,15 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
         dept: day === 1 ? (user.department || '--') : '',
         inTime: att?.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
         outTime: att?.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        s1Start: daySlots[0]?.startTime || '--',
-        s1End: daySlots[0]?.endTime || '--',
+        s1Start: s1?.startTime || '--',
+        s1End: s1?.endTime || '--',
+        s2Start: s2?.startTime || '--',
+        s2End: s2?.endTime || '--',
+        s3Start: s3?.startTime || '--',
+        s3End: s3?.endTime || '--',
         worked: workedHours,
         late: lateTime,
-        status: status
+        earlyDeparture: earlyDeparture
       });
     }
 
