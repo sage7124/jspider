@@ -38,8 +38,11 @@ router.post('/register', async (req, res) => {
     });
 
     res.status(201).json({ message: 'Registration successful. Waiting for Admin approval.' });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'A user with this email or mobile already exists' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -90,9 +93,24 @@ router.post('/login', async (req, res) => {
     );
 
     res.json({ token, user: { id: user.id, role: user.role, fullName: user.fullName } });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+  } catch (error: any) {
+    console.error('Login error:', error);
+    
+    // Specific handling for Prisma unique constraint errors (P2002)
+    // This happens if a deviceId is already locked to another user
+    if (error.code === 'P2002') {
+      const targets = error.meta?.target || [];
+      if (targets.includes('mobileDeviceId') || targets.includes('desktopDeviceId')) {
+        return res.status(403).json({ 
+          error: 'This device is already associated with another account. Please contact Admin.' 
+        });
+      }
+    }
+
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    });
   }
 });
 
