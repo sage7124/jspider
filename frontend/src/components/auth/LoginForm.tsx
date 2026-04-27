@@ -9,6 +9,7 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
