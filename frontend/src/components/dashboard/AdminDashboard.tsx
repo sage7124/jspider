@@ -12,7 +12,7 @@ const DAY_MAP: Record<string, string> = {
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MINS = ['00', '15', '30', '45'];
 const AMPM = ['AM', 'PM'];
-const SLOT_COUNT = 5; // 5 slots per day
+const SLOT_COUNT = 3; // 3 slots per day
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Slot { day: string; start: string; end: string; slotNo: number }
@@ -342,7 +342,79 @@ const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: (
     </div>
   );
 };
+// ── Manual Attendance Edit Modal ──────────────────────────────────────────────
+const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  const [inTime, setInTime] = useState(trainee.in === '--' ? '09:00' : trainee.in);
+  const [outTime, setOutTime] = useState(trainee.out === '--' ? '18:00' : trainee.out);
+  const [status, setStatus] = useState(trainee.status || 'OUT');
+  const [loading, setLoading] = useState(false);
 
+  const handleUpdate = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      // Convert 12h to 24h for the backend
+      const to24h = (t: string) => {
+        if (!t.includes(' ')) return t; // Already 24h?
+        let [time, modifier] = t.split(' ');
+        let [hours, minutes] = time.split(':');
+        if (hours === '12') hours = '00';
+        if (modifier === 'PM') hours = String(parseInt(hours, 10) + 12);
+        return `${hours.padStart(2, '0')}:${minutes}`;
+      };
+
+      await axios.put(`${API}/attendance-manual/${trainee.id}`, { 
+        inTime: to24h(inTime), 
+        outTime: to24h(outTime),
+        status 
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      onSave();
+      onClose();
+    } catch (e) {
+      alert('Failed to update attendance');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+        <h2 className="text-lg font-bold mb-1">Manual Attendance</h2>
+        <p className="text-xs text-gray-500 mb-6">{trainee.name}</p>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Punch In Time</label>
+            <input type="time" value={inTime.includes(' ') ? '' : inTime} onChange={e => setInTime(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Punch Out Time</label>
+            <input type="time" value={outTime.includes(' ') ? '' : outTime} onChange={e => setOutTime(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Status</label>
+            <select value={status} onChange={e => setStatus(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="IN">IN</option>
+              <option value="OUT">OUT</option>
+            </select>
+          </div>
+        </div>
+
+        <button onClick={handleUpdate} disabled={loading}
+          className="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition-colors disabled:opacity-50">
+          {loading ? 'Updating...' : 'Save Changes'}
+        </button>
+      </div>
+    </div>
+  );
+};
 // ── Individual Download Modal ──────────────────────────────────────────────
 const IndividualDownloadModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
   const now = new Date();
@@ -503,6 +575,7 @@ const AdminDashboard: React.FC = () => {
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [qrToken, setQrToken] = useState('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
+  const [search, setSearch] = useState('');
 
   // View state
   const [view, setView] = useState<'main' | 'pending'>('main');
@@ -511,6 +584,7 @@ const AdminDashboard: React.FC = () => {
   const [editUser, setEditUser] = useState<Trainee | null>(null);
   const [slotsUser, setSlotsUser] = useState<Trainee | null>(null);
   const [resetUser, setResetUser] = useState<Trainee | null>(null);
+  const [manualPunchUser, setManualPunchUser] = useState<Trainee | null>(null);
   const [deleteUser, setDeleteUser] = useState<Trainee | null>(null);
   const [showLeaves, setShowLeaves] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
@@ -529,10 +603,15 @@ const AdminDashboard: React.FC = () => {
   const fetchTrainees = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/attendance`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${API}/attendance?search=${search}`, { headers: { Authorization: `Bearer ${token}` } });
       setTrainees(res.data);
     } catch (err) { console.error(err); }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchTrainees(), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const fetchPendingCount = async () => {
     try {
@@ -571,6 +650,29 @@ const AdminDashboard: React.FC = () => {
               </span>
             )}
           </button>
+        </div>
+
+        {/* 🔍 Global Search */}
+        <div className="flex-1 max-w-md mx-4">
+          <div className="relative">
+            <input 
+              type="text" 
+              placeholder="Search by Name, Code, or Dept..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded-full py-2 px-10 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+            />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
@@ -642,9 +744,16 @@ const AdminDashboard: React.FC = () => {
                     <button onClick={() => setEditUser(t)} className="text-emerald-600 hover:text-emerald-800 transition-colors" title="Edit User Info"><Edit size={16} /></button>
                     <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots"><Clock size={16} /></button>
                     <button onClick={() => setResetUser(t)} className="text-yellow-600 hover:text-yellow-800 transition-colors" title="Reset Password"><Key size={16} /></button>
+                    <button onClick={() => setManualPunchUser(t)} className="text-orange-600 hover:text-orange-800 transition-colors" title="Manual Attendance"><Clock size={16} /></button>
                     <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>
                     <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>
-                    <button className="text-red-600 hover:text-red-800 transition-colors" title="Force Logout"><LogOut size={16} /></button>
+                    <button onClick={async () => {
+                      if(!confirm('Force Punch Out for this user?')) return;
+                      const token = localStorage.getItem('token');
+                      await axios.post(`${API}/force-logout/${t.id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                      fetchTrainees();
+                      alert('User forced to punch out');
+                    }} className="text-red-600 hover:text-red-800 transition-colors" title="Force Logout"><LogOut size={16} /></button>
                   </div>
                 </td>
               </tr>
@@ -660,6 +769,7 @@ const AdminDashboard: React.FC = () => {
       {editUser && <EditUserModal trainee={editUser} onClose={() => setEditUser(null)} onSave={fetchTrainees} />}
       {slotsUser && <SlotsModal trainee={slotsUser} onClose={() => setSlotsUser(null)} onSave={fetchTrainees} />}
       {resetUser && <ResetPasswordModal trainee={resetUser} onClose={() => setResetUser(null)} />}
+      {manualPunchUser && <ManualPunchModal trainee={manualPunchUser} onClose={() => setManualPunchUser(null)} onSave={fetchTrainees} />}
       {deleteUser && <DeleteConfirmModal trainee={deleteUser} onClose={() => setDeleteUser(null)} onDeleted={fetchTrainees} />}
       {showLeaves && <LeaveManagementModal onClose={() => setShowLeaves(null as any)} onProcessed={fetchTrainees} />}
       {showDownload && <MonthlyDownloadModal onClose={() => setShowDownload(false)} />}

@@ -11,13 +11,17 @@ router.use(authenticateToken);
 router.use(requireAdmin);
 
 // ── GET all trainees with today's attendance ──────────────────────────────────
-router.get('/attendance', async (_req: AuthRequest, res) => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
+    const { search } = _req.query;
     const users = await prisma.user.findMany({
-      where: { role: 'TRAINEE' },
+      where: { 
+        role: 'TRAINEE',
+        OR: search ? [
+          { fullName: { contains: search as string, mode: 'insensitive' } },
+          { identifier: { contains: search as string, mode: 'insensitive' } },
+          { department: { contains: search as string, mode: 'insensitive' } },
+          { email: { contains: search as string, mode: 'insensitive' } }
+        ] : undefined
+      },
       include: {
         slots: { orderBy: [{ dayOfWeek: 'asc' }, { slotNo: 'asc' }] },
         attendances: { where: { date: today } },
@@ -318,15 +322,21 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       { header: 'Department', key: 'dept', width: 20 },
       { header: 'In Time', key: 'inTime', width: 15 },
       { header: 'Out Time', key: 'outTime', width: 15 },
-      { header: 'Slot-1 Start', key: 's1Start', width: 15 },
-      { header: 'Slot-1 End', key: 's1End', width: 15 },
-      { header: 'Slot-2 Start', key: 's2Start', width: 15 },
-      { header: 'Slot-2 End', key: 's2End', width: 15 },
-      { header: 'Slot-3 Start', key: 's3Start', width: 15 },
-      { header: 'Slot-3 End', key: 's3End', width: 15 },
+      { header: 'Slot-1 Start', key: 's1Start', width: 12 },
+      { header: 'Slot-1 End', key: 's1End', width: 12 },
+      { header: 'S1 Late', key: 's1Late', width: 10 },
+      { header: 'S1 Early', key: 's1Early', width: 10 },
+      { header: 'Slot-2 Start', key: 's2Start', width: 12 },
+      { header: 'Slot-2 End', key: 's2End', width: 12 },
+      { header: 'S2 Late', key: 's2Late', width: 10 },
+      { header: 'S2 Early', key: 's2Early', width: 10 },
+      { header: 'Slot-3 Start', key: 's3Start', width: 12 },
+      { header: 'Slot-3 End', key: 's3End', width: 12 },
+      { header: 'S3 Late', key: 's3Late', width: 10 },
+      { header: 'S3 Early', key: 's3Early', width: 10 },
       { header: 'Worked Hours', key: 'worked', width: 15 },
-      { header: 'Late Time', key: 'late', width: 15 },
-      { header: 'Early Departure', key: 'earlyDeparture', width: 15 }
+      { header: 'Total Late', key: 'late', width: 12 },
+      { header: 'Total Early', key: 'earlyDeparture', width: 12 }
     ];
 
     ws.getRow(1).font = { bold: true };
@@ -347,8 +357,44 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       const s3 = daySlots.find(s => s.slotNo === 3);
 
       let workedHours = '--';
-      let lateTime = '--';
-      let earlyDeparture = '--';
+      let totalLateMins = 0;
+      let totalEarlyMins = 0;
+
+      const calcLate = (slot: any, inTime: Date) => {
+        if (!slot || !inTime) return '--';
+        const [time, mod] = slot.startTime.split(' ');
+        let [h, m] = time.split(':').map(Number);
+        if (mod === 'PM' && h < 12) h += 12;
+        if (mod === 'AM' && h === 12) h = 0;
+        const start = new Date(currentDate);
+        start.setHours(h, m, 0, 0);
+
+        if (inTime.getTime() > start.getTime()) {
+          const diff = inTime.getTime() - start.getTime();
+          const mins = Math.floor(diff / 60000);
+          return mins;
+        }
+        return 0;
+      };
+
+      const calcEarly = (slot: any, outTime: Date) => {
+        if (!slot || !outTime) return '--';
+        const [time, mod] = slot.endTime.split(' ');
+        let [h, m] = time.split(':').map(Number);
+        if (mod === 'PM' && h < 12) h += 12;
+        if (mod === 'AM' && h === 12) h = 0;
+        const end = new Date(currentDate);
+        end.setHours(h, m, 0, 0);
+
+        if (outTime.getTime() < end.getTime()) {
+          const diff = end.getTime() - outTime.getTime();
+          const mins = Math.floor(diff / 60000);
+          return mins;
+        }
+        return 0;
+      };
+
+      let s1L = '--', s1E = '--', s2L = '--', s2E = '--', s3L = '--', s3E = '--';
 
       if (att) {
         if (att.inTime && att.outTime) {
@@ -358,45 +404,26 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
           workedHours = `${Math.floor(mins / 60)}h ${mins % 60}m`;
         }
 
-        const firstSlot = daySlots[0];
-        if (att.inTime && firstSlot) {
-          const [time, mod] = firstSlot.startTime.split(' ');
-          let [h, m] = time.split(':').map(Number);
-          if (mod === 'PM' && h < 12) h += 12;
-          if (mod === 'AM' && h === 12) h = 0;
-          
-          const slotStart = new Date(currentDate);
-          slotStart.setHours(h, m, 0, 0);
-
-          if (att.inTime.getTime() > slotStart.getTime()) {
-            const diff = att.inTime.getTime() - slotStart.getTime();
-            const mins = Math.floor(diff / 60000);
-            totalLateMinutes += mins;
-            lateTime = `${Math.floor(mins / 60)}h ${mins % 60}m`;
-          } else {
-            lateTime = '0m';
-          }
+        if (att.inTime) {
+          const l1 = calcLate(s1, att.inTime);
+          const l2 = calcLate(s2, att.inTime);
+          const l3 = calcLate(s3, att.inTime);
+          if (typeof l1 === 'number') { s1L = `${l1}m`; totalLateMins += l1; }
+          if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; }
+          if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; }
         }
 
-        const lastSlot = daySlots[daySlots.length - 1];
-        if (att.outTime && lastSlot) {
-          const [time, mod] = lastSlot.endTime.split(' ');
-          let [h, m] = time.split(':').map(Number);
-          if (mod === 'PM' && h < 12) h += 12;
-          if (mod === 'AM' && h === 12) h = 0;
-          
-          const slotEnd = new Date(currentDate);
-          slotEnd.setHours(h, m, 0, 0);
-
-          if (att.outTime.getTime() < slotEnd.getTime()) {
-            const diff = slotEnd.getTime() - att.outTime.getTime();
-            const mins = Math.floor(diff / 60000);
-            earlyDeparture = `${Math.floor(mins / 60)}h ${mins % 60}m`;
-          } else {
-            earlyDeparture = '0m';
-          }
+        if (att.outTime) {
+          const e1 = calcEarly(s1, att.outTime);
+          const e2 = calcEarly(s2, att.outTime);
+          const e3 = calcEarly(s3, att.outTime);
+          if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; }
+          if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; }
+          if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; }
         }
       }
+
+      totalLateMinutes += totalLateMins;
 
       ws.addRow({
         si: day,
@@ -408,13 +435,19 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
         outTime: att?.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
         s1Start: s1?.startTime || '--',
         s1End: s1?.endTime || '--',
+        s1Late: s1L,
+        s1Early: s1E,
         s2Start: s2?.startTime || '--',
         s2End: s2?.endTime || '--',
+        s2Late: s2L,
+        s2Early: s2E,
         s3Start: s3?.startTime || '--',
         s3End: s3?.endTime || '--',
+        s3Late: s3L,
+        s3Early: s3E,
         worked: workedHours,
-        late: lateTime,
-        earlyDeparture: earlyDeparture
+        late: totalLateMins > 0 ? `${Math.floor(totalLateMins / 60)}h ${totalLateMins % 60}m` : '0m',
+        earlyDeparture: totalEarlyMins > 0 ? `${Math.floor(totalEarlyMins / 60)}h ${totalEarlyMins % 60}m` : '0m'
       });
     }
 
@@ -605,6 +638,70 @@ router.get('/device/:deviceId', async (req: AuthRequest, res) => {
     if (!user) return res.status(404).json({ error: 'No user found with this device ID' });
     res.json(user);
   } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Force Logout (Punch Out + Optional Reset) ─────────────────────────────
+router.post('/force-logout/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendance = await prisma.attendance.findUnique({
+      where: { userId_date: { userId: Number(id), date: today } }
+    });
+
+    if (attendance && attendance.status === 'IN') {
+      await prisma.attendance.update({
+        where: { id: attendance.id },
+        data: { status: 'OUT', outTime: new Date() }
+      });
+    }
+
+    res.json({ message: 'User forced to logout (Punched Out if they were IN)' });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Manual Attendance Edit ──────────────────────────────────────────────────
+router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
+  try {
+    const { traineeId } = req.params;
+    const { inTime, outTime, status } = req.body; // inTime/outTime format "HH:mm"
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    
+    const setTime = (timeStr: string) => {
+      const [h, m] = timeStr.split(':').map(Number);
+      const d = new Date(today);
+      d.setHours(h, m, 0, 0);
+      return d;
+    };
+
+    if (inTime && inTime !== '--') updateData.inTime = setTime(inTime);
+    if (outTime && outTime !== '--') updateData.outTime = setTime(outTime);
+
+    await prisma.attendance.upsert({
+      where: { userId_date: { userId: Number(traineeId), date: today } },
+      update: updateData,
+      create: {
+        userId: Number(traineeId),
+        date: today,
+        ...updateData,
+        status: status || 'OUT'
+      }
+    });
+
+    res.json({ message: 'Attendance updated manually' });
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
