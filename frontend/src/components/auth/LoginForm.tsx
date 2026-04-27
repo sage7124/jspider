@@ -9,12 +9,13 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     try {
       // Map TEACHER tab → TRAINEE role for backend
       const backendRole = role === 'TEACHER' ? 'TRAINEE' : 'ADMIN';
@@ -40,6 +41,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,9 +73,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
 
       <button
         type="submit"
-        className="w-full bg-[#1976D2] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded mt-2 transition-colors"
+        disabled={loading}
+        className={`w-full bg-[#1976D2] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded mt-2 transition-all ${loading ? 'opacity-70 cursor-wait' : ''}`}
       >
-        SIGN IN
+        {loading ? 'SIGNING IN...' : 'SIGN IN'}
       </button>
     </form>
   );

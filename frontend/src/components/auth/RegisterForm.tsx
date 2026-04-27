@@ -11,6 +11,7 @@ const RegisterForm: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -23,6 +24,7 @@ const RegisterForm: React.FC = () => {
     e.preventDefault();
     setError('');
     setSuccess(false);
+    setLoading(true);
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       await axios.post(`${API_URL}/api/auth/register`, formData);
@@ -30,6 +32,8 @@ const RegisterForm: React.FC = () => {
       setFormData({ fullName: '', email: '', mobile: '', department: '', password: '' });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -98,9 +102,10 @@ const RegisterForm: React.FC = () => {
 
       <button
         type="submit"
-        className="w-full bg-[#1976D2] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded mt-2 transition-colors"
+        disabled={loading}
+        className={`w-full bg-[#1976D2] hover:bg-blue-700 text-white font-bold py-3 px-4 rounded mt-2 transition-all ${loading ? 'opacity-70 cursor-wait' : ''}`}
       >
-        REGISTER
+        {loading ? 'REGISTERING...' : 'REGISTER'}
       </button>
     </form>
   );

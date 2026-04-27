@@ -14,3 +14,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #f4f6f9;
 }
+
+/* 👆 Clickable elements feedback */
+button, a, select, input[type="submit"], [role="button"] {
+  cursor: pointer !important;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+button:disabled, .loading {
+  cursor: wait !important;
+}
+
+a:hover {
+  text-decoration: underline;
+}
