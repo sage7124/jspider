@@ -11,6 +11,11 @@ router.use(authenticateToken);
 router.use(requireAdmin);
 
 // ── GET all trainees with today's attendance ──────────────────────────────────
+router.get('/attendance', async (_req: AuthRequest, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const { search } = _req.query;
     const users = await prisma.user.findMany({
       where: { 
