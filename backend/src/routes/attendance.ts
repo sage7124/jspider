@@ -52,12 +52,19 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
 
     const settings = await prisma.instituteSettings.findFirst() || { lat: 12.9716, lng: 77.5946, radius: 500 };
     
-    // 1. Verify Device Lock (Strict Mobile Only for Punch)
+    // 1. Verify Device Lock (Allow both Mobile and Laptop)
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    if (platform !== 'mobile' || deviceId !== user.mobileDeviceId) {
-      return res.status(403).json({ error: 'Attendance can only be marked from your registered mobile device.' });
+    const isMobile = platform === 'mobile';
+    const currentLockedId = isMobile ? user.mobileDeviceId : user.desktopDeviceId;
+
+    if (!currentLockedId) {
+      return res.status(403).json({ error: `This ${platform} device is not registered to your account. Please logout and login again.` });
+    }
+
+    if (deviceId !== currentLockedId) {
+      return res.status(403).json({ error: `Attendance can only be marked from your registered ${platform}.` });
     }
 
     const distance = getDistance(
