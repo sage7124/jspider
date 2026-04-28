@@ -553,6 +553,7 @@ router.delete('/user/:id', async (req: AuthRequest, res) => {
     // Delete related records first due to constraints
     await prisma.slot.deleteMany({ where: { userId: Number(id) } });
     await prisma.attendance.deleteMany({ where: { userId: Number(id) } });
+    await prisma.leaveRequest.deleteMany({ where: { userId: Number(id) } });
     await prisma.user.delete({ where: { id: Number(id) } });
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
