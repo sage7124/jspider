@@ -334,7 +334,7 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
     const ws = workbook.addWorksheet(`${user.fullName} Report`);
 
     const baseColumns = [
-      { header: 'SI No', key: 'si', width: 8 },
+      { header: 'Day', key: 'day', width: 12 },
       { header: 'Date', key: 'date', width: 15 },
       { header: 'Emp Code', key: 'empCode', width: 15 },
       { header: 'Name', key: 'name', width: 25 },
@@ -447,8 +447,10 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       totalLateMinutes += totalLateMins;
       totalEarlyMinutes += totalEarlyMins;
 
+      const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
+
       ws.addRow({
-        si: day,
+        day: fullDayStr,
         date: currentDate.toLocaleDateString('en-IN'),
         empCode: day === 1 ? user.identifier : '',
         name: day === 1 ? user.fullName : '',
@@ -475,7 +477,7 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
 
     // Add total row
     const totalRow = ws.addRow({
-      si: 'TOTAL',
+      day: 'TOTAL',
       worked: `${Math.floor(totalWorkedMinutes / 60)}h ${totalWorkedMinutes % 60}m`,
       late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
       earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`
