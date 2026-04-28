@@ -811,9 +811,10 @@ const DeleteConfirmModal = ({ trainee, onClose, onDeleted }: { trainee: Trainee;
 
 // ── Leave Management Modal ──────────────────────────────────────────────────
 const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; onProcessed: () => void }) => {
-  const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editedEndDates, setEditedEndDates] = useState<Record<number, string>>({});
+  const [adminReasons, setAdminReasons] = useState<Record<number, string>>({});
 
   useEffect(() => { fetchRequests(); }, []);
 
@@ -831,6 +832,9 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
       if (status === 'APPROVED' && editedEndDates[id]) {
         payload.newEndDate = editedEndDates[id];
       }
+      if (adminReasons[id]) {
+        payload.adminReason = adminReasons[id];
+      }
       await axios.post(`${API}/leaves/process`, payload, { headers: { Authorization: `Bearer ${token}` } });
       fetchRequests();
       onProcessed();
@@ -841,7 +845,7 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">Leave Requests Management</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
@@ -854,9 +858,9 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                 <tr>
                   <th className="px-4 py-3 font-semibold">Trainee</th>
                   <th className="px-4 py-3 font-semibold">Dates</th>
-                  <th className="px-4 py-3 font-semibold">Reason</th>
+                  <th className="px-4 py-3 font-semibold">Trainee Reason</th>
                   <th className="px-4 py-3 font-semibold text-center">Status</th>
-                  <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                  <th className="px-4 py-3 font-semibold text-right">Actions / Admin Reason</th>
                 </tr>
               </thead>
               <tbody>
@@ -905,10 +909,23 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {r.status === 'PENDING' && (
-                        <div className="flex gap-2 justify-end">
-                          <button onClick={() => handleProcess(r.id, 'APPROVED')} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1 rounded">Approve</button>
-                          <button onClick={() => handleProcess(r.id, 'REJECTED')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1 rounded">Reject</button>
+                      {r.status === 'PENDING' ? (
+                        <div className="flex flex-col gap-2 items-end">
+                          <input 
+                            type="text" 
+                            placeholder="Optional remark..." 
+                            className="border rounded px-2 py-1 text-xs w-48"
+                            value={adminReasons[r.id] || ''}
+                            onChange={(e) => setAdminReasons({...adminReasons, [r.id]: e.target.value})}
+                          />
+                          <div className="flex gap-2">
+                            <button onClick={() => handleProcess(r.id, 'APPROVED')} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1 rounded">Approve</button>
+                            <button onClick={() => handleProcess(r.id, 'REJECTED')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1 rounded">Reject</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500 italic max-w-[200px] ml-auto">
+                          {r.adminReason ? `Admin: "${r.adminReason}"` : '--'}
                         </div>
                       )}
                     </td>

@@ -263,17 +263,24 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
             {leaves?.requests?.length === 0 ? (
               <p className="text-center py-10 text-gray-400 text-sm">No leave history found</p>
             ) : leaves?.requests?.map((r: any) => (
-              <div key={r.id} className="p-3 rounded border flex justify-between items-center bg-gray-50">
-                <div>
-                  <div className="text-xs font-bold">{new Date(r.startDate).toLocaleDateString()} – {new Date(r.endDate).toLocaleDateString()}</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5 italic line-clamp-1">{r.reason || 'No reason'}</div>
+              <div key={r.id} className="p-3 rounded border bg-gray-50 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="text-xs font-bold">{new Date(r.startDate).toLocaleDateString()} – {new Date(r.endDate).toLocaleDateString()}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5 italic line-clamp-1">{r.reason || 'No reason'}</div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    r.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                    r.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {r.status}
+                  </span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  r.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                  r.status === 'APPROVED' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {r.status}
-                </span>
+                {r.adminReason && (
+                  <div className="text-[10px] text-gray-600 bg-white border px-2 py-1 rounded italic">
+                    <span className="font-bold mr-1">Admin Remark:</span>{r.adminReason}
+                  </div>
+                )}
               </div>
             ))}
           </div>

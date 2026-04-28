@@ -364,6 +364,7 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
     const daysInMonth = endOfMonth.getDate();
     let totalWorkedMinutes = 0;
     let totalLateMinutes = 0;
+    let totalEarlyMinutes = 0;
 
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(year, mon - 1, day);
@@ -444,6 +445,7 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       }
 
       totalLateMinutes += totalLateMins;
+      totalEarlyMinutes += totalEarlyMins;
 
       ws.addRow({
         si: day,
@@ -475,7 +477,8 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
     const totalRow = ws.addRow({
       si: 'TOTAL',
       worked: `${Math.floor(totalWorkedMinutes / 60)}h ${totalWorkedMinutes % 60}m`,
-      late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`
+      late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
+      earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`
     });
     totalRow.font = { bold: true };
 
@@ -591,7 +594,7 @@ router.get('/leaves/requests', async (_req: AuthRequest, res) => {
 
 router.post('/leaves/process', async (req: AuthRequest, res) => {
   try {
-    const { requestId, status, newEndDate } = req.body; // status: APPROVED or REJECTED
+    const { requestId, status, newEndDate, adminReason } = req.body; // status: APPROVED or REJECTED
     const request = await prisma.leaveRequest.findUnique({
       where: { id: requestId },
       include: { user: true }
@@ -618,14 +621,20 @@ router.post('/leaves/process', async (req: AuthRequest, res) => {
       }
 
       await prisma.$transaction([
-        prisma.leaveRequest.update({ where: { id: requestId }, data: { status: 'APPROVED', endDate: finalEndDate } }),
+        prisma.leaveRequest.update({ 
+          where: { id: requestId }, 
+          data: { status: 'APPROVED', endDate: finalEndDate, adminReason } 
+        }),
         prisma.user.update({
           where: { id: request.userId },
           data: { leaveBalance: { decrement: days } }
         })
       ]);
     } else {
-      await prisma.leaveRequest.update({ where: { id: requestId }, data: { status: 'REJECTED' } });
+      await prisma.leaveRequest.update({ 
+        where: { id: requestId }, 
+        data: { status: 'REJECTED', adminReason } 
+      });
     }
 
     res.json({ message: `Leave ${status.toLowerCase()} successfully` });
