@@ -179,27 +179,40 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
       dateFilter = { date: { gte: start, lte: end } };
     }
 
+    const trainees = await prisma.user.findMany({ where: { role: 'TRAINEE' }, include: { slots: true } });
+    
+    // Calculate max slot number across all trainees to dynamically generate columns
+    const maxSlot = trainees.reduce((globalMax, t) => {
+      const userMax = t.slots.reduce((max, slot) => Math.max(max, slot.slotNo), 0);
+      return Math.max(globalMax, userMax);
+    }, 0) || 1;
+
     const workbook = new exceljs.Workbook();
     workbook.creator = 'Attendance System';
     workbook.created = new Date();
 
     const ws = workbook.addWorksheet('Attendance Report');
-    ws.columns = [
+    const baseColumns = [
       { header: 'Emp Code', key: 'empCode', width: 15 },
       { header: 'Name', key: 'name', width: 25 },
       { header: 'Department', key: 'dept', width: 20 },
       { header: 'Date', key: 'date', width: 15 },
       { header: 'In Time', key: 'inTime', width: 15 },
       { header: 'Out Time', key: 'outTime', width: 15 },
-      { header: 'Slot-1 Start', key: 's1Start', width: 15 },
-      { header: 'Slot-1 End', key: 's1End', width: 15 },
-      { header: 'Slot-2 Start', key: 's2Start', width: 15 },
-      { header: 'Slot-2 End', key: 's2End', width: 15 },
-      { header: 'Slot-3 Start', key: 's3Start', width: 15 },
-      { header: 'Slot-3 End', key: 's3End', width: 15 },
+    ];
+    
+    const slotColumns = [];
+    for (let i = 1; i <= maxSlot; i++) {
+      slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 15 });
+      slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 15 });
+    }
+    
+    const endColumns = [
       { header: 'Late', key: 'isLate', width: 10 },
       { header: 'Early Departure', key: 'isEarly', width: 15 },
     ];
+
+    ws.columns = [...baseColumns, ...slotColumns, ...endColumns];
 
     // Style header row
     ws.getRow(1).font = { bold: true };
@@ -214,7 +227,6 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
 
     // If no attendances for month, still include all trainees as ABSENT
     if (attendances.length === 0) {
-      const trainees = await prisma.user.findMany({ where: { role: 'TRAINEE' }, include: { slots: true } });
       trainees.forEach((t) => {
         ws.addRow({
           empCode: t.identifier,
@@ -316,10 +328,12 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       orderBy: { date: 'asc' }
     });
 
+    const maxSlot = user.slots.reduce((max, slot) => Math.max(max, slot.slotNo), 0) || 1;
+
     const workbook = new exceljs.Workbook();
     const ws = workbook.addWorksheet(`${user.fullName} Report`);
 
-    ws.columns = [
+    const baseColumns = [
       { header: 'SI No', key: 'si', width: 8 },
       { header: 'Date', key: 'date', width: 15 },
       { header: 'Emp Code', key: 'empCode', width: 15 },
@@ -327,22 +341,23 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       { header: 'Department', key: 'dept', width: 20 },
       { header: 'In Time', key: 'inTime', width: 15 },
       { header: 'Out Time', key: 'outTime', width: 15 },
-      { header: 'Slot-1 Start', key: 's1Start', width: 12 },
-      { header: 'Slot-1 End', key: 's1End', width: 12 },
-      { header: 'S1 Late', key: 's1Late', width: 10 },
-      { header: 'S1 Early', key: 's1Early', width: 10 },
-      { header: 'Slot-2 Start', key: 's2Start', width: 12 },
-      { header: 'Slot-2 End', key: 's2End', width: 12 },
-      { header: 'S2 Late', key: 's2Late', width: 10 },
-      { header: 'S2 Early', key: 's2Early', width: 10 },
-      { header: 'Slot-3 Start', key: 's3Start', width: 12 },
-      { header: 'Slot-3 End', key: 's3End', width: 12 },
-      { header: 'S3 Late', key: 's3Late', width: 10 },
-      { header: 'S3 Early', key: 's3Early', width: 10 },
+    ];
+
+    const slotColumns: any[] = [];
+    for (let i = 1; i <= maxSlot; i++) {
+      slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 12 });
+      slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 12 });
+      slotColumns.push({ header: `S${i} Late`, key: `s${i}Late`, width: 10 });
+      slotColumns.push({ header: `S${i} Early`, key: `s${i}Early`, width: 10 });
+    }
+
+    const endColumns = [
       { header: 'Worked Hours', key: 'worked', width: 15 },
       { header: 'Total Late', key: 'late', width: 12 },
       { header: 'Total Early', key: 'earlyDeparture', width: 12 }
     ];
+
+    ws.columns = [...baseColumns, ...slotColumns, ...endColumns];
 
     ws.getRow(1).font = { bold: true };
 
