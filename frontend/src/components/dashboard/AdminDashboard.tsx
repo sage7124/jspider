@@ -813,6 +813,7 @@ const DeleteConfirmModal = ({ trainee, onClose, onDeleted }: { trainee: Trainee;
 const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; onProcessed: () => void }) => {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editedEndDates, setEditedEndDates] = useState<Record<number, string>>({});
 
   useEffect(() => { fetchRequests(); }, []);
 
@@ -826,7 +827,11 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
   const handleProcess = async (id: number, status: 'APPROVED' | 'REJECTED') => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API}/leaves/process`, { requestId: id, status }, { headers: { Authorization: `Bearer ${token}` } });
+      const payload: any = { requestId: id, status };
+      if (status === 'APPROVED' && editedEndDates[id]) {
+        payload.newEndDate = editedEndDates[id];
+      }
+      await axios.post(`${API}/leaves/process`, payload, { headers: { Authorization: `Bearer ${token}` } });
       fetchRequests();
       onProcessed();
     } catch (e: any) {
@@ -857,7 +862,14 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
               <tbody>
                 {requests.length === 0 ? (
                   <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">No leave requests found</td></tr>
-                ) : requests.map((r) => (
+                ) : requests.map((r) => {
+                  // Calculate dynamic days based on edited date or original date
+                  const currentEndDateStr = editedEndDates[r.id] || r.endDate.split('T')[0];
+                  const currentEndDate = new Date(currentEndDateStr);
+                  const startDate = new Date(r.startDate);
+                  const dynamicDays = Math.ceil((currentEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+                  return (
                   <tr key={r.id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="font-bold">{r.user.fullName}</div>
@@ -865,11 +877,22 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                       <div className="text-[10px] text-blue-600 font-bold mt-1">Balance: {r.user.leaveBalance} Days</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-xs font-medium">
-                        {new Date(r.startDate).toLocaleDateString()} – {new Date(r.endDate).toLocaleDateString()}
+                      <div className="text-xs font-medium flex items-center gap-2">
+                        <span>{startDate.toLocaleDateString()}</span>
+                        <span>–</span>
+                        {r.status === 'PENDING' ? (
+                          <input 
+                            type="date" 
+                            className="border rounded px-1 text-xs py-0.5"
+                            value={currentEndDateStr}
+                            onChange={(e) => setEditedEndDates({...editedEndDates, [r.id]: e.target.value})}
+                          />
+                        ) : (
+                          <span>{new Date(r.endDate).toLocaleDateString()}</span>
+                        )}
                       </div>
-                      <div className="text-[10px] text-gray-400">
-                        {Math.ceil((new Date(r.endDate).getTime() - new Date(r.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1} Days
+                      <div className="text-[10px] text-gray-400 mt-1">
+                        {dynamicDays > 0 ? `${dynamicDays} Days` : 'Invalid Date'}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-600 text-xs italic">"{r.reason || 'No reason'}"</td>
@@ -890,7 +913,7 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                       )}
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>

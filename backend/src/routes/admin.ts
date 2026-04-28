@@ -591,7 +591,7 @@ router.get('/leaves/requests', async (_req: AuthRequest, res) => {
 
 router.post('/leaves/process', async (req: AuthRequest, res) => {
   try {
-    const { requestId, status } = req.body; // status: APPROVED or REJECTED
+    const { requestId, status, newEndDate } = req.body; // status: APPROVED or REJECTED
     const request = await prisma.leaveRequest.findUnique({
       where: { id: requestId },
       include: { user: true }
@@ -601,15 +601,24 @@ router.post('/leaves/process', async (req: AuthRequest, res) => {
     if (request.status !== 'PENDING') return res.status(400).json({ error: 'Request already processed' });
 
     if (status === 'APPROVED') {
+      let finalEndDate = request.endDate;
+      if (newEndDate) {
+        finalEndDate = new Date(newEndDate);
+        // Ensure finalEndDate is not before startDate
+        if (finalEndDate < request.startDate) {
+          return res.status(400).json({ error: 'End date cannot be before start date' });
+        }
+      }
+
       // Calculate days
-      const days = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const days = Math.ceil((finalEndDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       
       if (request.user.leaveBalance < days) {
         return res.status(400).json({ error: 'Insufficient leave balance' });
       }
 
       await prisma.$transaction([
-        prisma.leaveRequest.update({ where: { id: requestId }, data: { status: 'APPROVED' } }),
+        prisma.leaveRequest.update({ where: { id: requestId }, data: { status: 'APPROVED', endDate: finalEndDate } }),
         prisma.user.update({
           where: { id: request.userId },
           data: { leaveBalance: { decrement: days } }
