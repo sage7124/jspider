@@ -199,7 +199,22 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
   return (
     <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 overflow-y-auto py-6">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl mx-4 p-6">
-        <h2 className="text-lg font-bold text-center mb-4">Update Time Slots – {trainee.name}</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold">Update Time Slots – {trainee.name}</h2>
+          <button 
+            onClick={() => {
+              setDaySlots((prev) => {
+                const copy = JSON.parse(JSON.stringify(prev));
+                const mon = copy['Monday'];
+                DAYS.forEach(d => { if (d !== 'Monday') copy[d] = JSON.parse(JSON.stringify(mon)); });
+                return copy;
+              });
+            }}
+            className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1.5 rounded font-bold transition-colors flex items-center gap-1"
+          >
+            <span>📋</span> Copy Monday to All Days
+          </button>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
             <thead>
@@ -719,14 +734,26 @@ const AdminDashboard: React.FC = () => {
                 <td className="px-4 py-4 font-medium text-gray-700">{t.empCode}</td>
                 <td className="px-4 py-4 font-bold">{t.name}</td>
                 <td className="px-4 py-4">
-                  <div className="flex flex-col gap-1">
-                    {t.slots.map((s, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-xs">
-                        <span className="text-blue-600 font-semibold w-8">📅 {s.day}</span>
-                        <span className="text-red-500">🕐 {s.start} – {s.end}</span>
+                  <div className="flex flex-col gap-1.5">
+                    {Object.entries(t.slots.reduce((acc, s) => {
+                      if (!acc[s.day]) acc[s.day] = [];
+                      acc[s.day].push(s);
+                      return acc;
+                    }, {} as Record<string, typeof t.slots>)).map(([day, daySlots], idx) => (
+                      <div key={idx} className="flex items-center gap-3 text-xs">
+                        <span className="bg-[#e0f2fe] text-[#0369a1] font-bold px-2 py-0.5 rounded flex items-center gap-1 w-16 justify-center shadow-sm">
+                          📅 {day}
+                        </span>
+                        <div className="flex gap-4">
+                          {daySlots.map((s, i) => (
+                            <span key={i} className="text-[#be123c] font-medium flex items-center gap-1">
+                              ⏰ {s.start} – {s.end}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     ))}
-                    {t.slots.length === 0 && <span className="text-gray-400 italic text-xs">No slots</span>}
+                    {t.slots.length === 0 && <span className="text-gray-400 italic text-xs">No slots assigned</span>}
                   </div>
                 </td>
                 <td className="px-4 py-4">
