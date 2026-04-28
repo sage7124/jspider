@@ -14,9 +14,13 @@ const AuthPage: React.FC = () => {
       
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-md w-full max-w-md relative pt-12 pb-8 px-8 mt-8">
-          {/* Profile Icon Badge */}
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white rounded-full p-3 shadow-sm border border-gray-100">
-            <User className="h-6 w-6 text-[#1a1f2e]" />
+          {/* Profile Icon / Logo Badge */}
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white rounded-full p-2 shadow-md border border-gray-100 flex items-center justify-center w-16 h-16 overflow-hidden">
+            {import.meta.env.VITE_INSTITUTE_LOGO ? (
+              <img src={import.meta.env.VITE_INSTITUTE_LOGO} alt="Institute Logo" className="w-full h-full object-contain" />
+            ) : (
+              <User className="h-7 w-7 text-[#1a1f2e]" />
+            )}
           </div>
 
           {/* Tabs */}
