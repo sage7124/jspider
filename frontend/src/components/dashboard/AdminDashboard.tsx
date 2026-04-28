@@ -739,9 +739,14 @@ const AdminDashboard: React.FC = () => {
                       if (!acc[s.day]) acc[s.day] = [];
                       acc[s.day].push(s);
                       return acc;
-                    }, {} as Record<string, typeof t.slots>)).map(([day, daySlots], idx) => (
+                    }, {} as Record<string, typeof t.slots>))
+                    .sort(([dayA], [dayB]) => {
+                      const order = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+                      return order.indexOf(dayA) - order.indexOf(dayB);
+                    })
+                    .map(([day, daySlots], idx) => (
                       <div key={idx} className="flex items-center gap-3 text-xs">
-                        <span className="bg-[#e0f2fe] text-[#0369a1] font-bold px-2 py-0.5 rounded flex items-center gap-1 w-16 justify-center shadow-sm">
+                        <span className="bg-[#e0f2fe] text-[#0369a1] font-bold px-2 py-0.5 rounded flex items-center justify-center gap-1 min-w-[72px] shadow-sm whitespace-nowrap">
                           📅 {day}
                         </span>
                         <div className="flex gap-4">
