@@ -27,6 +27,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
           { email: { contains: search as string, mode: 'insensitive' } }
         ] : undefined
       },
+      orderBy: { fullName: 'asc' },
       include: {
         slots: { orderBy: [{ dayOfWeek: 'asc' }, { slotNo: 'asc' }] },
         attendances: { where: { date: today } },
@@ -334,11 +335,9 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
     const ws = workbook.addWorksheet(`${user.fullName} Report`);
 
     const baseColumns = [
+      { header: 'Sl No', key: 'slNo', width: 8 },
       { header: 'Day', key: 'day', width: 12 },
       { header: 'Date', key: 'date', width: 15 },
-      { header: 'Emp Code', key: 'empCode', width: 15 },
-      { header: 'Name', key: 'name', width: 25 },
-      { header: 'Department', key: 'dept', width: 20 },
       { header: 'In Time', key: 'inTime', width: 15 },
       { header: 'Out Time', key: 'outTime', width: 15 },
     ];
@@ -347,12 +346,11 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
     for (let i = 1; i <= maxSlot; i++) {
       slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 12 });
       slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 12 });
-      slotColumns.push({ header: `S${i} Late`, key: `s${i}Late`, width: 10 });
-      slotColumns.push({ header: `S${i} Early`, key: `s${i}Early`, width: 10 });
+      slotColumns.push({ header: `s${i} late punch in`, key: `s${i}Late`, width: 18 });
+      slotColumns.push({ header: `s${i} early departure`, key: `s${i}Early`, width: 18 });
     }
 
     const endColumns = [
-      { header: 'Worked Hours', key: 'worked', width: 15 },
       { header: 'Total Late', key: 'late', width: 12 },
       { header: 'Total Early', key: 'earlyDeparture', width: 12 }
     ];
@@ -382,13 +380,29 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       let totalEarlyMins = 0;
 
       const calcLate = (slot: any, inTime: Date) => {
-        if (!slot || !inTime) return '--';
+        if (!slot) return '--';
+        if (!inTime) return 'ABSENT';
+        
         const [time, mod] = slot.startTime.split(' ');
         let [h, m] = time.split(':').map(Number);
         if (mod === 'PM' && h < 12) h += 12;
         if (mod === 'AM' && h === 12) h = 0;
+        
+        const [eTime, eMod] = slot.endTime.split(' ');
+        let [eh, em] = eTime.split(':').map(Number);
+        if (eMod === 'PM' && eh < 12) eh += 12;
+        if (eMod === 'AM' && eh === 12) eh = 0;
+
         const start = new Date(currentDate);
         start.setHours(h, m, 0, 0);
+        
+        const end = new Date(currentDate);
+        end.setHours(eh, em, 0, 0);
+
+        // If person punched in AFTER the slot ended, they were ABSENT for this slot
+        if (inTime.getTime() > end.getTime()) {
+          return 'ABSENT';
+        }
 
         if (inTime.getTime() > start.getTime()) {
           const diff = inTime.getTime() - start.getTime();
@@ -398,17 +412,22 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
         return 0;
       };
 
-      const calcEarly = (slot: any, outTime: Date) => {
-        if (!slot || !outTime) return '--';
-        const [time, mod] = slot.endTime.split(' ');
-        let [h, m] = time.split(':').map(Number);
-        if (mod === 'PM' && h < 12) h += 12;
-        if (mod === 'AM' && h === 12) h = 0;
-        const end = new Date(currentDate);
-        end.setHours(h, m, 0, 0);
+      const calcEarly = (slot: any, outTime: Date, inTime: Date) => {
+        if (!slot) return '--';
+        // If they were absent (inTime after slot end), then early departure doesn't apply as they never came
+        const [eTime, eMod] = slot.endTime.split(' ');
+        let [eh, em] = eTime.split(':').map(Number);
+        if (eMod === 'PM' && eh < 12) eh += 12;
+        if (eMod === 'AM' && eh === 12) eh = 0;
+        const slotEnd = new Date(currentDate);
+        slotEnd.setHours(eh, em, 0, 0);
 
-        if (outTime.getTime() < end.getTime()) {
-          const diff = end.getTime() - outTime.getTime();
+        if (inTime && inTime.getTime() > slotEnd.getTime()) return '--';
+
+        if (!outTime) return '--';
+        
+        if (outTime.getTime() < slotEnd.getTime()) {
+          const diff = slotEnd.getTime() - outTime.getTime();
           const mins = Math.floor(diff / 60000);
           return mins;
         }
@@ -429,18 +448,22 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
           const l1 = calcLate(s1, att.inTime);
           const l2 = calcLate(s2, att.inTime);
           const l3 = calcLate(s3, att.inTime);
-          if (typeof l1 === 'number') { s1L = `${l1}m`; totalLateMins += l1; }
-          if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; }
-          if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; }
+          if (typeof l1 === 'number') { s1L = `${l1}m`; totalLateMins += l1; } else { s1L = l1; }
+          if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; } else { s2L = l2; }
+          if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; } else { s3L = l3; }
+        } else {
+          s1L = s1 ? 'ABSENT' : '--';
+          s2L = s2 ? 'ABSENT' : '--';
+          s3L = s3 ? 'ABSENT' : '--';
         }
 
         if (att.outTime) {
-          const e1 = calcEarly(s1, att.outTime);
-          const e2 = calcEarly(s2, att.outTime);
-          const e3 = calcEarly(s3, att.outTime);
-          if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; }
-          if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; }
-          if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; }
+          const e1 = calcEarly(s1, att.outTime, att.inTime!);
+          const e2 = calcEarly(s2, att.outTime, att.inTime!);
+          const e3 = calcEarly(s3, att.outTime, att.inTime!);
+          if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; } else { s1E = e1; }
+          if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; } else { s2E = e2; }
+          if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; } else { s3E = e3; }
         }
       }
 
@@ -450,11 +473,9 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
 
       ws.addRow({
+        slNo: day,
         day: fullDayStr,
         date: currentDate.toLocaleDateString('en-IN'),
-        empCode: day === 1 ? user.identifier : '',
-        name: day === 1 ? user.fullName : '',
-        dept: day === 1 ? (user.department || '--') : '',
         inTime: att?.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
         outTime: att?.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
         s1Start: s1?.startTime || '--',
@@ -469,16 +490,17 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
         s3End: s3?.endTime || '--',
         s3Late: s3L,
         s3Early: s3E,
-        worked: workedHours,
         late: totalLateMins > 0 ? `${Math.floor(totalLateMins / 60)}h ${totalLateMins % 60}m` : '0m',
         earlyDeparture: totalEarlyMins > 0 ? `${Math.floor(totalEarlyMins / 60)}h ${totalEarlyMins % 60}m` : '0m'
       });
     }
 
-    // Add total row
+    // Add total row with Name, Emp Code, and Dept
     const totalRow = ws.addRow({
-      day: 'TOTAL',
-      worked: `${Math.floor(totalWorkedMinutes / 60)}h ${totalWorkedMinutes % 60}m`,
+      slNo: 'TOTAL',
+      day: user.fullName,
+      date: user.identifier,
+      inTime: user.department || '--',
       late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
       earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`
     });

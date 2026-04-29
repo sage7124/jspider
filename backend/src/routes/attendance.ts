@@ -87,24 +87,44 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     today.setHours(0, 0, 0, 0);
     const now = new Date();
 
-    // Find assigned slot
+    // Find all slots for today
     const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][now.getDay()];
-    const slot = await prisma.slot.findFirst({
-      where: { userId, dayOfWeek }
+    const slots = await prisma.slot.findMany({
+      where: { userId, dayOfWeek },
+      orderBy: { slotNo: 'asc' }
     });
 
     let isLate = false;
-    if (type === 'IN' && slot) {
-      // Parse slot start time (e.g., "09:00 AM")
-      const [time, modifier] = slot.startTime.split(' ');
-      let [hours, minutes] = time.split(':').map(Number);
-      if (modifier === 'PM' && hours < 12) hours += 12;
-      if (modifier === 'AM' && hours === 12) hours = 0;
+    if (type === 'IN' && slots.length > 0) {
+      let activeSlot = null;
+      // Find the first slot whose end time has not passed yet
+      for (const s of slots) {
+        const [eTime, eMod] = s.endTime.split(' ');
+        let [eh, em] = eTime.split(':').map(Number);
+        if (eMod === 'PM' && eh < 12) eh += 12;
+        if (eMod === 'AM' && eh === 12) eh = 0;
+        const slotEnd = new Date(today);
+        slotEnd.setHours(eh, em, 0, 0);
+
+        if (now.getTime() <= slotEnd.getTime()) {
+          activeSlot = s;
+          break;
+        }
+      }
+
+      // If all slots have passed, compare with the last slot
+      if (!activeSlot) activeSlot = slots[slots.length - 1];
+
+      // Parse active slot start time
+      const [sTime, sMod] = activeSlot.startTime.split(' ');
+      let [sh, sm] = sTime.split(':').map(Number);
+      if (sMod === 'PM' && sh < 12) sh += 12;
+      if (sMod === 'AM' && sh === 12) sh = 0;
       
       const slotStartTime = new Date(today);
-      slotStartTime.setHours(hours, minutes, 0, 0);
+      slotStartTime.setHours(sh, sm, 0, 0);
 
-      // Grace period of 15 mins? We'll just compare exact time
+      // Grace period of 15 mins
       if (now.getTime() > slotStartTime.getTime() + 15 * 60 * 1000) {
         isLate = true;
       }
