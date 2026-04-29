@@ -711,17 +711,18 @@ router.post('/force-logout/:id', async (req: AuthRequest, res) => {
 router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
   try {
     const { traineeId } = req.params;
-    const { inTime, outTime, status } = req.body; // inTime/outTime format "HH:mm"
+    const { inTime, outTime, status, date } = req.body; // inTime/outTime format "HH:mm"
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use provided date or fallback to today
+    const targetDate = date ? new Date(date) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
 
     const updateData: any = {};
     if (status) updateData.status = status;
     
     const setTime = (timeStr: string) => {
       const [h, m] = timeStr.split(':').map(Number);
-      const d = new Date(today);
+      const d = new Date(targetDate);
       d.setHours(h, m, 0, 0);
       return d;
     };
@@ -730,11 +731,11 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
     if (outTime && outTime !== '--') updateData.outTime = setTime(outTime);
 
     await prisma.attendance.upsert({
-      where: { userId_date: { userId: Number(traineeId), date: today } },
+      where: { userId_date: { userId: Number(traineeId), date: targetDate } },
       update: updateData,
       create: {
         userId: Number(traineeId),
-        date: today,
+        date: targetDate,
         ...updateData,
         status: status || 'OUT'
       }

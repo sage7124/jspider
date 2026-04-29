@@ -359,6 +359,7 @@ const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: (
 };
 // ── Manual Attendance Edit Modal ──────────────────────────────────────────────
 const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [inTime, setInTime] = useState(trainee.in === '--' ? '09:00' : trainee.in);
   const [outTime, setOutTime] = useState(trainee.out === '--' ? '18:00' : trainee.out);
   const [status, setStatus] = useState(trainee.status || 'OUT');
@@ -379,6 +380,7 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
       };
 
       await axios.put(`${API}/attendance-manual/${trainee.id}`, { 
+        date,
         inTime: to24h(inTime), 
         outTime: to24h(outTime),
         status 
@@ -402,6 +404,11 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
         <p className="text-xs text-gray-500 mb-6">{trainee.name}</p>
         
         <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
           <div>
             <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Punch In Time</label>
             <input type="time" value={inTime.includes(' ') ? '' : inTime} onChange={e => setInTime(e.target.value)}
