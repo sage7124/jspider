@@ -253,11 +253,6 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
 const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number) => {
   const maxSlot = user.slots?.reduce((max: number, slot: any) => Math.max(max, slot.slotNo), 0) || 1;
 
-  // Add Name and Phone at the top
-  ws.addRow([`Name: ${user.fullName}`, `Phone: ${user.identifier}`]);
-  ws.addRow([]); // Empty row for spacing
-  ws.getRow(1).font = { bold: true, size: 14 };
-
   const baseColumns = [
     { header: 'Sl No', key: 'slNo', width: 8 },
     { header: 'Day', key: 'day', width: 12 },
@@ -279,13 +274,27 @@ const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances:
     { header: 'Early Departure', key: 'earlyDeparture', width: 18 }
   ];
 
-  // Set columns starting from row 3 (since row 1 and 2 are title and spacing)
-  ws.getRow(3).values = [...baseColumns.map(c => c.header), ...slotColumns.map(c => c.header), ...endColumns.map(c => c.header)];
+  // Configure all columns first
+  const allColumns = [...baseColumns, ...slotColumns, ...endColumns];
+  ws.columns = allColumns.map(c => ({ key: c.key, width: c.width }));
+
+  // Add Name and Phone at the top, merged and centered
+  ws.addRow([]); // Row 1
+  ws.addRow([]); // Row 2 spacing
+  
+  const totalCols = allColumns.length;
+  ws.mergeCells(1, 1, 1, totalCols);
+  
+  const titleCell = ws.getCell(1, 1);
+  titleCell.value = `Name: ${user.fullName}        |        Phone: ${user.identifier}`;
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  titleCell.font = { bold: true, size: 14 };
+
+  // Set header values starting from row 3
+  ws.getRow(3).values = allColumns.map(c => c.header);
   ws.getRow(3).font = { bold: true };
   ws.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1976D2' } };
   ws.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  
-  ws.columns = [...baseColumns, ...slotColumns, ...endColumns].map(c => ({ key: c.key, width: c.width }));
 
   let totalWorkedMinutes = 0;
   let totalLateMinutes = 0;
