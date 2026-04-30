@@ -167,126 +167,303 @@ router.post('/reset-password/:id', async (req: AuthRequest, res) => {
   }
 });
 
+// ── Direct Leave (Admin to Trainee) ──────────────────────────────────────────
+router.post('/leaves/direct', async (req: AuthRequest, res) => {
+  try {
+    const { traineeId, startDate, endDate, reason } = req.body;
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid dates' });
+    }
+    
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const user = await prisma.user.findUnique({ where: { id: Number(traineeId) } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    if (user.leaveBalance < days) {
+      return res.status(400).json({ error: `Insufficient leave balance. Remaining: ${user.leaveBalance}` });
+    }
+
+    await prisma.$transaction([
+      prisma.leaveRequest.create({
+        data: {
+          userId: Number(traineeId),
+          startDate: start,
+          endDate: end,
+          reason: reason || 'Direct leave by admin',
+          status: 'APPROVED',
+          adminReason: 'Direct assignment'
+        }
+      }),
+      prisma.user.update({
+        where: { id: Number(traineeId) },
+        data: { leaveBalance: { decrement: days } }
+      })
+    ]);
+
+    res.json({ message: 'Leave assigned successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Daily Attendance Report ───────────────────────────────────────────────────
+router.get('/attendance/daily', async (req: AuthRequest, res) => {
+  try {
+    const { date, statusFilter } = req.query; // statusFilter: 'ALL', 'PRESENT', 'ABSENT'
+    if (!date) return res.status(400).json({ error: 'Date is required' });
+
+    const targetDate = new Date(date as string);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const trainees = await prisma.user.findMany({
+      where: { role: 'TRAINEE' },
+      orderBy: { fullName: 'asc' },
+      include: { attendances: { where: { date: targetDate } } }
+    });
+
+    const result = trainees.map(t => {
+      const att = t.attendances[0];
+      const status = att ? att.status : 'ABSENT';
+      return {
+        id: t.id,
+        name: t.fullName,
+        empCode: t.identifier,
+        status,
+        inTime: att?.inTime ? new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime: att?.outTime ? new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'
+      };
+    });
+
+    let filtered = result;
+    if (statusFilter === 'PRESENT') filtered = result.filter(r => r.status === 'IN' || r.status === 'OUT');
+    if (statusFilter === 'ABSENT') filtered = result.filter(r => r.status === 'ABSENT');
+
+    res.json(filtered);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number) => {
+  const maxSlot = user.slots?.reduce((max: number, slot: any) => Math.max(max, slot.slotNo), 0) || 1;
+
+  // Add Name and Phone at the top
+  ws.addRow([`Name: ${user.fullName}`, `Phone: ${user.identifier}`]);
+  ws.addRow([]); // Empty row for spacing
+  ws.getRow(1).font = { bold: true, size: 14 };
+
+  const baseColumns = [
+    { header: 'Sl No', key: 'slNo', width: 8 },
+    { header: 'Day', key: 'day', width: 12 },
+    { header: 'Date', key: 'date', width: 15 },
+    { header: 'In Time', key: 'inTime', width: 15 },
+    { header: 'Out Time', key: 'outTime', width: 15 },
+  ];
+
+  const slotColumns: any[] = [];
+  for (let i = 1; i <= maxSlot; i++) {
+    slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 12 });
+    slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 12 });
+    slotColumns.push({ header: `s${i} late punch in`, key: `s${i}Late`, width: 18 });
+    slotColumns.push({ header: `s${i} early departure`, key: `s${i}Early`, width: 18 });
+  }
+
+  const endColumns = [
+    { header: 'Late Arrival', key: 'late', width: 15 },
+    { header: 'Early Departure', key: 'earlyDeparture', width: 18 }
+  ];
+
+  // Set columns starting from row 3 (since row 1 and 2 are title and spacing)
+  ws.getRow(3).values = [...baseColumns.map(c => c.header), ...slotColumns.map(c => c.header), ...endColumns.map(c => c.header)];
+  ws.getRow(3).font = { bold: true };
+  ws.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1976D2' } };
+  ws.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  
+  ws.columns = [...baseColumns, ...slotColumns, ...endColumns].map(c => ({ key: c.key, width: c.width }));
+
+  let totalWorkedMinutes = 0;
+  let totalLateMinutes = 0;
+  let totalEarlyMinutes = 0;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const currentDate = new Date(year, mon - 1, day);
+    const dayStr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
+    
+    const daySlots = user.slots?.filter((s: any) => s.dayOfWeek === dayStr).sort((a: any, b: any) => a.slotNo - b.slotNo) || [];
+    const att = attendances.find(a => a.date.getDate() === day && a.date.getMonth() === (mon - 1));
+
+    const s1 = daySlots.find((s: any) => s.slotNo === 1);
+    const s2 = daySlots.find((s: any) => s.slotNo === 2);
+    const s3 = daySlots.find((s: any) => s.slotNo === 3);
+
+    let totalLateMins = 0;
+    let totalEarlyMins = 0;
+
+    const calcLate = (slot: any, inTime: Date) => {
+      if (!slot) return '--';
+      if (!inTime) return 'ABSENT';
+      
+      const [time, mod] = slot.startTime.split(' ');
+      let [h, m] = time.split(':').map(Number);
+      if (mod === 'PM' && h < 12) h += 12;
+      if (mod === 'AM' && h === 12) h = 0;
+      
+      const [eTime, eMod] = slot.endTime.split(' ');
+      let [eh, em] = eTime.split(':').map(Number);
+      if (eMod === 'PM' && eh < 12) eh += 12;
+      if (eMod === 'AM' && eh === 12) eh = 0;
+
+      const start = new Date(currentDate);
+      start.setHours(h, m, 0, 0);
+      
+      const end = new Date(currentDate);
+      end.setHours(eh, em, 0, 0);
+
+      if (inTime.getTime() > end.getTime()) {
+        return 'ABSENT';
+      }
+
+      if (inTime.getTime() > start.getTime()) {
+        const diff = inTime.getTime() - start.getTime();
+        return Math.floor(diff / 60000);
+      }
+      return 0;
+    };
+
+    const calcEarly = (slot: any, outTime: Date, inTime: Date) => {
+      if (!slot) return '--';
+      const [eTime, eMod] = slot.endTime.split(' ');
+      let [eh, em] = eTime.split(':').map(Number);
+      if (eMod === 'PM' && eh < 12) eh += 12;
+      if (eMod === 'AM' && eh === 12) eh = 0;
+      const slotEnd = new Date(currentDate);
+      slotEnd.setHours(eh, em, 0, 0);
+
+      if (inTime && inTime.getTime() > slotEnd.getTime()) return '--';
+      if (!outTime) return '--';
+      
+      if (outTime.getTime() < slotEnd.getTime()) {
+        const diff = slotEnd.getTime() - outTime.getTime();
+        return Math.floor(diff / 60000);
+      }
+      return 0;
+    };
+
+    let s1L: any = '--', s1E: any = '--', s2L: any = '--', s2E: any = '--', s3L: any = '--', s3E: any = '--';
+
+    if (att) {
+      if (att.inTime && att.outTime) {
+        const diff = att.outTime.getTime() - att.inTime.getTime();
+        totalWorkedMinutes += Math.floor(diff / 60000);
+      }
+
+      if (att.inTime) {
+        const l1 = calcLate(s1, att.inTime);
+        const l2 = calcLate(s2, att.inTime);
+        const l3 = calcLate(s3, att.inTime);
+        if (typeof l1 === 'number') { s1L = `${l1}m`; totalLateMins += l1; } else { s1L = l1; }
+        if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; } else { s2L = l2; }
+        if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; } else { s3L = l3; }
+      } else {
+        s1L = s1 ? 'ABSENT' : '--';
+        s2L = s2 ? 'ABSENT' : '--';
+        s3L = s3 ? 'ABSENT' : '--';
+      }
+
+      if (att.outTime) {
+        const e1 = calcEarly(s1, att.outTime, att.inTime!);
+        const e2 = calcEarly(s2, att.outTime, att.inTime!);
+        const e3 = calcEarly(s3, att.outTime, att.inTime!);
+        if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; } else { s1E = e1; }
+        if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; } else { s2E = e2; }
+        if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; } else { s3E = e3; }
+      }
+    }
+
+    totalLateMinutes += totalLateMins;
+    totalEarlyMinutes += totalEarlyMins;
+
+    const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
+
+    ws.addRow({
+      slNo: day,
+      day: fullDayStr,
+      date: currentDate.toLocaleDateString('en-IN'),
+      inTime: att?.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+      outTime: att?.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+      s1Start: s1?.startTime || '--',
+      s1End: s1?.endTime || '--',
+      s1Late: s1L,
+      s1Early: s1E,
+      s2Start: s2?.startTime || '--',
+      s2End: s2?.endTime || '--',
+      s2Late: s2L,
+      s2Early: s2E,
+      s3Start: s3?.startTime || '--',
+      s3End: s3?.endTime || '--',
+      s3Late: s3L,
+      s3Early: s3E,
+      late: totalLateMins > 0 ? `${Math.floor(totalLateMins / 60)}h ${totalLateMins % 60}m` : '0m',
+      earlyDeparture: totalEarlyMins > 0 ? `${Math.floor(totalEarlyMins / 60)}h ${totalEarlyMins % 60}m` : '0m'
+    });
+  }
+
+  // Add total row
+  const totalRow = ws.addRow({
+    slNo: 'TOTAL',
+    late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
+    earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`
+  });
+  totalRow.font = { bold: true };
+};
+
 // ── Download Monthly Excel Report ─────────────────────────────────────────────
 router.get('/reports/monthly', async (req: AuthRequest, res) => {
   try {
     const { month } = req.query; // e.g., "2026-04"
+    if (!month || typeof month !== 'string') return res.status(400).json({ error: 'Month is required' });
 
-    let dateFilter: any = {};
-    if (month && typeof month === 'string') {
-      const [year, mon] = (month as string).split('-').map(Number);
-      const start = new Date(year, mon - 1, 1);
-      const end = new Date(year, mon, 0, 23, 59, 59);
-      dateFilter = { date: { gte: start, lte: end } };
-    }
+    const [year, mon] = (month as string).split('-').map(Number);
+    const startOfMonth = new Date(year, mon - 1, 1);
+    const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
+    const daysInMonth = endOfMonth.getDate();
 
-    const trainees = await prisma.user.findMany({ where: { role: 'TRAINEE' }, include: { slots: true } });
-    
-    // Calculate max slot number across all trainees to dynamically generate columns
-    const maxSlot = trainees.reduce((globalMax, t) => {
-      const userMax = t.slots.reduce((max, slot) => Math.max(max, slot.slotNo), 0);
-      return Math.max(globalMax, userMax);
-    }, 0) || 1;
+    const trainees = await prisma.user.findMany({ 
+      where: { role: 'TRAINEE' }, 
+      include: { slots: true },
+      orderBy: { fullName: 'asc' }
+    });
+
+    const attendances = await prisma.attendance.findMany({
+      where: { date: { gte: startOfMonth, lte: endOfMonth } },
+      orderBy: { date: 'asc' }
+    });
 
     const workbook = new exceljs.Workbook();
     workbook.creator = 'Attendance System';
-    workbook.created = new Date();
 
-    const ws = workbook.addWorksheet('Attendance Report');
-    const baseColumns = [
-      { header: 'Emp Code', key: 'empCode', width: 15 },
-      { header: 'Name', key: 'name', width: 25 },
-      { header: 'Department', key: 'dept', width: 20 },
-      { header: 'Date', key: 'date', width: 15 },
-      { header: 'In Time', key: 'inTime', width: 15 },
-      { header: 'Out Time', key: 'outTime', width: 15 },
-    ];
-    
-    const slotColumns = [];
-    for (let i = 1; i <= maxSlot; i++) {
-      slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 15 });
-      slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 15 });
+    for (const trainee of trainees) {
+      // Use max 31 chars for worksheet name, replacing invalid chars
+      const sheetName = trainee.fullName.replace(/[*/\?:\[\]]/g, '').substring(0, 31) || `Trainee_${trainee.id}`;
+      let ws = workbook.getWorksheet(sheetName);
+      if (ws) {
+        // If duplicate names exist, append ID
+        ws = workbook.addWorksheet(`${sheetName}_${trainee.id}`);
+      } else {
+        ws = workbook.addWorksheet(sheetName);
+      }
+      const traineeAtts = attendances.filter(a => a.userId === trainee.id);
+      generateTraineeWorksheet(ws, trainee, traineeAtts, year, mon, daysInMonth);
     }
-    
-    const endColumns = [
-      { header: 'Late', key: 'isLate', width: 10 },
-      { header: 'Early Departure', key: 'isEarly', width: 15 },
-    ];
 
-    ws.columns = [...baseColumns, ...slotColumns, ...endColumns];
-
-    // Style header row
-    ws.getRow(1).font = { bold: true };
-    ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1976D2' } };
-    ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-
-    const attendances = await prisma.attendance.findMany({
-      where: dateFilter,
-      include: { user: { include: { slots: true } } },
-      orderBy: [{ date: 'asc' }, { user: { fullName: 'asc' } }],
-    });
-
-    // If no attendances for month, still include all trainees as ABSENT
-    if (attendances.length === 0) {
-      trainees.forEach((t) => {
-        ws.addRow({
-          empCode: t.identifier,
-          name: t.fullName,
-          dept: t.department || '--',
-          date: month ? `${month}` : '--',
-          inTime: '--',
-          outTime: '--',
-          s1Start: '--',
-          s1End: '--',
-          s2Start: '--',
-          s2End: '--',
-          s3Start: '--',
-          s3End: '--',
-          isLate: 'No',
-          isEarly: 'No'
-        });
-      });
-    } else {
-      attendances.forEach((att) => {
-        const dayStr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][att.date.getDay()];
-        const daySlots = att.user.slots.filter(s => s.dayOfWeek === dayStr).sort((a, b) => a.slotNo - b.slotNo);
-        const s1 = daySlots.find(s => s.slotNo === 1);
-        const s2 = daySlots.find(s => s.slotNo === 2);
-        const s3 = daySlots.find(s => s.slotNo === 3);
-
-        let isEarly = 'No';
-        if (att.outTime && daySlots.length > 0) {
-          const lastSlot = daySlots[daySlots.length - 1];
-          const [time, mod] = lastSlot.endTime.split(' ');
-          let [h, m] = time.split(':').map(Number);
-          if (mod === 'PM' && h < 12) h += 12;
-          if (mod === 'AM' && h === 12) h = 0;
-          
-          const slotEnd = new Date(att.date);
-          slotEnd.setHours(h, m, 0, 0);
-          
-          if (att.outTime.getTime() < slotEnd.getTime()) {
-            isEarly = 'Yes';
-          }
-        }
-
-        ws.addRow({
-          empCode: att.user.identifier,
-          name: att.user.fullName,
-          dept: att.user.department || '--',
-          date: att.date.toLocaleDateString('en-IN'),
-          inTime: att.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-          outTime: att.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-          s1Start: s1?.startTime || '--',
-          s1End: s1?.endTime || '--',
-          s2Start: s2?.startTime || '--',
-          s2End: s2?.endTime || '--',
-          s3Start: s3?.startTime || '--',
-          s3End: s3?.endTime || '--',
-          isLate: att.isLate ? 'Yes' : 'No',
-          isEarly: isEarly
-        });
-      });
+    if (trainees.length === 0) {
+      workbook.addWorksheet('No Data');
     }
 
     const monthLabel = month ? (month as string).replace('-', '_') : 'All';
@@ -304,207 +481,27 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
 router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
   try {
     const userId = parseInt(req.params.userId as string);
-    const { month } = req.query; // e.g., "2026-04"
+    const { month } = req.query;
 
-    if (!month || typeof month !== 'string') {
-      return res.status(400).json({ error: 'Month is required' });
-    }
+    if (!month || typeof month !== 'string') return res.status(400).json({ error: 'Month is required' });
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { slots: true }
-    });
-
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { slots: true } });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const [year, mon] = (month as string).split('-').map(Number);
     const startOfMonth = new Date(year, mon - 1, 1);
     const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
+    const daysInMonth = endOfMonth.getDate();
 
     const attendances = await prisma.attendance.findMany({
-      where: {
-        userId,
-        date: { gte: startOfMonth, lte: endOfMonth }
-      },
+      where: { userId, date: { gte: startOfMonth, lte: endOfMonth } },
       orderBy: { date: 'asc' }
     });
 
-    const maxSlot = user.slots.reduce((max, slot) => Math.max(max, slot.slotNo), 0) || 1;
-
     const workbook = new exceljs.Workbook();
-    const ws = workbook.addWorksheet(`${user.fullName} Report`);
-
-    const baseColumns = [
-      { header: 'Sl No', key: 'slNo', width: 8 },
-      { header: 'Day', key: 'day', width: 12 },
-      { header: 'Date', key: 'date', width: 15 },
-      { header: 'In Time', key: 'inTime', width: 15 },
-      { header: 'Out Time', key: 'outTime', width: 15 },
-    ];
-
-    const slotColumns: any[] = [];
-    for (let i = 1; i <= maxSlot; i++) {
-      slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 12 });
-      slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 12 });
-      slotColumns.push({ header: `s${i} late punch in`, key: `s${i}Late`, width: 18 });
-      slotColumns.push({ header: `s${i} early departure`, key: `s${i}Early`, width: 18 });
-    }
-
-    const endColumns = [
-      { header: 'Total Late', key: 'late', width: 12 },
-      { header: 'Total Early', key: 'earlyDeparture', width: 12 }
-    ];
-
-    ws.columns = [...baseColumns, ...slotColumns, ...endColumns];
-
-    ws.getRow(1).font = { bold: true };
-
-    const daysInMonth = endOfMonth.getDate();
-    let totalWorkedMinutes = 0;
-    let totalLateMinutes = 0;
-    let totalEarlyMinutes = 0;
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const currentDate = new Date(year, mon - 1, day);
-      const dayStr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
-      
-      const daySlots = user.slots.filter(s => s.dayOfWeek === dayStr).sort((a,b) => a.slotNo - b.slotNo);
-      const att = attendances.find(a => a.date.getDate() === day && a.date.getMonth() === (mon - 1));
-
-      const s1 = daySlots.find(s => s.slotNo === 1);
-      const s2 = daySlots.find(s => s.slotNo === 2);
-      const s3 = daySlots.find(s => s.slotNo === 3);
-
-      let workedHours = '--';
-      let totalLateMins = 0;
-      let totalEarlyMins = 0;
-
-      const calcLate = (slot: any, inTime: Date) => {
-        if (!slot) return '--';
-        if (!inTime) return 'ABSENT';
-        
-        const [time, mod] = slot.startTime.split(' ');
-        let [h, m] = time.split(':').map(Number);
-        if (mod === 'PM' && h < 12) h += 12;
-        if (mod === 'AM' && h === 12) h = 0;
-        
-        const [eTime, eMod] = slot.endTime.split(' ');
-        let [eh, em] = eTime.split(':').map(Number);
-        if (eMod === 'PM' && eh < 12) eh += 12;
-        if (eMod === 'AM' && eh === 12) eh = 0;
-
-        const start = new Date(currentDate);
-        start.setHours(h, m, 0, 0);
-        
-        const end = new Date(currentDate);
-        end.setHours(eh, em, 0, 0);
-
-        // If person punched in AFTER the slot ended, they were ABSENT for this slot
-        if (inTime.getTime() > end.getTime()) {
-          return 'ABSENT';
-        }
-
-        if (inTime.getTime() > start.getTime()) {
-          const diff = inTime.getTime() - start.getTime();
-          const mins = Math.floor(diff / 60000);
-          return mins;
-        }
-        return 0;
-      };
-
-      const calcEarly = (slot: any, outTime: Date, inTime: Date) => {
-        if (!slot) return '--';
-        // If they were absent (inTime after slot end), then early departure doesn't apply as they never came
-        const [eTime, eMod] = slot.endTime.split(' ');
-        let [eh, em] = eTime.split(':').map(Number);
-        if (eMod === 'PM' && eh < 12) eh += 12;
-        if (eMod === 'AM' && eh === 12) eh = 0;
-        const slotEnd = new Date(currentDate);
-        slotEnd.setHours(eh, em, 0, 0);
-
-        if (inTime && inTime.getTime() > slotEnd.getTime()) return '--';
-
-        if (!outTime) return '--';
-        
-        if (outTime.getTime() < slotEnd.getTime()) {
-          const diff = slotEnd.getTime() - outTime.getTime();
-          const mins = Math.floor(diff / 60000);
-          return mins;
-        }
-        return 0;
-      };
-
-      let s1L = '--', s1E = '--', s2L = '--', s2E = '--', s3L = '--', s3E = '--';
-
-      if (att) {
-        if (att.inTime && att.outTime) {
-          const diff = att.outTime.getTime() - att.inTime.getTime();
-          const mins = Math.floor(diff / 60000);
-          totalWorkedMinutes += mins;
-          workedHours = `${Math.floor(mins / 60)}h ${mins % 60}m`;
-        }
-
-        if (att.inTime) {
-          const l1 = calcLate(s1, att.inTime);
-          const l2 = calcLate(s2, att.inTime);
-          const l3 = calcLate(s3, att.inTime);
-          if (typeof l1 === 'number') { s1L = `${l1}m`; totalLateMins += l1; } else { s1L = l1; }
-          if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; } else { s2L = l2; }
-          if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; } else { s3L = l3; }
-        } else {
-          s1L = s1 ? 'ABSENT' : '--';
-          s2L = s2 ? 'ABSENT' : '--';
-          s3L = s3 ? 'ABSENT' : '--';
-        }
-
-        if (att.outTime) {
-          const e1 = calcEarly(s1, att.outTime, att.inTime!);
-          const e2 = calcEarly(s2, att.outTime, att.inTime!);
-          const e3 = calcEarly(s3, att.outTime, att.inTime!);
-          if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; } else { s1E = e1; }
-          if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; } else { s2E = e2; }
-          if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; } else { s3E = e3; }
-        }
-      }
-
-      totalLateMinutes += totalLateMins;
-      totalEarlyMinutes += totalEarlyMins;
-
-      const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
-
-      ws.addRow({
-        slNo: day,
-        day: fullDayStr,
-        date: currentDate.toLocaleDateString('en-IN'),
-        inTime: att?.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        outTime: att?.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        s1Start: s1?.startTime || '--',
-        s1End: s1?.endTime || '--',
-        s1Late: s1L,
-        s1Early: s1E,
-        s2Start: s2?.startTime || '--',
-        s2End: s2?.endTime || '--',
-        s2Late: s2L,
-        s2Early: s2E,
-        s3Start: s3?.startTime || '--',
-        s3End: s3?.endTime || '--',
-        s3Late: s3L,
-        s3Early: s3E,
-        late: totalLateMins > 0 ? `${Math.floor(totalLateMins / 60)}h ${totalLateMins % 60}m` : '0m',
-        earlyDeparture: totalEarlyMins > 0 ? `${Math.floor(totalEarlyMins / 60)}h ${totalEarlyMins % 60}m` : '0m'
-      });
-    }
-
-    // Add total row with Name, Emp Code, and Dept
-    const totalRow = ws.addRow({
-      slNo: 'TOTAL',
-      day: user.fullName,
-      date: user.identifier,
-      inTime: user.department || '--',
-      late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
-      earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`
-    });
-    totalRow.font = { bold: true };
+    const ws = workbook.addWorksheet(`${user.fullName.substring(0, 20)} Report`);
+    
+    generateTraineeWorksheet(ws, user, attendances, year, mon, daysInMonth);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Report_${user.fullName}_${month}.xlsx`);

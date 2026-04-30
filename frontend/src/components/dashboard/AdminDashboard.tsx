@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
@@ -612,6 +612,8 @@ const AdminDashboard: React.FC = () => {
   const [showDownload, setShowDownload] = useState(false);
   const [individualReport, setIndividualReport] = useState<Trainee | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [directLeaveUser, setDirectLeaveUser] = useState<Trainee | null>(null);
+  const [showDailyReport, setShowDailyReport] = useState(false);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -709,6 +711,10 @@ const AdminDashboard: React.FC = () => {
             className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-medium transition-colors">
             Leaves
           </button>
+          <button onClick={() => setShowDailyReport(true)}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
+            <Calendar size={18} /> Daily Report
+          </button>
           <button onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
             Settings
@@ -784,6 +790,7 @@ const AdminDashboard: React.FC = () => {
                     <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots"><Clock size={16} /></button>
                     <button onClick={() => setResetUser(t)} className="text-yellow-600 hover:text-yellow-800 transition-colors" title="Reset Password"><Key size={16} /></button>
                     <button onClick={() => setManualPunchUser(t)} className="text-orange-600 hover:text-orange-800 transition-colors" title="Manual Attendance"><Clock size={16} /></button>
+                    <button onClick={() => setDirectLeaveUser(t)} className="text-indigo-600 hover:text-indigo-800 transition-colors" title="Direct Leave"><Calendar size={16} /></button>
                     <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>
                     <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>
                     <button onClick={async () => {
@@ -814,6 +821,157 @@ const AdminDashboard: React.FC = () => {
       {showDownload && <MonthlyDownloadModal onClose={() => setShowDownload(false)} />}
       {individualReport && <IndividualDownloadModal trainee={individualReport} onClose={() => setIndividualReport(null)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {directLeaveUser && <DirectLeaveModal trainee={directLeaveUser} onClose={() => setDirectLeaveUser(null)} onSave={fetchTrainees} />}
+      {showDailyReport && <DailyReportModal onClose={() => setShowDailyReport(false)} />}
+    </div>
+  );
+};
+
+// ── Direct Leave Modal ────────────────────────────────────────────────────────
+const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!startDate || !endDate) return alert('Please select start and end dates');
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/leaves/direct`, {
+        traineeId: trainee.id, startDate, endDate, reason
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      alert('Leave assigned successfully');
+      onSave();
+      onClose();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to assign leave');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+        <h2 className="text-lg font-bold mb-1">Assign Direct Leave</h2>
+        <p className="text-xs text-gray-500 mb-6">{trainee.name} (Balance: {trainee.leaveBalance})</p>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Start Date</label>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">End Date</label>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Reason (Optional)</label>
+            <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g., Sick leave"
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+        </div>
+
+        <button onClick={handleSave} disabled={saving}
+          className="w-full mt-8 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded font-bold transition-colors disabled:opacity-50">
+          {saving ? 'Assigning...' : 'Assign Leave'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── Daily Report Modal ────────────────────────────────────────────────────────
+const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filter, setFilter] = useState('ALL');
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchDailyReport();
+  }, [date, filter]);
+
+  const fetchDailyReport = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/attendance/daily?date=${date}&statusFilter=${filter}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setData(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl p-6 relative max-h-[90vh] flex flex-col">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+          <Calendar className="text-indigo-600" /> Daily Attendance Report
+        </h2>
+        
+        <div className="flex gap-4 mb-6">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Filter</label>
+            <select value={filter} onChange={e => setFilter(e.target.value)}
+              className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none min-w-[150px]">
+              <option value="ALL">All Teachers</option>
+              <option value="PRESENT">Present Only</option>
+              <option value="ABSENT">Absent Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <p className="text-center py-10 text-gray-400">Loading...</p>
+          ) : (
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Emp Code</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Name</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Status</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Punch In</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Punch Out</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">No records found</td></tr>
+                ) : (
+                  data.map((r, idx) => (
+                    <tr key={idx} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium">{r.empCode}</td>
+                      <td className="px-4 py-3 font-bold">{r.name}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          r.status === 'IN' || r.status === 'OUT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {r.status === 'IN' || r.status === 'OUT' ? 'PRESENT' : 'ABSENT'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">{r.inTime}</td>
+                      <td className="px-4 py-3 text-gray-600">{r.outTime}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

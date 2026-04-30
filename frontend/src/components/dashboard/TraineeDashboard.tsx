@@ -12,8 +12,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [punchType, setPunchType] = useState<'IN' | 'OUT' | null>(null);
   const [status, setStatus] = useState<any>(null);
   const [leaves, setLeaves] = useState<any>(null);
-  const [leaveForm, setLeaveForm] = useState({ start: '', end: '', reason: '' });
-  const [submitting, setSubmitting] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [changingPass, setChangingPass] = useState(false);
@@ -21,6 +20,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   useEffect(() => {
     fetchStatus();
     fetchLeaveStatus();
+    fetchHistory();
   }, []);
 
   const fetchStatus = async () => {
@@ -46,6 +46,17 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     } catch (err) { console.error(err); }
   };
 
+  const fetchHistory = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/attendance/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setHistory(res.data);
+    } catch (err) { console.error(err); }
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwords.new !== passwords.confirm) return alert('New passwords do not match');
@@ -65,25 +76,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     } finally { setChangingPass(false); }
   };
 
-  const handleApplyLeave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!leaveForm.start || !leaveForm.end) return alert('Please select dates');
-    setSubmitting(true);
-    try {
-      const token = localStorage.getItem('token');
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.post(`${API_URL}/api/attendance/leave`, {
-        startDate: leaveForm.start,
-        endDate: leaveForm.end,
-        reason: leaveForm.reason
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      alert('Leave request submitted!');
-      setLeaveForm({ start: '', end: '', reason: '' });
-      fetchLeaveStatus();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to submit leave');
-    } finally { setSubmitting(false); }
-  };
+
 
 
   const submitPunch = async (lat: number, lng: number, type: 'IN' | 'OUT') => {
@@ -214,51 +207,47 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         </div>
       </div>
 
-      {/* Leave Management Section */}
       <div className="mt-8 grid md:grid-cols-2 gap-6">
-        {/* Apply Leave */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-          <div className="flex justify-between items-center mb-6">
+        {/* Daily Attendance Report */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 flex flex-col">
+          <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
+            <Calendar className="text-blue-600" /> My Attendance Report
+          </h3>
+          <div className="overflow-y-auto max-h-[300px] pr-2 space-y-2">
+            {history.length === 0 ? (
+              <p className="text-center py-10 text-gray-400 text-sm">No recent attendance records</p>
+            ) : history.map((record: any) => (
+              <div key={record.id} className="p-3 rounded border bg-gray-50 flex flex-col gap-1">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-sm">{new Date(record.date).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    record.status === 'IN' ? 'bg-green-100 text-green-700' :
+                    record.status === 'OUT' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {record.status}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-600 mt-1">
+                  <span>In: <span className="font-semibold text-gray-800">{record.inTime ? new Date(record.inTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--'}</span></span>
+                  <span>Out: <span className="font-semibold text-gray-800">{record.outTime ? new Date(record.outTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--'}</span></span>
+                  {record.isLate && <span className="text-red-500 font-bold ml-2">LATE</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Leave Status List */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold flex items-center gap-2">
-              <Calendar className="text-orange-600" /> Apply for Leave
+              <Clock className="text-gray-600" /> Leave History
             </h3>
             <div className="text-right">
               <p className="text-[10px] text-gray-400 font-bold uppercase">Leave Balance</p>
               <p className="text-xl font-black text-orange-600">{leaves?.balance || 0} / {leaves?.total || 0}</p>
             </div>
           </div>
-
-          <form onSubmit={handleApplyLeave} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">START DATE</label>
-                <input type="date" value={leaveForm.start} onChange={e => setLeaveForm({...leaveForm, start: e.target.value})}
-                  className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none" required />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">END DATE</label>
-                <input type="date" value={leaveForm.end} onChange={e => setLeaveForm({...leaveForm, end: e.target.value})}
-                  className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none" required />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1">REASON (OPTIONAL)</label>
-              <textarea value={leaveForm.reason} onChange={e => setLeaveForm({...leaveForm, reason: e.target.value})}
-                placeholder="Why are you taking leave?"
-                className="w-full border rounded px-3 py-2 text-sm h-20 focus:ring-2 focus:ring-orange-500 outline-none resize-none" />
-            </div>
-            <button type="submit" disabled={submitting}
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
-              <Send size={18} /> {submitting ? 'Submitting...' : 'Submit Leave Request'}
-            </button>
-          </form>
-        </div>
-
-        {/* Leave Status List */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 overflow-hidden flex flex-col">
-          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <Clock className="text-gray-600" /> Leave History
-          </h3>
           <div className="space-y-3 overflow-y-auto max-h-[300px] pr-2">
             {leaves?.requests?.length === 0 ? (
               <p className="text-center py-10 text-gray-400 text-sm">No leave history found</p>
