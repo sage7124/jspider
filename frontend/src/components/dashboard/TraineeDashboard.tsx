@@ -388,6 +388,32 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         </div>
       </div>
 
+
+      {/* Notice Modal */}
+      {showNoticeModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
+            <button onClick={() => setShowNoticeModal(false)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+              <X size={20} />
+            </button>
+            <div className="flex flex-col items-center text-center mt-2">
+              <div className="bg-blue-100 p-3 rounded-full mb-4">
+                <Info className="text-blue-600" size={32} />
+              </div>
+              <h2 className="text-xl font-bold mb-2">Important Notice</h2>
+              <p className="text-sm text-gray-600 mb-6">
+                For any leave requests or attendance adjustments, please contact the management directly. The leave application portal is no longer available.
+              </p>
+              <button 
+                onClick={() => setShowNoticeModal(false)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition-colors"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
