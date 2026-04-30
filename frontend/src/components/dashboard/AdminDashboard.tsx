@@ -559,7 +559,7 @@ const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApp
         <table className="w-full text-sm text-left">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="px-6 py-4 font-semibold text-gray-600">Emp Code</th>
+              <th className="px-6 py-4 font-semibold text-gray-600">Mobile Number</th>
               <th className="px-6 py-4 font-semibold text-gray-600">Name</th>
               <th className="px-6 py-4 font-semibold text-gray-600">Contact</th>
               <th className="px-6 py-4 font-semibold text-gray-600">Location</th>
@@ -681,7 +681,7 @@ const AdminDashboard: React.FC = () => {
           <div className="relative">
             <input 
               type="text" 
-              placeholder="Search by Name, Code, or Dept..." 
+              placeholder="Search by Name, Mobile, or Dept..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-full py-2 px-10 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
@@ -731,7 +731,7 @@ const AdminDashboard: React.FC = () => {
         <table className="w-full text-sm text-left">
           <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
             <tr>
-              <th className="px-4 py-4">Emp Code</th>
+              <th className="px-4 py-4">Mobile Number</th>
               <th className="px-4 py-4">Name</th>
               <th className="px-4 py-4">Time Slot</th>
               <th className="px-4 py-4">Status</th>
@@ -940,7 +940,7 @@ const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-4 py-3 font-semibold text-gray-600">Emp Code</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Mobile Number</th>
                   <th className="px-4 py-3 font-semibold text-gray-600">Name</th>
                   <th className="px-4 py-3 font-semibold text-gray-600">Status</th>
                   <th className="px-4 py-3 font-semibold text-gray-600">Punch In</th>

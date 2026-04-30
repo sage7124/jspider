@@ -53,7 +53,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
       <div>
         <input
           type={role === 'ADMIN' ? "text" : "text"}
-          placeholder={role === 'ADMIN' ? "Mobile No." : "Registration No"}
+          placeholder={role === 'ADMIN' ? "Mobile No." : "Mobile Number"}
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
           className="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1976D2] focus:border-transparent"
