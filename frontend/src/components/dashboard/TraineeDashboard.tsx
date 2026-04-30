@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Clock, Send, Lock, X, Settings } from 'lucide-react';
+import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Download } from 'lucide-react';
 import axios from 'axios';
 
 interface TraineeDashboardProps {
@@ -16,6 +16,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [changingPass, setChangingPass] = useState(false);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
 
   useEffect(() => {
     fetchStatus();
@@ -210,9 +211,17 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       <div className="mt-8 grid md:grid-cols-2 gap-6">
         {/* Daily Attendance Report */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 flex flex-col">
-          <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
-            <Calendar className="text-blue-600" /> My Attendance Report
-          </h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Calendar className="text-blue-600" /> My Attendance Report
+            </h3>
+            <button
+              onClick={() => setShowDownloadModal(true)}
+              className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded font-bold transition-colors flex items-center gap-1"
+            >
+              <Download size={14} /> Download
+            </button>
+          </div>
           <div className="overflow-y-auto max-h-[300px] pr-2 space-y-2">
             {history.length === 0 ? (
               <p className="text-center py-10 text-gray-400 text-sm">No recent attendance records</p>
@@ -310,6 +319,67 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
           </div>
         </div>
       )}
+      {/* Monthly Report Download Modal */}
+      {showDownloadModal && (
+        <MonthlyDownloadModal onClose={() => setShowDownloadModal(false)} />
+      )}
+    </div>
+  );
+};
+
+const MonthlyDownloadModal = ({ onClose }: { onClose: () => void }) => {
+  const [month, setMonth] = useState((new Date().getMonth() + 1).toString());
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/attendance/reports/monthly-excel?month=${month}&year=${year}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `My_Attendance_Report_${month}_${year}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      onClose();
+    } catch (e) {
+      alert('Failed to download report');
+    } finally { setDownloading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+        <h2 className="text-xl font-bold mb-6">Download Monthly Report</h2>
+        
+        <div className="flex gap-4 mb-6">
+          <div className="flex-1">
+            <label className="block text-xs font-bold text-gray-500 mb-1">MONTH</label>
+            <select value={month} onChange={e => setMonth(e.target.value)} className="w-full border rounded px-3 py-2 outline-none">
+              {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</option>)}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-bold text-gray-500 mb-1">YEAR</label>
+            <select value={year} onChange={e => setYear(e.target.value)} className="w-full border rounded px-3 py-2 outline-none">
+              {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <button onClick={handleDownload} disabled={downloading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
+          <Download size={18} /> {downloading ? 'Generating...' : 'Download Excel File'}
+        </button>
+      </div>
     </div>
   );
 };

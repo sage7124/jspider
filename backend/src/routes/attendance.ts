@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken, AuthRequest } from '../middleware/authMiddleware';
 import { getDistance } from 'geolib';
 import bcrypt from 'bcryptjs';
+import * as exceljs from 'exceljs';
+import { generateTraineeWorksheet } from '../utils/excel';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -225,6 +227,48 @@ router.post('/change-password', authenticateToken, async (req: AuthRequest, res)
     await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/reports/monthly-excel', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { month, year } = req.query;
+    if (!month || !year) return res.status(400).json({ error: 'Month and year required' });
+    
+    const y = parseInt(year as string);
+    const m = parseInt(month as string);
+    
+    const userId = req.user!.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { slots: true }
+    });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const startDate = new Date(y, m - 1, 1);
+    const endDate = new Date(y, m, 0); // Last day of the month
+    const daysInMonth = endDate.getDate();
+
+    const attendances = await prisma.attendance.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate }
+      }
+    });
+
+    const workbook = new exceljs.Workbook();
+    const ws = workbook.addWorksheet(`My Report - ${user.fullName}`);
+    generateTraineeWorksheet(ws, user, attendances, y, m, daysInMonth);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=My_Report_${m}_${y}.xlsx`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

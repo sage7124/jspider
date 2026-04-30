@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -8,6 +41,8 @@ const client_1 = require("@prisma/client");
 const authMiddleware_1 = require("../middleware/authMiddleware");
 const geolib_1 = require("geolib");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const exceljs = __importStar(require("exceljs"));
+const excel_1 = require("../utils/excel");
 const router = express_1.default.Router();
 const prisma = new client_1.PrismaClient();
 // Institute coordinates (mocking these for now, can be stored in DB later)
@@ -206,6 +241,42 @@ router.post('/change-password', authMiddleware_1.authenticateToken, async (req, 
         res.json({ message: 'Password changed successfully' });
     }
     catch (error) {
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.get('/reports/monthly-excel', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const { month, year } = req.query;
+        if (!month || !year)
+            return res.status(400).json({ error: 'Month and year required' });
+        const y = parseInt(year);
+        const m = parseInt(month);
+        const userId = req.user.id;
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { slots: true }
+        });
+        if (!user)
+            return res.status(404).json({ error: 'User not found' });
+        const startDate = new Date(y, m - 1, 1);
+        const endDate = new Date(y, m, 0); // Last day of the month
+        const daysInMonth = endDate.getDate();
+        const attendances = await prisma.attendance.findMany({
+            where: {
+                userId,
+                date: { gte: startDate, lte: endDate }
+            }
+        });
+        const workbook = new exceljs.Workbook();
+        const ws = workbook.addWorksheet(`My Report - ${user.fullName}`);
+        (0, excel_1.generateTraineeWorksheet)(ws, user, attendances, y, m, daysInMonth);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=My_Report_${m}_${y}.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
+    }
+    catch (error) {
+        console.error(error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
