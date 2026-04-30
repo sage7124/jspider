@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Download, Info } from 'lucide-react';
+import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Info } from 'lucide-react';
 import axios from 'axios';
 
 interface TraineeDashboardProps {
@@ -16,19 +16,29 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [changingPass, setChangingPass] = useState(false);
-  const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [showNoticeModal, setShowNoticeModal] = useState(false);
+
+  // Inline Report state
+  const [reportMonth, setReportMonth] = useState((new Date().getMonth() + 1).toString());
+  const [reportYear, setReportYear] = useState(new Date().getFullYear().toString());
+  const [reportData, setReportData] = useState<any>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => {
     fetchStatus();
     fetchLeaveStatus();
     fetchHistory();
+    fetchReportData();
     
     if (!sessionStorage.getItem('leaveNoticeShown')) {
       setShowNoticeModal(true);
       sessionStorage.setItem('leaveNoticeShown', 'true');
     }
   }, []);
+
+  useEffect(() => {
+    fetchReportData();
+  }, [reportMonth, reportYear]);
 
   const fetchStatus = async () => {
     try {
@@ -62,6 +72,22 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       });
       setHistory(res.data);
     } catch (err) { console.error(err); }
+  };
+
+  const fetchReportData = async () => {
+    setLoadingReport(true);
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/attendance/reports/monthly-json?month=${reportMonth}&year=${reportYear}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setReportData(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingReport(false);
+    }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -215,42 +241,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       </div>
 
       <div className="mt-8 grid md:grid-cols-2 gap-6">
-        {/* Daily Attendance Report */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold flex items-center gap-2">
-              <Calendar className="text-blue-600" /> My Attendance Report
-            </h3>
-            <button
-              onClick={() => setShowDownloadModal(true)}
-              className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded font-bold transition-colors flex items-center gap-1"
-            >
-              <Download size={14} /> Download
-            </button>
-          </div>
-          <div className="overflow-y-auto max-h-[300px] pr-2 space-y-2">
-            {history.length === 0 ? (
-              <p className="text-center py-10 text-gray-400 text-sm">No recent attendance records</p>
-            ) : history.map((record: any) => (
-              <div key={record.id} className="p-3 rounded border bg-gray-50 flex flex-col gap-1">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-sm">{new Date(record.date).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                    record.status === 'IN' ? 'bg-green-100 text-green-700' :
-                    record.status === 'OUT' ? 'bg-gray-200 text-gray-700' : 'bg-orange-100 text-orange-700'
-                  }`}>
-                    {record.status}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>In: <span className="font-semibold text-gray-800">{record.inTime ? new Date(record.inTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--'}</span></span>
-                  <span>Out: <span className="font-semibold text-gray-800">{record.outTime ? new Date(record.outTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--'}</span></span>
-                  {record.isLate && <span className="text-red-500 font-bold ml-2">LATE</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Removed small history report here in favor of full table at bottom */}
+
 
         {/* Leave Status List */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 overflow-hidden flex flex-col">
@@ -325,167 +317,77 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
           </div>
         </div>
       )}
-      {/* Monthly Report Modal */}
-      {showDownloadModal && (
-        <MonthlyReportModal onClose={() => setShowDownloadModal(false)} />
-      )}
-
-      {/* Notice Modal */}
-      {showNoticeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
-            <button onClick={() => setShowNoticeModal(false)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
-              <X size={20} />
-            </button>
-            <div className="flex flex-col items-center text-center mt-2">
-              <div className="bg-blue-100 p-3 rounded-full mb-4">
-                <Info className="text-blue-600" size={32} />
-              </div>
-              <h2 className="text-xl font-bold mb-2">Important Notice</h2>
-              <p className="text-sm text-gray-600 mb-6">
-                For any leave requests or attendance adjustments, please contact the management directly. The leave application portal is no longer available.
-              </p>
-              <button 
-                onClick={() => setShowNoticeModal(false)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition-colors"
-              >
-                Understood
-              </button>
+      {/* Inline Monthly Report Table */}
+      <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="p-6 border-b flex flex-wrap justify-between items-center gap-4 bg-gray-50">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Calendar className="text-blue-600" /> Monthly Attendance Report
+          </h2>
+          <div className="flex gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">MONTH</label>
+              <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium">
+                {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">YEAR</label>
+              <select value={reportYear} onChange={e => setReportYear(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium">
+                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
             </div>
           </div>
         </div>
-      )}
-    </div>
-  );
-};
-
-const MonthlyReportModal = ({ onClose }: { onClose: () => void }) => {
-  const [month, setMonth] = useState((new Date().getMonth() + 1).toString());
-  const [year, setYear] = useState(new Date().getFullYear().toString());
-  const [downloading, setDownloading] = useState(false);
-  const [loadingData, setLoadingData] = useState(false);
-  const [reportData, setReportData] = useState<any>(null);
-
-  useEffect(() => {
-    fetchReportData();
-  }, [month, year]);
-
-  const fetchReportData = async () => {
-    setLoadingData(true);
-    try {
-      const token = localStorage.getItem('token');
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.get(`${API_URL}/api/attendance/reports/monthly-json?month=${month}&year=${year}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setReportData(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
-  const handleDownload = async () => {
-    setDownloading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.get(`${API_URL}/api/attendance/reports/monthly-excel?month=${month}&year=${year}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob'
-      });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `My_Attendance_Report_${month}_${year}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      onClose();
-    } catch (e) {
-      alert('Failed to download report');
-    } finally { setDownloading(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl p-6 relative flex flex-col max-h-[95vh]">
-        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
         
-        <div className="flex flex-wrap justify-between items-end mb-6 gap-4 pr-8">
-          <div>
-            <h2 className="text-xl font-bold mb-4">My Monthly Attendance Report</h2>
-            <div className="flex gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">MONTH</label>
-                <select value={month} onChange={e => setMonth(e.target.value)} className="w-full border rounded px-3 py-2 outline-none">
-                  {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">YEAR</label>
-                <select value={year} onChange={e => setYear(e.target.value)} className="w-full border rounded px-3 py-2 outline-none">
-                  {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          <button onClick={handleDownload} disabled={downloading || loadingData}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
-            <Download size={18} /> {downloading ? 'Downloading...' : 'Export Excel'}
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-x-auto overflow-y-auto border rounded bg-gray-50">
-          {loadingData ? (
-            <div className="flex items-center justify-center h-full text-gray-500 font-medium">Loading report data...</div>
+        <div className="overflow-x-auto w-full">
+          {loadingReport ? (
+            <div className="flex items-center justify-center p-12 text-gray-500 font-medium">Loading report data...</div>
           ) : !reportData || reportData.rows.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-gray-500 font-medium">No records found for this month</div>
+            <div className="flex items-center justify-center p-12 text-gray-500 font-medium">No records found for this month</div>
           ) : (
-            <table className="w-full text-sm text-left min-w-[1200px]">
-              <thead className="bg-[#1976D2] text-white sticky top-0 z-10">
+            <table className="w-full text-sm text-left min-w-[1000px]">
+              <thead className="bg-[#1976D2] text-white">
                 <tr>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Date</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Day</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">In Time</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Out Time</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">S1 Late</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">S1 Early</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">S2 Late</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">S2 Early</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">S3 Late</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">S3 Early</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S1 Late</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S1 Early</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#0D47A1]">S2 Late</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#0D47A1]">S2 Early</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S3 Late</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S3 Early</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
                 {reportData.rows.map((r: any, i: number) => (
                   <tr key={i} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2 font-medium whitespace-nowrap">{r.date}</td>
-                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.day}</td>
-                    <td className="px-4 py-2 font-medium whitespace-nowrap">{r.inTime}</td>
-                    <td className="px-4 py-2 font-medium whitespace-nowrap">{r.outTime}</td>
-                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.s1Late}</td>
-                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.s1Early}</td>
-                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.s2Late}</td>
-                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.s2Early}</td>
-                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.s3Late}</td>
-                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{r.s3Early}</td>
+                    <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{r.date}</td>
+                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{r.day}</td>
+                    <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{r.inTime}</td>
+                    <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{r.outTime}</td>
+                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s1Late}</td>
+                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s1Early}</td>
+                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-100/30 border-r">{r.s2Late}</td>
+                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-100/30 border-r">{r.s2Early}</td>
+                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s3Late}</td>
+                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30">{r.s3Early}</td>
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-100 font-bold sticky bottom-0 border-t-2 border-gray-300">
+              <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
                 <tr>
-                  <td colSpan={4} className="px-4 py-3 text-right text-gray-700">TOTAL:</td>
-                  <td colSpan={2} className="px-4 py-3 text-red-600">Late: {reportData.totals.late}</td>
-                  <td colSpan={4} className="px-4 py-3 text-orange-600">Early: {reportData.totals.earlyDeparture}</td>
+                  <td colSpan={4} className="px-4 py-4 text-right text-gray-700 uppercase tracking-wider">Total Accumulated Duration:</td>
+                  <td colSpan={3} className="px-4 py-4 text-red-600 text-lg">Total Late: {reportData.totals.late}</td>
+                  <td colSpan={3} className="px-4 py-4 text-orange-600 text-lg">Total Early Leave: {reportData.totals.earlyDeparture}</td>
                 </tr>
               </tfoot>
             </table>
           )}
         </div>
       </div>
+
     </div>
   );
 };
