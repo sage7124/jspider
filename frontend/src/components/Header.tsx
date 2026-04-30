@@ -12,12 +12,12 @@ const Header: React.FC = () => {
             <img src={logoUrl} alt="Institute Logo" className="h-10 object-contain" />
           </div>
         )}
-        <div className="flex flex-col">
-          <h1 className="text-lg font-bold tracking-tight">
-            {import.meta.env.VITE_APP_TITLE || 'Attendance System'}
-          </h1>
-          <span className="text-[10px] opacity-80">v0.1</span>
-        </div>
+      </div>
+      <div className="flex flex-col items-end">
+        <h1 className="text-lg font-bold tracking-tight">
+          {import.meta.env.VITE_APP_TITLE || 'Attendance System'}
+        </h1>
+        <span className="text-[10px] opacity-80">v0.1</span>
       </div>
     </header>
   );
