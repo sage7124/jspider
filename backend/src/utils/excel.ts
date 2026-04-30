@@ -1,61 +1,18 @@
 import * as exceljs from 'exceljs';
 
-export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number) => {
-  const maxSlot = user.slots?.reduce((max: number, slot: any) => Math.max(max, slot.slotNo), 0) || 1;
-
-  const baseColumns = [
-    { header: 'Sl No', key: 'slNo', width: 8 },
-    { header: 'Day', key: 'day', width: 12 },
-    { header: 'Date', key: 'date', width: 15 },
-    { header: 'In Time', key: 'inTime', width: 15 },
-    { header: 'Out Time', key: 'outTime', width: 15 },
-  ];
-
-  const slotColumns: any[] = [];
-  for (let i = 1; i <= maxSlot; i++) {
-    slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 12 });
-    slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 12 });
-    slotColumns.push({ header: `s${i} late punch in`, key: `s${i}Late`, width: 18 });
-    slotColumns.push({ header: `s${i} early departure`, key: `s${i}Early`, width: 18 });
-  }
-
-  const endColumns = [
-    { header: 'Late Arrival', key: 'late', width: 15 },
-    { header: 'Early Departure', key: 'earlyDeparture', width: 18 }
-  ];
-
-  // Configure all columns first
-  const allColumns = [...baseColumns, ...slotColumns, ...endColumns];
-  ws.columns = allColumns.map(c => ({ key: c.key, width: c.width }));
-
-  // Add Name and Phone at the top, merged and centered
-  ws.addRow([]); // Row 1
-  ws.addRow([]); // Row 2 spacing
-  
-  const totalCols = allColumns.length;
-  ws.mergeCells(1, 1, 1, totalCols);
-  
-  const titleCell = ws.getCell(1, 1);
-  titleCell.value = `Name: ${user.fullName}        |        Phone: ${user.identifier}`;
-  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  titleCell.font = { bold: true, size: 14 };
-
-  // Set header values starting from row 3
-  ws.getRow(3).values = allColumns.map(c => c.header);
-  ws.getRow(3).font = { bold: true };
-  ws.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1976D2' } };
-  ws.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-
+export const getTraineeReportData = (user: any, attendances: any[], year: number, mon: number, daysInMonth: number) => {
   let totalWorkedMinutes = 0;
   let totalLateMinutes = 0;
   let totalEarlyMinutes = 0;
+
+  const rows = [];
 
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(year, mon - 1, day);
     const dayStr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
     
     const daySlots = user.slots?.filter((s: any) => s.dayOfWeek === dayStr).sort((a: any, b: any) => a.slotNo - b.slotNo) || [];
-    const att = attendances.find(a => a.date.getDate() === day && a.date.getMonth() === (mon - 1));
+    const att = attendances.find((a: any) => a.date.getDate() === day && a.date.getMonth() === (mon - 1));
 
     const s1 = daySlots.find((s: any) => s.slotNo === 1);
     const s2 = daySlots.find((s: any) => s.slotNo === 2);
@@ -150,7 +107,7 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
 
     const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
 
-    ws.addRow({
+    rows.push({
       slNo: day,
       day: fullDayStr,
       date: currentDate.toLocaleDateString('en-IN'),
@@ -173,11 +130,72 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
     });
   }
 
+  return {
+    rows,
+    totals: {
+      late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
+      earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`
+    }
+  };
+};
+
+export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number) => {
+  const maxSlot = user.slots?.reduce((max: number, slot: any) => Math.max(max, slot.slotNo), 0) || 1;
+
+  const baseColumns = [
+    { header: 'Sl No', key: 'slNo', width: 8 },
+    { header: 'Day', key: 'day', width: 12 },
+    { header: 'Date', key: 'date', width: 15 },
+    { header: 'In Time', key: 'inTime', width: 15 },
+    { header: 'Out Time', key: 'outTime', width: 15 },
+  ];
+
+  const slotColumns: any[] = [];
+  for (let i = 1; i <= maxSlot; i++) {
+    slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 12 });
+    slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 12 });
+    slotColumns.push({ header: `s${i} late punch in`, key: `s${i}Late`, width: 18 });
+    slotColumns.push({ header: `s${i} early departure`, key: `s${i}Early`, width: 18 });
+  }
+
+  const endColumns = [
+    { header: 'Late Arrival', key: 'late', width: 15 },
+    { header: 'Early Departure', key: 'earlyDeparture', width: 18 }
+  ];
+
+  // Configure all columns first
+  const allColumns = [...baseColumns, ...slotColumns, ...endColumns];
+  ws.columns = allColumns.map(c => ({ key: c.key, width: c.width }));
+
+  // Add Name and Phone at the top, merged and centered
+  ws.addRow([]); // Row 1
+  ws.addRow([]); // Row 2 spacing
+  
+  const totalCols = allColumns.length;
+  ws.mergeCells(1, 1, 1, totalCols);
+  
+  const titleCell = ws.getCell(1, 1);
+  titleCell.value = `Name: ${user.fullName}        |        Phone: ${user.identifier}`;
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  titleCell.font = { bold: true, size: 14 };
+
+  // Set header values starting from row 3
+  ws.getRow(3).values = allColumns.map(c => c.header);
+  ws.getRow(3).font = { bold: true };
+  ws.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1976D2' } };
+  ws.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+  const reportData = getTraineeReportData(user, attendances, year, mon, daysInMonth);
+
+  for (const row of reportData.rows) {
+    ws.addRow(row);
+  }
+
   // Add total row
   const totalRow = ws.addRow({
     slNo: 'TOTAL',
-    late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
-    earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`
+    late: reportData.totals.late,
+    earlyDeparture: reportData.totals.earlyDeparture
   });
   totalRow.font = { bold: true };
 };

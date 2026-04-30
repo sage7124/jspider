@@ -4,7 +4,7 @@ import { authenticateToken, AuthRequest } from '../middleware/authMiddleware';
 import { getDistance } from 'geolib';
 import bcrypt from 'bcryptjs';
 import * as exceljs from 'exceljs';
-import { generateTraineeWorksheet } from '../utils/excel';
+import { generateTraineeWorksheet, getTraineeReportData } from '../utils/excel';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -267,6 +267,41 @@ router.get('/reports/monthly-excel', authenticateToken, async (req: AuthRequest,
 
     await workbook.xlsx.write(res);
     res.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/reports/monthly-json', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { month, year } = req.query;
+    if (!month || !year) return res.status(400).json({ error: 'Month and year required' });
+    
+    const y = parseInt(year as string);
+    const m = parseInt(month as string);
+    
+    const userId = req.user!.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { slots: true }
+    });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const startDate = new Date(y, m - 1, 1);
+    const endDate = new Date(y, m, 0);
+    const daysInMonth = endDate.getDate();
+
+    const attendances = await prisma.attendance.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate }
+      }
+    });
+
+    const reportData = getTraineeReportData(user, attendances, y, m, daysInMonth);
+    res.json(reportData);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
