@@ -1046,6 +1046,18 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
     }
   };
 
+  const handleDeleteLeave = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this leave request? This will refund any deducted balance if it was approved.')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/leaves/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      fetchRequests();
+      onProcessed();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to delete leave');
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl p-6 max-h-[90vh] overflow-y-auto">
@@ -1112,25 +1124,30 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {r.status === 'PENDING' ? (
-                        <div className="flex flex-col gap-2 items-end">
-                          <input 
-                            type="text" 
-                            placeholder="Optional remark..." 
-                            className="border rounded px-2 py-1 text-xs w-48"
-                            value={adminReasons[r.id] || ''}
-                            onChange={(e) => setAdminReasons({...adminReasons, [r.id]: e.target.value})}
-                          />
-                          <div className="flex gap-2">
-                            <button onClick={() => handleProcess(r.id, 'APPROVED')} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1 rounded">Approve</button>
-                            <button onClick={() => handleProcess(r.id, 'REJECTED')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1 rounded">Reject</button>
+                      <div className="flex flex-col gap-2 items-end">
+                        {r.status === 'PENDING' ? (
+                          <div className="flex flex-col gap-2 items-end">
+                            <input 
+                              type="text" 
+                              placeholder="Optional remark..." 
+                              className="border rounded px-2 py-1 text-xs w-48"
+                              value={adminReasons[r.id] || ''}
+                              onChange={(e) => setAdminReasons({...adminReasons, [r.id]: e.target.value})}
+                            />
+                            <div className="flex gap-2">
+                              <button onClick={() => handleProcess(r.id, 'APPROVED')} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1 rounded">Approve</button>
+                              <button onClick={() => handleProcess(r.id, 'REJECTED')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1 rounded">Reject</button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-500 italic max-w-[200px] ml-auto">
-                          {r.adminReason ? `Admin: "${r.adminReason}"` : '--'}
-                        </div>
-                      )}
+                        ) : (
+                          <div className="text-xs text-gray-500 italic max-w-[200px] ml-auto">
+                            {r.adminReason ? `Admin: "${r.adminReason}"` : '--'}
+                          </div>
+                        )}
+                        <button onClick={() => handleDeleteLeave(r.id)} className="text-red-500 hover:text-red-700 p-1 flex items-center gap-1 text-[10px] font-bold mt-1" title="Delete Leave Record">
+                          <Trash2 size={12} /> Remove Record
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )})}

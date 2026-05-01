@@ -212,6 +212,34 @@ router.post('/leaves/direct', async (req: AuthRequest, res) => {
   }
 });
 
+router.delete('/leaves/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const request = await prisma.leaveRequest.findUnique({
+      where: { id: Number(id) },
+      include: { user: true }
+    });
+
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+
+    // If it was already approved, credit back the leaveBalance
+    if (request.status === 'APPROVED') {
+      const days = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      await prisma.user.update({
+        where: { id: request.userId },
+        data: { leaveBalance: { increment: days } }
+      });
+    }
+
+    await prisma.leaveRequest.delete({ where: { id: Number(id) } });
+    res.json({ message: 'Leave request deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
 // ── Daily Attendance Report ───────────────────────────────────────────────────
 router.get('/attendance/daily', async (req: AuthRequest, res) => {
   try {
@@ -476,6 +504,34 @@ router.post('/leaves/process', async (req: AuthRequest, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+router.delete('/leaves/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const request = await prisma.leaveRequest.findUnique({
+      where: { id: Number(id) },
+      include: { user: true }
+    });
+
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+
+    // If it was already approved, credit back the leaveBalance
+    if (request.status === 'APPROVED') {
+      const days = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      await prisma.user.update({
+        where: { id: request.userId },
+        data: { leaveBalance: { increment: days } }
+      });
+    }
+
+    await prisma.leaveRequest.delete({ where: { id: Number(id) } });
+    res.json({ message: 'Leave request deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
 // ── Reset Device Locks ───────────────────────────────────────────────────────
 router.post('/reset-device/:id', async (req: AuthRequest, res) => {
