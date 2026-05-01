@@ -6,12 +6,18 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   let totalEarlyMinutes = 0;
 
   const rows = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const now = new Date();
 
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(year, mon - 1, day);
     const dayStr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
     const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
     
+    const isFutureDay = currentDate.getTime() > today.getTime();
+    const isToday = currentDate.getTime() === today.getTime();
+
     const daySlots = user.slots?.filter((s: any) => s.dayOfWeek === dayStr).sort((a: any, b: any) => a.slotNo - b.slotNo) || [];
     const att = attendances.find((a: any) => a.date.getDate() === day && a.date.getMonth() === (mon - 1));
 
@@ -51,12 +57,28 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     const s2 = daySlots.find((s: any) => s.slotNo === 2);
     const s3 = daySlots.find((s: any) => s.slotNo === 3);
 
+    const getSlotStartTime = (slot: any) => {
+      if (!slot) return null;
+      const [time, mod] = slot.startTime.split(' ');
+      let [h, m] = time.split(':').map(Number);
+      if (mod === 'PM' && h < 12) h += 12;
+      if (mod === 'AM' && h === 12) h = 0;
+      const d = new Date(currentDate);
+      d.setHours(h, m, 0, 0);
+      return d;
+    };
+
     let totalLateMins = 0;
     let totalEarlyMins = 0;
 
     const calcLate = (slot: any, inTime: Date) => {
       if (!slot) return '--';
-      if (!inTime) return 'ABSENT';
+      if (!inTime) {
+        if (isFutureDay) return '--';
+        const start = getSlotStartTime(slot);
+        if (isToday && start && start.getTime() > now.getTime()) return '--';
+        return 'ABSENT';
+      }
       
       const [time, mod] = slot.startTime.split(' ');
       let [h, m] = time.split(':').map(Number);
@@ -95,7 +117,11 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       slotEnd.setHours(eh, em, 0, 0);
 
       if (inTime && inTime.getTime() > slotEnd.getTime()) return '--';
-      if (!outTime) return '--';
+      if (!outTime) {
+        if (isFutureDay) return '--';
+        if (isToday && slotEnd.getTime() > now.getTime()) return '--';
+        return '--';
+      }
       
       if (outTime.getTime() < slotEnd.getTime()) {
         const diff = slotEnd.getTime() - outTime.getTime();
@@ -105,6 +131,14 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     };
 
     let s1L: any = '--', s1E: any = '--', s2L: any = '--', s2E: any = '--', s3L: any = '--', s3E: any = '--';
+
+    const getDefaultStatus = (slot: any) => {
+      if (!slot) return '--';
+      if (isFutureDay) return '--';
+      const start = getSlotStartTime(slot);
+      if (isToday && start && start.getTime() > now.getTime()) return '--';
+      return 'ABSENT';
+    };
 
     if (att) {
       if (att.inTime && att.outTime) {
@@ -121,17 +155,16 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
         if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; } else { s2L = l2; }
         if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; } else { s3L = l3; }
 
-        // If late is ABSENT, early should also be ABSENT for that slot
         if (s1L === 'ABSENT') s1E = 'ABSENT';
         if (s2L === 'ABSENT') s2E = 'ABSENT';
         if (s3L === 'ABSENT') s3E = 'ABSENT';
       } else {
-        s1L = s1 ? 'ABSENT' : '--';
-        s2L = s2 ? 'ABSENT' : '--';
-        s3L = s3 ? 'ABSENT' : '--';
-        s1E = s1 ? 'ABSENT' : '--';
-        s2E = s2 ? 'ABSENT' : '--';
-        s3E = s3 ? 'ABSENT' : '--';
+        s1L = getDefaultStatus(s1);
+        s2L = getDefaultStatus(s2);
+        s3L = getDefaultStatus(s3);
+        s1E = getDefaultStatus(s1);
+        s2E = getDefaultStatus(s2);
+        s3E = getDefaultStatus(s3);
       }
 
       if (att.outTime) {
@@ -149,32 +182,45 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
           if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; } else { s3E = e3; }
         }
       } else if (att.inTime) {
-        // If they punched in but not out, and slot ended, mark early as ABSENT or '--'
-        // For now, if no out time, we can't calculate early, but if they were present for in, we just leave it as '--' or follow admin rule.
-        // Usually, missing out time means they didn't leave properly.
         if (s1L !== 'ABSENT' && s1L !== '--') s1E = 'MISSING OUT';
         if (s2L !== 'ABSENT' && s2L !== '--') s2E = 'MISSING OUT';
         if (s3L !== 'ABSENT' && s3L !== '--') s3E = 'MISSING OUT';
       }
     } else {
-      // Complete Absence
-      s1L = s1 ? 'ABSENT' : '--';
-      s2L = s2 ? 'ABSENT' : '--';
-      s3L = s3 ? 'ABSENT' : '--';
-      s1E = s1 ? 'ABSENT' : '--';
-      s2E = s2 ? 'ABSENT' : '--';
-      s3E = s3 ? 'ABSENT' : '--';
+      s1L = getDefaultStatus(s1);
+      s2L = getDefaultStatus(s2);
+      s3L = getDefaultStatus(s3);
+      s1E = getDefaultStatus(s1);
+      s2E = getDefaultStatus(s2);
+      s3E = getDefaultStatus(s3);
     }
 
     totalLateMinutes += totalLateMins;
     totalEarlyMinutes += totalEarlyMins;
 
+    const getDayInTimeStatus = () => {
+      if (att?.inTime) return att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (holiday) return 'HOLIDAY';
+      if (leave) return 'LEAVE';
+      if (isFutureDay) return '--';
+      return 'ABSENT';
+    };
+
+    const getDayOutTimeStatus = () => {
+      if (att?.outTime) return att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (holiday) return holiday.name;
+      if (leave) return leave.reason || 'Leave';
+      if (isFutureDay) return '--';
+      if (att?.inTime) return 'MISSING OUT';
+      return 'ABSENT';
+    };
+
     rows.push({
       slNo: day,
       day: fullDayStr,
       date: currentDate.toLocaleDateString('en-IN'),
-      inTime: att?.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (holiday || leave ? (holiday ? 'HOLIDAY' : 'LEAVE') : 'ABSENT'),
-      outTime: att?.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (holiday ? holiday.name : (leave?.reason || (att?.inTime ? 'MISSING OUT' : 'ABSENT'))),
+      inTime: getDayInTimeStatus(),
+      outTime: getDayOutTimeStatus(),
       s1Start: s1?.startTime || '--',
       s1End: s1?.endTime || '--',
       s1Late: s1L,
