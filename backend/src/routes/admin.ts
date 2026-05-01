@@ -331,7 +331,21 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
     const workbook = new exceljs.Workbook();
     const ws = workbook.addWorksheet(`${user.fullName.substring(0, 20)} Report`);
     
-    generateTraineeWorksheet(ws, user, attendances, year, mon, daysInMonth);
+    const holidays = await prisma.holiday.findMany({
+      where: { date: { gte: startOfMonth, lte: endOfMonth } }
+    });
+
+    const leaves = await prisma.leaveRequest.findMany({
+      where: {
+        userId,
+        status: 'APPROVED',
+        OR: [
+          { startDate: { lte: endOfMonth }, endDate: { gte: startOfMonth } }
+        ]
+      }
+    });
+
+    generateTraineeWorksheet(ws, user, attendances, year, mon, daysInMonth, holidays, leaves);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Report_${user.fullName}_${month}.xlsx`);
@@ -343,40 +357,7 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
   }
 });
 
-// ── Settings ──────────────────────────────────────────────────────────────────
-router.get('/settings', async (_req: AuthRequest, res) => {
-  try {
-    let settings = await prisma.instituteSettings.findFirst();
-    if (!settings) {
-      settings = await prisma.instituteSettings.create({
-        data: { lat: 12.9716, lng: 77.5946, radius: 500 },
-      });
-    }
-    res.json(settings);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch settings' });
-  }
-});
 
-router.put('/settings', async (req: AuthRequest, res) => {
-  try {
-    const { lat, lng, radius } = req.body;
-    const settings = await prisma.instituteSettings.findFirst();
-    if (settings) {
-      await prisma.instituteSettings.update({
-        where: { id: settings.id },
-        data: { lat: Number(lat), lng: Number(lng), radius: Number(radius) },
-      });
-    } else {
-      await prisma.instituteSettings.create({
-        data: { lat: Number(lat), lng: Number(lng), radius: Number(radius) },
-      });
-    }
-    res.json({ message: 'Settings updated' });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update settings' });
-  }
-});
 
 // ── Change Own Password ───────────────────────────────────────────────────────
 router.post('/change-password', async (req: AuthRequest, res) => {

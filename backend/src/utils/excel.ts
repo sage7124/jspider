@@ -116,23 +116,54 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
         const l1 = calcLate(s1, att.inTime);
         const l2 = calcLate(s2, att.inTime);
         const l3 = calcLate(s3, att.inTime);
+        
         if (typeof l1 === 'number') { s1L = `${l1}m`; totalLateMins += l1; } else { s1L = l1; }
         if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; } else { s2L = l2; }
         if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; } else { s3L = l3; }
+
+        // If late is ABSENT, early should also be ABSENT for that slot
+        if (s1L === 'ABSENT') s1E = 'ABSENT';
+        if (s2L === 'ABSENT') s2E = 'ABSENT';
+        if (s3L === 'ABSENT') s3E = 'ABSENT';
       } else {
         s1L = s1 ? 'ABSENT' : '--';
         s2L = s2 ? 'ABSENT' : '--';
         s3L = s3 ? 'ABSENT' : '--';
+        s1E = s1 ? 'ABSENT' : '--';
+        s2E = s2 ? 'ABSENT' : '--';
+        s3E = s3 ? 'ABSENT' : '--';
       }
 
       if (att.outTime) {
         const e1 = calcEarly(s1, att.outTime, att.inTime!);
         const e2 = calcEarly(s2, att.outTime, att.inTime!);
         const e3 = calcEarly(s3, att.outTime, att.inTime!);
-        if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; } else { s1E = e1; }
-        if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; } else { s2E = e2; }
-        if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; } else { s3E = e3; }
+
+        if (s1E !== 'ABSENT') {
+          if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; } else { s1E = e1; }
+        }
+        if (s2E !== 'ABSENT') {
+          if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; } else { s2E = e2; }
+        }
+        if (s3E !== 'ABSENT') {
+          if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; } else { s3E = e3; }
+        }
+      } else if (att.inTime) {
+        // If they punched in but not out, and slot ended, mark early as ABSENT or '--'
+        // For now, if no out time, we can't calculate early, but if they were present for in, we just leave it as '--' or follow admin rule.
+        // Usually, missing out time means they didn't leave properly.
+        if (s1L !== 'ABSENT' && s1L !== '--') s1E = 'MISSING OUT';
+        if (s2L !== 'ABSENT' && s2L !== '--') s2E = 'MISSING OUT';
+        if (s3L !== 'ABSENT' && s3L !== '--') s3E = 'MISSING OUT';
       }
+    } else {
+      // Complete Absence
+      s1L = s1 ? 'ABSENT' : '--';
+      s2L = s2 ? 'ABSENT' : '--';
+      s3L = s3 ? 'ABSENT' : '--';
+      s1E = s1 ? 'ABSENT' : '--';
+      s2E = s2 ? 'ABSENT' : '--';
+      s3E = s3 ? 'ABSENT' : '--';
     }
 
     totalLateMinutes += totalLateMins;
@@ -142,8 +173,8 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       slNo: day,
       day: fullDayStr,
       date: currentDate.toLocaleDateString('en-IN'),
-      inTime: att?.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-      outTime: att?.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+      inTime: att?.inTime ? att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (holiday || leave ? (holiday ? 'HOLIDAY' : 'LEAVE') : 'ABSENT'),
+      outTime: att?.outTime ? att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (holiday ? holiday.name : (leave?.reason || (att?.inTime ? 'MISSING OUT' : 'ABSENT'))),
       s1Start: s1?.startTime || '--',
       s1End: s1?.endTime || '--',
       s1Late: s1L,
