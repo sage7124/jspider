@@ -23,12 +23,14 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [reportYear, setReportYear] = useState(new Date().getFullYear().toString());
   const [reportData, setReportData] = useState<any>(null);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [holidays, setHolidays] = useState<any[]>([]);
 
   useEffect(() => {
     fetchStatus();
     fetchLeaveStatus();
     fetchHistory();
     fetchReportData();
+    fetchHolidays();
     
     if (!sessionStorage.getItem('leaveNoticeShown')) {
       setShowNoticeModal(true);
@@ -88,6 +90,17 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     } finally {
       setLoadingReport(false);
     }
+  };
+
+  const fetchHolidays = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/attendance/holidays`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setHolidays(res.data);
+    } catch (err) { console.error(err); }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -237,6 +250,56 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               <span className="font-semibold">{status?.outTime ? new Date(status.outTime).toLocaleTimeString() : '--:--'}</span>
             </div>
           </div>
+        </div>
+      </div>
+
+
+      <div className="grid md:grid-cols-2 gap-6 mt-6">
+        {/* Leave Status */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 flex flex-col justify-center">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <Send className="text-[#1976D2]" /> Leave Status
+          </h3>
+          <div className="flex items-center justify-between">
+            <div className="text-center">
+              <span className="block text-2xl font-bold text-gray-800">{leaves?.totalLeaves || 0}</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Total Quota</span>
+            </div>
+            <div className="h-10 w-[1px] bg-gray-100"></div>
+            <div className="text-center">
+              <span className="block text-2xl font-bold text-blue-600">{leaves?.leaveBalance || 0}</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Remaining</span>
+            </div>
+          </div>
+          <div className="mt-4 p-2 bg-blue-50 rounded text-[10px] text-blue-700 font-medium">
+            * Leaves are assigned by management on a monthly/yearly basis.
+          </div>
+        </div>
+
+        {/* Upcoming Holidays */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <Calendar className="text-pink-600" /> Upcoming Holidays
+          </h3>
+          <div className="space-y-3 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
+            {holidays.length === 0 ? (
+              <p className="text-center py-4 text-gray-400 text-sm italic">No upcoming holidays</p>
+            ) : (
+              holidays.map((h, i) => {
+                const d = new Date(h.date);
+                return (
+                  <div key={i} className="flex justify-between items-center p-2 bg-pink-50 rounded border border-pink-100">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs text-pink-700">{h.name}</span>
+                      <span className="text-[10px] text-pink-600">{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</span>
+                    </div>
+                    <span className="text-xs font-bold text-gray-700">{d.toLocaleDateString()}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-4 italic">* Attendance is not required on scheduled holidays.</p>
         </div>
       </div>
 

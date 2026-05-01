@@ -614,6 +614,7 @@ const AdminDashboard: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [directLeaveUser, setDirectLeaveUser] = useState<Trainee | null>(null);
   const [showDailyReport, setShowDailyReport] = useState(false);
+  const [showHolidays, setShowHolidays] = useState(false);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -710,6 +711,10 @@ const AdminDashboard: React.FC = () => {
           <button onClick={() => setShowLeaves(true)}
             className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-medium transition-colors">
             Leaves
+          </button>
+          <button onClick={() => setShowHolidays(true)}
+            className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded font-medium transition-colors">
+            Holidays
           </button>
           <button onClick={() => setShowDailyReport(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
@@ -823,6 +828,7 @@ const AdminDashboard: React.FC = () => {
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {directLeaveUser && <DirectLeaveModal trainee={directLeaveUser} onClose={() => setDirectLeaveUser(null)} onSave={fetchTrainees} />}
       {showDailyReport && <DailyReportModal onClose={() => setShowDailyReport(false)} />}
+      {showHolidays && <HolidayManagementModal onClose={() => setShowHolidays(false)} />}
     </div>
   );
 };
@@ -1206,4 +1212,153 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
+// ── Holiday Management Modal ──────────────────────────────────────────────────
+const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
+  const [holidays, setHolidays] = useState<any[]>([]);
+  const [quota, setQuota] = useState(0);
+  const [newDate, setNewDate] = useState('');
+  const [newName, setNewName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const [hRes, sRes] = await Promise.all([
+        axios.get(`${API}/holidays`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/settings`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      setHolidays(hRes.data);
+      setQuota(sRes.data?.totalHolidaysQuota || 0);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddHoliday = async () => {
+    if (!newDate || !newName) return alert('Date and Name are required');
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/holidays`, { date: newDate, name: newName }, { headers: { Authorization: `Bearer ${token}` } });
+      setNewDate('');
+      setNewName('');
+      fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to add holiday');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteHoliday = async (id: number) => {
+    if (!confirm('Delete this holiday?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/holidays/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      fetchData();
+    } catch (err) {
+      alert('Failed to delete holiday');
+    }
+  };
+
+  const handleUpdateQuota = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/settings`, { totalHolidaysQuota: quota }, { headers: { Authorization: `Bearer ${token}` } });
+      alert('Holiday quota updated');
+    } catch (err) {
+      alert('Failed to update quota');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl p-6 relative flex flex-col max-h-[90vh]">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+          <Calendar className="text-pink-600" /> Holiday Management
+        </h2>
+
+        <div className="grid md:grid-cols-2 gap-8 mb-8">
+          <div className="bg-pink-50 p-4 rounded-lg border border-pink-100">
+            <h3 className="text-sm font-bold text-pink-700 mb-4 uppercase tracking-wider">Holiday Quota</h3>
+            <div className="flex gap-2">
+              <input type="number" value={quota} onChange={e => setQuota(parseInt(e.target.value) || 0)}
+                className="flex-1 border border-pink-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none" />
+              <button onClick={handleUpdateQuota} className="bg-pink-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-pink-700 transition-colors">
+                Set Quota
+              </button>
+            </div>
+            <p className="text-[10px] text-pink-600 mt-2 italic font-medium">Total holidays allowed for this session</p>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">Add New Holiday</h3>
+            <div className="space-y-2">
+              <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+              <input type="text" placeholder="Holiday Name (e.g., Diwali)" value={newName} onChange={e => setNewName(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+              <button onClick={handleAddHoliday} disabled={saving}
+                className="w-full bg-blue-600 text-white py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
+                {saving ? 'Adding...' : 'Add Holiday'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-gray-700">Scheduled Holidays ({holidays.length})</h3>
+            <span className="text-xs font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded">
+              Remaining: {Math.max(0, quota - holidays.length)}
+            </span>
+          </div>
+          {loading ? <p className="text-center py-10 text-gray-400">Loading...</p> : (
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Date</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Day</th>
+                  <th className="px-4 py-3 font-semibold text-gray-600">Holiday Name</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {holidays.length === 0 ? (
+                  <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400">No holidays scheduled</td></tr>
+                ) : (
+                  holidays.map((h) => {
+                    const d = new Date(h.date);
+                    return (
+                      <tr key={h.id} className="border-b hover:bg-gray-50">
+                        <td className="px-4 py-3 font-medium">{d.toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-gray-500">{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</td>
+                        <td className="px-4 py-3 font-bold">{h.name}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button onClick={() => handleDeleteHoliday(h.id)} className="text-red-500 hover:text-red-700 p-1">
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default AdminDashboard;
+

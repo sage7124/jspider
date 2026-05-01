@@ -1,6 +1,6 @@
 import * as exceljs from 'exceljs';
 
-export const getTraineeReportData = (user: any, attendances: any[], year: number, mon: number, daysInMonth: number) => {
+export const getTraineeReportData = (user: any, attendances: any[], year: number, mon: number, daysInMonth: number, holidays: any[] = [], leaves: any[] = []) => {
   let totalWorkedMinutes = 0;
   let totalLateMinutes = 0;
   let totalEarlyMinutes = 0;
@@ -10,9 +10,42 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(year, mon - 1, day);
     const dayStr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
+    const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
     
     const daySlots = user.slots?.filter((s: any) => s.dayOfWeek === dayStr).sort((a: any, b: any) => a.slotNo - b.slotNo) || [];
     const att = attendances.find((a: any) => a.date.getDate() === day && a.date.getMonth() === (mon - 1));
+
+    // Check for Holiday
+    const holiday = holidays.find(h => {
+      const hDate = new Date(h.date);
+      return hDate.getDate() === day && hDate.getMonth() === (mon - 1) && hDate.getFullYear() === year;
+    });
+
+    // Check for Approved Leave
+    const leave = leaves.find(l => {
+      const d = new Date(year, mon - 1, day);
+      const start = new Date(l.startDate);
+      start.setHours(0,0,0,0);
+      const end = new Date(l.endDate);
+      end.setHours(23,59,59,999);
+      return d >= start && d <= end && l.status === 'APPROVED';
+    });
+
+    if (holiday || leave) {
+      rows.push({
+        slNo: day,
+        day: fullDayStr,
+        date: currentDate.toLocaleDateString('en-IN'),
+        inTime: holiday ? 'HOLIDAY' : 'LEAVE',
+        outTime: holiday ? holiday.name : (leave?.reason || 'Leave'),
+        s1Start: '--', s1End: '--', s1Late: '--', s1Early: '--',
+        s2Start: '--', s2End: '--', s2Late: '--', s2Early: '--',
+        s3Start: '--', s3End: '--', s3Late: '--', s3Early: '--',
+        late: '0m',
+        earlyDeparture: '0m'
+      });
+      continue;
+    }
 
     const s1 = daySlots.find((s: any) => s.slotNo === 1);
     const s2 = daySlots.find((s: any) => s.slotNo === 2);
@@ -105,8 +138,6 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     totalLateMinutes += totalLateMins;
     totalEarlyMinutes += totalEarlyMins;
 
-    const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
-
     rows.push({
       slNo: day,
       day: fullDayStr,
@@ -139,7 +170,8 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   };
 };
 
-export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number) => {
+
+export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number, holidays: any[] = [], leaves: any[] = []) => {
   const maxSlot = user.slots?.reduce((max: number, slot: any) => Math.max(max, slot.slotNo), 0) || 1;
 
   const baseColumns = [
@@ -185,7 +217,8 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   ws.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1976D2' } };
   ws.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } };
 
-  const reportData = getTraineeReportData(user, attendances, year, mon, daysInMonth);
+  const reportData = getTraineeReportData(user, attendances, year, mon, daysInMonth, holidays, leaves);
+
 
   for (const row of reportData.rows) {
     ws.addRow(row);

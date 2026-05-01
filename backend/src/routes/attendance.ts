@@ -258,9 +258,23 @@ router.get('/reports/monthly-excel', authenticateToken, async (req: AuthRequest,
       }
     });
 
+    const holidays = await prisma.holiday.findMany({
+      where: { date: { gte: startDate, lte: endDate } }
+    });
+
+    const leaves = await prisma.leaveRequest.findMany({
+      where: {
+        userId,
+        status: 'APPROVED',
+        OR: [
+          { startDate: { lte: endDate }, endDate: { gte: startDate } }
+        ]
+      }
+    });
+
     const workbook = new exceljs.Workbook();
     const ws = workbook.addWorksheet(`My Report - ${user.fullName}`);
-    generateTraineeWorksheet(ws, user, attendances, y, m, daysInMonth);
+    generateTraineeWorksheet(ws, user, attendances, y, m, daysInMonth, holidays, leaves);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=My_Report_${m}_${y}.xlsx`);
@@ -300,10 +314,37 @@ router.get('/reports/monthly-json', authenticateToken, async (req: AuthRequest, 
       }
     });
 
-    const reportData = getTraineeReportData(user, attendances, y, m, daysInMonth);
+    const holidays = await prisma.holiday.findMany({
+      where: { date: { gte: startDate, lte: endDate } }
+    });
+
+    const leaves = await prisma.leaveRequest.findMany({
+      where: {
+        userId,
+        status: 'APPROVED',
+        OR: [
+          { startDate: { lte: endDate }, endDate: { gte: startDate } }
+        ]
+      }
+    });
+
+    const reportData = getTraineeReportData(user, attendances, y, m, daysInMonth, holidays, leaves);
     res.json(reportData);
   } catch (error) {
     console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+router.get('/holidays', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const holidays = await prisma.holiday.findMany({
+      where: { date: { gte: new Date(new Date().setHours(0,0,0,0)) } },
+      orderBy: { date: 'asc' }
+    });
+    res.json(holidays);
+  } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
 });

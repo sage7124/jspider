@@ -597,4 +597,69 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
   }
 });
 
+// ── Holidays Management ──────────────────────────────────────────────────────
+router.get('/holidays', async (req: AuthRequest, res) => {
+  try {
+    const holidays = await prisma.holiday.findMany({
+      orderBy: { date: 'asc' }
+    });
+    res.json(holidays);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/holidays', async (req: AuthRequest, res) => {
+  try {
+    const { date, name } = req.body;
+    if (!date || !name) return res.status(400).json({ error: 'Date and Name are required' });
+    
+    const holidayDate = new Date(date);
+    holidayDate.setHours(0, 0, 0, 0);
+
+    const holiday = await prisma.holiday.create({
+      data: { date: holidayDate, name }
+    });
+    res.json(holiday);
+  } catch (error: any) {
+    if (error.code === 'P2002') return res.status(400).json({ error: 'Holiday already exists for this date' });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/holidays/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.holiday.delete({ where: { id: Number(id) } });
+    res.json({ message: 'Holiday deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Institute Settings (Quota) ────────────────────────────────────────────────
+router.get('/settings', async (req: AuthRequest, res) => {
+  try {
+    const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/settings', async (req: AuthRequest, res) => {
+  try {
+    const { totalHolidaysQuota, lat, lng, radius } = req.body;
+    const settings = await prisma.instituteSettings.upsert({
+      where: { id: 1 },
+      update: { totalHolidaysQuota, lat, lng, radius },
+      create: { id: 1, totalHolidaysQuota, lat, lng, radius }
+    });
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
+
