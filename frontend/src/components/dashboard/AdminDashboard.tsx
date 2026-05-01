@@ -1274,9 +1274,11 @@ const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
       await axios.put(`${API}/settings`, { totalHolidaysQuota: quota }, { headers: { Authorization: `Bearer ${token}` } });
       alert('Holiday quota updated');
     } catch (err) {
+      console.error('Update Quota Error:', err);
       alert('Failed to update quota');
     }
   };
+
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
