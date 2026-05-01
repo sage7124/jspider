@@ -650,16 +650,33 @@ router.get('/settings', async (req: AuthRequest, res) => {
 router.put('/settings', async (req: AuthRequest, res) => {
   try {
     const { totalHolidaysQuota, lat, lng, radius } = req.body;
+    
+    // Get existing settings to preserve values
+    const existing = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+
     const settings = await prisma.instituteSettings.upsert({
       where: { id: 1 },
-      update: { totalHolidaysQuota, lat, lng, radius },
-      create: { id: 1, totalHolidaysQuota, lat, lng, radius }
+      update: { 
+        totalHolidaysQuota: totalHolidaysQuota !== undefined ? totalHolidaysQuota : existing?.totalHolidaysQuota,
+        lat: lat !== undefined ? lat : existing?.lat,
+        lng: lng !== undefined ? lng : existing?.lng,
+        radius: radius !== undefined ? radius : existing?.radius
+      },
+      create: { 
+        id: 1,
+        totalHolidaysQuota: totalHolidaysQuota || 0,
+        lat: lat || 12.9716,
+        lng: lng || 77.5946,
+        radius: radius || 500
+      }
     });
     res.json(settings);
   } catch (error) {
+    console.error('Settings update error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 export default router;
 
