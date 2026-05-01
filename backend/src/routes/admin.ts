@@ -255,16 +255,48 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
       include: { attendances: { where: { date: targetDate } } }
     });
 
+    const holidays = await prisma.holiday.findMany({
+      where: { date: targetDate }
+    });
+
+    const leaves = await prisma.leaveRequest.findMany({
+      where: {
+        status: 'APPROVED',
+        AND: [
+          { startDate: { lte: targetDate } },
+          { endDate: { gte: targetDate } }
+        ]
+      }
+    });
+
     const result = trainees.map(t => {
       const att = t.attendances[0];
-      const status = att ? att.status : 'ABSENT';
+      const holiday = holidays.length > 0 ? holidays[0] : null;
+      const leave = leaves.find(l => l.userId === t.id);
+
+      let status = att ? att.status : 'ABSENT';
+      let inTime = att?.inTime ? new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
+      let outTime = att?.outTime ? new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
+
+      if (!att) {
+        if (holiday) {
+          status = 'HOLIDAY';
+          inTime = 'HOLIDAY';
+          outTime = holiday.name;
+        } else if (leave) {
+          status = 'LEAVE';
+          inTime = 'LEAVE';
+          outTime = leave.reason || 'Leave';
+        }
+      }
+
       return {
         id: t.id,
         name: t.fullName,
         empCode: t.identifier,
         status,
-        inTime: att?.inTime ? new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        outTime: att?.outTime ? new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'
+        inTime,
+        outTime
       };
     });
 
@@ -306,6 +338,20 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
     const workbook = new exceljs.Workbook();
     workbook.creator = 'Attendance System';
 
+
+    const holidays = await prisma.holiday.findMany({
+      where: { date: { gte: startOfMonth, lte: endOfMonth } }
+    });
+
+    const allLeaves = await prisma.leaveRequest.findMany({
+      where: {
+        status: 'APPROVED',
+        OR: [
+          { startDate: { lte: endOfMonth }, endDate: { gte: startOfMonth } }
+        ]
+      }
+    });
+
     for (const trainee of trainees) {
       // Use max 31 chars for worksheet name, replacing invalid chars
       const sheetName = trainee.fullName.replace(/[*/\?:\[\]]/g, '').substring(0, 31) || `Trainee_${trainee.id}`;
@@ -317,7 +363,8 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
         ws = workbook.addWorksheet(sheetName);
       }
       const traineeAtts = attendances.filter(a => a.userId === trainee.id);
-      generateTraineeWorksheet(ws, trainee, traineeAtts, year, mon, daysInMonth);
+      const traineeLeaves = allLeaves.filter(l => l.userId === trainee.id);
+      generateTraineeWorksheet(ws, trainee, traineeAtts, year, mon, daysInMonth, holidays, traineeLeaves);
     }
 
     if (trainees.length === 0) {
