@@ -321,7 +321,6 @@ const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: (
           <>
             <h2 className="text-lg font-bold mb-2">Reset Password?</h2>
             <p className="text-gray-500 text-sm mb-4">For trainee <strong>{trainee.name}</strong></p>
-            
             <div className="mb-6 text-left">
               <label className="block text-xs font-bold text-gray-400 mb-1">SET NEW PASSWORD DIRECTLY</label>
               <input 
@@ -357,13 +356,14 @@ const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: (
     </div>
   );
 };
+
 // ── Manual Attendance Edit Modal ──────────────────────────────────────────────
 const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [inTime, setInTime] = useState(trainee.in === '--' ? '09:00' : trainee.in);
-  const [outTime, setOutTime] = useState(trainee.out === '--' ? '18:00' : trainee.out);
-  const [status, setStatus] = useState(trainee.status || 'OUT');
   const [slotNo, setSlotNo] = useState<number | null>(null);
+  const [punchType, setPunchType] = useState<'in' | 'out'>('in');
+  const [time, setTime] = useState('09:00');
+  const [status, setStatus] = useState(trainee.status || 'OUT');
   const [loading, setLoading] = useState(false);
 
   const getLocalDay = (dateStr: string) => {
@@ -380,20 +380,23 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
       const token = localStorage.getItem('token');
       const to24h = (t: string) => {
         if (!t.includes(' ')) return t; 
-        let [time, modifier] = t.split(' ');
-        let [hours, minutes] = time.split(':');
+        let [timeStr, modifier] = t.split(' ');
+        let [hours, minutes] = timeStr.split(':');
         if (hours === '12') hours = '00';
         if (modifier === 'PM') hours = String(parseInt(hours, 10) + 12);
         return `${hours.padStart(2, '0')}:${minutes}`;
       };
 
-      await axios.put(`${API}/attendance-manual/${trainee.id}`, { 
-        date,
-        inTime: to24h(inTime), 
-        outTime: to24h(outTime),
-        status,
-        slotNo
-      }, {
+      const payload: any = { 
+        date, 
+        status, 
+        slotNo 
+      };
+
+      if (punchType === 'in') payload.inTime = to24h(time);
+      else payload.outTime = to24h(time);
+
+      await axios.put(`${API}/attendance-manual/${trainee.id}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       onSave();
@@ -405,15 +408,12 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     }
   };
 
-
-  const setFromSlot = (time: string, type: 'in' | 'out') => {
-    let [t, p] = time.split(' ');
+  const formatForInput = (time12: string) => {
+    let [t, p] = time12.split(' ');
     let [h, m] = t.split(':');
     if (h === '12') h = '00';
     if (p === 'PM') h = String(parseInt(h, 10) + 12);
-    const val = `${h.padStart(2, '0')}:${m}`;
-    if (type === 'in') setInTime(val);
-    else setOutTime(val);
+    return `${h.padStart(2, '0')}:${m}`;
   };
 
   return (
@@ -430,69 +430,77 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
 
-          {trainee.slots.length === 0 ? (
-            <div className="bg-orange-50 p-3 rounded border border-orange-100 text-[10px] text-orange-700 italic">
-              No slots assigned to this teacher yet. Please assign slots using the <b>Clock icon</b> in the main table first.
-            </div>
-          ) : (
-            <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Select Slot ({dayOfWeek})</label>
-              <select 
-                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === 'custom') {
-                    setSlotNo(null);
-                    return;
-                  }
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Step 1: Select Slot ({dayOfWeek})</label>
+            <select 
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              value={slotNo || 'global'}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'global') {
+                  setSlotNo(null);
+                } else {
                   const sn = Number(val);
                   setSlotNo(sn);
                   const slot = currentDaySlots.find(s => s.slotNo === sn);
                   if (slot) {
-                    setFromSlot(slot.start, 'in');
-                    setFromSlot(slot.end, 'out');
+                    setTime(formatForInput(punchType === 'in' ? slot.start : slot.end));
+                  }
+                }
+              }}
+            >
+              <option value="global">Overall Day Punch</option>
+              {currentDaySlots.map(s => (
+                <option key={s.slotNo} value={s.slotNo}>Slot {s.slotNo} ({s.start} - {s.end})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Step 2: Type</label>
+              <select 
+                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                value={punchType}
+                onChange={(e) => {
+                  const type = e.target.value as 'in' | 'out';
+                  setPunchType(type);
+                  if (slotNo) {
+                    const slot = currentDaySlots.find(s => s.slotNo === slotNo);
+                    if (slot) setTime(formatForInput(type === 'in' ? slot.start : slot.end));
                   }
                 }}
               >
-                <option value="custom">-- Custom Time --</option>
-                {currentDaySlots.map(s => (
-                  <option key={s.slotNo} value={s.slotNo}>
-                    Slot {s.slotNo} ({s.start} - {s.end})
-                  </option>
-                ))}
-                {currentDaySlots.length === 0 && <option disabled>No slots for {dayOfWeek}</option>}
+                <option value="in">Punch IN</option>
+                <option value="out">Punch OUT</option>
               </select>
             </div>
-          )}
+            <div className="flex-1">
+              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Step 3: Time</label>
+              <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+          </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Punch In Time</label>
-            <input type="time" value={inTime.includes(' ') ? '' : inTime} onChange={e => setInTime(e.target.value)}
-              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Punch Out Time</label>
-            <input type="time" value={outTime.includes(' ') ? '' : outTime} onChange={e => setOutTime(e.target.value)}
-              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Status</label>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Current Status</label>
             <select value={status} onChange={e => setStatus(e.target.value)}
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
-              <option value="IN">IN</option>
-              <option value="OUT">OUT</option>
+              <option value="IN">Teacher is currently IN</option>
+              <option value="OUT">Teacher is currently OUT</option>
             </select>
           </div>
         </div>
 
         <button onClick={handleUpdate} disabled={loading}
           className="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition-colors disabled:opacity-50">
-          {loading ? 'Updating...' : 'Save Changes'}
+          {loading ? 'Updating...' : 'Save Punch'}
         </button>
       </div>
     </div>
   );
 };
+
 
 // ── Individual Download Modal ──────────────────────────────────────────────
 const IndividualDownloadModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
