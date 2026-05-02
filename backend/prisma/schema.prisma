@@ -67,11 +67,19 @@ model Attendance {
   user           User         @relation(fields: [userId], references: [id])
   date           DateTime     
 
-  inTime         DateTime?
-  outTime        DateTime?
+  inTime         DateTime?    // Overall first punch in
+  outTime        DateTime?    // Overall last punch out
   status         String       @default("IN") // IN, OUT
   isLate         Boolean      @default(false)
   createdAt      DateTime     @default(now())
+
+  // Slot specific punches (New)
+  inTime1        DateTime?
+  outTime1       DateTime?
+  inTime2        DateTime?
+  outTime2       DateTime?
+  inTime3        DateTime?
+  outTime3       DateTime?
 
   @@unique([userId, date])
 }

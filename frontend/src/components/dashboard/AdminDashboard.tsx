@@ -363,6 +363,7 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
   const [inTime, setInTime] = useState(trainee.in === '--' ? '09:00' : trainee.in);
   const [outTime, setOutTime] = useState(trainee.out === '--' ? '18:00' : trainee.out);
   const [status, setStatus] = useState(trainee.status || 'OUT');
+  const [slotNo, setSlotNo] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
   const getLocalDay = (dateStr: string) => {
@@ -390,7 +391,8 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
         date,
         inTime: to24h(inTime), 
         outTime: to24h(outTime),
-        status 
+        status,
+        slotNo
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -402,6 +404,7 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
       setLoading(false);
     }
   };
+
 
   const setFromSlot = (time: string, type: 'in' | 'out') => {
     let [t, p] = time.split(' ');
@@ -438,8 +441,13 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
                 className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (val === 'custom') return;
-                  const slot = currentDaySlots.find(s => s.slotNo === Number(val));
+                  if (val === 'custom') {
+                    setSlotNo(null);
+                    return;
+                  }
+                  const sn = Number(val);
+                  setSlotNo(sn);
+                  const slot = currentDaySlots.find(s => s.slotNo === sn);
                   if (slot) {
                     setFromSlot(slot.start, 'in');
                     setFromSlot(slot.end, 'out');

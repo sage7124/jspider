@@ -71,8 +71,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     let totalLateMins = 0;
     let totalEarlyMins = 0;
 
-    const calcLate = (slot: any, inTime: Date) => {
+    const calcLate = (slot: any, dayInTime: Date, slotInTime?: Date) => {
       if (!slot) return '--';
+      const inTime = slotInTime || dayInTime;
       if (!inTime) {
         if (isFutureDay) return '--';
         const start = getSlotStartTime(slot);
@@ -107,8 +108,11 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       return 0;
     };
 
-    const calcEarly = (slot: any, outTime: Date, inTime: Date) => {
+    const calcEarly = (slot: any, dayOutTime: Date, dayInTime: Date, slotOutTime?: Date, slotInTime?: Date) => {
       if (!slot) return '--';
+      const outTime = slotOutTime || dayOutTime;
+      const inTime = slotInTime || dayInTime;
+
       const [eTime, eMod] = slot.endTime.split(' ');
       let [eh, em] = eTime.split(':').map(Number);
       if (eMod === 'PM' && eh < 12) eh += 12;
@@ -146,42 +150,34 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
         totalWorkedMinutes += Math.floor(diff / 60000);
       }
 
-      if (att.inTime) {
-        const l1 = calcLate(s1, att.inTime);
-        const l2 = calcLate(s2, att.inTime);
-        const l3 = calcLate(s3, att.inTime);
-        
-        if (typeof l1 === 'number') { s1L = `${l1}m`; totalLateMins += l1; } else { s1L = l1; }
-        if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; } else { s2L = l2; }
-        if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; } else { s3L = l3; }
+      const l1 = calcLate(s1, att.inTime, att.inTime1);
+      const l2 = calcLate(s2, att.inTime, att.inTime2);
+      const l3 = calcLate(s3, att.inTime, att.inTime3);
+      
+      if (typeof l1 === 'number') { s1L = `${l1}m`; totalLateMins += l1; } else { s1L = l1; }
+      if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; } else { s2L = l2; }
+      if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; } else { s3L = l3; }
 
-        if (s1L === 'ABSENT') s1E = 'ABSENT';
-        if (s2L === 'ABSENT') s2E = 'ABSENT';
-        if (s3L === 'ABSENT') s3E = 'ABSENT';
-      } else {
-        s1L = getDefaultStatus(s1);
-        s2L = getDefaultStatus(s2);
-        s3L = getDefaultStatus(s3);
-        s1E = getDefaultStatus(s1);
-        s2E = getDefaultStatus(s2);
-        s3E = getDefaultStatus(s3);
+      if (s1L === 'ABSENT') s1E = 'ABSENT';
+      if (s2L === 'ABSENT') s2E = 'ABSENT';
+      if (s3L === 'ABSENT') s3E = 'ABSENT';
+
+      const e1 = calcEarly(s1, att.outTime, att.inTime, att.outTime1, att.inTime1);
+      const e2 = calcEarly(s2, att.outTime, att.inTime, att.outTime2, att.inTime2);
+      const e3 = calcEarly(s3, att.outTime, att.inTime, att.outTime3, att.inTime3);
+
+      if (s1E !== 'ABSENT') {
+        if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; } else { s1E = e1; }
+      }
+      if (s2E !== 'ABSENT') {
+        if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; } else { s2E = e2; }
+      }
+      if (s3E !== 'ABSENT') {
+        if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; } else { s3E = e3; }
       }
 
-      if (att.outTime) {
-        const e1 = calcEarly(s1, att.outTime, att.inTime!);
-        const e2 = calcEarly(s2, att.outTime, att.inTime!);
-        const e3 = calcEarly(s3, att.outTime, att.inTime!);
-
-        if (s1E !== 'ABSENT') {
-          if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; } else { s1E = e1; }
-        }
-        if (s2E !== 'ABSENT') {
-          if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; } else { s2E = e2; }
-        }
-        if (s3E !== 'ABSENT') {
-          if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; } else { s3E = e3; }
-        }
-      } else if (att.inTime) {
+      // Missing Out logic
+      if (!att.outTime && !att.outTime1 && !att.outTime2 && !att.outTime3) {
         if (s1L !== 'ABSENT' && s1L !== '--') s1E = 'MISSING OUT';
         if (s2L !== 'ABSENT' && s2L !== '--') s2E = 'MISSING OUT';
         if (s3L !== 'ABSENT' && s3L !== '--') s3E = 'MISSING OUT';
