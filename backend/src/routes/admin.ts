@@ -57,6 +57,12 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
         out: attendance?.outTime
           ? new Date(attendance.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : '--',
+        inTime1: attendance?.inTime1 ? new Date(attendance.inTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime1: attendance?.outTime1 ? new Date(attendance.outTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        inTime2: attendance?.inTime2 ? new Date(attendance.inTime2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime2: attendance?.outTime2 ? new Date(attendance.outTime2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        inTime3: attendance?.inTime3 ? new Date(attendance.inTime3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime3: attendance?.outTime3 ? new Date(attendance.outTime3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
         isLate: attendance?.isLate || false,
         isApproved: user.isApproved,
         totalLeaves: user.totalLeaves,

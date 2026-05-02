@@ -42,11 +42,11 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
         slNo: day,
         day: fullDayStr,
         date: currentDate.toLocaleDateString('en-IN'),
-        inTime: holiday ? 'HOLIDAY' : 'LEAVE',
-        outTime: holiday ? holiday.name : (leave?.reason || 'Leave'),
+        s1In: holiday ? 'HOLIDAY' : 'LEAVE',
+        s1Out: holiday ? holiday.name : (leave?.reason || 'Leave'),
         s1Start: '--', s1End: '--', s1Late: '--', s1Early: '--',
-        s2Start: '--', s2End: '--', s2Late: '--', s2Early: '--',
-        s3Start: '--', s3End: '--', s3Late: '--', s3Early: '--',
+        s2In: '--', s2Out: '--', s2Start: '--', s2End: '--', s2Late: '--', s2Early: '--',
+        s3In: '--', s3Out: '--', s3Start: '--', s3End: '--', s3Late: '--', s3Early: '--',
         late: '0m',
         earlyDeparture: '0m'
       });
@@ -194,40 +194,43 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     totalLateMinutes += totalLateMins;
     totalEarlyMinutes += totalEarlyMins;
 
-    const getDayInTimeStatus = () => {
-      if (att?.inTime) return att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      if (holiday) return 'HOLIDAY';
-      if (leave) return 'LEAVE';
-      if (daySlots.length === 0) return '--';
+    const getSlotInTimeStatus = (slot: any, slotInTime?: Date) => {
+      if (slotInTime) return slotInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (!slot) return '--';
       if (isFutureDay) return '--';
+      const start = getSlotStartTime(slot);
+      if (isToday && start && start.getTime() > now.getTime()) return '--';
       return 'ABSENT';
     };
 
-    const getDayOutTimeStatus = () => {
-      if (att?.outTime) return att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      if (holiday) return holiday.name;
-      if (leave) return leave.reason || 'Leave';
-      if (daySlots.length === 0) return '--';
+    const getSlotOutTimeStatus = (slot: any, slotOutTime?: Date, hasIn?: boolean) => {
+      if (slotOutTime) return slotOutTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (!slot) return '--';
       if (isFutureDay) return '--';
-      if (att?.inTime) return 'MISSING OUT';
+      const start = getSlotStartTime(slot);
+      if (isToday && start && start.getTime() > now.getTime()) return '--';
+      if (hasIn) return 'MISSING OUT';
       return 'ABSENT';
     };
-
 
     rows.push({
       slNo: day,
       day: fullDayStr,
       date: currentDate.toLocaleDateString('en-IN'),
-      inTime: getDayInTimeStatus(),
-      outTime: getDayOutTimeStatus(),
+      s1In: getSlotInTimeStatus(s1, att?.inTime1 || att?.inTime),
+      s1Out: getSlotOutTimeStatus(s1, att?.outTime1 || att?.outTime, !!(att?.inTime1 || att?.inTime)),
       s1Start: s1?.startTime || '--',
       s1End: s1?.endTime || '--',
       s1Late: s1L,
       s1Early: s1E,
+      s2In: getSlotInTimeStatus(s2, att?.inTime2),
+      s2Out: getSlotOutTimeStatus(s2, att?.outTime2, !!(att?.inTime2)),
       s2Start: s2?.startTime || '--',
       s2End: s2?.endTime || '--',
       s2Late: s2L,
       s2Early: s2E,
+      s3In: getSlotInTimeStatus(s3, att?.inTime3),
+      s3Out: getSlotOutTimeStatus(s3, att?.outTime3, !!(att?.inTime3)),
       s3Start: s3?.startTime || '--',
       s3End: s3?.endTime || '--',
       s3Late: s3L,
@@ -254,12 +257,12 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
     { header: 'Sl No', key: 'slNo', width: 8 },
     { header: 'Day', key: 'day', width: 12 },
     { header: 'Date', key: 'date', width: 15 },
-    { header: 'In Time', key: 'inTime', width: 15 },
-    { header: 'Out Time', key: 'outTime', width: 15 },
   ];
 
   const slotColumns: any[] = [];
   for (let i = 1; i <= maxSlot; i++) {
+    slotColumns.push({ header: `Slot-${i} In`, key: `s${i}In`, width: 15 });
+    slotColumns.push({ header: `Slot-${i} Out`, key: `s${i}Out`, width: 15 });
     slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 12 });
     slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 12 });
     slotColumns.push({ header: `s${i} late punch in`, key: `s${i}Late`, width: 18 });

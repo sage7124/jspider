@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
@@ -19,6 +19,7 @@ interface Slot { day: string; start: string; end: string; slotNo: number }
 interface Trainee {
   id: number; empCode: string; name: string; email: string | null; department: string | null;
   slots: Slot[]; status: string; date: string; in: string; out: string;
+  inTime1?: string; outTime1?: string; inTime2?: string; outTime2?: string; inTime3?: string; outTime3?: string;
   isLate: boolean; isApproved: boolean; leaveBalance: number; totalLeaves: number;
 }
 interface LeaveRequest {
@@ -678,6 +679,7 @@ const AdminDashboard: React.FC = () => {
   const [individualReport, setIndividualReport] = useState<Trainee | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [directLeaveUser, setDirectLeaveUser] = useState<Trainee | null>(null);
+  const [viewDetailUser, setViewDetailUser] = useState<Trainee | null>(null);
   const [showDailyReport, setShowDailyReport] = useState(false);
   const [showHolidays, setShowHolidays] = useState(false);
 
@@ -862,6 +864,7 @@ const AdminDashboard: React.FC = () => {
                     <button onClick={() => setManualPunchUser(t)} className="text-orange-600 hover:text-orange-800 transition-colors" title="Manual Attendance"><Clock size={16} /></button>
                     <button onClick={() => setDirectLeaveUser(t)} className="text-indigo-600 hover:text-indigo-800 transition-colors" title="Direct Leave"><Calendar size={16} /></button>
                     <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>
+                    <button onClick={() => setViewDetailUser(t)} className="text-pink-600 hover:text-pink-800 transition-colors" title="View Slot Statuses"><Eye size={16} /></button>
                     <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>
                     <button onClick={async () => {
                       if(!confirm('Force Punch Out for this user?')) return;
@@ -892,8 +895,73 @@ const AdminDashboard: React.FC = () => {
       {individualReport && <IndividualDownloadModal trainee={individualReport} onClose={() => setIndividualReport(null)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {directLeaveUser && <DirectLeaveModal trainee={directLeaveUser} onClose={() => setDirectLeaveUser(null)} onSave={fetchTrainees} />}
+      {viewDetailUser && <ViewSlotsDetailModal trainee={viewDetailUser} onClose={() => setViewDetailUser(null)} />}
       {showDailyReport && <DailyReportModal onClose={() => setShowDailyReport(false)} />}
       {showHolidays && <HolidayManagementModal onClose={() => setShowHolidays(false)} />}
+    </div>
+  );
+};
+
+
+
+// ── View Slots Detail Modal ──────────────────────────────────────────────────
+const ViewSlotsDetailModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 relative">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+        <h2 className="text-lg font-bold mb-1">Detailed Punch Status</h2>
+        <p className="text-xs text-gray-500 mb-6">{trainee.name}</p>
+        
+        <div className="space-y-4">
+          <div className="border rounded p-3 bg-gray-50">
+            <h3 className="text-xs font-bold text-gray-400 mb-2 uppercase">Slot 1</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="block text-xs font-semibold text-gray-500 uppercase">Punch In</span>
+                <span className="text-sm font-bold text-gray-800">{trainee.inTime1 || '--'}</span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold text-gray-500 uppercase">Punch Out</span>
+                <span className="text-sm font-bold text-gray-800">{trainee.outTime1 || '--'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border rounded p-3 bg-gray-50">
+            <h3 className="text-xs font-bold text-gray-400 mb-2 uppercase">Slot 2</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="block text-xs font-semibold text-gray-500 uppercase">Punch In</span>
+                <span className="text-sm font-bold text-gray-800">{trainee.inTime2 || '--'}</span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold text-gray-500 uppercase">Punch Out</span>
+                <span className="text-sm font-bold text-gray-800">{trainee.outTime2 || '--'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border rounded p-3 bg-gray-50">
+            <h3 className="text-xs font-bold text-gray-400 mb-2 uppercase">Slot 3</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="block text-xs font-semibold text-gray-500 uppercase">Punch In</span>
+                <span className="text-sm font-bold text-gray-800">{trainee.inTime3 || '--'}</span>
+              </div>
+              <div>
+                <span className="block text-xs font-semibold text-gray-500 uppercase">Punch Out</span>
+                <span className="text-sm font-bold text-gray-800">{trainee.outTime3 || '--'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button onClick={onClose}
+          className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition-colors">
+          Close
+        </button>
+      </div>
     </div>
   );
 };
