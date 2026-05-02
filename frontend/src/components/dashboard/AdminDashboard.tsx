@@ -365,13 +365,15 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
   const [status, setStatus] = useState(trainee.status || 'OUT');
   const [loading, setLoading] = useState(false);
 
+  const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date(date).getDay()];
+  const currentDaySlots = trainee.slots.filter(s => s.day === dayOfWeek).sort((a, b) => a.slotNo - b.slotNo);
+
   const handleUpdate = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      // Convert 12h to 24h for the backend
       const to24h = (t: string) => {
-        if (!t.includes(' ')) return t; // Already 24h?
+        if (!t.includes(' ')) return t; 
         let [time, modifier] = t.split(' ');
         let [hours, minutes] = time.split(':');
         if (hours === '12') hours = '00';
@@ -396,6 +398,17 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     }
   };
 
+  const setFromSlot = (time: string, type: 'in' | 'out') => {
+    // time is "01:15 PM" -> convert to "13:15" for input[type=time]
+    let [t, p] = time.split(' ');
+    let [h, m] = t.split(':');
+    if (h === '12') h = '00';
+    if (p === 'PM') h = String(parseInt(h, 10) + 12);
+    const val = `${h.padStart(2, '0')}:${m}`;
+    if (type === 'in') setInTime(val);
+    else setOutTime(val);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
@@ -409,6 +422,24 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
+
+          {currentDaySlots.length > 0 && (
+            <div className="bg-gray-50 p-2 rounded border border-gray-100">
+              <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase">Quick Fill From Slots ({dayOfWeek})</label>
+              <div className="space-y-1">
+                {currentDaySlots.map(s => (
+                  <div key={s.slotNo} className="flex items-center justify-between text-[10px] bg-white p-1.5 rounded border border-gray-200">
+                    <span className="font-bold text-gray-600">Slot {s.slotNo}</span>
+                    <div className="flex gap-1">
+                      <button onClick={() => setFromSlot(s.start, 'in')} className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded hover:bg-indigo-100 border border-indigo-100">In: {s.start}</button>
+                      <button onClick={() => setFromSlot(s.end, 'out')} className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded hover:bg-orange-100 border border-orange-100">Out: {s.end}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Punch In Time</label>
             <input type="time" value={inTime.includes(' ') ? '' : inTime} onChange={e => setInTime(e.target.value)}
@@ -437,6 +468,7 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     </div>
   );
 };
+
 // ── Individual Download Modal ──────────────────────────────────────────────
 const IndividualDownloadModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
   const now = new Date();
