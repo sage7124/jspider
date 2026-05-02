@@ -51,12 +51,24 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
         })),
         status: attendance?.status || 'ABSENT',
         date: today.toLocaleDateString('en-IN'),
-        in: attendance?.inTime
-          ? new Date(attendance.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : '--',
-        out: attendance?.outTime
-          ? new Date(attendance.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : '--',
+        in: (() => {
+          if (!attendance) return '--';
+          const inTimes = [attendance.inTime, attendance.inTime1, attendance.inTime2, attendance.inTime3]
+            .filter(t => t)
+            .map(t => new Date(t));
+          if (inTimes.length === 0) return '--';
+          const latest = new Date(Math.max(...inTimes.map(t => t.getTime())));
+          return latest.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })(),
+        out: (() => {
+          if (!attendance) return '--';
+          const outTimes = [attendance.outTime, attendance.outTime1, attendance.outTime2, attendance.outTime3]
+            .filter(t => t)
+            .map(t => new Date(t));
+          if (outTimes.length === 0) return '--';
+          const latest = new Date(Math.max(...outTimes.map(t => t.getTime())));
+          return latest.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })(),
         inTime1: attendance?.inTime1 ? new Date(attendance.inTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
         outTime1: attendance?.outTime1 ? new Date(attendance.outTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
         inTime2: attendance?.inTime2 ? new Date(attendance.inTime2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
@@ -69,6 +81,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
         leaveBalance: user.leaveBalance,
       };
     });
+
 
     res.json(result);
   } catch (error) {
