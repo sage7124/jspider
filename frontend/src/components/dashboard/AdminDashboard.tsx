@@ -365,7 +365,12 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
   const [status, setStatus] = useState(trainee.status || 'OUT');
   const [loading, setLoading] = useState(false);
 
-  const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date(date).getDay()];
+  const getLocalDay = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date(y, m - 1, d).getDay()];
+  };
+
+  const dayOfWeek = getLocalDay(date);
   const currentDaySlots = trainee.slots.filter(s => s.day === dayOfWeek).sort((a, b) => a.slotNo - b.slotNo);
 
   const handleUpdate = async () => {
@@ -399,7 +404,6 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
   };
 
   const setFromSlot = (time: string, type: 'in' | 'out') => {
-    // time is "01:15 PM" -> convert to "13:15" for input[type=time]
     let [t, p] = time.split(' ');
     let [h, m] = t.split(':');
     if (h === '12') h = '00';
@@ -423,11 +427,15 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
 
-          {currentDaySlots.length > 0 && (
+          {trainee.slots.length === 0 ? (
+            <div className="bg-orange-50 p-3 rounded border border-orange-100 text-[10px] text-orange-700 italic">
+              No slots assigned to this teacher yet. Please assign slots using the <b>Clock icon</b> in the main table first.
+            </div>
+          ) : (
             <div className="bg-gray-50 p-2 rounded border border-gray-100">
               <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase">Quick Fill From Slots ({dayOfWeek})</label>
               <div className="space-y-1">
-                {currentDaySlots.map(s => (
+                {currentDaySlots.length > 0 ? currentDaySlots.map(s => (
                   <div key={s.slotNo} className="flex items-center justify-between text-[10px] bg-white p-1.5 rounded border border-gray-200">
                     <span className="font-bold text-gray-600">Slot {s.slotNo}</span>
                     <div className="flex gap-1">
@@ -435,7 +443,9 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
                       <button onClick={() => setFromSlot(s.end, 'out')} className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded hover:bg-orange-100 border border-orange-100">Out: {s.end}</button>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-[10px] text-gray-400 italic">No slots scheduled for {dayOfWeek}</p>
+                )}
               </div>
             </div>
           )}
