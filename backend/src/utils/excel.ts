@@ -202,6 +202,7 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       if (att?.inTime) return att.inTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       if (holiday) return 'HOLIDAY';
       if (leave) return 'LEAVE';
+      if (daySlots.length === 0) return '--';
       if (isFutureDay) return '--';
       return 'ABSENT';
     };
@@ -210,10 +211,12 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       if (att?.outTime) return att.outTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       if (holiday) return holiday.name;
       if (leave) return leave.reason || 'Leave';
+      if (daySlots.length === 0) return '--';
       if (isFutureDay) return '--';
       if (att?.inTime) return 'MISSING OUT';
       return 'ABSENT';
     };
+
 
     rows.push({
       slNo: day,
