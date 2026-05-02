@@ -97,8 +97,8 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     });
 
     let isLate = false;
-    if (type === 'IN' && slots.length > 0) {
-      let activeSlot = null;
+    let activeSlot = null;
+    if (slots.length > 0) {
       // Find the first slot whose end time has not passed yet
       for (const s of slots) {
         const [eTime, eMod] = s.endTime.split(' ');
@@ -117,20 +117,24 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       // If all slots have passed, compare with the last slot
       if (!activeSlot) activeSlot = slots[slots.length - 1];
 
-      // Parse active slot start time
-      const [sTime, sMod] = activeSlot.startTime.split(' ');
-      let [sh, sm] = sTime.split(':').map(Number);
-      if (sMod === 'PM' && sh < 12) sh += 12;
-      if (sMod === 'AM' && sh === 12) sh = 0;
-      
-      const slotStartTime = new Date(today);
-      slotStartTime.setHours(sh, sm, 0, 0);
+      if (type === 'IN') {
+        // Parse active slot start time
+        const [sTime, sMod] = activeSlot.startTime.split(' ');
+        let [sh, sm] = sTime.split(':').map(Number);
+        if (sMod === 'PM' && sh < 12) sh += 12;
+        if (sMod === 'AM' && sh === 12) sh = 0;
+        
+        const slotStartTime = new Date(today);
+        slotStartTime.setHours(sh, sm, 0, 0);
 
-      // Grace period of 15 mins
-      if (now.getTime() > slotStartTime.getTime() + 15 * 60 * 1000) {
-        isLate = true;
+        // Grace period of 15 mins
+        if (now.getTime() > slotStartTime.getTime() + 15 * 60 * 1000) {
+          isLate = true;
+        }
       }
     }
+
+    const activeSlotNo = activeSlot ? activeSlot.slotNo : 1;
 
     // Upsert attendance record
     const existing = await prisma.attendance.findUnique({
@@ -142,32 +146,47 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         return res.status(400).json({ error: 'Already punched in' });
       }
 
+      const dataUpdate: any = {
+        status: 'IN',
+        inTime: existing?.inTime || now,
+        isLate: existing ? existing.isLate : isLate
+      };
+      if (activeSlotNo === 1) dataUpdate.inTime1 = now;
+      if (activeSlotNo === 2) dataUpdate.inTime2 = now;
+      if (activeSlotNo === 3) dataUpdate.inTime3 = now;
+
+      const dataCreate: any = {
+        userId,
+        date: today,
+        status: 'IN',
+        inTime: now,
+        isLate
+      };
+      if (activeSlotNo === 1) dataCreate.inTime1 = now;
+      if (activeSlotNo === 2) dataCreate.inTime2 = now;
+      if (activeSlotNo === 3) dataCreate.inTime3 = now;
+
       await prisma.attendance.upsert({
         where: { userId_date: { userId, date: today } },
-        update: {
-          status: 'IN',
-          inTime: existing?.inTime || now, // Don't override initial inTime
-          isLate: existing ? existing.isLate : isLate
-        },
-        create: {
-          userId,
-          date: today,
-          status: 'IN',
-          inTime: now,
-          isLate
-        }
+        update: dataUpdate,
+        create: dataCreate
       });
     } else {
       if (!existing || existing.status === 'OUT') {
         return res.status(400).json({ error: 'Not punched in' });
       }
 
+      const dataUpdate: any = {
+        status: 'OUT',
+        outTime: now
+      };
+      if (activeSlotNo === 1) dataUpdate.outTime1 = now;
+      if (activeSlotNo === 2) dataUpdate.outTime2 = now;
+      if (activeSlotNo === 3) dataUpdate.outTime3 = now;
+
       await prisma.attendance.update({
         where: { userId_date: { userId, date: today } },
-        data: {
-          status: 'OUT',
-          outTime: now
-        }
+        data: dataUpdate
       });
     }
 

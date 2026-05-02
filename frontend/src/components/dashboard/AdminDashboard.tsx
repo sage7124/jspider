@@ -1049,7 +1049,7 @@ const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl p-6 relative max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl p-6 relative max-h-[90vh] flex flex-col">
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
         <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
           <Calendar className="text-indigo-600" /> Daily Attendance Report
@@ -1076,19 +1076,23 @@ const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
           {loading ? (
             <p className="text-center py-10 text-gray-400">Loading...</p>
           ) : (
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left border-collapse">
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="px-4 py-3 font-semibold text-gray-600">Mobile Number</th>
                   <th className="px-4 py-3 font-semibold text-gray-600">Name</th>
                   <th className="px-4 py-3 font-semibold text-gray-600">Status</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600">Punch In</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600">Punch Out</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center border-l bg-blue-50/30">Slot 1 In</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center bg-blue-50/30">Slot 1 Out</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center border-l bg-indigo-50/30">Slot 2 In</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center bg-indigo-50/30">Slot 2 Out</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center border-l bg-purple-50/30">Slot 3 In</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center bg-purple-50/30">Slot 3 Out</th>
                 </tr>
               </thead>
               <tbody>
                 {data.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">No records found</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-10 text-center text-gray-400">No records found</td></tr>
                 ) : (
                   data.map((r, idx) => (
                     <tr key={idx} className="border-b hover:bg-gray-50">
@@ -1101,8 +1105,12 @@ const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
                           {r.status === 'IN' || r.status === 'OUT' ? 'PRESENT' : 'ABSENT'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{r.inTime}</td>
-                      <td className="px-4 py-3 text-gray-600">{r.outTime}</td>
+                      <td className="px-2 py-3 text-center border-l text-gray-600">{r.inTime1 || '--'}</td>
+                      <td className="px-2 py-3 text-center text-gray-600">{r.outTime1 || '--'}</td>
+                      <td className="px-2 py-3 text-center border-l text-gray-600">{r.inTime2 || '--'}</td>
+                      <td className="px-2 py-3 text-center text-gray-600">{r.outTime2 || '--'}</td>
+                      <td className="px-2 py-3 text-center border-l text-gray-600">{r.inTime3 || '--'}</td>
+                      <td className="px-2 py-3 text-center text-gray-600">{r.outTime3 || '--'}</td>
                     </tr>
                   ))
                 )}

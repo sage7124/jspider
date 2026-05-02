@@ -315,7 +315,13 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
         empCode: t.identifier,
         status,
         inTime,
-        outTime
+        outTime,
+        inTime1: att?.inTime1 ? new Date(att.inTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime1: att?.outTime1 ? new Date(att.outTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        inTime2: att?.inTime2 ? new Date(att.inTime2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime2: att?.outTime2 ? new Date(att.outTime2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        inTime3: att?.inTime3 ? new Date(att.inTime3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime3: att?.outTime3 ? new Date(att.outTime3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
       };
     });
 
