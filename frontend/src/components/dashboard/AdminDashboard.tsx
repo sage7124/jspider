@@ -919,11 +919,11 @@ const ViewSlotsDetailModal = ({ trainee, onClose }: { trainee: Trainee; onClose:
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="block text-xs font-semibold text-gray-500 uppercase">Punch In</span>
-                <span className="text-sm font-bold text-gray-800">{trainee.inTime1 || '--'}</span>
+                <span className="text-sm font-bold text-gray-800">{(!trainee.inTime1 || trainee.inTime1 === '--') ? trainee.in : trainee.inTime1}</span>
               </div>
               <div>
                 <span className="block text-xs font-semibold text-gray-500 uppercase">Punch Out</span>
-                <span className="text-sm font-bold text-gray-800">{trainee.outTime1 || '--'}</span>
+                <span className="text-sm font-bold text-gray-800">{(!trainee.outTime1 || trainee.outTime1 === '--') ? trainee.out : trainee.outTime1}</span>
               </div>
             </div>
           </div>
