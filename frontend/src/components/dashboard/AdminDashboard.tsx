@@ -432,21 +432,28 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               No slots assigned to this teacher yet. Please assign slots using the <b>Clock icon</b> in the main table first.
             </div>
           ) : (
-            <div className="bg-gray-50 p-2 rounded border border-gray-100">
-              <label className="block text-[10px] font-bold text-gray-400 mb-2 uppercase">Quick Fill From Slots ({dayOfWeek})</label>
-              <div className="space-y-1">
-                {currentDaySlots.length > 0 ? currentDaySlots.map(s => (
-                  <div key={s.slotNo} className="flex items-center justify-between text-[10px] bg-white p-1.5 rounded border border-gray-200">
-                    <span className="font-bold text-gray-600">Slot {s.slotNo}</span>
-                    <div className="flex gap-1">
-                      <button onClick={() => setFromSlot(s.start, 'in')} className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded hover:bg-indigo-100 border border-indigo-100">In: {s.start}</button>
-                      <button onClick={() => setFromSlot(s.end, 'out')} className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded hover:bg-orange-100 border border-orange-100">Out: {s.end}</button>
-                    </div>
-                  </div>
-                )) : (
-                  <p className="text-[10px] text-gray-400 italic">No slots scheduled for {dayOfWeek}</p>
-                )}
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Select Slot ({dayOfWeek})</label>
+              <select 
+                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === 'custom') return;
+                  const slot = currentDaySlots.find(s => s.slotNo === Number(val));
+                  if (slot) {
+                    setFromSlot(slot.start, 'in');
+                    setFromSlot(slot.end, 'out');
+                  }
+                }}
+              >
+                <option value="custom">-- Custom Time --</option>
+                {currentDaySlots.map(s => (
+                  <option key={s.slotNo} value={s.slotNo}>
+                    Slot {s.slotNo} ({s.start} - {s.end})
+                  </option>
+                ))}
+                {currentDaySlots.length === 0 && <option disabled>No slots for {dayOfWeek}</option>}
+              </select>
             </div>
           )}
 
