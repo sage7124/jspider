@@ -348,6 +348,9 @@ router.get('/reports/monthly-json', authenticateToken, async (req: AuthRequest, 
     });
 
     const reportData = getTraineeReportData(user, attendances, y, m, daysInMonth, holidays, leaves);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.json(reportData);
   } catch (error) {
     console.error(error);

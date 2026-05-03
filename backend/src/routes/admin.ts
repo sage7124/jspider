@@ -231,32 +231,7 @@ router.post('/leaves/direct', async (req: AuthRequest, res) => {
   }
 });
 
-router.delete('/leaves/:id', async (req: AuthRequest, res) => {
-  try {
-    const { id } = req.params;
-    const request = await prisma.leaveRequest.findUnique({
-      where: { id: Number(id) },
-      include: { user: true }
-    });
 
-    if (!request) return res.status(404).json({ error: 'Request not found' });
-
-    // If it was already approved, credit back the leaveBalance
-    if (request.status === 'APPROVED') {
-      const days = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      await prisma.user.update({
-        where: { id: request.userId },
-        data: { leaveBalance: { increment: days } }
-      });
-    }
-
-    await prisma.leaveRequest.delete({ where: { id: Number(id) } });
-    res.json({ message: 'Leave request deleted successfully' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 
 // ── Daily Attendance Report ───────────────────────────────────────────────────
@@ -450,6 +425,9 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Report_${user.fullName}_${month}.xlsx`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
