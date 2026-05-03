@@ -371,6 +371,15 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     return ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date(y, m - 1, d).getDay()];
   };
 
+  const to24Hour = (time12: string) => {
+    if (!time12) return '';
+    const [time, modifier] = time12.split(' ');
+    let [hours, minutes] = time.split(':');
+    if (hours === '12') hours = '00';
+    if (modifier === 'PM') hours = String(parseInt(hours, 10) + 12).padStart(2, '0');
+    return `${hours.padStart(2, '0')}:${minutes}`;
+  };
+
   const dayOfWeek = getLocalDay(date);
   const currentDaySlots = trainee.slots.filter(s => s.day === dayOfWeek).sort((a, b) => a.slotNo - b.slotNo);
 
@@ -419,7 +428,22 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               value={slotNo || 'global'}
               onChange={(e) => {
                 const val = e.target.value;
-                setSlotNo(val === 'global' ? null : Number(val));
+                if (val === 'global') {
+                  setSlotNo(null);
+                  setInTime('');
+                  setOutTime('');
+                } else {
+                  const sNum = Number(val);
+                  setSlotNo(sNum);
+                  const sObj = currentDaySlots.find(s => s.slotNo === sNum) || trainee.slots.find(s => s.slotNo === sNum);
+                  if (sObj) {
+                    setInTime(to24Hour(sObj.start));
+                    setOutTime(to24Hour(sObj.end));
+                  } else {
+                    setInTime('');
+                    setOutTime('');
+                  }
+                }
               }}
             >
               <option value="global">Overall Day Punch</option>

@@ -37,6 +37,10 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
 
     const result = users.map((user) => {
       const attendance = user.attendances[0];
+      const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][today.getDay()];
+      const daySlots = user.slots.filter((s) => s.dayOfWeek === dayOfWeek) || [];
+      const hasSlot = daySlots.length > 0;
+
       return {
         id: user.id,
         empCode: user.identifier,
@@ -49,7 +53,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
           end: s.endTime,
           slotNo: s.slotNo,
         })),
-        status: attendance?.status || 'ABSENT',
+        status: attendance?.status || (hasSlot ? 'ABSENT' : '--'),
         date: today.toLocaleDateString('en-IN'),
         in: (() => {
           if (!attendance) return '--';
