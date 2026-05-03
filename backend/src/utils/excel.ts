@@ -247,7 +247,10 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     totals: {
       late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
       earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`
-    }
+    },
+    hasSlot1: user.slots?.some((s: any) => s.slotNo === 1) || false,
+    hasSlot2: user.slots?.some((s: any) => s.slotNo === 2) || false,
+    hasSlot3: user.slots?.some((s: any) => s.slotNo === 3) || false
   };
 };
 
