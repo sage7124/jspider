@@ -70,12 +70,13 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
 
     let totalLateMins = 0;
     let totalEarlyMins = 0;
+    const isSunday = currentDate.getDay() === 0;
 
     const calcLate = (slot: any, dayInTime: Date, slotInTime?: Date) => {
       if (!slot) return '--';
       const inTime = slotInTime || dayInTime;
       if (!inTime) {
-        if (isFutureDay) return '--';
+        if (isFutureDay || isSunday) return '--';
         const start = getSlotStartTime(slot);
         if (isToday && start && start.getTime() > now.getTime()) return '--';
         return 'ABSENT';
@@ -98,6 +99,7 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       end.setHours(eh, em, 0, 0);
 
       if (inTime.getTime() > end.getTime()) {
+        if (isSunday) return '--';
         return 'ABSENT';
       }
 
@@ -122,7 +124,7 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
 
       if (inTime && inTime.getTime() > slotEnd.getTime()) return '--';
       if (!outTime) {
-        if (isFutureDay) return '--';
+        if (isFutureDay || isSunday) return '--';
         if (isToday && slotEnd.getTime() > now.getTime()) return '--';
         return '--';
       }
@@ -138,7 +140,7 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
 
     const getDefaultStatus = (slot: any) => {
       if (!slot) return '--';
-      if (isFutureDay) return '--';
+      if (isFutureDay || isSunday) return '--';
       const start = getSlotStartTime(slot);
       if (isToday && start && start.getTime() > now.getTime()) return '--';
       return 'ABSENT';

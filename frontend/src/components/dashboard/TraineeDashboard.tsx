@@ -408,19 +408,23 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
           ) : !reportData || reportData.rows.length === 0 ? (
             <div className="flex items-center justify-center p-12 text-gray-500 font-medium">No records found for this month</div>
           ) : (
-            <table className="w-full text-sm text-left min-w-[1000px]">
+            <table className="w-full text-sm text-left min-w-[1400px]">
               <thead className="bg-[#1976D2] text-white">
                 <tr>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Date</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Day</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">In Time</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Out Time</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S1 Late</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S1 Early</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#0D47A1]">S2 Late</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#0D47A1]">S2 Early</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S3 Late</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S3 Early</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S1 In</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S1 Out</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S1 Late</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S1 Early</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#0D47A1]">S2 In</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#0D47A1]">S2 Out</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#0D47A1]">S2 Late</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#0D47A1]">S2 Early</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S3 In</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S3 Out</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S3 Late</th>
+                  <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S3 Early</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -428,22 +432,26 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   <tr key={i} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{r.date}</td>
                     <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{r.day}</td>
-                    <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{r.inTime}</td>
-                    <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{r.outTime}</td>
-                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s1Late}</td>
-                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s1Early}</td>
-                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-100/30 border-r">{r.s2Late}</td>
-                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-100/30 border-r">{r.s2Early}</td>
-                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s3Late}</td>
-                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30">{r.s3Early}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s1In}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s1Out}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s1Late}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s1Early}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-100/30 border-r">{r.s2In}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-100/30 border-r">{r.s2Out}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-100/30 border-r">{r.s2Late}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-100/30 border-r">{r.s2Early}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s3In}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s3Out}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s3Late}</td>
+                    <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30">{r.s3Early}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
                 <tr>
-                  <td colSpan={4} className="px-4 py-4 text-right text-gray-700 uppercase tracking-wider">Total Accumulated Duration:</td>
-                  <td colSpan={3} className="px-4 py-4 text-red-600 text-lg">Total Late: {reportData.totals.late}</td>
-                  <td colSpan={3} className="px-4 py-4 text-orange-600 text-lg">Total Early Leave: {reportData.totals.earlyDeparture}</td>
+                  <td colSpan={6} className="px-4 py-4 text-right text-gray-700 uppercase tracking-wider">Total Accumulated Duration:</td>
+                  <td colSpan={4} className="px-4 py-4 text-red-600 text-lg">Total Late: {reportData.totals.late}</td>
+                  <td colSpan={4} className="px-4 py-4 text-orange-600 text-lg">Total Early Leave: {reportData.totals.earlyDeparture}</td>
                 </tr>
               </tfoot>
             </table>

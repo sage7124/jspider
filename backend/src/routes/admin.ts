@@ -293,7 +293,8 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
       const holiday = holidays.length > 0 ? holidays[0] : null;
       const leave = leaves.find(l => l.userId === t.id);
 
-      let status = att ? att.status : 'ABSENT';
+      const isSunday = targetDate.getDay() === 0;
+      let status = att ? att.status : (isSunday ? '--' : 'ABSENT');
       let inTime = att?.inTime ? new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
       let outTime = att?.outTime ? new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
 
