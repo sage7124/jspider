@@ -423,9 +423,9 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               }}
             >
               <option value="global">Overall Day Punch</option>
-              {currentDaySlots.map(s => (
-                <option key={s.slotNo} value={s.slotNo}>Slot {s.slotNo} ({s.start} - {s.end})</option>
-              ))}
+              <option value="1">Slot 1 {currentDaySlots.find(s => s.slotNo === 1) ? `(${currentDaySlots.find(s => s.slotNo === 1)?.start} - ${currentDaySlots.find(s => s.slotNo === 1)?.end})` : ''}</option>
+              <option value="2">Slot 2 {currentDaySlots.find(s => s.slotNo === 2) ? `(${currentDaySlots.find(s => s.slotNo === 2)?.start} - ${currentDaySlots.find(s => s.slotNo === 2)?.end})` : ''}</option>
+              <option value="3">Slot 3 {currentDaySlots.find(s => s.slotNo === 3) ? `(${currentDaySlots.find(s => s.slotNo === 3)?.start} - ${currentDaySlots.find(s => s.slotNo === 3)?.end})` : ''}</option>
             </select>
           </div>
 
