@@ -246,7 +246,10 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
     const trainees = await prisma.user.findMany({
       where: { role: 'TRAINEE' },
       orderBy: { fullName: 'asc' },
-      include: { attendances: { where: { date: targetDate } } }
+      include: { 
+        attendances: { where: { date: targetDate } },
+        slots: true
+      }
     });
 
     const holidays = await prisma.holiday.findMany({
@@ -268,8 +271,11 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
       const holiday = holidays.length > 0 ? holidays[0] : null;
       const leave = leaves.find(l => l.userId === t.id);
 
-      const isSunday = targetDate.getDay() === 0;
-      let status = att ? att.status : (isSunday ? '--' : 'ABSENT');
+      const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][targetDate.getDay()];
+      const daySlots = t.slots?.filter(s => s.dayOfWeek === dayOfWeek) || [];
+      const hasSlot = daySlots.length > 0;
+
+      let status = att ? att.status : (hasSlot ? 'ABSENT' : '--');
       let inTime = att?.inTime ? new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
       let outTime = att?.outTime ? new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
 

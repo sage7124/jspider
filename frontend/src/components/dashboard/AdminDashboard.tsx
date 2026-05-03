@@ -1002,13 +1002,24 @@ const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
       console.error(err);
     } finally { setLoading(false); }
   };
+  const getLocalDayAndDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(y, m - 1, d).getDay()];
+    return `${dayName}, ${new Date(y, m - 1, d).toLocaleDateString('en-IN')}`;
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl p-6 relative max-h-[90vh] flex flex-col">
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
-        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-          <Calendar className="text-indigo-600" /> Daily Attendance Report
+        <h2 className="text-xl font-bold mb-6 flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Calendar className="text-indigo-600" /> Daily Attendance Report
+          </span>
+          <span className="text-sm font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+            {getLocalDayAndDate(date)}
+          </span>
         </h2>
         
         <div className="flex gap-4 mb-6">
