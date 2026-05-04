@@ -407,6 +407,26 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     }
   };
 
+  const handleClearPunchOut = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/attendance-manual/${trainee.id}`, {
+        date,
+        slotNo,
+        clearPunchOut: true
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      onSave();
+      onClose();
+    } catch (e) {
+      alert('Failed to clear punch out time');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
@@ -473,10 +493,16 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
           </div>
         </div>
 
-        <button onClick={handleUpdate} disabled={loading}
-          className="w-full mt-8 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition-colors disabled:opacity-50">
-          {loading ? 'Updating...' : 'Save Punch'}
-        </button>
+        <div className="flex gap-2 mt-8">
+          <button onClick={handleUpdate} disabled={loading}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-bold transition-colors disabled:opacity-50">
+            {loading ? 'Updating...' : 'Save Punch'}
+          </button>
+          <button onClick={handleClearPunchOut} disabled={loading}
+            className="flex-1 border-2 border-red-500 hover:bg-red-50 text-red-600 py-2 rounded font-bold transition-colors disabled:opacity-50">
+            {loading ? 'Clearing...' : 'Clear Out'}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -654,11 +654,10 @@ router.post('/force-logout/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// ── Manual Attendance Edit ──────────────────────────────────────────────────
 router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
   try {
     const { traineeId } = req.params;
-    const { inTime, outTime, status, date, slotNo } = req.body; // inTime/outTime format "HH:mm"
+    const { inTime, outTime, status, date, slotNo, clearPunchOut } = req.body; // inTime/outTime format "HH:mm"
     
     // Use provided date or fallback to today
     const targetDate = date ? new Date(date) : new Date();
@@ -667,6 +666,15 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
     const updateData: any = {};
     if (status) updateData.status = status;
     
+    if (clearPunchOut) {
+      if (slotNo && [1, 2, 3].includes(Number(slotNo))) {
+        updateData[`outTime${slotNo}`] = null;
+      } else {
+        updateData.outTime = null;
+      }
+      updateData.status = 'IN';
+    }
+
     const setTime = (timeStr: string) => {
       const [h, m] = timeStr.split(':').map(Number);
       const d = new Date(targetDate);
@@ -674,25 +682,27 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
       return d;
     };
 
-    if (slotNo && [1, 2, 3].includes(Number(slotNo))) {
-      if (inTime && inTime !== '--') updateData[`inTime${slotNo}`] = setTime(inTime);
-      if (outTime && outTime !== '--') updateData[`outTime${slotNo}`] = setTime(outTime);
-      
-      // Also update global in/out if it's the first/last punch of the day
-      // For simplicity, we just set the global ones too if they are not set
-      const existing = await prisma.attendance.findUnique({
-        where: { userId_date: { userId: Number(traineeId), date: targetDate } }
-      });
-      
-      if (inTime && inTime !== '--' && (!existing?.inTime || setTime(inTime) < existing.inTime)) {
-        updateData.inTime = setTime(inTime);
+    if (!clearPunchOut) {
+      if (slotNo && [1, 2, 3].includes(Number(slotNo))) {
+        if (inTime && inTime !== '--') updateData[`inTime${slotNo}`] = setTime(inTime);
+        if (outTime && outTime !== '--') updateData[`outTime${slotNo}`] = setTime(outTime);
+        
+        // Also update global in/out if it's the first/last punch of the day
+        // For simplicity, we just set the global ones too if they are not set
+        const existing = await prisma.attendance.findUnique({
+          where: { userId_date: { userId: Number(traineeId), date: targetDate } }
+        });
+        
+        if (inTime && inTime !== '--' && (!existing?.inTime || setTime(inTime) < existing.inTime)) {
+          updateData.inTime = setTime(inTime);
+        }
+        if (outTime && outTime !== '--' && (!existing?.outTime || setTime(outTime) > existing.outTime)) {
+          updateData.outTime = setTime(outTime);
+        }
+      } else {
+        if (inTime && inTime !== '--') updateData.inTime = setTime(inTime);
+        if (outTime && outTime !== '--') updateData.outTime = setTime(outTime);
       }
-      if (outTime && outTime !== '--' && (!existing?.outTime || setTime(outTime) > existing.outTime)) {
-        updateData.outTime = setTime(outTime);
-      }
-    } else {
-      if (inTime && inTime !== '--') updateData.inTime = setTime(inTime);
-      if (outTime && outTime !== '--') updateData.outTime = setTime(outTime);
     }
 
     await prisma.attendance.upsert({
@@ -702,7 +712,7 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
         userId: Number(traineeId),
         date: targetDate,
         ...updateData,
-        status: status || 'OUT'
+        status: status || (clearPunchOut ? 'IN' : 'OUT')
       }
     });
 
