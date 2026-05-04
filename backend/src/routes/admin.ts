@@ -736,6 +736,7 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
         if (inTime && inTime !== '--') updateData.inTime = setTime(inTime);
         if (outTime && outTime !== '--') updateData.outTime = setTime(outTime);
       }
+    }
     if (inTime && inTime !== '--') {
       const user = await prisma.user.findUnique({
         where: { id: Number(traineeId) },
