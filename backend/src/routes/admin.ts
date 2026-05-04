@@ -756,7 +756,7 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
         const inMinutes = h * 60 + m;
         const slotStartMinutes = sh * 60 + sm;
 
-        if (inMinutes > slotStartMinutes + 15) {
+        if (inMinutes > slotStartMinutes) {
           updateData.isLate = true;
         } else {
           updateData.isLate = false;

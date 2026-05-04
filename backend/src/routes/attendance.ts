@@ -145,8 +145,8 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         const slotStartTime = new Date(today);
         slotStartTime.setHours(sh, sm, 0, 0);
 
-        // Grace period of 15 mins
-        if (now.getTime() > slotStartTime.getTime() + 15 * 60 * 1000) {
+        // Grace period removed - even 1 min late is late
+        if (now.getTime() > slotStartTime.getTime()) {
           isLate = true;
         }
       }
