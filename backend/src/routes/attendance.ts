@@ -89,6 +89,10 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     today.setHours(0, 0, 0, 0);
     const now = new Date();
 
+    const existing = await prisma.attendance.findUnique({
+      where: { userId_date: { userId, date: today } }
+    });
+
     // Find all slots for today
     const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][now.getDay()];
     const slots = await prisma.slot.findMany({
@@ -99,18 +103,32 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     let isLate = false;
     let activeSlot = null;
     if (slots.length > 0) {
-      // Find the first slot whose end time has not passed yet
-      for (const s of slots) {
-        const [eTime, eMod] = s.endTime.split(' ');
-        let [eh, em] = eTime.split(':').map(Number);
-        if (eMod === 'PM' && eh < 12) eh += 12;
-        if (eMod === 'AM' && eh === 12) eh = 0;
-        const slotEnd = new Date(today);
-        slotEnd.setHours(eh, em, 0, 0);
+      if (type === 'OUT' && existing) {
+        // Find a slot that was punched IN but not punched OUT yet
+        for (const s of slots) {
+          const hasIn = existing[`inTime${s.slotNo}`];
+          const hasOut = existing[`outTime${s.slotNo}`];
+          if (hasIn && !hasOut) {
+            activeSlot = s;
+            break;
+          }
+        }
+      }
 
-        if (now.getTime() <= slotEnd.getTime()) {
-          activeSlot = s;
-          break;
+      // If no slot matches above or it is an IN punch, fallback to time-based matching
+      if (!activeSlot) {
+        for (const s of slots) {
+          const [eTime, eMod] = s.endTime.split(' ');
+          let [eh, em] = eTime.split(':').map(Number);
+          if (eMod === 'PM' && eh < 12) eh += 12;
+          if (eMod === 'AM' && eh === 12) eh = 0;
+          const slotEnd = new Date(today);
+          slotEnd.setHours(eh, em, 0, 0);
+
+          if (now.getTime() <= slotEnd.getTime()) {
+            activeSlot = s;
+            break;
+          }
         }
       }
 
@@ -135,11 +153,6 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     const activeSlotNo = activeSlot ? activeSlot.slotNo : 1;
-
-    // Upsert attendance record
-    const existing = await prisma.attendance.findUnique({
-      where: { userId_date: { userId, date: today } }
-    });
 
     if (type === 'IN') {
       if (existing?.status === 'IN') {
