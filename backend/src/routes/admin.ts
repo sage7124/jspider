@@ -698,6 +698,7 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
     if (clearPunchOut) {
       if (slotNo && [1, 2, 3].includes(Number(slotNo))) {
         updateData[`outTime${slotNo}`] = null;
+        updateData.outTime = null;
       } else {
         updateData.outTime = null;
         updateData.outTime1 = null;
