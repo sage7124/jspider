@@ -71,14 +71,27 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
             .map(t => new Date(t));
           if (outTimes.length === 0) return '--';
           const latest = new Date(Math.max(...outTimes.map(t => t.getTime())));
+          if (latest.getHours() === 0 && latest.getMinutes() === 0) return '--';
           return latest.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         })(),
         inTime1: attendance?.inTime1 ? new Date(attendance.inTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        outTime1: attendance?.outTime1 ? new Date(attendance.outTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime1: attendance?.outTime1 ? (() => {
+          const d = new Date(attendance.outTime1);
+          if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })() : '--',
         inTime2: attendance?.inTime2 ? new Date(attendance.inTime2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        outTime2: attendance?.outTime2 ? new Date(attendance.outTime2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime2: attendance?.outTime2 ? (() => {
+          const d = new Date(attendance.outTime2);
+          if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })() : '--',
         inTime3: attendance?.inTime3 ? new Date(attendance.inTime3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        outTime3: attendance?.outTime3 ? new Date(attendance.outTime3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime3: attendance?.outTime3 ? (() => {
+          const d = new Date(attendance.outTime3);
+          if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })() : '--',
         isLate: attendance?.isLate || false,
         isApproved: user.isApproved,
         totalLeaves: user.totalLeaves,
@@ -281,7 +294,11 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
 
       let status = att ? att.status : (hasSlot ? 'ABSENT' : '--');
       let inTime = att?.inTime ? new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
-      let outTime = att?.outTime ? new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
+      let outTime = att?.outTime ? (() => {
+        const d = new Date(att.outTime);
+        if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      })() : '--';
 
       if (!att) {
         if (holiday) {
@@ -303,11 +320,23 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
         inTime,
         outTime,
         inTime1: att?.inTime1 ? new Date(att.inTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        outTime1: att?.outTime1 ? new Date(att.outTime1).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime1: att?.outTime1 ? (() => {
+          const d = new Date(att.outTime1);
+          if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })() : '--',
         inTime2: att?.inTime2 ? new Date(att.inTime2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        outTime2: att?.outTime2 ? new Date(att.outTime2).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime2: att?.outTime2 ? (() => {
+          const d = new Date(att.outTime2);
+          if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })() : '--',
         inTime3: att?.inTime3 ? new Date(att.inTime3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
-        outTime3: att?.outTime3 ? new Date(att.outTime3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime3: att?.outTime3 ? (() => {
+          const d = new Date(att.outTime3);
+          if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })() : '--',
       };
     });
 
@@ -671,6 +700,9 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
         updateData[`outTime${slotNo}`] = null;
       } else {
         updateData.outTime = null;
+        updateData.outTime1 = null;
+        updateData.outTime2 = null;
+        updateData.outTime3 = null;
       }
       updateData.status = 'IN';
     }
