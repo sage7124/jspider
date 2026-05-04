@@ -736,6 +736,31 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
         if (inTime && inTime !== '--') updateData.inTime = setTime(inTime);
         if (outTime && outTime !== '--') updateData.outTime = setTime(outTime);
       }
+    if (inTime && inTime !== '--') {
+      const user = await prisma.user.findUnique({
+        where: { id: Number(traineeId) },
+        include: { slots: true }
+      });
+      const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][targetDate.getDay()];
+      const currentDaySlots = user?.slots.filter(s => s.dayOfWeek === dayOfWeek).sort((a, b) => a.slotNo - b.slotNo) || [];
+      const sObj = currentDaySlots.find(s => s.slotNo === (slotNo || 1)) || user?.slots.find(s => s.slotNo === (slotNo || 1));
+      
+      if (sObj) {
+        const [sTime, sMod] = sObj.startTime.split(' ');
+        let [sh, sm] = sTime.split(':').map(Number);
+        if (sMod === 'PM' && sh < 12) sh += 12;
+        if (sMod === 'AM' && sh === 12) sh = 0;
+        
+        const [h, m] = inTime.split(':').map(Number);
+        const inMinutes = h * 60 + m;
+        const slotStartMinutes = sh * 60 + sm;
+
+        if (inMinutes > slotStartMinutes + 15) {
+          updateData.isLate = true;
+        } else {
+          updateData.isLate = false;
+        }
+      }
     }
 
     await prisma.attendance.upsert({
