@@ -27,7 +27,7 @@ interface LeaveRequest {
   status: string; createdAt: string;
   user: { fullName: string; identifier: string; department: string | null; leaveBalance: number };
 }
-interface PendingTeacher {
+interface PendingNICTian {
   id: number; identifier: string; fullName: string; email: string | null;
   department: string | null; createdAt: string;
 }
@@ -604,7 +604,7 @@ const MonthlyDownloadModal = ({ onClose }: { onClose: () => void }) => {
 
 // ── Pending Approvals Page ────────────────────────────────────────────────────
 const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApprove: () => void }) => {
-  const [pending, setPending] = useState<PendingTeacher[]>([]);
+  const [pending, setPending] = useState<PendingNICTian[]>([]);
 
   useEffect(() => { fetchPending(); }, []);
 
@@ -625,7 +625,7 @@ const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApp
     <div className="bg-white rounded-lg shadow-sm">
       <div className="p-4 border-b flex items-center gap-3">
         <button onClick={onBack} className="text-gray-500 hover:text-gray-800 transition-colors"><ArrowLeft size={20} /></button>
-        <h2 className="text-xl font-bold">Pending Teachers Approvals</h2>
+        <h2 className="text-xl font-bold">Pending NICTians Approvals</h2>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
@@ -640,7 +640,7 @@ const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApp
           </thead>
           <tbody>
             {pending.length === 0 ? (
-              <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-400">No pending Teachers 🎉</td></tr>
+              <tr><td colSpan={5} className="px-6 py-10 text-center text-gray-400">No pending NICTians 🎉</td></tr>
             ) : (
               pending.map((t) => (
                 <tr key={t.id} className="border-b hover:bg-gray-50">
@@ -688,6 +688,7 @@ const AdminDashboard: React.FC = () => {
   const [viewDetailUser, setViewDetailUser] = useState<Trainee | null>(null);
   const [showDailyReport, setShowDailyReport] = useState(false);
   const [showHolidays, setShowHolidays] = useState(false);
+  const [showNotices, setShowNotices] = useState(false);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -737,7 +738,7 @@ const AdminDashboard: React.FC = () => {
             <div className="w-2 h-6 bg-pink-500 rounded-sm"></div>
             <div className="w-2 h-6 bg-green-500 rounded-sm -ml-1"></div>
           </div>
-          <h2 className="text-xl font-bold">Teacher Attendance</h2>
+          <h2 className="text-xl font-bold">NICTian Attendance</h2>
 
           {/* 🔔 Notification Bell */}
           <button onClick={() => setView('pending')} className="relative ml-2 text-gray-500 hover:text-yellow-500 transition-colors" title="Pending Approvals">
@@ -788,6 +789,10 @@ const AdminDashboard: React.FC = () => {
           <button onClick={() => setShowHolidays(true)}
             className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded font-medium transition-colors">
             Holidays
+          </button>
+          <button onClick={() => setShowNotices(true)}
+            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded font-medium transition-colors">
+            Notices
           </button>
           <button onClick={() => setShowDailyReport(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
@@ -904,12 +909,10 @@ const AdminDashboard: React.FC = () => {
       {viewDetailUser && <ViewSlotsDetailModal trainee={viewDetailUser} onClose={() => setViewDetailUser(null)} />}
       {showDailyReport && <DailyReportModal onClose={() => setShowDailyReport(false)} />}
       {showHolidays && <HolidayManagementModal onClose={() => setShowHolidays(false)} />}
+      {showNotices && <NoticesModal onClose={() => setShowNotices(false)} />}
     </div>
   );
 };
-
-
-
 // ── View Slots Detail Modal ──────────────────────────────────────────────────
 const ViewSlotsDetailModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
   return (
@@ -1082,7 +1085,7 @@ const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
             <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Filter</label>
             <select value={filter} onChange={e => setFilter(e.target.value)}
               className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none min-w-[150px]">
-              <option value="ALL">All Teachers</option>
+              <option value="ALL">All NICTians</option>
               <option value="PRESENT">Present Only</option>
               <option value="ABSENT">Absent Only</option>
             </select>
@@ -1531,6 +1534,137 @@ const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
               </tbody>
             </table>
           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Notices Management Modal ───────────────────────────────────────────────────
+const NoticesModal = ({ onClose }: { onClose: () => void }) => {
+  const [notices, setNotices] = useState<any[]>([]);
+  const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  const [message, setMessage] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [userId, setUserId] = useState<string>('');
+
+  const fetchNotices = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/notices`, { headers: { Authorization: `Bearer ${token}` } });
+      setNotices(res.data);
+      const userRes = await axios.get(`${API}/attendance`, { headers: { Authorization: `Bearer ${token}` } });
+      setTrainees(userRes.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotices();
+  }, []);
+
+  const handleAddNotice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message || !fromDate || !toDate) return alert('Message, From Date, and To Date are required');
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/notices`, { message, fromDate, toDate, userId: userId ? Number(userId) : null }, { headers: { Authorization: `Bearer ${token}` } });
+      setMessage(''); setFromDate(''); setToDate(''); setUserId('');
+      fetchNotices();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to add notice');
+    }
+  };
+
+  const handleDeleteNotice = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this notice?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/notices/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      fetchNotices();
+    } catch (err) {
+      alert('Failed to delete notice');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden relative">
+        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+          <h2 className="text-xl font-bold">Manage Notices</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X size={24} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col md:flex-row gap-8">
+          <div className="flex-1">
+            <h3 className="font-bold mb-4">Add New Notice</h3>
+            <form onSubmit={handleAddNotice} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Message</label>
+                <textarea 
+                  className="w-full border p-2 rounded" 
+                  rows={3} 
+                  required 
+                  value={message} 
+                  onChange={e => setMessage(e.target.value)} 
+                />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">From Date</label>
+                  <input type="date" required className="w-full border p-2 rounded" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">To Date</label>
+                  <input type="date" required className="w-full border p-2 rounded" value={toDate} onChange={e => setToDate(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Target NICTian (Optional)</label>
+                <select className="w-full border p-2 rounded" value={userId} onChange={e => setUserId(e.target.value)}>
+                  <option value="">All NICTians</option>
+                  {trainees.map(t => (
+                    <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
+                  ))}
+                </select>
+              </div>
+              <button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded transition-colors mt-2">
+                Send Notice
+              </button>
+            </form>
+          </div>
+
+          <div className="flex-1">
+            <h3 className="font-bold mb-4">Active Notices</h3>
+            {loading ? <p className="text-gray-500">Loading notices...</p> : (
+              <div className="space-y-4">
+                {notices.length === 0 ? <p className="text-gray-400">No notices found.</p> : notices.map(n => (
+                  <div key={n.id} className="border p-4 rounded bg-gray-50 flex justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">{n.message}</p>
+                      <div className="text-xs text-gray-500 mt-2 flex gap-4">
+                        <span>From: {new Date(n.fromDate).toLocaleDateString()}</span>
+                        <span>To: {new Date(n.toDate).toLocaleDateString()}</span>
+                      </div>
+                      <div className="text-xs text-blue-600 mt-1">
+                        Target: {n.userId ? `${n.user?.fullName} (${n.user?.identifier})` : 'All NICTians'}
+                      </div>
+                    </div>
+                    <button onClick={() => handleDeleteNotice(n.id)} className="text-red-500 hover:bg-red-100 p-2 rounded self-start">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

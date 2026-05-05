@@ -33,6 +33,7 @@ model User {
   slots          Slot[]       // Slots assigned to this trainee
   attendances    Attendance[]
   leaveRequests  LeaveRequest[]
+  notices        Notice[]
 }
 
 model LeaveRequest {
@@ -97,5 +98,15 @@ model Holiday {
   id             Int      @id @default(autoincrement())
   date           DateTime @unique
   name           String
+  createdAt      DateTime @default(now())
+}
+
+model Notice {
+  id             Int      @id @default(autoincrement())
+  message        String
+  fromDate       DateTime
+  toDate         DateTime
+  userId         Int?     // null means for everyone
+  user           User?    @relation(fields: [userId], references: [id])
   createdAt      DateTime @default(now())
 }

@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { authenticateToken, AuthRequest } from '../middleware/authMiddleware';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -128,6 +129,37 @@ router.post('/login', async (req, res) => {
       error: 'Internal server error',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined 
     });
+  }
+});
+
+router.get('/notices', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const notices = await prisma.notice.findMany({
+      where: {
+        AND: [
+          { fromDate: { lte: today } },
+          { toDate: { gte: today } },
+          {
+            OR: [
+              { userId: null },
+              { userId: userId }
+            ]
+          }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(notices);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

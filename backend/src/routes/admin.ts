@@ -863,5 +863,51 @@ router.put('/settings', async (req: AuthRequest, res) => {
 });
 
 
+// ── Notices Management ────────────────────────────────────────────────────────
+router.get('/notices', async (req: AuthRequest, res) => {
+  try {
+    const notices = await prisma.notice.findMany({
+      include: { user: { select: { fullName: true, identifier: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(notices);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/notices', async (req: AuthRequest, res) => {
+  try {
+    const { message, fromDate, toDate, userId } = req.body;
+    if (!message || !fromDate || !toDate) {
+      return res.status(400).json({ error: 'Message, fromDate, and toDate are required' });
+    }
+    
+    const notice = await prisma.notice.create({
+      data: {
+        message,
+        fromDate: new Date(fromDate),
+        toDate: new Date(toDate),
+        userId: userId ? Number(userId) : null
+      },
+      include: { user: { select: { fullName: true, identifier: true } } }
+    });
+    res.json(notice);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/notices/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.notice.delete({ where: { id: Number(id) } });
+    res.json({ message: 'Notice deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

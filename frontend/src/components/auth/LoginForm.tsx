@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface LoginFormProps {
-  role: 'TEACHER' | 'ADMIN';
+  role: 'NICTIANS' | 'ADMIN';
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -18,8 +20,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
     setError('');
     setLoading(true);
     try {
-      // Map TEACHER tab → TRAINEE role for backend
-      const backendRole = role === 'TEACHER' ? 'TRAINEE' : 'ADMIN';
+      // Map NICTIANS tab → TRAINEE role for backend
+      const backendRole = role === 'NICTIANS' ? 'TRAINEE' : 'ADMIN';
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
       // Device Locking Logic
@@ -61,15 +63,22 @@ const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
         />
       </div>
       
-      <div>
+      <div className="relative">
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1976D2] focus:border-transparent"
+          className="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1976D2] focus:border-transparent pr-12"
           required
         />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+        >
+          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
       </div>
 
       <button

@@ -5,7 +5,7 @@ import RegisterForm from '../components/auth/RegisterForm';
 import { User } from 'lucide-react';
 
 const AuthPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'TEACHER' | 'ADMIN'>('TEACHER');
+  const [activeTab, setActiveTab] = useState<'NICTIANS' | 'ADMIN'>('NICTIANS');
   const [isLogin, setIsLogin] = useState(true);
 
   return (
@@ -27,16 +27,16 @@ const AuthPage: React.FC = () => {
           <div className="flex border-b border-gray-200 mb-6">
             <button
               className={`flex-1 py-2 text-sm font-semibold uppercase tracking-wider transition-colors ${
-                activeTab === 'TEACHER'
+                activeTab === 'NICTIANS'
                   ? 'text-[#1976D2] border-b-2 border-[#1976D2]'
                   : 'text-gray-400 hover:text-gray-600'
               }`}
               onClick={() => {
-                setActiveTab('TEACHER');
+                setActiveTab('NICTIANS');
                 setIsLogin(true); // Reset to login when switching tabs
               }}
             >
-              TEACHER
+              NICTians
             </button>
             <button
               className={`flex-1 py-2 text-sm font-semibold uppercase tracking-wider transition-colors ${
@@ -62,8 +62,8 @@ const AuthPage: React.FC = () => {
             )}
           </div>
 
-          {/* Toggle Login/Register for Teacher */}
-          {activeTab === 'TEACHER' && (
+          {/* Toggle Login/Register for NICTians */}
+          {activeTab === 'NICTIANS' && (
             <div className="mt-6 text-center">
               <button
                 onClick={() => setIsLogin(!isLogin)}

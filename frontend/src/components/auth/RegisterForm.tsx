@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { Eye, EyeOff } from 'lucide-react';
 
 const RegisterForm: React.FC = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     mobile: '',
-    department: '',
     password: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -29,7 +30,7 @@ const RegisterForm: React.FC = () => {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       await axios.post(`${API_URL}/api/auth/register`, formData);
       setSuccess(true);
-      setFormData({ fullName: '', email: '', mobile: '', department: '', password: '' });
+      setFormData({ fullName: '', email: '', mobile: '', password: '' });
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed');
     } finally {
@@ -74,30 +75,23 @@ const RegisterForm: React.FC = () => {
         />
       </div>
 
-      <div>
-        <select
-          name="department"
-          value={formData.department}
-          onChange={handleChange}
-          className={`w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1976D2] focus:border-transparent appearance-none bg-white ${!formData.department ? 'text-gray-500' : 'text-black'}`}
-          required
-        >
-          <option value="" disabled>Select Department</option>
-          <option value="Technical">Technical</option>
-          <option value="Non-Technical">Non-Technical</option>
-        </select>
-      </div>
-
-      <div>
+      <div className="relative">
         <input
-          type="password"
+          type={showPassword ? "text" : "password"}
           name="password"
           placeholder="Create Password"
           value={formData.password}
           onChange={handleChange}
-          className="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1976D2] focus:border-transparent"
+          className="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1976D2] focus:border-transparent pr-12"
           required
         />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+        >
+          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
       </div>
 
       <button

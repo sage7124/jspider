@@ -24,6 +24,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [reportData, setReportData] = useState<any>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [holidays, setHolidays] = useState<any[]>([]);
+  const [notices, setNotices] = useState<any[]>([]);
 
   useEffect(() => {
     fetchStatus();
@@ -31,6 +32,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     fetchHistory();
     fetchReportData();
     fetchHolidays();
+    fetchNotices();
     
     if (!sessionStorage.getItem('leaveNoticeShown')) {
       setShowNoticeModal(true);
@@ -100,6 +102,17 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setHolidays(res.data);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchNotices = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/auth/notices`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotices(res.data);
     } catch (err) { console.error(err); }
   };
 
@@ -253,6 +266,25 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         </div>
       </div>
 
+      {notices.length > 0 && (
+        <div className="mt-6">
+          <div className="bg-white rounded-lg shadow-sm border border-yellow-200 overflow-hidden">
+            <div className="bg-yellow-50 p-4 border-b border-yellow-200">
+              <h3 className="text-lg font-bold text-yellow-800 flex items-center gap-2">
+                <Info size={20} /> Notice Board
+              </h3>
+            </div>
+            <div className="p-0">
+              {notices.map((n, idx) => (
+                <div key={n.id} className={`p-4 ${idx !== notices.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                  <p className="font-medium text-gray-800">{n.message}</p>
+                  <p className="text-xs text-gray-400 mt-2">Posted on {new Date(n.createdAt).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6 mt-6">
         {/* Leave Status */}
