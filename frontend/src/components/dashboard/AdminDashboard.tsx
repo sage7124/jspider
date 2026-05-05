@@ -1550,6 +1550,7 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [userId, setUserId] = useState<string>('');
+  const [editNoticeId, setEditNoticeId] = useState<number | null>(null);
 
   const fetchNotices = async () => {
     try {
@@ -1575,12 +1576,27 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
     if (!message || !fromDate || !toDate) return alert('Message, From Date, and To Date are required');
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API}/notices`, { message, fromDate, toDate, userId: userId ? Number(userId) : null }, { headers: { Authorization: `Bearer ${token}` } });
-      setMessage(''); setFromDate(''); setToDate(''); setUserId('');
+      const payload = { message, fromDate, toDate, userId: userId ? Number(userId) : null };
+      
+      if (editNoticeId) {
+        await axios.put(`${API}/notices/${editNoticeId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      } else {
+        await axios.post(`${API}/notices`, payload, { headers: { Authorization: `Bearer ${token}` } });
+      }
+      
+      setMessage(''); setFromDate(''); setToDate(''); setUserId(''); setEditNoticeId(null);
       fetchNotices();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to add notice');
+      alert(err.response?.data?.error || `Failed to ${editNoticeId ? 'update' : 'add'} notice`);
     }
+  };
+
+  const handleEditClick = (n: any) => {
+    setEditNoticeId(n.id);
+    setMessage(n.message);
+    setFromDate(n.fromDate.split('T')[0]);
+    setToDate(n.toDate.split('T')[0]);
+    setUserId(n.userId ? String(n.userId) : '');
   };
 
   const handleDeleteNotice = async (id: number) => {
@@ -1604,7 +1620,7 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
 
         <div className="flex-1 overflow-y-auto p-6 flex flex-col md:flex-row gap-8">
           <div className="flex-1">
-            <h3 className="font-bold mb-4">Add New Notice</h3>
+            <h3 className="font-bold mb-4">{editNoticeId ? 'Update Notice' : 'Add New Notice'}</h3>
             <form onSubmit={handleAddNotice} className="flex flex-col gap-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Message</label>
@@ -1635,9 +1651,16 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
                   ))}
                 </select>
               </div>
-              <button type="submit" className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded transition-colors mt-2">
-                Send Notice
-              </button>
+              <div className="flex gap-2 mt-2">
+                <button type="submit" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded transition-colors">
+                  {editNoticeId ? 'Update Notice' : 'Send Notice'}
+                </button>
+                {editNoticeId && (
+                  <button type="button" onClick={() => { setEditNoticeId(null); setMessage(''); setFromDate(''); setToDate(''); setUserId(''); }} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors">
+                    Cancel
+                  </button>
+                )}
+              </div>
             </form>
           </div>
 
@@ -1657,9 +1680,14 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
                         Target: {n.userId ? `${n.user?.fullName} (${n.user?.identifier})` : 'All NICTians'}
                       </div>
                     </div>
-                    <button onClick={() => handleDeleteNotice(n.id)} className="text-red-500 hover:bg-red-100 p-2 rounded self-start">
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex flex-col gap-2 self-start">
+                      <button onClick={() => handleEditClick(n)} className="text-blue-500 hover:bg-blue-100 p-2 rounded">
+                        <Edit size={18} />
+                      </button>
+                      <button onClick={() => handleDeleteNotice(n.id)} className="text-red-500 hover:bg-red-100 p-2 rounded">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -909,5 +909,30 @@ router.delete('/notices/:id', async (req: AuthRequest, res) => {
   }
 });
 
+router.put('/notices/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { message, fromDate, toDate, userId } = req.body;
+    if (!message || !fromDate || !toDate) {
+      return res.status(400).json({ error: 'Message, fromDate, and toDate are required' });
+    }
+
+    const notice = await prisma.notice.update({
+      where: { id: Number(id) },
+      data: {
+        message,
+        fromDate: new Date(fromDate),
+        toDate: new Date(toDate),
+        userId: userId ? Number(userId) : null
+      },
+      include: { user: { select: { fullName: true, identifier: true } } }
+    });
+    res.json(notice);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 
