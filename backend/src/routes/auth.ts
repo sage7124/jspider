@@ -137,14 +137,18 @@ router.get('/notices', authenticateToken, async (req: AuthRequest, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const d = new Date();
+    // Convert to IST to get the correct current date in India
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = new Date(d.getTime() + istOffset);
+    const todayString = istTime.toISOString().split('T')[0];
+    const todayStart = new Date(todayString + 'T00:00:00.000Z');
 
     const notices = await prisma.notice.findMany({
       where: {
         AND: [
-          { fromDate: { lte: today } },
-          { toDate: { gte: today } },
+          { fromDate: { lte: todayStart } },
+          { toDate: { gte: todayStart } },
           {
             OR: [
               { userId: null },
