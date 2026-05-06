@@ -10,7 +10,7 @@ const DAY_MAP: Record<string, string> = {
   Friday: 'FRI', Saturday: 'SAT', Sunday: 'SUN',
 };
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
-const MINS = ['00', '15', '30', '45'];
+const MINS = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
 const AMPM = ['AM', 'PM'];
 const SLOT_COUNT = 3; // 3 slots per day
 
@@ -436,7 +436,9 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
         
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Date</label>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">
+              Date <span className="text-blue-500 ml-1">({new Date(date).toLocaleDateString('en-US', { weekday: 'long' })})</span>
+            </label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
