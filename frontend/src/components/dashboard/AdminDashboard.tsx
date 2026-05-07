@@ -519,25 +519,32 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
             </select>
           </div>
 
-          <div>
-            <div className="flex justify-between items-end mb-1">
-              <label className="block text-xs font-bold text-gray-400 uppercase">Punch Times</label>
-              <button 
-                onClick={() => { setInTime(''); setOutTime(''); }} 
-                className="text-[10px] bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1 rounded font-bold shadow-sm"
-              >
-                Clear to ----
-              </button>
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <div className="flex justify-between items-end mb-1">
+                <label className="block text-xs font-bold text-gray-400 uppercase">Punch IN</label>
+                <button 
+                  onClick={() => setInTime('')} 
+                  className="text-[10px] bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-2 py-0.5 rounded font-bold shadow-sm"
+                >
+                  Clear
+                </button>
+              </div>
+              <input type="time" value={inTime} onChange={e => setInTime(e.target.value)}
+                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <input type="time" value={inTime} onChange={e => setInTime(e.target.value)}
-                  className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+            <div className="flex-1">
+              <div className="flex justify-between items-end mb-1">
+                <label className="block text-xs font-bold text-gray-400 uppercase">Punch OUT</label>
+                <button 
+                  onClick={() => setOutTime('')} 
+                  className="text-[10px] bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-2 py-0.5 rounded font-bold shadow-sm"
+                >
+                  Clear
+                </button>
               </div>
-              <div className="flex-1">
-                <input type="time" value={outTime} onChange={e => setOutTime(e.target.value)}
-                  className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
-              </div>
+              <input type="time" value={outTime} onChange={e => setOutTime(e.target.value)}
+                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
           </div>
         </div>
