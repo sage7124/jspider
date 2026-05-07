@@ -162,6 +162,8 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
   const [daySlots, setDaySlots] = useState<Record<string, DaySlots>>(buildInitSlots(trainee.slots));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [sourceDay, setSourceDay] = useState('Monday');
+  const [targetDay, setTargetDay] = useState('All');
 
   const update = (day: string, slotIdx: number, side: 'from' | 'to', field: keyof TimeField, val: string) => {
     setDaySlots((prev) => {
@@ -202,19 +204,34 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl mx-4 p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold">Update Time Slots – {trainee.name}</h2>
-          <button 
-            onClick={() => {
-              setDaySlots((prev) => {
-                const copy = JSON.parse(JSON.stringify(prev));
-                const mon = copy['Monday'];
-                DAYS.forEach(d => { if (d !== 'Monday') copy[d] = JSON.parse(JSON.stringify(mon)); });
-                return copy;
-              });
-            }}
-            className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-3 py-1.5 rounded font-bold transition-colors flex items-center gap-1"
-          >
-            <span>📋</span> Copy Monday to All Days
-          </button>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-bold text-gray-500">Copy:</span>
+            <select value={sourceDay} onChange={e => setSourceDay(e.target.value)} className="border border-gray-300 rounded px-2 py-1.5 bg-white outline-none">
+              {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <span className="text-gray-400 font-bold">to</span>
+            <select value={targetDay} onChange={e => setTargetDay(e.target.value)} className="border border-gray-300 rounded px-2 py-1.5 bg-white outline-none">
+              <option value="All">All Days</option>
+              {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <button 
+              onClick={() => {
+                setDaySlots((prev) => {
+                  const copy = JSON.parse(JSON.stringify(prev));
+                  const src = copy[sourceDay];
+                  if (targetDay === 'All') {
+                    DAYS.forEach(d => { if (d !== sourceDay) copy[d] = JSON.parse(JSON.stringify(src)); });
+                  } else {
+                    copy[targetDay] = JSON.parse(JSON.stringify(src));
+                  }
+                  return copy;
+                });
+              }}
+              className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-1.5 rounded font-bold transition-colors flex items-center gap-1 shadow-sm"
+            >
+              <span>📋</span> Copy
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
@@ -481,16 +498,25 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
             </select>
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Punch IN</label>
-              <input type="time" value={inTime} onChange={e => setInTime(e.target.value)}
-                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+          <div>
+            <div className="flex justify-between items-end mb-1">
+              <label className="block text-xs font-bold text-gray-400 uppercase">Punch Times</label>
+              <button 
+                onClick={() => { setInTime(''); setOutTime(''); }} 
+                className="text-[10px] bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-3 py-1 rounded font-bold shadow-sm"
+              >
+                Clear to ----
+              </button>
             </div>
-            <div className="flex-1">
-              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Punch OUT</label>
-              <input type="time" value={outTime} onChange={e => setOutTime(e.target.value)}
-                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <input type="time" value={inTime} onChange={e => setInTime(e.target.value)}
+                  className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
+              <div className="flex-1">
+                <input type="time" value={outTime} onChange={e => setOutTime(e.target.value)}
+                  className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+              </div>
             </div>
           </div>
         </div>
