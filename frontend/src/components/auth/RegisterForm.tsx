@@ -111,6 +111,16 @@ const RegisterForm: React.FC = () => {
     e.preventDefault();
     setError('');
     setSuccess(false);
+
+    // Strict submission validation for all fields across 4 steps
+    if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName || !formData.photoUrl ||
+        !formData.dateOfJoining || !formData.officeTimings || !formData.educationCompleted || !formData.subClassification || !formData.presentAddress || !formData.permanentAddress ||
+        !formData.aadhaarNumber || !formData.aadhaarPhotoUrl || !formData.panNumber || !formData.panPhotoUrl ||
+        !formData.bankName || !formData.bankAccountNo || !formData.bankIfscCode || !formData.bankBranchName || !formData.emergencyContactName || !formData.emergencyContactMobile) {
+      setError('Please complete all 4 steps and fill in all details before submitting.');
+      return;
+    }
+
     setLoading(true);
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -132,10 +142,21 @@ const RegisterForm: React.FC = () => {
   };
 
   const nextStep = () => {
-    // Validate Step 1 required fields
     if (step === 1) {
-      if (!formData.fullName || !formData.email || !formData.mobile || !formData.password) {
-        setError('Please fill in all required fields.');
+      if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName || !formData.photoUrl) {
+        setError('Please fill in all fields (including Father Name, Mother Name, and Profile Photo upload).');
+        return;
+      }
+    }
+    if (step === 2) {
+      if (!formData.dateOfJoining || !formData.officeTimings || !formData.educationCompleted || !formData.subClassification || !formData.presentAddress || !formData.permanentAddress) {
+        setError('Please fill in all fields (including Education, Classification, and Address).');
+        return;
+      }
+    }
+    if (step === 3) {
+      if (!formData.aadhaarNumber || !formData.aadhaarPhotoUrl || !formData.panNumber || !formData.panPhotoUrl) {
+        setError('Please fill in all fields (including Aadhaar No, PAN No, and document uploads).');
         return;
       }
     }
@@ -151,21 +172,21 @@ const RegisterForm: React.FC = () => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 max-w-2xl mx-auto">
       {/* Step Indicator */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8 px-1">
         {[1, 2, 3, 4].map((s) => (
           <React.Fragment key={s}>
-            <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+            <div className="flex items-center gap-1.5">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                 step === s ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
                 step > s ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'
               }`}>
-                {step > s ? <Check size={14} /> : s}
+                {step > s ? <Check size={12} /> : s}
               </div>
-              <span className={`text-xs font-bold hidden sm:inline ${step === s ? 'text-blue-600' : 'text-gray-400'}`}>
-                {s === 1 ? 'Personal' : s === 2 ? 'Onboarding' : s === 3 ? 'Documents' : 'Bank & Emergency'}
+              <span className={`text-[11px] font-bold hidden md:inline ${step === s ? 'text-blue-600' : 'text-gray-400'}`}>
+                {s === 1 ? 'Personal' : s === 2 ? 'Onboard' : s === 3 ? 'Documents' : 'Bank & Contacts'}
               </span>
             </div>
-            {s < 4 && <div className={`flex-1 h-0.5 mx-2 ${step > s ? 'bg-green-500' : 'bg-gray-100'}`} />}
+            {s < 4 && <div className={`flex-1 h-0.5 min-w-[12px] sm:min-w-[30px] mx-1 ${step > s ? 'bg-green-500' : 'bg-gray-100'}`} />}
           </React.Fragment>
         ))}
       </div>
@@ -195,11 +216,6 @@ const RegisterForm: React.FC = () => {
                 <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Department / Domain</label>
-                <input type="text" name="department" value={formData.department} onChange={handleChange} placeholder="e.g. Web Dev"
-                  className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
               <div className="relative">
                 <label className="block text-xs font-bold text-gray-500 mb-1">Create Password *</label>
                 <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} required
@@ -209,17 +225,17 @@ const RegisterForm: React.FC = () => {
                 </button>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Father's Name</label>
-                <input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Father's Name *</label>
+                <input type="text" name="fatherName" value={formData.fatherName} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Mother's Name</label>
-                <input type="text" name="motherName" value={formData.motherName} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Mother's Name *</label>
+                <input type="text" name="motherName" value={formData.motherName} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo *</label>
                 <div className="flex gap-2 items-center">
                   <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'photoUrl')} disabled={uploadingField === 'photoUrl'} className="hidden" id="reg-photo-input" />
                   <label htmlFor="reg-photo-input" className={`flex-1 border-2 border-dashed rounded px-3 py-2 text-xs font-bold text-center cursor-pointer transition-all ${
@@ -245,39 +261,39 @@ const RegisterForm: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 2: Onboarding & Address Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Date of Joining (DDMMYYYY)</label>
-                <input type="text" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} placeholder="e.g. 01052026"
+                <label className="block text-xs font-bold text-gray-500 mb-1">Date of Joining (DDMMYYYY) *</label>
+                <input type="text" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} placeholder="e.g. 01052026" required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle</label>
-                <input type="text" name="officeTimings" value={formData.officeTimings} onChange={handleChange} placeholder="e.g. 9 AM - 5 PM Shift A"
+                <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle *</label>
+                <input type="text" name="officeTimings" value={formData.officeTimings} onChange={handleChange} placeholder="e.g. 9 AM - 5 PM Shift A" required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed</label>
-                <select name="educationCompleted" value={formData.educationCompleted} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed *</label>
+                <select name="educationCompleted" value={formData.educationCompleted} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Select Education</option>
                   {educations.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Sub Classification</label>
-                <select name="subClassification" value={formData.subClassification} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Sub Classification *</label>
+                <select name="subClassification" value={formData.subClassification} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Select Classification</option>
                   {classifications.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-500 mb-1">Present Address</label>
-                <textarea name="presentAddress" value={formData.presentAddress} onChange={handleChange} rows={2}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Present Address *</label>
+                <textarea name="presentAddress" value={formData.presentAddress} onChange={handleChange} rows={2} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-500 mb-1">Permanent Address</label>
-                <textarea name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} rows={2}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Permanent Address *</label>
+                <textarea name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} rows={2} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
             </div>
@@ -290,12 +306,12 @@ const RegisterForm: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 3: Document Verification</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Number</label>
-                <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} placeholder="e.g. 12-digit number"
+                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Number *</label>
+                <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} placeholder="e.g. 12-digit number" required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document *</label>
                 <div className="flex gap-2 items-center">
                   <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileUpload(e, 'aadhaarPhotoUrl')} disabled={uploadingField === 'aadhaarPhotoUrl'} className="hidden" id="reg-aadhaar-input" />
                   <label htmlFor="reg-aadhaar-input" className={`flex-1 border-2 border-dashed rounded px-3 py-2 text-xs font-bold text-center cursor-pointer transition-all ${
@@ -312,12 +328,12 @@ const RegisterForm: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Number</label>
-                <input type="text" name="panNumber" value={formData.panNumber} onChange={handleChange} placeholder="e.g. ABCDE1234F"
+                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Number *</label>
+                <input type="text" name="panNumber" value={formData.panNumber} onChange={handleChange} placeholder="e.g. ABCDE1234F" required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document *</label>
                 <div className="flex gap-2 items-center">
                   <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileUpload(e, 'panPhotoUrl')} disabled={uploadingField === 'panPhotoUrl'} className="hidden" id="reg-pan-input" />
                   <label htmlFor="reg-pan-input" className={`flex-1 border-2 border-dashed rounded px-3 py-2 text-xs font-bold text-center cursor-pointer transition-all ${
@@ -343,33 +359,33 @@ const RegisterForm: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 4: Bank Account & Emergency Contacts</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Name</label>
-                <input type="text" name="bankName" value={formData.bankName} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Name *</label>
+                <input type="text" name="bankName" value={formData.bankName} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Account Number</label>
-                <input type="text" name="bankAccountNo" value={formData.bankAccountNo} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Account Number *</label>
+                <input type="text" name="bankAccountNo" value={formData.bankAccountNo} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank IFSC Code</label>
-                <input type="text" name="bankIfscCode" value={formData.bankIfscCode} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank IFSC Code *</label>
+                <input type="text" name="bankIfscCode" value={formData.bankIfscCode} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Branch Name</label>
-                <input type="text" name="bankBranchName" value={formData.bankBranchName} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Branch Name *</label>
+                <input type="text" name="bankBranchName" value={formData.bankBranchName} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Name</label>
-                <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Name *</label>
+                <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Mobile</label>
-                <input type="text" name="emergencyContactMobile" value={formData.emergencyContactMobile} onChange={handleChange}
+                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Mobile *</label>
+                <input type="text" name="emergencyContactMobile" value={formData.emergencyContactMobile} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
