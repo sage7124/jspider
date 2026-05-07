@@ -11,7 +11,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
 
 router.post('/register', async (req, res) => {
   try {
-    const { fullName, email, mobile, department, password } = req.body;
+    const { 
+      fullName, email, mobile, department, password,
+      photoUrl, officeTimings, dateOfJoining, aadhaarNumber, aadhaarPhotoUrl,
+      panNumber, panPhotoUrl, bankName, bankAccountNo, bankIfscCode, bankBranchName,
+      emergencyContactName, emergencyContactMobile, fatherName, motherName,
+      presentAddress, permanentAddress, educationCompleted, subClassification
+    } = req.body;
     
     // Check if user exists
     const existingUser = await prisma.user.findFirst({
@@ -31,10 +37,29 @@ router.post('/register', async (req, res) => {
         role: 'TRAINEE',
         fullName,
         email,
-        identifier: mobile, // Using mobile as identifier for registration
+        identifier: mobile,
         department,
         password: hashedPassword,
-        isApproved: false, // Explicitly false
+        isApproved: false,
+        photoUrl,
+        officeTimings,
+        dateOfJoining,
+        aadhaarNumber,
+        aadhaarPhotoUrl,
+        panNumber,
+        panPhotoUrl,
+        bankName,
+        bankAccountNo,
+        bankIfscCode,
+        bankBranchName,
+        emergencyContactName,
+        emergencyContactMobile,
+        fatherName,
+        motherName,
+        presentAddress,
+        permanentAddress,
+        educationCompleted,
+        subClassification
       }
     });
 
