@@ -1056,6 +1056,26 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     } finally { setSaving(false); }
   };
 
+  const getWeekdayName = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    if (isNaN(dateObj.getTime())) return '';
+    return dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+  };
+
+  const getDaysCount = () => {
+    if (!startDate || !endDate) return '';
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    const diffTime = end.getTime() - start.getTime();
+    if (diffTime < 0) return 'Invalid Date Range';
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    return `${diffDays} Day${diffDays > 1 ? 's' : ''}`;
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
@@ -1065,22 +1085,36 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
         
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Date on which applied</label>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">
+              Date on which applied {appliedDate && <span className="text-indigo-600 font-extrabold normal-case ml-1">({getWeekdayName(appliedDate)})</span>}
+            </label>
             <input type="date" value={appliedDate} onChange={e => setAppliedDate(e.target.value)}
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Leave Start Date</label>
+              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">
+                Leave Start Date {startDate && <span className="text-indigo-600 font-extrabold normal-case ml-1">({getWeekdayName(startDate)})</span>}
+              </label>
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                 className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Leave End Date</label>
+              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">
+                Leave End Date {endDate && <span className="text-indigo-600 font-extrabold normal-case ml-1">({getWeekdayName(endDate)})</span>}
+              </label>
               <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
                 className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
           </div>
+
+          {startDate && endDate && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center shadow-sm">
+              <span className="text-[10px] font-bold text-indigo-700 uppercase block tracking-wider mb-0.5">Calculated Leave Duration</span>
+              <span className="text-base font-black text-indigo-950">{getDaysCount()}</span>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Reason (Optional)</label>
             <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g., Sick leave"
