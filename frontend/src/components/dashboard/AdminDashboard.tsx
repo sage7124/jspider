@@ -212,55 +212,23 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl mx-4 p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold">Update Time Slots – {trainee.name}</h2>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-bold text-gray-500">Copy:</span>
-            <select 
-              value={sourceDay} 
-              onChange={e => {
-                setSourceDay(e.target.value);
-                setTargetDays(prev => prev.filter(d => d !== e.target.value));
-              }} 
-              className="border border-gray-300 rounded px-2 py-1.5 bg-white outline-none font-medium"
-            >
-              {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <span className="text-gray-400 font-bold mx-1">to</span>
-            <div className="flex gap-1">
-              <button 
-                onClick={() => setTargetDays(DAYS.filter(d => d !== sourceDay))}
-                className="px-2 py-1 text-[10px] font-bold border rounded bg-gray-100 text-gray-700 hover:bg-gray-200 shadow-sm">
-                All
-              </button>
-              {DAYS.map(d => (
-                <button 
-                  key={d}
-                  disabled={d === sourceDay}
-                  onClick={() => setTargetDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                  className={`px-2 py-1 text-[10px] font-bold border rounded transition-colors shadow-sm ${
-                    d === sourceDay ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50' :
-                    targetDays.includes(d) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {d.slice(0, 3)}
-                </button>
-              ))}
-            </div>
-            <button 
-              onClick={() => {
-                if (targetDays.length === 0) return alert('Select at least one target day');
-                setDaySlots((prev) => {
-                  const copy = JSON.parse(JSON.stringify(prev));
-                  const src = copy[sourceDay];
-                  targetDays.forEach(d => { copy[d] = JSON.parse(JSON.stringify(src)); });
-                  return copy;
+          <button 
+            onClick={() => {
+              setDaySlots((prev) => {
+                const copy = JSON.parse(JSON.stringify(prev));
+                const mondaySlots = copy['Monday'];
+                DAYS.forEach((day) => {
+                  if (day !== 'Monday') {
+                    copy[day] = JSON.parse(JSON.stringify(mondaySlots));
+                  }
                 });
-                setTargetDays([]);
-              }}
-              className="ml-2 bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-1.5 rounded font-bold transition-colors flex items-center gap-1 shadow-sm"
-            >
-              <span>📋</span> Copy
-            </button>
-          </div>
+                return copy;
+              });
+            }}
+            className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-4 py-1.5 rounded font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-sm"
+          >
+            📋 Copy Monday to All Days
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
