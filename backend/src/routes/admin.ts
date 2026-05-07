@@ -158,6 +158,20 @@ router.put('/user/:id', async (req: AuthRequest, res) => {
   }
 });
 
+router.get('/user/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) }
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── Update Time Slots (replace all for user) ──────────────────────────────────
 router.put('/slots/:userId', async (req: AuthRequest, res) => {
   try {

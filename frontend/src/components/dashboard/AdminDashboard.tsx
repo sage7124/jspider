@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
@@ -743,6 +743,7 @@ const AdminDashboard: React.FC = () => {
   const [showHolidays, setShowHolidays] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
   const [showDropdownOptions, setShowDropdownOptions] = useState(false);
+  const [viewOnboardingUser, setViewOnboardingUser] = useState<Trainee | null>(null);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -927,6 +928,7 @@ const AdminDashboard: React.FC = () => {
                 <td className="px-4 py-4 font-medium">{t.out}</td>
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-center gap-2">
+                    <button onClick={() => setViewOnboardingUser(t)} className="text-purple-600 hover:text-purple-800 transition-colors" title="View Onboarding Profile"><User size={16} /></button>
                     <button onClick={() => setEditUser(t)} className="text-emerald-600 hover:text-emerald-800 transition-colors" title="Edit User Info"><Edit size={16} /></button>
                     <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots"><Clock size={16} /></button>
                     <button onClick={() => setResetUser(t)} className="text-yellow-600 hover:text-yellow-800 transition-colors" title="Reset Password"><Key size={16} /></button>
@@ -969,6 +971,7 @@ const AdminDashboard: React.FC = () => {
       {showHolidays && <HolidayManagementModal onClose={() => setShowHolidays(false)} />}
       {showNotices && <NoticesModal onClose={() => setShowNotices(false)} />}
       {showDropdownOptions && <DropdownOptionsModal onClose={() => setShowDropdownOptions(false)} />}
+      {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => setViewOnboardingUser(null)} />}
     </div>
   );
 };
@@ -1662,6 +1665,188 @@ const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
             </table>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+// ── View Onboarding Profile Modal ──────────────────────────────────────────────
+const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/admin/user/${trainee.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfile(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto text-left">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl p-6 relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h3 className="text-xl font-bold mb-6 flex items-center gap-2 border-b pb-3 text-purple-700">
+          👤 {trainee.name}'s Onboarding Profile
+        </h3>
+
+        {loading ? (
+          <p className="text-gray-500 py-8 text-center animate-pulse">Loading profile details...</p>
+        ) : !profile ? (
+          <p className="text-gray-500 py-8 text-center">No onboarding profile data found.</p>
+        ) : (
+          <div className="space-y-6">
+            {/* Personal Details */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">1. Personal Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Full Name</span>
+                  <span className="font-semibold text-gray-800">{profile.fullName || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Father's Name</span>
+                  <span className="font-semibold text-gray-800">{profile.fatherName || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Mother's Name</span>
+                  <span className="font-semibold text-gray-800">{profile.motherName || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Mobile Number</span>
+                  <span className="font-semibold text-gray-800">{profile.identifier || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Email ID</span>
+                  <span className="font-semibold text-gray-800">{profile.email || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Profile Photo</span>
+                  {profile.photoUrl ? (
+                    <a href={profile.photoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1">
+                      👁️ View Uploaded Photo
+                    </a>
+                  ) : <span className="text-gray-400 italic">No photo uploaded</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Onboarding Details */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">2. Onboarding Details</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Date of Joining NICT</span>
+                  <span className="font-semibold text-gray-800">{profile.dateOfJoining || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Office Timings with Cycle</span>
+                  <span className="font-semibold text-gray-800">{profile.officeTimings || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Education Completed</span>
+                  <span className="font-semibold text-gray-800">{profile.educationCompleted || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Sub Classification</span>
+                  <span className="font-semibold text-gray-800">{profile.subClassification || '--'}</span>
+                </div>
+                <div className="md:col-span-2">
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Present Address</span>
+                  <span className="font-semibold text-gray-800">{profile.presentAddress || '--'}</span>
+                </div>
+                <div className="md:col-span-2">
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Permanent Address</span>
+                  <span className="font-semibold text-gray-800">{profile.permanentAddress || '--'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Identification Documents */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">3. Document Identification</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Aadhaar Number</span>
+                  <span className="font-semibold text-gray-800">{profile.aadhaarNumber || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Aadhaar Document</span>
+                  {profile.aadhaarPhotoUrl ? (
+                    <a href={profile.aadhaarPhotoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1">
+                      👁️ View Aadhaar Document (Image/PDF)
+                    </a>
+                  ) : <span className="text-gray-400 italic">No Aadhaar uploaded</span>}
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">PAN Number</span>
+                  <span className="font-semibold text-gray-800">{profile.panNumber || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">PAN Document</span>
+                  {profile.panPhotoUrl ? (
+                    <a href={profile.panPhotoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1">
+                      👁️ View PAN Document (Image/PDF)
+                    </a>
+                  ) : <span className="text-gray-400 italic">No PAN uploaded</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Bank Information */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">4. Bank Account Details</h4>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Bank Name</span>
+                  <span className="font-semibold text-gray-800">{profile.bankName || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Account Number</span>
+                  <span className="font-semibold text-gray-800">{profile.bankAccountNo || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">IFSC Code</span>
+                  <span className="font-semibold text-gray-800">{profile.bankIfscCode || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Branch Name</span>
+                  <span className="font-semibold text-gray-800">{profile.bankBranchName || '--'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Emergency Contacts */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">5. Emergency Contact</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Contact Name</span>
+                  <span className="font-semibold text-gray-800">{profile.emergencyContactName || '--'}</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Contact Mobile Number</span>
+                  <span className="font-semibold text-gray-800">{profile.emergencyContactMobile || '--'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
