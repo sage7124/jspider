@@ -967,7 +967,7 @@ const AdminDashboard: React.FC = () => {
       {showHolidays && <HolidayManagementModal onClose={() => setShowHolidays(false)} />}
       {showNotices && <NoticesModal onClose={() => setShowNotices(false)} />}
       {showDropdownOptions && <DropdownOptionsModal onClose={() => setShowDropdownOptions(false)} />}
-      {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => setViewOnboardingUser(null)} />}
+      {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => { setViewOnboardingUser(null); fetchTrainees(); }} />}
     </div>
   );
 };
@@ -1678,8 +1678,7 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.get(`${API_URL}/api/admin/user/${trainee.id}`, {
+      const res = await axios.get(`${API}/user/${trainee.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProfile(res.data);
@@ -1693,10 +1692,9 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
   const handleFieldChange = async (field: 'educationCompleted' | 'subClassification', value: string) => {
     try {
       const token = localStorage.getItem('token');
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       setProfile((prev: any) => ({ ...prev, [field]: value }));
       
-      await axios.put(`${API_URL}/api/admin/user/${trainee.id}`, {
+      await axios.put(`${API}/user/${trainee.id}`, {
         [field]: value
       }, {
         headers: { Authorization: `Bearer ${token}` }
