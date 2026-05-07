@@ -139,3 +139,10 @@ model Notice {
   user           User?    @relation(fields: [userId], references: [id])
   createdAt      DateTime @default(now())
 }
+
+model DropdownOption {
+  id        Int      @id @default(autoincrement())
+  type      String   // "EDUCATION" or "CLASSIFICATION"
+  value     String   @unique
+  createdAt DateTime @default(now())
+}

@@ -42,6 +42,23 @@ const RegisterForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const [educations, setEducations] = useState<string[]>([]);
+  const [classifications, setClassifications] = useState<string[]>([]);
+
+  React.useEffect(() => {
+    const fetchDropdowns = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${API_URL}/api/auth/dropdown-options`);
+        setEducations(res.data.educations);
+        setClassifications(res.data.classifications);
+      } catch (err) {
+        console.error('Failed to fetch dropdown options', err);
+      }
+    };
+    fetchDropdowns();
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
@@ -242,10 +259,7 @@ const RegisterForm: React.FC = () => {
                 <select name="educationCompleted" value={formData.educationCompleted} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Select Education</option>
-                  <option value="Undergraduate">Undergraduate</option>
-                  <option value="Postgraduate">Postgraduate</option>
-                  <option value="Diploma">Diploma</option>
-                  <option value="Doctorate">Doctorate</option>
+                  {educations.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
               <div>
@@ -253,10 +267,7 @@ const RegisterForm: React.FC = () => {
                 <select name="subClassification" value={formData.subClassification} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">Select Classification</option>
-                  <option value="Full-time">Full-time</option>
-                  <option value="Part-time">Part-time</option>
-                  <option value="Contract">Contract</option>
-                  <option value="Temporary">Temporary</option>
+                  {classifications.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
               </div>
               <div className="sm:col-span-2">

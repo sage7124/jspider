@@ -742,6 +742,7 @@ const AdminDashboard: React.FC = () => {
   const [showDailyReport, setShowDailyReport] = useState(false);
   const [showHolidays, setShowHolidays] = useState(false);
   const [showNotices, setShowNotices] = useState(false);
+  const [showDropdownOptions, setShowDropdownOptions] = useState(false);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -850,6 +851,10 @@ const AdminDashboard: React.FC = () => {
           <button onClick={() => setShowDailyReport(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
             <Calendar size={18} /> Daily Report
+          </button>
+          <button onClick={() => setShowDropdownOptions(true)}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium transition-colors">
+            📋 Options
           </button>
           <button onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
@@ -963,6 +968,7 @@ const AdminDashboard: React.FC = () => {
       {showDailyReport && <DailyReportModal onClose={() => setShowDailyReport(false)} />}
       {showHolidays && <HolidayManagementModal onClose={() => setShowHolidays(false)} />}
       {showNotices && <NoticesModal onClose={() => setShowNotices(false)} />}
+      {showDropdownOptions && <DropdownOptionsModal onClose={() => setShowDropdownOptions(false)} />}
     </div>
   );
 };
@@ -1655,6 +1661,131 @@ const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
               </tbody>
             </table>
           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Dropdown Options Management Modal ──────────────────────────────────────────
+const DropdownOptionsModal = ({ onClose }: { onClose: () => void }) => {
+  const [options, setOptions] = useState<any[]>([]);
+  const [type, setType] = useState<'EDUCATION' | 'CLASSIFICATION'>('EDUCATION');
+  const [value, setValue] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const fetchOptions = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/options`, { headers: { Authorization: `Bearer ${token}` } });
+      setOptions(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOptions();
+  }, []);
+
+  const handleAddOption = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!value.trim()) return alert('Please enter an option value');
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/options`, { type, value: value.trim() }, { headers: { Authorization: `Bearer ${token}` } });
+      setValue('');
+      fetchOptions();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to add option');
+    }
+  };
+
+  const handleDeleteOption = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this option?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/options/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      fetchOptions();
+    } catch (err) {
+      alert('Failed to delete option');
+    }
+  };
+
+  const educations = options.filter(o => o.type === 'EDUCATION');
+  const classifications = options.filter(o => o.type === 'CLASSIFICATION');
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl h-[70vh] flex flex-col overflow-hidden relative">
+        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+          <h2 className="text-lg font-bold flex items-center gap-2">📋 Manage Dropdown Options</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X size={24} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col md:flex-row gap-6">
+          {/* Add Form */}
+          <div className="flex-1">
+            <h3 className="font-bold mb-4 text-sm text-gray-700">Add New Option</h3>
+            <form onSubmit={handleAddOption} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Dropdown Type</label>
+                <select value={type} onChange={e => setType(e.target.value as any)} className="w-full border p-2 rounded text-sm bg-white">
+                  <option value="EDUCATION">Education Completed</option>
+                  <option value="CLASSIFICATION">Sub-Classification</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Option Value</label>
+                <input type="text" required value={value} onChange={e => setValue(e.target.value)} placeholder="e.g. Postgraduate, Part-time"
+                  className="w-full border p-2 rounded text-sm" />
+              </div>
+              <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded text-xs transition-colors">
+                Add Option
+              </button>
+            </form>
+          </div>
+
+          {/* List of active options */}
+          <div className="flex-1 border-l pl-0 md:pl-6 flex flex-col min-h-0">
+            <h3 className="font-bold mb-4 text-sm text-gray-700">Active Options</h3>
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+              <div>
+                <h4 className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-2">Education Completed</h4>
+                {educations.length === 0 ? <p className="text-xs text-gray-400">No options</p> : (
+                  <div className="space-y-1">
+                    {educations.map(o => (
+                      <div key={o.id} className="flex justify-between items-center bg-gray-50 p-2 rounded border text-xs">
+                        <span>{o.value}</span>
+                        <button onClick={() => handleDeleteOption(o.id)} className="text-red-500 hover:text-red-700">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h4 className="text-[10px] font-bold text-purple-600 uppercase tracking-wider mb-2 mt-4">Sub Classification</h4>
+                {classifications.length === 0 ? <p className="text-xs text-gray-400">No options</p> : (
+                  <div className="space-y-1">
+                    {classifications.map(o => (
+                      <div key={o.id} className="flex justify-between items-center bg-gray-50 p-2 rounded border text-xs">
+                        <span>{o.value}</span>
+                        <button onClick={() => handleDeleteOption(o.id)} className="text-red-500 hover:text-red-700">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

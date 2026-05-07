@@ -327,4 +327,34 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+router.get('/dropdown-options', async (req, res) => {
+  try {
+    let options = await prisma.dropdownOption.findMany();
+    
+    // Self-healing seed if empty
+    if (options.length === 0) {
+      const defaultOptions = [
+        { type: 'EDUCATION', value: 'Undergraduate' },
+        { type: 'EDUCATION', value: 'Postgraduate' },
+        { type: 'EDUCATION', value: 'Diploma' },
+        { type: 'EDUCATION', value: 'Doctorate' },
+        { type: 'CLASSIFICATION', value: 'Full-time' },
+        { type: 'CLASSIFICATION', value: 'Part-time' },
+        { type: 'CLASSIFICATION', value: 'Contract' },
+        { type: 'CLASSIFICATION', value: 'Temporary' }
+      ];
+      await prisma.dropdownOption.createMany({ data: defaultOptions });
+      options = await prisma.dropdownOption.findMany();
+    }
+
+    const educations = options.filter(o => o.type === 'EDUCATION').map(o => o.value);
+    const classifications = options.filter(o => o.type === 'CLASSIFICATION').map(o => o.value);
+
+    res.json({ educations, classifications });
+  } catch (error) {
+    console.error('Error fetching dropdown options:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

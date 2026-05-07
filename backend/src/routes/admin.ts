@@ -1005,5 +1005,43 @@ router.post('/user/:id/grant-edit', async (req: AuthRequest, res) => {
   }
 });
 
+// Dropdown options management
+router.get('/options', async (req: AuthRequest, res) => {
+  try {
+    const options = await prisma.dropdownOption.findMany({ orderBy: { createdAt: 'desc' } });
+    res.json(options);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/options', async (req: AuthRequest, res) => {
+  try {
+    const { type, value } = req.body;
+    if (!type || !value) return res.status(400).json({ error: 'Type and value are required' });
+    
+    const option = await prisma.dropdownOption.create({
+      data: { type, value }
+    });
+    res.json(option);
+  } catch (error: any) {
+    console.error(error);
+    if (error.code === 'P2002') return res.status(400).json({ error: 'Option already exists' });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/options/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.dropdownOption.delete({ where: { id: Number(id) } });
+    res.json({ message: 'Option deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

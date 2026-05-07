@@ -28,6 +28,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [canEdit, setCanEdit] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [educations, setEducations] = useState<string[]>([]);
+  const [classifications, setClassifications] = useState<string[]>([]);
 
   // Inline Report state
   const [reportMonth, setReportMonth] = useState((new Date().getMonth() + 1).toString());
@@ -45,6 +47,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     fetchHolidays();
     fetchNotices();
     fetchProfile();
+    fetchDropdowns();
     
     if (!sessionStorage.getItem('leaveNoticeShown')) {
       setShowNoticeModal(true);
@@ -139,6 +142,17 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       setCanEdit(res.data.canEdit);
     } catch (err) {
       console.error('Failed to fetch profile', err);
+    }
+  };
+
+  const fetchDropdowns = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/auth/dropdown-options`);
+      setEducations(res.data.educations);
+      setClassifications(res.data.classifications);
+    } catch (err) {
+      console.error('Failed to fetch dropdown options', err);
     }
   };
 
@@ -725,10 +739,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                     <select value={profile.educationCompleted || ''} onChange={e => setProfile({...profile, educationCompleted: e.target.value})} disabled={!canEdit}
                       className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
                       <option value="">Select Education</option>
-                      <option value="Undergraduate">Undergraduate</option>
-                      <option value="Postgraduate">Postgraduate</option>
-                      <option value="Diploma">Diploma</option>
-                      <option value="Doctorate">Doctorate</option>
+                      {educations.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   </div>
                   <div>
@@ -736,10 +747,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                     <select value={profile.subClassification || ''} onChange={e => setProfile({...profile, subClassification: e.target.value})} disabled={!canEdit}
                       className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
                       <option value="">Select Classification</option>
-                      <option value="Full-time">Full-time</option>
-                      <option value="Part-time">Part-time</option>
-                      <option value="Contract">Contract</option>
-                      <option value="Temporary">Temporary</option>
+                      {classifications.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   </div>
                   <div className="md:col-span-2">
