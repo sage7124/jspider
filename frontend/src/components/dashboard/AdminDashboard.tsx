@@ -1083,7 +1083,7 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Trainee Reason (Optional)</label>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Reason (Optional)</label>
             <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g., Sick leave"
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
           </div>
@@ -1308,9 +1308,9 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
             <table className="w-full text-sm text-left">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Trainee</th>
-                  <th className="px-4 py-3 font-semibold">Dates</th>
-                  <th className="px-4 py-3 font-semibold">Trainee Reason</th>
+                  <th className="px-4 py-3 font-semibold">Nictian</th>
+                  <th className="px-4 py-3 font-semibold">From Day - To Day</th>
+                  <th className="px-4 py-3 font-semibold">Reason</th>
                   <th className="px-4 py-3 font-semibold text-center">Status</th>
                   <th className="px-4 py-3 font-semibold text-right">Actions / Admin Reason</th>
                 </tr>
