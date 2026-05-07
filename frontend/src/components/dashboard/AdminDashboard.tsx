@@ -853,10 +853,6 @@ const AdminDashboard: React.FC = () => {
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
             <Calendar size={18} /> Daily Report
           </button>
-          <button onClick={() => setShowDropdownOptions(true)}
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium transition-colors">
-            📋 Options
-          </button>
           <button onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
             Settings
@@ -1675,6 +1671,9 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
+  const educationOptions = ['Undergraduate', 'Postgraduate', 'Diploma', 'Doctorate'];
+  const classificationOptions = ['Full-time', 'Part-time', 'Contract', 'Temporary'];
+
   const fetchProfile = async () => {
     try {
       setLoading(true);
@@ -1688,6 +1687,23 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFieldChange = async (field: 'educationCompleted' | 'subClassification', value: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      setProfile((prev: any) => ({ ...prev, [field]: value }));
+      
+      await axios.put(`${API_URL}/api/admin/user/${trainee.id}`, {
+        [field]: value
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error('Failed to save field', err);
+      alert('Failed to save field change');
     }
   };
 
@@ -1759,12 +1775,26 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
                   <span className="font-semibold text-gray-800">{profile.officeTimings || '--'}</span>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Education Completed</span>
-                  <span className="font-semibold text-gray-800">{profile.educationCompleted || '--'}</span>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Education Completed</span>
+                  <select 
+                    value={profile.educationCompleted || ''} 
+                    onChange={e => handleFieldChange('educationCompleted', e.target.value)}
+                    className="w-full border rounded px-2.5 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700"
+                  >
+                    <option value="">Select Education</option>
+                    {educationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-gray-400 uppercase">Sub Classification</span>
-                  <span className="font-semibold text-gray-800">{profile.subClassification || '--'}</span>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Sub Classification</span>
+                  <select 
+                    value={profile.subClassification || ''} 
+                    onChange={e => handleFieldChange('subClassification', e.target.value)}
+                    className="w-full border rounded px-2.5 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700"
+                  >
+                    <option value="">Select Classification</option>
+                    {classificationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                  </select>
                 </div>
                 <div className="md:col-span-2">
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Present Address</span>

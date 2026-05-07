@@ -137,8 +137,8 @@ router.post('/approve', async (req: AuthRequest, res) => {
 router.put('/user/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { fullName, identifier, email, totalLeaves } = req.body;
-    const updateData: any = { fullName, identifier, email };
+    const { fullName, identifier, email, totalLeaves, educationCompleted, subClassification } = req.body;
+    const updateData: any = { fullName, identifier, email, educationCompleted, subClassification };
     
     if (totalLeaves !== undefined) {
       updateData.totalLeaves = Number(totalLeaves);
