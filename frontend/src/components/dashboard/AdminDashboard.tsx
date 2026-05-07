@@ -979,9 +979,12 @@ const ViewSlotsDetailModal = ({ trainee, onClose }: { trainee: Trainee; onClose:
 
 // ── Direct Leave Modal ────────────────────────────────────────────────────────
 const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  const [appliedDate, setAppliedDate] = useState(new Date().toISOString().split('T')[0]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
+  const [remarksAlternative, setRemarksAlternative] = useState('');
+  const [remarksOfficeUse, setRemarksOfficeUse] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -990,7 +993,7 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${API}/leaves/direct`, {
-        traineeId: trainee.id, startDate, endDate, reason
+        traineeId: trainee.id, startDate, endDate, reason, appliedDate, remarksAlternative, remarksOfficeUse
       }, { headers: { Authorization: `Bearer ${token}` } });
       alert('Leave assigned successfully');
       onSave();
@@ -1002,25 +1005,42 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6 relative">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
         <h2 className="text-lg font-bold mb-1">Assign Direct Leave</h2>
         <p className="text-xs text-gray-500 mb-6">{trainee.name} (Balance: {trainee.leaveBalance})</p>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Start Date</label>
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Date on which applied</label>
+            <input type="date" value={appliedDate} onChange={e => setAppliedDate(e.target.value)}
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">End Date</label>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Leave Start Date</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Leave End Date</label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Reason (Optional)</label>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Trainee Reason (Optional)</label>
             <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g., Sick leave"
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Remarks Alternative</label>
+            <input type="text" value={remarksAlternative} onChange={e => setRemarksAlternative(e.target.value)} placeholder="Alternative details..."
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Remarks Office Use</label>
+            <input type="text" value={remarksOfficeUse} onChange={e => setRemarksOfficeUse(e.target.value)} placeholder="Office use remarks..."
               className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
           </div>
         </div>
@@ -1277,7 +1297,14 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                         {dynamicDays > 0 ? `${dynamicDays} Days` : 'Invalid Date'}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs italic">"{r.reason || 'No reason'}"</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">
+                      <div className="font-medium italic">"{r.reason || 'No reason'}"</div>
+                      <div className="mt-2 text-[10px] bg-white border p-1 rounded">
+                        <div className="font-bold text-gray-700">Applied On: <span className="font-normal">{new Date(r.appliedDate || r.createdAt).toLocaleDateString()}</span></div>
+                        {r.remarksAlternative && <div><span className="font-bold text-gray-700">Alternative:</span> {r.remarksAlternative}</div>}
+                        {r.remarksOfficeUse && <div><span className="font-bold text-gray-700">Office Use:</span> {r.remarksOfficeUse}</div>}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         r.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :

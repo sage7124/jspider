@@ -45,6 +45,11 @@ model LeaveRequest {
   reason         String?
   adminReason    String?      // Optional reason given by admin when approving/rejecting
   status         String       @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  appliedDate        DateTime?
+  remarksAlternative String?
+  remarksOfficeUse   String?
+
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 }

@@ -207,7 +207,7 @@ router.post('/reset-password/:id', async (req: AuthRequest, res) => {
 // ── Direct Leave (Admin to Trainee) ──────────────────────────────────────────
 router.post('/leaves/direct', async (req: AuthRequest, res) => {
   try {
-    const { traineeId, startDate, endDate, reason } = req.body;
+    const { traineeId, startDate, endDate, reason, appliedDate, remarksAlternative, remarksOfficeUse } = req.body;
     
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -232,7 +232,10 @@ router.post('/leaves/direct', async (req: AuthRequest, res) => {
           endDate: end,
           reason: reason || 'Direct leave by admin',
           status: 'APPROVED',
-          adminReason: 'Direct assignment'
+          adminReason: 'Direct assignment',
+          appliedDate: appliedDate ? new Date(appliedDate) : new Date(),
+          remarksAlternative: remarksAlternative || null,
+          remarksOfficeUse: remarksOfficeUse || null
         }
       }),
       prisma.user.update({
