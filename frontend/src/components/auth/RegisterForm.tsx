@@ -66,6 +66,14 @@ const RegisterForm: React.FC = () => {
     });
   };
 
+  const handleNumericChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, '');
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: val
+    }));
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'photoUrl' | 'aadhaarPhotoUrl' | 'panPhotoUrl') => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -210,7 +218,7 @@ const RegisterForm: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Mobile Number *</label>
-                <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required
+                <input type="tel" name="mobile" value={formData.mobile} onChange={handleNumericChange} required inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="relative">
@@ -288,7 +296,7 @@ const RegisterForm: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Number *</label>
-                <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} placeholder="e.g. 12-digit number" required
+                <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleNumericChange} placeholder="e.g. 12-digit number" required inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
@@ -346,7 +354,7 @@ const RegisterForm: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Bank Account Number *</label>
-                <input type="text" name="bankAccountNo" value={formData.bankAccountNo} onChange={handleChange} required
+                <input type="text" name="bankAccountNo" value={formData.bankAccountNo} onChange={handleNumericChange} required inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
@@ -366,7 +374,7 @@ const RegisterForm: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Mobile *</label>
-                <input type="text" name="emergencyContactMobile" value={formData.emergencyContactMobile} onChange={handleChange} required
+                <input type="text" name="emergencyContactMobile" value={formData.emergencyContactMobile} onChange={handleNumericChange} required inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
