@@ -114,7 +114,7 @@ const RegisterForm: React.FC = () => {
 
     // Strict submission validation for all fields across 4 steps
     if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName || !formData.photoUrl ||
-        !formData.dateOfJoining || !formData.officeTimings || !formData.educationCompleted || !formData.subClassification || !formData.presentAddress || !formData.permanentAddress ||
+        !formData.dateOfJoining || !formData.officeTimings || !formData.presentAddress || !formData.permanentAddress ||
         !formData.aadhaarNumber || !formData.aadhaarPhotoUrl || !formData.panNumber || !formData.panPhotoUrl ||
         !formData.bankName || !formData.bankAccountNo || !formData.bankIfscCode || !formData.bankBranchName || !formData.emergencyContactName || !formData.emergencyContactMobile) {
       setError('Please complete all 4 steps and fill in all details before submitting.');
@@ -149,8 +149,8 @@ const RegisterForm: React.FC = () => {
       }
     }
     if (step === 2) {
-      if (!formData.dateOfJoining || !formData.officeTimings || !formData.educationCompleted || !formData.subClassification || !formData.presentAddress || !formData.permanentAddress) {
-        setError('Please fill in all fields (including Education, Classification, and Address).');
+      if (!formData.dateOfJoining || !formData.officeTimings || !formData.presentAddress || !formData.permanentAddress) {
+        setError('Please fill in all fields (including Date of Joining, Office Timings, and Address).');
         return;
       }
     }
@@ -175,18 +175,15 @@ const RegisterForm: React.FC = () => {
       <div className="flex items-center justify-between mb-8 px-1">
         {[1, 2, 3, 4].map((s) => (
           <React.Fragment key={s}>
-            <div className="flex items-center gap-1.5">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+            <div className="flex items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                 step === s ? 'bg-blue-600 text-white ring-4 ring-blue-100' :
                 step > s ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'
               }`}>
-                {step > s ? <Check size={12} /> : s}
+                {step > s ? <Check size={14} /> : s}
               </div>
-              <span className={`text-[11px] font-bold hidden md:inline ${step === s ? 'text-blue-600' : 'text-gray-400'}`}>
-                {s === 1 ? 'Personal' : s === 2 ? 'Onboard' : s === 3 ? 'Documents' : 'Bank & Contacts'}
-              </span>
             </div>
-            {s < 4 && <div className={`flex-1 h-0.5 min-w-[12px] sm:min-w-[30px] mx-1 ${step > s ? 'bg-green-500' : 'bg-gray-100'}`} />}
+            {s < 4 && <div className={`flex-1 h-0.5 mx-2 ${step > s ? 'bg-green-500' : 'bg-gray-100'}`} />}
           </React.Fragment>
         ))}
       </div>
@@ -261,30 +258,14 @@ const RegisterForm: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 2: Onboarding & Address Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Date of Joining (DDMMYYYY) *</label>
-                <input type="text" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} placeholder="e.g. 01052026" required
+                <label className="block text-xs font-bold text-gray-500 mb-1">Date of Joining *</label>
+                <input type="date" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle *</label>
                 <input type="text" name="officeTimings" value={formData.officeTimings} onChange={handleChange} placeholder="e.g. 9 AM - 5 PM Shift A" required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed *</label>
-                <select name="educationCompleted" value={formData.educationCompleted} onChange={handleChange} required
-                  className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Select Education</option>
-                  {educations.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Sub Classification *</label>
-                <select name="subClassification" value={formData.subClassification} onChange={handleChange} required
-                  className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Select Classification</option>
-                  {classifications.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-gray-500 mb-1">Present Address *</label>
