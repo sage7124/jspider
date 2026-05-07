@@ -720,24 +720,76 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
 
     if (!clearPunchOut) {
       if (slotNo && [1, 2, 3].includes(Number(slotNo))) {
-        if (inTime && inTime !== '--') updateData[`inTime${slotNo}`] = setTime(inTime);
-        if (outTime && outTime !== '--') updateData[`outTime${slotNo}`] = setTime(outTime);
-        
-        // Also update global in/out if it's the first/last punch of the day
-        // For simplicity, we just set the global ones too if they are not set
+        if (inTime === '') {
+          updateData[`inTime${slotNo}`] = null;
+        } else if (inTime && inTime !== '--') {
+          updateData[`inTime${slotNo}`] = setTime(inTime);
+        }
+
+        if (outTime === '') {
+          updateData[`outTime${slotNo}`] = null;
+        } else if (outTime && outTime !== '--') {
+          updateData[`outTime${slotNo}`] = setTime(outTime);
+        }
+
         const existing = await prisma.attendance.findUnique({
           where: { userId_date: { userId: Number(traineeId), date: targetDate } }
         });
-        
-        if (inTime && inTime !== '--' && (!existing?.inTime || setTime(inTime) < existing.inTime)) {
-          updateData.inTime = setTime(inTime);
-        }
-        if (outTime && outTime !== '--' && (!existing?.outTime || setTime(outTime) > existing.outTime)) {
-          updateData.outTime = setTime(outTime);
+
+        const finalIn1 = inTime !== undefined ? (inTime === '' ? null : setTime(inTime)) : (existing?.inTime1 || null);
+        const finalIn2 = existing?.inTime2 || null;
+        const finalIn3 = existing?.inTime3 || null;
+
+        const finalOut1 = outTime !== undefined ? (outTime === '' ? null : setTime(outTime)) : (existing?.outTime1 || null);
+        const finalOut2 = existing?.outTime2 || null;
+        const finalOut3 = existing?.outTime3 || null;
+
+        const ins = [finalIn1, finalIn2, finalIn3].filter(Boolean) as Date[];
+        const outs = [finalOut1, finalOut2, finalOut3].filter(Boolean) as Date[];
+
+        updateData.inTime = ins.length > 0 ? new Date(Math.min(...ins.map(d => d.getTime()))) : null;
+        updateData.outTime = outs.length > 0 ? new Date(Math.max(...outs.map(d => d.getTime()))) : null;
+
+        if (!updateData.inTime) {
+          updateData.status = 'ABSENT';
+        } else if (updateData.inTime && !updateData.outTime) {
+          updateData.status = 'IN';
+        } else {
+          updateData.status = 'OUT';
         }
       } else {
-        if (inTime && inTime !== '--') updateData.inTime = setTime(inTime);
-        if (outTime && outTime !== '--') updateData.outTime = setTime(outTime);
+        if (inTime === '') {
+          updateData.inTime = null;
+          updateData.inTime1 = null;
+          updateData.inTime2 = null;
+          updateData.inTime3 = null;
+        } else if (inTime && inTime !== '--') {
+          updateData.inTime = setTime(inTime);
+        }
+
+        if (outTime === '') {
+          updateData.outTime = null;
+          updateData.outTime1 = null;
+          updateData.outTime2 = null;
+          updateData.outTime3 = null;
+        } else if (outTime && outTime !== '--') {
+          updateData.outTime = setTime(outTime);
+        }
+
+        const finalIn = inTime !== undefined ? (inTime === '' ? null : setTime(inTime)) : undefined;
+        const finalOut = outTime !== undefined ? (outTime === '' ? null : setTime(outTime)) : undefined;
+
+        if (finalIn === null) {
+          updateData.status = 'ABSENT';
+        } else if (finalIn) {
+          if (finalOut === null) {
+            updateData.status = 'IN';
+          } else if (finalOut) {
+            updateData.status = 'OUT';
+          } else {
+            updateData.status = 'IN';
+          }
+        }
       }
     }
     if (inTime && inTime !== '--') {
@@ -774,7 +826,7 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
         userId: Number(traineeId),
         date: targetDate,
         ...updateData,
-        status: status || (clearPunchOut ? 'IN' : 'OUT')
+        status: updateData.status || status || (clearPunchOut ? 'IN' : 'OUT')
       }
     });
 

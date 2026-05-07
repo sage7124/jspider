@@ -427,11 +427,10 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
       const token = localStorage.getItem('token');
       const payload: any = { 
         date, 
-        slotNo 
+        slotNo,
+        inTime,
+        outTime
       };
-
-      if (inTime) payload.inTime = inTime;
-      if (outTime) payload.outTime = outTime;
 
       await axios.put(`${API}/attendance-manual/${trainee.id}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
