@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Info } from 'lucide-react';
 import axios from 'axios';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = 'https://uzbobbzbbkqzgtjemayu.supabase.co';
+const supabaseAnonKey = 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface TraineeDashboardProps {
   user: any;
@@ -134,6 +139,50 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       setCanEdit(res.data.canEdit);
     } catch (err) {
       console.error('Failed to fetch profile', err);
+    }
+  };
+
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'photoUrl' | 'aadhaarPhotoUrl' | 'panPhotoUrl') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      alert('File size must be less than 1MB');
+      return;
+    }
+
+    setUploadingField(fieldName);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${profile.id || 'user'}_${fieldName}_${Date.now()}.${fileExt}`;
+      const filePath = `documents/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('nict-onboarding')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('nict-onboarding')
+        .getPublicUrl(filePath);
+
+      setProfile((prev: any) => ({
+        ...prev,
+        [fieldName]: publicUrl
+      }));
+      alert('Document uploaded successfully!');
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      alert(`Upload failed: ${err.message || err}`);
+    } finally {
+      setUploadingField(null);
     }
   };
 
@@ -627,9 +676,32 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo URL</label>
-                    <input type="text" value={profile.photoUrl || ''} onChange={e => setProfile({...profile, photoUrl: e.target.value})} placeholder="e.g. image link" disabled={!canEdit}
-                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo</label>
+                    <div className="flex gap-2 items-center">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => handleFileUpload(e, 'photoUrl')} 
+                        disabled={!canEdit || uploadingField === 'photoUrl'}
+                        className="hidden" 
+                        id="photoUrl-input" 
+                      />
+                      <label 
+                        htmlFor="photoUrl-input"
+                        className={`flex-1 border-2 border-dashed rounded px-3 py-1.5 text-xs font-bold text-center cursor-pointer transition-all ${
+                          !canEdit ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
+                          uploadingField === 'photoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
+                          profile.photoUrl ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
+                        }`}
+                      >
+                        {uploadingField === 'photoUrl' ? '⏳ Uploading...' : profile.photoUrl ? '✅ Change Photo' : '📁 Upload Photo (<1MB)'}
+                      </label>
+                      {profile.photoUrl && (
+                        <a href={profile.photoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap">
+                          👁️ View
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -693,9 +765,32 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document URL</label>
-                    <input type="text" value={profile.aadhaarPhotoUrl || ''} onChange={e => setProfile({...profile, aadhaarPhotoUrl: e.target.value})} placeholder="e.g. document image link" disabled={!canEdit}
-                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document</label>
+                    <div className="flex gap-2 items-center">
+                      <input 
+                        type="file" 
+                        accept="image/*,application/pdf" 
+                        onChange={(e) => handleFileUpload(e, 'aadhaarPhotoUrl')} 
+                        disabled={!canEdit || uploadingField === 'aadhaarPhotoUrl'}
+                        className="hidden" 
+                        id="aadhaarPhotoUrl-input" 
+                      />
+                      <label 
+                        htmlFor="aadhaarPhotoUrl-input"
+                        className={`flex-1 border-2 border-dashed rounded px-3 py-1.5 text-xs font-bold text-center cursor-pointer transition-all ${
+                          !canEdit ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
+                          uploadingField === 'aadhaarPhotoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
+                          profile.aadhaarPhotoUrl ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
+                        }`}
+                      >
+                        {uploadingField === 'aadhaarPhotoUrl' ? '⏳ Uploading...' : profile.aadhaarPhotoUrl ? '✅ Change Document' : '📁 Upload Aadhaar (<1MB)'}
+                      </label>
+                      {profile.aadhaarPhotoUrl && (
+                        <a href={profile.aadhaarPhotoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap">
+                          👁️ View
+                        </a>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">PAN Number</label>
@@ -703,9 +798,32 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document URL</label>
-                    <input type="text" value={profile.panPhotoUrl || ''} onChange={e => setProfile({...profile, panPhotoUrl: e.target.value})} placeholder="e.g. document image link" disabled={!canEdit}
-                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                    <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document</label>
+                    <div className="flex gap-2 items-center">
+                      <input 
+                        type="file" 
+                        accept="image/*,application/pdf" 
+                        onChange={(e) => handleFileUpload(e, 'panPhotoUrl')} 
+                        disabled={!canEdit || uploadingField === 'panPhotoUrl'}
+                        className="hidden" 
+                        id="panPhotoUrl-input" 
+                      />
+                      <label 
+                        htmlFor="panPhotoUrl-input"
+                        className={`flex-1 border-2 border-dashed rounded px-3 py-1.5 text-xs font-bold text-center cursor-pointer transition-all ${
+                          !canEdit ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
+                          uploadingField === 'panPhotoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
+                          profile.panPhotoUrl ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
+                        }`}
+                      >
+                        {uploadingField === 'panPhotoUrl' ? '⏳ Uploading...' : profile.panPhotoUrl ? '✅ Change Document' : '📁 Upload PAN (<1MB)'}
+                      </label>
+                      {profile.panPhotoUrl && (
+                        <a href={profile.panPhotoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap">
+                          👁️ View
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
