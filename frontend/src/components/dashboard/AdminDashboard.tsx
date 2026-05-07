@@ -173,6 +173,14 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
     });
   };
 
+  const clearDaySlots = (day: string) => {
+    setDaySlots((prev) => {
+      const copy = { ...prev };
+      copy[day] = emptyDaySlots();
+      return copy;
+    });
+  };
+
   const handleUpdate = async () => {
     setSaving(true);
     const slots: any[] = [];
@@ -280,7 +288,18 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
             <tbody>
               {DAYS.map((day) => (
                 <tr key={day} className="border-b hover:bg-gray-50">
-                  <td className="py-2 px-2 font-medium text-gray-700">{day}</td>
+                  <td className="py-2 px-2 font-medium text-gray-700">
+                    <div className="flex items-center justify-between gap-1.5 pr-2">
+                      <span>{day}</span>
+                      <button 
+                        onClick={() => clearDaySlots(day)}
+                        className="text-[10px] bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-1.5 py-0.5 rounded font-semibold transition-colors shadow-sm"
+                        title={`Clear all slots for ${day}`}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </td>
                   {Array.from({ length: SLOT_COUNT }, (_, si) => (
                     <React.Fragment key={si}>
                       {(['from', 'to'] as const).map((side) => (
