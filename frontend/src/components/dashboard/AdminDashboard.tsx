@@ -1333,17 +1333,24 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-xs font-medium flex items-center gap-2">
-                        <span>{startDate.toLocaleDateString()}</span>
+                        <span>{startDate.toLocaleDateString()} ({startDate.toLocaleDateString('en-US', { weekday: 'long' })})</span>
                         <span>–</span>
                         {r.status === 'PENDING' ? (
-                          <input 
-                            type="date" 
-                            className="border rounded px-1 text-xs py-0.5"
-                            value={currentEndDateStr}
-                            onChange={(e) => setEditedEndDates({...editedEndDates, [r.id]: e.target.value})}
-                          />
+                          <div className="flex items-center gap-1.5">
+                            <input 
+                              type="date" 
+                              className="border rounded px-1 text-xs py-0.5"
+                              value={currentEndDateStr}
+                              onChange={(e) => setEditedEndDates({...editedEndDates, [r.id]: e.target.value})}
+                            />
+                            {!isNaN(currentEndDate.getTime()) && (
+                              <span className="text-[10px] text-blue-600 font-bold">
+                                ({currentEndDate.toLocaleDateString('en-US', { weekday: 'long' })})
+                              </span>
+                            )}
+                          </div>
                         ) : (
-                          <span>{new Date(r.endDate).toLocaleDateString()}</span>
+                          <span>{new Date(r.endDate).toLocaleDateString()} ({new Date(r.endDate).toLocaleDateString('en-US', { weekday: 'long' })})</span>
                         )}
                       </div>
                       <div className="text-[10px] text-gray-400 mt-1">
