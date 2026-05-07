@@ -146,6 +146,17 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
                 Reset Laptop Lock
               </button>
             </div>
+            <button 
+              onClick={async () => {
+                if(!confirm('Grant 24-hour Profile Edit Override?')) return;
+                const token = localStorage.getItem('token');
+                await axios.post(`${API}/user/${trainee.id}/grant-edit`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                alert('24-hour temporary profile edit access granted successfully!');
+              }}
+              className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 py-2 rounded text-xs font-bold transition-all"
+            >
+              🔓 Grant 24h Profile Edit Override
+            </button>
           </div>
         </div>
         <div className="flex gap-3 mt-6 justify-center">

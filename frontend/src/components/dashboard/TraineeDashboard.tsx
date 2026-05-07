@@ -18,6 +18,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [changingPass, setChangingPass] = useState(false);
   const [showNoticeModal, setShowNoticeModal] = useState(false);
 
+  // Profile Onboarding states
+  const [profile, setProfile] = useState<any>(null);
+  const [canEdit, setCanEdit] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+
   // Inline Report state
   const [reportMonth, setReportMonth] = useState((new Date().getMonth() + 1).toString());
   const [reportYear, setReportYear] = useState(new Date().getFullYear().toString());
@@ -33,6 +39,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     fetchReportData();
     fetchHolidays();
     fetchNotices();
+    fetchProfile();
     
     if (!sessionStorage.getItem('leaveNoticeShown')) {
       setShowNoticeModal(true);
@@ -116,6 +123,20 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     } catch (err) { console.error(err); }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/auth/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setProfile(res.data.user);
+      setCanEdit(res.data.canEdit);
+    } catch (err) {
+      console.error('Failed to fetch profile', err);
+    }
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwords.new !== passwords.confirm) return alert('New passwords do not match');
@@ -184,11 +205,20 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 relative">
-      <div className="flex justify-end mb-4">
-        <button onClick={() => setShowPasswordModal(true)}
-          className="flex items-center gap-2 text-gray-500 hover:text-gray-800 text-sm font-medium transition-colors">
-          <Settings size={16} /> Security Settings
-        </button>
+      <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <h2 className="text-lg font-black text-gray-800 tracking-tight">NICTian Teacher Portal</h2>
+        <div className="flex items-center gap-4">
+          <button onClick={() => setShowProfileModal(true)}
+            className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
+          >
+            👤 My Onboarding Profile
+          </button>
+          <button onClick={() => setShowPasswordModal(true)}
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-800 text-xs font-medium transition-colors"
+          >
+            <Settings size={14} /> Security Settings
+          </button>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -516,6 +546,224 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         </div>
       </div>
 
+
+      {/* Onboarding Profile Modal */}
+      {showProfileModal && profile && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setShowProfileModal(false)} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+              <X size={20} />
+            </button>
+            <h3 className="text-xl font-bold mb-2 flex items-center gap-2 border-b pb-3">
+              👤 Onboarding Profile & Paperless Form
+            </h3>
+            
+            {/* Status Info */}
+            <div className={`mb-6 p-4 rounded-lg flex items-center justify-between text-sm ${
+              canEdit ? 'bg-green-50 text-green-800 border border-green-100' : 'bg-red-50 text-red-800 border border-red-100'
+            }`}>
+              <div>
+                <p className="font-bold">{canEdit ? '🔓 PROFILE EDITING ACTIVE' : '🔒 PROFILE IS LOCKED'}</p>
+                <p className="text-xs opacity-90 mt-0.5">
+                  {canEdit 
+                    ? 'You can update your profile fields. All changes are secure.' 
+                    : 'The 3-day editing window has closed. Please contact Admin to unlock edit access.'}
+                </p>
+              </div>
+              {profile.createdAt && (
+                <div className="text-right text-xs">
+                  <span className="font-semibold block">Registered On:</span>
+                  <span>{new Date(profile.createdAt).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!canEdit) return alert('Profile editing is locked.');
+              setSavingProfile(true);
+              try {
+                const token = localStorage.getItem('token');
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                await axios.put(`${API_URL}/api/auth/profile`, profile, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                alert('Profile updated successfully!');
+                fetchProfile();
+              } catch (err: any) {
+                alert(err.response?.data?.error || 'Failed to update profile');
+              } finally {
+                setSavingProfile(false);
+              }
+            }} className="space-y-6 text-left">
+
+              {/* Personal Details */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">1. Personal Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Full Name with Initials</label>
+                    <input type="text" value={profile.fullName || ''} onChange={e => setProfile({...profile, fullName: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" required />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Father's Name</label>
+                    <input type="text" value={profile.fatherName || ''} onChange={e => setProfile({...profile, fatherName: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Mother's Name</label>
+                    <input type="text" value={profile.motherName || ''} onChange={e => setProfile({...profile, motherName: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Mobile Number</label>
+                    <input type="text" value={profile.identifier || ''} disabled
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-gray-100 text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Email ID</label>
+                    <input type="email" value={profile.email || ''} onChange={e => setProfile({...profile, email: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo URL</label>
+                    <input type="text" value={profile.photoUrl || ''} onChange={e => setProfile({...profile, photoUrl: e.target.value})} placeholder="e.g. image link" disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Onboarding & Sub classification */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">2. Onboarding Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Date of Joining NICT (DDMMYYYY)</label>
+                    <input type="text" value={profile.dateOfJoining || ''} onChange={e => setProfile({...profile, dateOfJoining: e.target.value})} placeholder="e.g. 01052026" disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle</label>
+                    <input type="text" value={profile.officeTimings || ''} onChange={e => setProfile({...profile, officeTimings: e.target.value})} placeholder="e.g. 9 AM - 5 PM Shift A" disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed (Admin Managed Dropdown)</label>
+                    <select value={profile.educationCompleted || ''} onChange={e => setProfile({...profile, educationCompleted: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
+                      <option value="">Select Education</option>
+                      <option value="Undergraduate">Undergraduate</option>
+                      <option value="Postgraduate">Postgraduate</option>
+                      <option value="Diploma">Diploma</option>
+                      <option value="Doctorate">Doctorate</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Sub Classification (Admin Managed Dropdown)</label>
+                    <select value={profile.subClassification || ''} onChange={e => setProfile({...profile, subClassification: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
+                      <option value="">Select Classification</option>
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Contract">Contract</option>
+                      <option value="Temporary">Temporary</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Present Address</label>
+                    <textarea value={profile.presentAddress || ''} onChange={e => setProfile({...profile, presentAddress: e.target.value})} disabled={!canEdit} rows={2}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 resize-none"></textarea>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Permanent Address</label>
+                    <textarea value={profile.permanentAddress || ''} onChange={e => setProfile({...profile, permanentAddress: e.target.value})} disabled={!canEdit} rows={2}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 resize-none"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              {/* Identification Documents */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">3. Document Identification</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Number</label>
+                    <input type="text" value={profile.aadhaarNumber || ''} onChange={e => setProfile({...profile, aadhaarNumber: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document URL</label>
+                    <input type="text" value={profile.aadhaarPhotoUrl || ''} onChange={e => setProfile({...profile, aadhaarPhotoUrl: e.target.value})} placeholder="e.g. document image link" disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">PAN Number</label>
+                    <input type="text" value={profile.panNumber || ''} onChange={e => setProfile({...profile, panNumber: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document URL</label>
+                    <input type="text" value={profile.panPhotoUrl || ''} onChange={e => setProfile({...profile, panPhotoUrl: e.target.value})} placeholder="e.g. document image link" disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Information */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">4. Bank Account Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Bank Name</label>
+                    <input type="text" value={profile.bankName || ''} onChange={e => setProfile({...profile, bankName: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Bank Account Number</label>
+                    <input type="text" value={profile.bankAccountNo || ''} onChange={e => setProfile({...profile, bankAccountNo: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Bank IFSC Code</label>
+                    <input type="text" value={profile.bankIfscCode || ''} onChange={e => setProfile({...profile, bankIfscCode: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Bank Branch Name</label>
+                    <input type="text" value={profile.bankBranchName || ''} onChange={e => setProfile({...profile, bankBranchName: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency Contacts */}
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">5. Emergency Contact Info</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Name</label>
+                    <input type="text" value={profile.emergencyContactName || ''} onChange={e => setProfile({...profile, emergencyContactName: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Mobile</label>
+                    <input type="text" value={profile.emergencyContactMobile || ''} onChange={e => setProfile({...profile, emergencyContactMobile: e.target.value})} disabled={!canEdit}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                  </div>
+                </div>
+              </div>
+
+              {canEdit && (
+                <button type="submit" disabled={savingProfile}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-all active:scale-95 disabled:opacity-50 shadow-lg">
+                  {savingProfile ? 'Saving...' : '💾 Save Profile Details'}
+                </button>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Notice Modal */}
       {showNoticeModal && (

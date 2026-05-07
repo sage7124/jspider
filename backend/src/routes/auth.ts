@@ -167,4 +167,139 @@ router.get('/notices', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+router.get('/profile', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        fullName: true,
+        identifier: true,
+        email: true,
+        role: true,
+        createdAt: true,
+        editAccessGrantedUntil: true,
+        photoUrl: true,
+        officeTimings: true,
+        dateOfJoining: true,
+        aadhaarNumber: true,
+        aadhaarPhotoUrl: true,
+        panNumber: true,
+        panPhotoUrl: true,
+        bankName: true,
+        bankAccountNo: true,
+        bankIfscCode: true,
+        bankBranchName: true,
+        emergencyContactName: true,
+        emergencyContactMobile: true,
+        fatherName: true,
+        motherName: true,
+        presentAddress: true,
+        permanentAddress: true,
+        educationCompleted: true,
+        subClassification: true,
+      }
+    });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Calculate edit eligibility:
+    // 1. Within 3 days of registration (createdAt + 72 hours)
+    // 2. Or editAccessGrantedUntil is in the future
+    const now = new Date();
+    const registrationLimit = new Date(user.createdAt.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const isWithin3Days = now < registrationLimit;
+    const isOverrideValid = user.editAccessGrantedUntil ? now < new Date(user.editAccessGrantedUntil) : false;
+    const canEdit = isWithin3Days || isOverrideValid;
+
+    res.json({ user, canEdit, registrationLimit, overrideLimit: user.editAccessGrantedUntil });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/profile', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Validate edit lock
+    const now = new Date();
+    const registrationLimit = new Date(user.createdAt.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const isWithin3Days = now < registrationLimit;
+    const isOverrideValid = user.editAccessGrantedUntil ? now < new Date(user.editAccessGrantedUntil) : false;
+    const canEdit = isWithin3Days || isOverrideValid;
+
+    if (!canEdit) {
+      return res.status(403).json({ error: 'Profile editing period has expired. Please contact Admin.' });
+    }
+
+    const {
+      fullName,
+      email,
+      photoUrl,
+      officeTimings,
+      dateOfJoining,
+      aadhaarNumber,
+      aadhaarPhotoUrl,
+      panNumber,
+      panPhotoUrl,
+      bankName,
+      bankAccountNo,
+      bankIfscCode,
+      bankBranchName,
+      emergencyContactName,
+      emergencyContactMobile,
+      fatherName,
+      motherName,
+      presentAddress,
+      permanentAddress,
+      educationCompleted,
+      subClassification
+    } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        fullName,
+        email,
+        photoUrl,
+        officeTimings,
+        dateOfJoining,
+        aadhaarNumber,
+        aadhaarPhotoUrl,
+        panNumber,
+        panPhotoUrl,
+        bankName,
+        bankAccountNo,
+        bankIfscCode,
+        bankBranchName,
+        emergencyContactName,
+        emergencyContactMobile,
+        fatherName,
+        motherName,
+        presentAddress,
+        permanentAddress,
+        educationCompleted,
+        subClassification
+      }
+    });
+
+    res.json({ message: 'Profile updated successfully', user: updatedUser });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

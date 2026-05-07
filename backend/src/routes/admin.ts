@@ -989,5 +989,21 @@ router.put('/notices/:id', async (req: AuthRequest, res) => {
   }
 });
 
+router.post('/user/:id/grant-edit', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    // Set editAccessGrantedUntil to 24 hours from now
+    const editAccessGrantedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const user = await prisma.user.update({
+      where: { id: Number(id) },
+      data: { editAccessGrantedUntil }
+    });
+    res.json({ message: 'Edit access granted successfully for 24 hours', user });
+  } catch (error) {
+    console.error('Grant edit error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

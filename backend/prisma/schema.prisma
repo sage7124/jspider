@@ -30,6 +30,30 @@ model User {
   mobileDeviceId String?      @unique
   desktopDeviceId String?     @unique
   
+  // 3-day lock override
+  editAccessGrantedUntil DateTime?
+  
+  // 21 Onboarding fields
+  photoUrl               String?
+  officeTimings          String?
+  dateOfJoining          String?
+  aadhaarNumber          String?
+  aadhaarPhotoUrl        String?
+  panNumber              String?
+  panPhotoUrl            String?
+  bankName               String?
+  bankAccountNo          String?
+  bankIfscCode           String?
+  bankBranchName         String?
+  emergencyContactName   String?
+  emergencyContactMobile String?
+  fatherName             String?
+  motherName             String?
+  presentAddress         String?
+  permanentAddress       String?
+  educationCompleted     String?
+  subClassification      String?
+  
   slots          Slot[]       // Slots assigned to this trainee
   attendances    Attendance[]
   leaveRequests  LeaveRequest[]
