@@ -2,6 +2,35 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = 'https://uzbobbzbbkqzgtjemayu.supabase.co';
+const supabaseAnonKey = 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+const FilePreview = ({ url, label }: { url: string; label: string }) => {
+  if (!url) return <span className="text-gray-400 italic mt-1 block">No {label} uploaded</span>;
+
+  const isPdf = url.startsWith('data:application/pdf') || url.toLowerCase().includes('.pdf');
+
+  return (
+    <div className="mt-2 border rounded-lg overflow-hidden bg-white shadow-sm max-w-xs transition-all hover:shadow-md">
+      <div className="bg-gray-100 px-3 py-1.5 text-[10px] font-bold text-gray-500 uppercase border-b flex justify-between items-center">
+        <span>{label} Preview</span>
+        <a href={url} target="_blank" rel="noreferrer" className="text-purple-600 hover:underline">
+          👁️ Open
+        </a>
+      </div>
+      <div className="p-2 flex justify-center items-center bg-gray-50/50 min-h-[100px]">
+        {isPdf ? (
+          <iframe src={url} className="w-full h-40 border-0 rounded" title={label} />
+        ) : (
+          <img src={url} alt={label} className="max-w-full max-h-32 object-contain rounded" />
+        )}
+      </div>
+    </div>
+  );
+};
 
 const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -1686,6 +1715,48 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'photoUrl' | 'aadhaarPhotoUrl' | 'panPhotoUrl') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      alert('File size must be less than 1MB');
+      return;
+    }
+
+    setUploadingField(fieldName);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${profile?.id || 'user'}_${fieldName}_${Date.now()}.${fileExt}`;
+      const filePath = `documents/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('nict-onboarding')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('nict-onboarding')
+        .getPublicUrl(filePath);
+
+      setProfile((prev: any) => ({
+        ...prev,
+        [fieldName]: publicUrl
+      }));
+      alert('Document uploaded successfully!');
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      alert(`Upload failed: ${err.message || err}`);
+    } finally {
+      setUploadingField(null);
+    }
+  };
 
   const educationOptions = ['Undergraduate', 'Postgraduate', 'Diploma', 'Doctorate'];
   const classificationOptions = ['Full-time', 'Part-time', 'Contract', 'Temporary'];
@@ -1839,13 +1910,18 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Profile Photo</span>
                   {isEditing ? (
-                    <input type="text" value={profile.photoUrl || ''} onChange={e => setProfile({...profile, photoUrl: e.target.value})} placeholder="Upload photo URL"
-                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
-                  ) : profile.photoUrl ? (
-                    <a href={profile.photoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1 block">
-                      👁️ View Uploaded Photo
-                    </a>
-                  ) : <span className="text-gray-400 italic block mt-1">No photo uploaded</span>}
+                    <div className="mt-1">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={(e) => handleFileUpload(e, 'photoUrl')} 
+                        disabled={uploadingField === 'photoUrl'}
+                        className="w-full text-xs font-semibold text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 transition-all cursor-pointer"
+                      />
+                      {uploadingField === 'photoUrl' && <p className="text-[10px] text-purple-600 animate-pulse mt-1">⏳ Uploading...</p>}
+                    </div>
+                  ) : null}
+                  <FilePreview url={profile.photoUrl} label="Profile Photo" />
                 </div>
               </div>
             </div>
@@ -1943,13 +2019,18 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Aadhaar Document</span>
                   {isEditing ? (
-                    <input type="text" value={profile.aadhaarPhotoUrl || ''} onChange={e => setProfile({...profile, aadhaarPhotoUrl: e.target.value})} placeholder="Upload Aadhaar URL"
-                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
-                  ) : profile.aadhaarPhotoUrl ? (
-                    <a href={profile.aadhaarPhotoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1 block">
-                      👁️ View Aadhaar Document (Image/PDF)
-                    </a>
-                  ) : <span className="text-gray-400 italic block mt-1">No Aadhaar uploaded</span>}
+                    <div className="mt-1">
+                      <input 
+                        type="file" 
+                        accept="image/*,application/pdf" 
+                        onChange={(e) => handleFileUpload(e, 'aadhaarPhotoUrl')} 
+                        disabled={uploadingField === 'aadhaarPhotoUrl'}
+                        className="w-full text-xs font-semibold text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 transition-all cursor-pointer"
+                      />
+                      {uploadingField === 'aadhaarPhotoUrl' && <p className="text-[10px] text-purple-600 animate-pulse mt-1">⏳ Uploading...</p>}
+                    </div>
+                  ) : null}
+                  <FilePreview url={profile.aadhaarPhotoUrl} label="Aadhaar Document" />
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">PAN Number</span>
@@ -1963,13 +2044,18 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">PAN Document</span>
                   {isEditing ? (
-                    <input type="text" value={profile.panPhotoUrl || ''} onChange={e => setProfile({...profile, panPhotoUrl: e.target.value})} placeholder="Upload PAN URL"
-                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
-                  ) : profile.panPhotoUrl ? (
-                    <a href={profile.panPhotoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1 block">
-                      👁️ View PAN Document (Image/PDF)
-                    </a>
-                  ) : <span className="text-gray-400 italic block mt-1">No PAN uploaded</span>}
+                    <div className="mt-1">
+                      <input 
+                        type="file" 
+                        accept="image/*,application/pdf" 
+                        onChange={(e) => handleFileUpload(e, 'panPhotoUrl')} 
+                        disabled={uploadingField === 'panPhotoUrl'}
+                        className="w-full text-xs font-semibold text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 transition-all cursor-pointer"
+                      />
+                      {uploadingField === 'panPhotoUrl' && <p className="text-[10px] text-purple-600 animate-pulse mt-1">⏳ Uploading...</p>}
+                    </div>
+                  ) : null}
+                  <FilePreview url={profile.panPhotoUrl} label="PAN Document" />
                 </div>
               </div>
             </div>

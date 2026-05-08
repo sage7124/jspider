@@ -7,6 +7,30 @@ const supabaseUrl = 'https://uzbobbzbbkqzgtjemayu.supabase.co';
 const supabaseAnonKey = 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+const FilePreview = ({ url, label }: { url: string; label: string }) => {
+  if (!url) return <span className="text-gray-400 italic mt-1 block">No {label} uploaded</span>;
+
+  const isPdf = url.startsWith('data:application/pdf') || url.toLowerCase().includes('.pdf');
+
+  return (
+    <div className="mt-2 border rounded-lg overflow-hidden bg-white shadow-sm max-w-xs transition-all hover:shadow-md">
+      <div className="bg-gray-100 px-3 py-1.5 text-[10px] font-bold text-gray-500 uppercase border-b flex justify-between items-center">
+        <span>{label} Preview</span>
+        <a href={url} target="_blank" rel="noreferrer" className="text-purple-600 hover:underline">
+          👁️ Open
+        </a>
+      </div>
+      <div className="p-2 flex justify-center items-center bg-gray-50/50 min-h-[100px]">
+        {isPdf ? (
+          <iframe src={url} className="w-full h-40 border-0 rounded" title={label} />
+        ) : (
+          <img src={url} alt={label} className="max-w-full max-h-32 object-contain rounded" />
+        )}
+      </div>
+    </div>
+  );
+};
+
 interface TraineeDashboardProps {
   user: any;
 }
@@ -691,30 +715,28 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo</label>
-                    <div className="flex gap-2 items-center">
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={(e) => handleFileUpload(e, 'photoUrl')} 
-                        disabled={!canEdit || uploadingField === 'photoUrl'}
-                        className="hidden" 
-                        id="photoUrl-input" 
-                      />
-                      <label 
-                        htmlFor="photoUrl-input"
-                        className={`flex-1 border-2 border-dashed rounded px-3 py-1.5 text-xs font-bold text-center cursor-pointer transition-all ${
-                          !canEdit ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
-                          uploadingField === 'photoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
-                          profile.photoUrl ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
-                        }`}
-                      >
-                        {uploadingField === 'photoUrl' ? '⏳ Uploading...' : profile.photoUrl ? '✅ Change Photo' : '📁 Upload Photo (<1MB)'}
-                      </label>
-                      {profile.photoUrl && (
-                        <a href={profile.photoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap">
-                          👁️ View
-                        </a>
-                      )}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2 items-center">
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={(e) => handleFileUpload(e, 'photoUrl')} 
+                          disabled={!canEdit || uploadingField === 'photoUrl'}
+                          className="hidden" 
+                          id="photoUrl-input" 
+                        />
+                        <label 
+                          htmlFor="photoUrl-input"
+                          className={`flex-1 border-2 border-dashed rounded px-3 py-1.5 text-xs font-bold text-center cursor-pointer transition-all ${
+                            !canEdit ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
+                            uploadingField === 'photoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
+                            profile.photoUrl ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
+                          }`}
+                        >
+                          {uploadingField === 'photoUrl' ? '⏳ Uploading...' : profile.photoUrl ? '✅ Change Photo' : '📁 Upload Photo (<1MB)'}
+                        </label>
+                      </div>
+                      <FilePreview url={profile.photoUrl} label="Profile Photo" />
                     </div>
                   </div>
                 </div>
@@ -774,30 +796,28 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document</label>
-                    <div className="flex gap-2 items-center">
-                      <input 
-                        type="file" 
-                        accept="image/*,application/pdf" 
-                        onChange={(e) => handleFileUpload(e, 'aadhaarPhotoUrl')} 
-                        disabled={!canEdit || uploadingField === 'aadhaarPhotoUrl'}
-                        className="hidden" 
-                        id="aadhaarPhotoUrl-input" 
-                      />
-                      <label 
-                        htmlFor="aadhaarPhotoUrl-input"
-                        className={`flex-1 border-2 border-dashed rounded px-3 py-1.5 text-xs font-bold text-center cursor-pointer transition-all ${
-                          !canEdit ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
-                          uploadingField === 'aadhaarPhotoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
-                          profile.aadhaarPhotoUrl ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
-                        }`}
-                      >
-                        {uploadingField === 'aadhaarPhotoUrl' ? '⏳ Uploading...' : profile.aadhaarPhotoUrl ? '✅ Change Document' : '📁 Upload Aadhaar (<1MB)'}
-                      </label>
-                      {profile.aadhaarPhotoUrl && (
-                        <a href={profile.aadhaarPhotoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap">
-                          👁️ View
-                        </a>
-                      )}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2 items-center">
+                        <input 
+                          type="file" 
+                          accept="image/*,application/pdf" 
+                          onChange={(e) => handleFileUpload(e, 'aadhaarPhotoUrl')} 
+                          disabled={!canEdit || uploadingField === 'aadhaarPhotoUrl'}
+                          className="hidden" 
+                          id="aadhaarPhotoUrl-input" 
+                        />
+                        <label 
+                          htmlFor="aadhaarPhotoUrl-input"
+                          className={`flex-1 border-2 border-dashed rounded px-3 py-1.5 text-xs font-bold text-center cursor-pointer transition-all ${
+                            !canEdit ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
+                            uploadingField === 'aadhaarPhotoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
+                            profile.aadhaarPhotoUrl ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
+                          }`}
+                        >
+                          {uploadingField === 'aadhaarPhotoUrl' ? '⏳ Uploading...' : profile.aadhaarPhotoUrl ? '✅ Change Document' : '📁 Upload Aadhaar (<1MB)'}
+                        </label>
+                      </div>
+                      <FilePreview url={profile.aadhaarPhotoUrl} label="Aadhaar Document" />
                     </div>
                   </div>
                   <div>
@@ -807,30 +827,28 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document</label>
-                    <div className="flex gap-2 items-center">
-                      <input 
-                        type="file" 
-                        accept="image/*,application/pdf" 
-                        onChange={(e) => handleFileUpload(e, 'panPhotoUrl')} 
-                        disabled={!canEdit || uploadingField === 'panPhotoUrl'}
-                        className="hidden" 
-                        id="panPhotoUrl-input" 
-                      />
-                      <label 
-                        htmlFor="panPhotoUrl-input"
-                        className={`flex-1 border-2 border-dashed rounded px-3 py-1.5 text-xs font-bold text-center cursor-pointer transition-all ${
-                          !canEdit ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
-                          uploadingField === 'panPhotoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
-                          profile.panPhotoUrl ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
-                        }`}
-                      >
-                        {uploadingField === 'panPhotoUrl' ? '⏳ Uploading...' : profile.panPhotoUrl ? '✅ Change Document' : '📁 Upload PAN (<1MB)'}
-                      </label>
-                      {profile.panPhotoUrl && (
-                        <a href={profile.panPhotoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-1.5 text-xs font-bold transition-all whitespace-nowrap">
-                          👁️ View
-                        </a>
-                      )}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2 items-center">
+                        <input 
+                          type="file" 
+                          accept="image/*,application/pdf" 
+                          onChange={(e) => handleFileUpload(e, 'panPhotoUrl')} 
+                          disabled={!canEdit || uploadingField === 'panPhotoUrl'}
+                          className="hidden" 
+                          id="panPhotoUrl-input" 
+                        />
+                        <label 
+                          htmlFor="panPhotoUrl-input"
+                          className={`flex-1 border-2 border-dashed rounded px-3 py-1.5 text-xs font-bold text-center cursor-pointer transition-all ${
+                            !canEdit ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' :
+                            uploadingField === 'panPhotoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
+                            profile.panPhotoUrl ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
+                          }`}
+                        >
+                          {uploadingField === 'panPhotoUrl' ? '⏳ Uploading...' : profile.panPhotoUrl ? '✅ Change Document' : '📁 Upload PAN (<1MB)'}
+                        </label>
+                      </div>
+                      <FilePreview url={profile.panPhotoUrl} label="PAN Document" />
                     </div>
                   </div>
                 </div>

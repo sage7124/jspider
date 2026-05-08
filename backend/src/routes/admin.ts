@@ -1084,5 +1084,19 @@ router.delete('/options/:id', async (req: AuthRequest, res) => {
   }
 });
 
+router.post('/allow-all-edit-24h', async (req: AuthRequest, res) => {
+  try {
+    const editAccessGrantedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await prisma.user.updateMany({
+      where: { role: 'TRAINEE' },
+      data: { editAccessGrantedUntil }
+    });
+    res.json({ message: 'All trainees have been granted edit access for 24 hours', until: editAccessGrantedUntil });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 
