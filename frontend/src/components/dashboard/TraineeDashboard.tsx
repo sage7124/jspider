@@ -736,16 +736,16 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed (Admin Managed Dropdown)</label>
-                    <select value={profile.educationCompleted || ''} onChange={e => setProfile({...profile, educationCompleted: e.target.value})} disabled={!canEdit}
-                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
+                    <select value={profile.educationCompleted || ''} onChange={e => setProfile({...profile, educationCompleted: e.target.value})} disabled={true}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-gray-100 text-gray-500">
                       <option value="">Select Education</option>
                       {educations.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Sub Classification (Admin Managed Dropdown)</label>
-                    <select value={profile.subClassification || ''} onChange={e => setProfile({...profile, subClassification: e.target.value})} disabled={!canEdit}
-                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
+                    <select value={profile.subClassification || ''} onChange={e => setProfile({...profile, subClassification: e.target.value})} disabled={true}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-gray-100 text-gray-500">
                       <option value="">Select Classification</option>
                       {classifications.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>

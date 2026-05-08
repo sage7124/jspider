@@ -137,13 +137,40 @@ router.post('/approve', async (req: AuthRequest, res) => {
 router.put('/user/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { fullName, identifier, email, totalLeaves, educationCompleted, subClassification } = req.body;
-    const updateData: any = { fullName, identifier, email, educationCompleted, subClassification };
+    const { 
+      fullName, identifier, email, totalLeaves, educationCompleted, subClassification,
+      fatherName, motherName, photoUrl, dateOfJoining, officeTimings, presentAddress,
+      permanentAddress, aadhaarNumber, aadhaarPhotoUrl, panNumber, panPhotoUrl,
+      bankName, bankAccountNo, bankIfscCode, bankBranchName, emergencyContactName,
+      emergencyContactMobile
+    } = req.body;
+
+    const updateData: any = {};
+    if (fullName !== undefined) updateData.fullName = fullName;
+    if (identifier !== undefined) updateData.identifier = identifier;
+    if (email !== undefined) updateData.email = email;
+    if (educationCompleted !== undefined) updateData.educationCompleted = educationCompleted;
+    if (subClassification !== undefined) updateData.subClassification = subClassification;
+    if (fatherName !== undefined) updateData.fatherName = fatherName;
+    if (motherName !== undefined) updateData.motherName = motherName;
+    if (photoUrl !== undefined) updateData.photoUrl = photoUrl;
+    if (dateOfJoining !== undefined) updateData.dateOfJoining = dateOfJoining;
+    if (officeTimings !== undefined) updateData.officeTimings = officeTimings;
+    if (presentAddress !== undefined) updateData.presentAddress = presentAddress;
+    if (permanentAddress !== undefined) updateData.permanentAddress = permanentAddress;
+    if (aadhaarNumber !== undefined) updateData.aadhaarNumber = aadhaarNumber;
+    if (aadhaarPhotoUrl !== undefined) updateData.aadhaarPhotoUrl = aadhaarPhotoUrl;
+    if (panNumber !== undefined) updateData.panNumber = panNumber;
+    if (panPhotoUrl !== undefined) updateData.panPhotoUrl = panPhotoUrl;
+    if (bankName !== undefined) updateData.bankName = bankName;
+    if (bankAccountNo !== undefined) updateData.bankAccountNo = bankAccountNo;
+    if (bankIfscCode !== undefined) updateData.bankIfscCode = bankIfscCode;
+    if (bankBranchName !== undefined) updateData.bankBranchName = bankBranchName;
+    if (emergencyContactName !== undefined) updateData.emergencyContactName = emergencyContactName;
+    if (emergencyContactMobile !== undefined) updateData.emergencyContactMobile = emergencyContactMobile;
     
     if (totalLeaves !== undefined) {
       updateData.totalLeaves = Number(totalLeaves);
-      // If updating total leaves, we usually want to reset/adjust the balance too.
-      // For now, let's keep it simple and reset balance to total if total is changed.
       updateData.leaveBalance = Number(totalLeaves);
     }
 

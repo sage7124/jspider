@@ -1231,11 +1231,25 @@ const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
                       <td className="px-4 py-3 font-medium">{r.empCode}</td>
                       <td className="px-4 py-3 font-bold">{r.name}</td>
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          r.status === 'IN' || r.status === 'OUT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                          {r.status === 'IN' || r.status === 'OUT' ? 'PRESENT' : 'ABSENT'}
-                        </span>
+                        {r.status === 'IN' || r.status === 'OUT' || r.status === 'PRESENT' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700">
+                            PRESENT
+                          </span>
+                        ) : r.status === '--' ? (
+                          <span className="text-gray-400 font-bold">--</span>
+                        ) : r.status === 'HOLIDAY' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+                            HOLIDAY
+                          </span>
+                        ) : r.status === 'LEAVE' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
+                            LEAVE
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700">
+                            {r.status}
+                          </span>
+                        )}
                       </td>
                       <td className="px-2 py-3 text-center border-l text-gray-600">{r.inTime1 || '--'}</td>
                       <td className="px-2 py-3 text-center text-gray-600">{r.outTime1 || '--'}</td>
@@ -1670,6 +1684,8 @@ const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
 const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const educationOptions = ['Undergraduate', 'Postgraduate', 'Diploma', 'Doctorate'];
   const classificationOptions = ['Full-time', 'Part-time', 'Contract', 'Temporary'];
@@ -1705,6 +1721,44 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
     }
   };
 
+  const handleSaveAll = async () => {
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/user/${trainee.id}`, {
+        fullName: profile.fullName,
+        fatherName: profile.fatherName,
+        motherName: profile.motherName,
+        email: profile.email,
+        photoUrl: profile.photoUrl,
+        dateOfJoining: profile.dateOfJoining,
+        officeTimings: profile.officeTimings,
+        educationCompleted: profile.educationCompleted,
+        subClassification: profile.subClassification,
+        presentAddress: profile.presentAddress,
+        permanentAddress: profile.permanentAddress,
+        aadhaarNumber: profile.aadhaarNumber,
+        panNumber: profile.panNumber,
+        bankName: profile.bankName,
+        bankAccountNo: profile.bankAccountNo,
+        bankIfscCode: profile.bankIfscCode,
+        bankBranchName: profile.bankBranchName,
+        emergencyContactName: profile.emergencyContactName,
+        emergencyContactMobile: profile.emergencyContactMobile
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Profile updated successfully!');
+      setIsEditing(false);
+      fetchProfile();
+    } catch (err: any) {
+      console.error(err);
+      alert('Failed to save profile changes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -1715,6 +1769,14 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
           <X size={20} />
         </button>
+        <div className="absolute right-12 top-3.5 flex items-center gap-2">
+          <button 
+            onClick={() => setIsEditing(!isEditing)} 
+            className="flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-1.5 rounded text-xs font-bold transition-all active:scale-95"
+          >
+            <Edit size={14} /> {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+          </button>
+        </div>
         <h3 className="text-xl font-bold mb-6 flex items-center gap-2 border-b pb-3 text-purple-700">
           👤 {trainee.name}'s Onboarding Profile
         </h3>
@@ -1731,31 +1793,59 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Full Name</span>
-                  <span className="font-semibold text-gray-800">{profile.fullName || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.fullName || ''} onChange={e => setProfile({...profile, fullName: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.fullName || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Father's Name</span>
-                  <span className="font-semibold text-gray-800">{profile.fatherName || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.fatherName || ''} onChange={e => setProfile({...profile, fatherName: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.fatherName || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Mother's Name</span>
-                  <span className="font-semibold text-gray-800">{profile.motherName || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.motherName || ''} onChange={e => setProfile({...profile, motherName: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.motherName || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Mobile Number</span>
-                  <span className="font-semibold text-gray-800">{profile.identifier || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.identifier || ''} onChange={e => setProfile({...profile, identifier: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.identifier || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Email ID</span>
-                  <span className="font-semibold text-gray-800">{profile.email || '--'}</span>
+                  {isEditing ? (
+                    <input type="email" value={profile.email || ''} onChange={e => setProfile({...profile, email: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.email || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Profile Photo</span>
-                  {profile.photoUrl ? (
-                    <a href={profile.photoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1">
+                  {isEditing ? (
+                    <input type="text" value={profile.photoUrl || ''} onChange={e => setProfile({...profile, photoUrl: e.target.value})} placeholder="Upload photo URL"
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : profile.photoUrl ? (
+                    <a href={profile.photoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1 block">
                       👁️ View Uploaded Photo
                     </a>
-                  ) : <span className="text-gray-400 italic">No photo uploaded</span>}
+                  ) : <span className="text-gray-400 italic block mt-1">No photo uploaded</span>}
                 </div>
               </div>
             </div>
@@ -1766,18 +1856,34 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Date of Joining NICT</span>
-                  <span className="font-semibold text-gray-800">{profile.dateOfJoining || '--'}</span>
+                  {isEditing ? (
+                    <input type="date" value={profile.dateOfJoining || ''} onChange={e => setProfile({...profile, dateOfJoining: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.dateOfJoining || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Office Timings with Cycle</span>
-                  <span className="font-semibold text-gray-800">{profile.officeTimings || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.officeTimings || ''} onChange={e => setProfile({...profile, officeTimings: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.officeTimings || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Education Completed</span>
                   <select 
                     value={profile.educationCompleted || ''} 
-                    onChange={e => handleFieldChange('educationCompleted', e.target.value)}
-                    className="w-full border rounded px-2.5 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700"
+                    onChange={e => {
+                      if (isEditing) {
+                        setProfile({...profile, educationCompleted: e.target.value});
+                      } else {
+                        handleFieldChange('educationCompleted', e.target.value);
+                      }
+                    }}
+                    className="w-full border rounded px-2.5 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1"
                   >
                     <option value="">Select Education</option>
                     {educationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -1787,8 +1893,14 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
                   <span className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Sub Classification</span>
                   <select 
                     value={profile.subClassification || ''} 
-                    onChange={e => handleFieldChange('subClassification', e.target.value)}
-                    className="w-full border rounded px-2.5 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700"
+                    onChange={e => {
+                      if (isEditing) {
+                        setProfile({...profile, subClassification: e.target.value});
+                      } else {
+                        handleFieldChange('subClassification', e.target.value);
+                      }
+                    }}
+                    className="w-full border rounded px-2.5 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1"
                   >
                     <option value="">Select Classification</option>
                     {classificationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -1796,11 +1908,21 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
                 </div>
                 <div className="md:col-span-2">
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Present Address</span>
-                  <span className="font-semibold text-gray-800">{profile.presentAddress || '--'}</span>
+                  {isEditing ? (
+                    <textarea value={profile.presentAddress || ''} onChange={e => setProfile({...profile, presentAddress: e.target.value})} rows={2}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1 resize-none" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.presentAddress || '--'}</span>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Permanent Address</span>
-                  <span className="font-semibold text-gray-800">{profile.permanentAddress || '--'}</span>
+                  {isEditing ? (
+                    <textarea value={profile.permanentAddress || ''} onChange={e => setProfile({...profile, permanentAddress: e.target.value})} rows={2}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1 resize-none" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.permanentAddress || '--'}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1811,27 +1933,43 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Aadhaar Number</span>
-                  <span className="font-semibold text-gray-800">{profile.aadhaarNumber || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.aadhaarNumber || ''} onChange={e => setProfile({...profile, aadhaarNumber: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.aadhaarNumber || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Aadhaar Document</span>
-                  {profile.aadhaarPhotoUrl ? (
-                    <a href={profile.aadhaarPhotoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1">
+                  {isEditing ? (
+                    <input type="text" value={profile.aadhaarPhotoUrl || ''} onChange={e => setProfile({...profile, aadhaarPhotoUrl: e.target.value})} placeholder="Upload Aadhaar URL"
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : profile.aadhaarPhotoUrl ? (
+                    <a href={profile.aadhaarPhotoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1 block">
                       👁️ View Aadhaar Document (Image/PDF)
                     </a>
-                  ) : <span className="text-gray-400 italic">No Aadhaar uploaded</span>}
+                  ) : <span className="text-gray-400 italic block mt-1">No Aadhaar uploaded</span>}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">PAN Number</span>
-                  <span className="font-semibold text-gray-800">{profile.panNumber || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.panNumber || ''} onChange={e => setProfile({...profile, panNumber: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.panNumber || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">PAN Document</span>
-                  {profile.panPhotoUrl ? (
-                    <a href={profile.panPhotoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1">
+                  {isEditing ? (
+                    <input type="text" value={profile.panPhotoUrl || ''} onChange={e => setProfile({...profile, panPhotoUrl: e.target.value})} placeholder="Upload PAN URL"
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : profile.panPhotoUrl ? (
+                    <a href={profile.panPhotoUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold text-xs flex items-center gap-1 mt-1 block">
                       👁️ View PAN Document (Image/PDF)
                     </a>
-                  ) : <span className="text-gray-400 italic">No PAN uploaded</span>}
+                  ) : <span className="text-gray-400 italic block mt-1">No PAN uploaded</span>}
                 </div>
               </div>
             </div>
@@ -1842,19 +1980,39 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Bank Name</span>
-                  <span className="font-semibold text-gray-800">{profile.bankName || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.bankName || ''} onChange={e => setProfile({...profile, bankName: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.bankName || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Account Number</span>
-                  <span className="font-semibold text-gray-800">{profile.bankAccountNo || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.bankAccountNo || ''} onChange={e => setProfile({...profile, bankAccountNo: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.bankAccountNo || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">IFSC Code</span>
-                  <span className="font-semibold text-gray-800">{profile.bankIfscCode || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.bankIfscCode || ''} onChange={e => setProfile({...profile, bankIfscCode: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.bankIfscCode || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Branch Name</span>
-                  <span className="font-semibold text-gray-800">{profile.bankBranchName || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.bankBranchName || ''} onChange={e => setProfile({...profile, bankBranchName: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.bankBranchName || '--'}</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1865,14 +2023,37 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Contact Name</span>
-                  <span className="font-semibold text-gray-800">{profile.emergencyContactName || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.emergencyContactName || ''} onChange={e => setProfile({...profile, emergencyContactName: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.emergencyContactName || '--'}</span>
+                  )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Contact Mobile Number</span>
-                  <span className="font-semibold text-gray-800">{profile.emergencyContactMobile || '--'}</span>
+                  {isEditing ? (
+                    <input type="text" value={profile.emergencyContactMobile || ''} onChange={e => setProfile({...profile, emergencyContactMobile: e.target.value})}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                  ) : (
+                    <span className="font-semibold text-gray-800 block mt-1">{profile.emergencyContactMobile || '--'}</span>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Save Button */}
+            {isEditing && (
+              <div className="flex justify-end pt-4 border-t mt-4">
+                <button 
+                  onClick={handleSaveAll} 
+                  disabled={saving}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded text-xs transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {saving ? '⏳ Saving...' : '💾 Save Profile'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
