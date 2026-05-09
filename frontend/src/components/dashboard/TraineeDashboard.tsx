@@ -476,19 +476,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
             <Send className="text-[#1976D2]" /> Leave Status
           </h3>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-center">
             <div className="text-center">
-              <span className="block text-2xl font-bold text-gray-800">{leaves?.totalLeaves || 0}</span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Total Quota</span>
+              <span className="block text-2xl font-bold text-gray-800">{leaves?.requests?.filter((r: any) => r.status === 'APPROVED').length || 0}</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Approved Leaves Taken</span>
             </div>
-            <div className="h-10 w-[1px] bg-gray-100"></div>
-            <div className="text-center">
-              <span className="block text-2xl font-bold text-blue-600">{leaves?.leaveBalance || 0}</span>
-              <span className="text-[10px] font-bold text-gray-400 uppercase">Remaining</span>
-            </div>
-          </div>
-          <div className="mt-4 p-2 bg-blue-50 rounded text-[10px] text-blue-700 font-medium">
-            * Leaves are assigned by management on a monthly/yearly basis.
           </div>
         </div>
 

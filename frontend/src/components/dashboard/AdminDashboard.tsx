@@ -273,12 +273,7 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           ))}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Leave Balance</label>
-            <input type="number" value={leaves} onChange={(e) => setLeaves(Number(e.target.value))}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <p className="text-[10px] text-gray-400 mt-1">Directly sets the available leave balance for this teacher.</p>
-          </div>
+          {/* Leave balance input removed */}
           
           <div className="mt-2 border-t pt-4">
             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Security & Devices</label>
@@ -1034,7 +1029,6 @@ const AdminDashboard: React.FC = () => {
               <th className="px-4 py-4">Date</th>
               <th className="px-4 py-4">In</th>
               <th className="px-4 py-4">Out</th>
-              <th className="px-4 py-4">Extra Work</th>
               <th className="px-4 py-4 text-center">Action</th>
             </tr>
           </thead>
@@ -1081,7 +1075,6 @@ const AdminDashboard: React.FC = () => {
                 <td className="px-4 py-4 text-gray-600">{t.date}</td>
                 <td className="px-4 py-4 font-medium">{t.in}</td>
                 <td className="px-4 py-4 font-medium">{t.out}</td>
-                <td className="px-4 py-4 font-bold text-indigo-600">{calculateExtraWork(t)}</td>
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-center gap-2">
                     <button onClick={() => setViewOnboardingUser(t)} className="text-purple-600 hover:text-purple-800 transition-colors" title="View Onboarding Profile"><User size={16} /></button>
@@ -1244,7 +1237,7 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
         <h2 className="text-lg font-bold mb-1">Assign Direct Leave</h2>
-        <p className="text-xs text-gray-500 mb-6">{trainee.name} (Balance: {trainee.leaveBalance})</p>
+        <p className="text-xs text-gray-500 mb-6">{trainee.name}</p>
         
         <div className="space-y-4">
           <div>
@@ -1540,7 +1533,7 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                     <td className="px-4 py-3">
                       <div className="font-bold">{r.user.fullName}</div>
                       <div className="text-[10px] text-gray-500">{r.user.identifier} • {r.user.department}</div>
-                      <div className="text-[10px] text-blue-600 font-bold mt-1">Balance: {r.user.leaveBalance} Days</div>
+                      {/* Balance info removed */}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="text-xs font-medium flex items-center gap-2">
