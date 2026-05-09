@@ -258,10 +258,6 @@ router.post('/leaves/direct', async (req: AuthRequest, res) => {
     
     const user = await prisma.user.findUnique({ where: { id: Number(traineeId) } });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    if (user.leaveBalance < days) {
-      return res.status(400).json({ error: `Insufficient leave balance. Remaining: ${user.leaveBalance}` });
-    }
 
     await prisma.$transaction([
       prisma.leaveRequest.create({
@@ -608,10 +604,6 @@ router.post('/leaves/process', async (req: AuthRequest, res) => {
 
       // Calculate days
       const days = Math.ceil((finalEndDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      
-      if (request.user.leaveBalance < days) {
-        return res.status(400).json({ error: 'Insufficient leave balance' });
-      }
 
       await prisma.$transaction([
         prisma.leaveRequest.update({ 
