@@ -138,7 +138,7 @@ router.put('/user/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { 
-      fullName, identifier, email, totalLeaves, educationCompleted, subClassification,
+      fullName, identifier, email, totalLeaves, leaveBalance, educationCompleted, subClassification,
       fatherName, motherName, photoUrl, dateOfJoining, officeTimings, presentAddress,
       permanentAddress, aadhaarNumber, aadhaarPhotoUrl, panNumber, panPhotoUrl,
       bankName, bankAccountNo, bankIfscCode, bankBranchName, emergencyContactName,
@@ -169,10 +169,8 @@ router.put('/user/:id', async (req: AuthRequest, res) => {
     if (emergencyContactName !== undefined) updateData.emergencyContactName = emergencyContactName;
     if (emergencyContactMobile !== undefined) updateData.emergencyContactMobile = emergencyContactMobile;
     
-    if (totalLeaves !== undefined) {
-      updateData.totalLeaves = Number(totalLeaves);
-      updateData.leaveBalance = Number(totalLeaves);
-    }
+    if (totalLeaves !== undefined) updateData.totalLeaves = Number(totalLeaves);
+    if (leaveBalance !== undefined) updateData.leaveBalance = Number(leaveBalance);
 
     const user = await prisma.user.update({
       where: { id: Number(id) },

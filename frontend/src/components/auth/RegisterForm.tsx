@@ -7,6 +7,73 @@ const supabaseUrl = 'https://uzbobbzbbkqzgtjemayu.supabase.co';
 const supabaseAnonKey = 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+const ChipInput = ({ 
+  value, 
+  onChange, 
+  placeholder, 
+  disabled 
+}: { 
+  value: string; 
+  onChange: (val: string) => void; 
+  placeholder: string; 
+  disabled?: boolean;
+}) => {
+  const [inputValue, setInputValue] = useState('');
+  const items = value ? value.split(',').map(item => item.trim()).filter(Boolean) : [];
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const cleanVal = inputValue.trim().replace(/,/g, '');
+      if (cleanVal && !items.includes(cleanVal)) {
+        const newItems = [...items, cleanVal];
+        onChange(newItems.join(', '));
+      }
+      setInputValue('');
+    }
+  };
+
+  const removeItem = (index: number) => {
+    const newItems = items.filter((_, i) => i !== index);
+    onChange(newItems.join(', '));
+  };
+
+  return (
+    <div className="w-full mt-1">
+      <div className="flex flex-wrap gap-1 bg-gray-50 min-h-[36px] p-1.5 border rounded border-gray-200">
+        {items.length === 0 ? (
+          <span className="text-gray-400 text-xs italic self-center px-1">None added yet (type & press Enter)</span>
+        ) : (
+          items.map((item, idx) => (
+            <span key={idx} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 font-bold text-[11px] px-2.5 py-0.5 rounded-full border border-blue-100 shadow-sm">
+              {item}
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => removeItem(idx)}
+                  className="text-blue-400 hover:text-blue-700 font-bold ml-0.5 focus:outline-none"
+                >
+                  &times;
+                </button>
+              )}
+            </span>
+          ))
+        )}
+      </div>
+      {!disabled && (
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className="w-full mt-1 px-3 py-1.5 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+        />
+      )}
+    </div>
+  );
+};
+
 const RegisterForm: React.FC = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -120,12 +187,12 @@ const RegisterForm: React.FC = () => {
     setError('');
     setSuccess(false);
 
-    // Strict submission validation for all fields across 4 steps
+    // Strict submission validation for all fields across 5 steps
     if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName || !formData.photoUrl ||
-        !formData.dateOfJoining || !formData.officeTimings || !formData.presentAddress || !formData.permanentAddress ||
+        !formData.dateOfJoining || !formData.officeTimings || !formData.presentAddress || !formData.permanentAddress || !formData.educationCompleted || !formData.subClassification ||
         !formData.aadhaarNumber || !formData.aadhaarPhotoUrl || !formData.panNumber || !formData.panPhotoUrl ||
         !formData.bankName || !formData.bankAccountNo || !formData.bankIfscCode || !formData.bankBranchName || !formData.emergencyContactName || !formData.emergencyContactMobile) {
-      setError('Please complete all 4 steps and fill in all details before submitting.');
+      setError('Please complete all 5 steps and fill in all details before submitting.');
       return;
     }
 
@@ -157,14 +224,20 @@ const RegisterForm: React.FC = () => {
       }
     }
     if (step === 2) {
-      if (!formData.dateOfJoining || !formData.officeTimings || !formData.presentAddress || !formData.permanentAddress) {
-        setError('Please fill in all fields (including Date of Joining, Office Timings, and Address).');
+      if (!formData.dateOfJoining || !formData.officeTimings || !formData.presentAddress || !formData.permanentAddress || !formData.educationCompleted || !formData.subClassification) {
+        setError('Please fill in all fields (including Date of Joining, Office Timings, Education Completed, Subjects/Modules, and Address).');
         return;
       }
     }
     if (step === 3) {
       if (!formData.aadhaarNumber || !formData.aadhaarPhotoUrl || !formData.panNumber || !formData.panPhotoUrl) {
         setError('Please fill in all fields (including Aadhaar No, PAN No, and document uploads).');
+        return;
+      }
+    }
+    if (step === 4) {
+      if (!formData.bankName || !formData.bankAccountNo || !formData.bankIfscCode || !formData.bankBranchName) {
+        setError('Please fill in all Bank Account details before proceeding.');
         return;
       }
     }
@@ -181,7 +254,7 @@ const RegisterForm: React.FC = () => {
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 max-w-2xl mx-auto">
       {/* Step Indicator */}
       <div className="flex items-center justify-between mb-8 px-1">
-        {[1, 2, 3, 4].map((s) => (
+        {[1, 2, 3, 4, 5].map((s) => (
           <React.Fragment key={s}>
             <div className="flex items-center">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
@@ -191,7 +264,7 @@ const RegisterForm: React.FC = () => {
                 {step > s ? <Check size={14} /> : s}
               </div>
             </div>
-            {s < 4 && <div className={`flex-1 h-0.5 mx-2 ${step > s ? 'bg-green-500' : 'bg-gray-100'}`} />}
+            {s < 5 && <div className={`flex-1 h-0.5 mx-2 ${step > s ? 'bg-green-500' : 'bg-gray-100'}`} />}
           </React.Fragment>
         ))}
       </div>
@@ -272,8 +345,24 @@ const RegisterForm: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle *</label>
-                <input type="text" name="officeTimings" value={formData.officeTimings} onChange={handleChange} placeholder="e.g. 9 AM - 5 PM Shift A" required
-                  className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <textarea name="officeTimings" value={formData.officeTimings} onChange={handleChange} placeholder="e.g. 9 AM - 5 PM Shift A" rows={2} required
+                  className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed *</label>
+                <ChipInput 
+                  value={formData.educationCompleted} 
+                  onChange={(val) => setFormData(prev => ({ ...prev, educationCompleted: val }))} 
+                  placeholder="Type degree (e.g. B.Tech) & press Enter" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Subjects / Modules classes that you can take *</label>
+                <ChipInput 
+                  value={formData.subClassification} 
+                  onChange={(val) => setFormData(prev => ({ ...prev, subClassification: val }))} 
+                  placeholder="Type module (e.g. Java) & press Enter" 
+                />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-gray-500 mb-1">Present Address *</label>
@@ -342,10 +431,10 @@ const RegisterForm: React.FC = () => {
           </div>
         )}
 
-        {/* STEP 4: Bank & Emergency contacts */}
+        {/* STEP 4: Bank Details */}
         {step === 4 && (
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 4: Bank Account & Emergency Contacts</h3>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 4: Bank Account Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Bank Name *</label>
@@ -367,6 +456,15 @@ const RegisterForm: React.FC = () => {
                 <input type="text" name="bankBranchName" value={formData.bankBranchName} onChange={handleChange} required
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 5: Emergency contacts */}
+        {step === 5 && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 5: Emergency Contacts</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Name *</label>
                 <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} required
@@ -390,7 +488,7 @@ const RegisterForm: React.FC = () => {
             </button>
           )}
           
-          {step < 4 ? (
+          {step < 5 ? (
             <button type="button" onClick={nextStep}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded font-bold text-xs ml-auto transition-all active:scale-95 shadow-sm">
               Next <ArrowRight size={14} />

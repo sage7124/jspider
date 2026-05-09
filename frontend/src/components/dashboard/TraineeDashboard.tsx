@@ -31,6 +31,73 @@ const FilePreview = ({ url, label }: { url: string; label: string }) => {
   );
 };
 
+const ChipInput = ({ 
+  value, 
+  onChange, 
+  placeholder, 
+  disabled 
+}: { 
+  value: string; 
+  onChange: (val: string) => void; 
+  placeholder: string; 
+  disabled?: boolean;
+}) => {
+  const [inputValue, setInputValue] = useState('');
+  const items = value ? value.split(',').map(item => item.trim()).filter(Boolean) : [];
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const cleanVal = inputValue.trim().replace(/,/g, '');
+      if (cleanVal && !items.includes(cleanVal)) {
+        const newItems = [...items, cleanVal];
+        onChange(newItems.join(', '));
+      }
+      setInputValue('');
+    }
+  };
+
+  const removeItem = (index: number) => {
+    const newItems = items.filter((_, i) => i !== index);
+    onChange(newItems.join(', '));
+  };
+
+  return (
+    <div className="w-full mt-1 text-left">
+      <div className="flex flex-wrap gap-1 bg-white min-h-[36px] p-1.5 border rounded border-gray-200">
+        {items.length === 0 ? (
+          <span className="text-gray-400 text-xs italic self-center px-1">None added yet</span>
+        ) : (
+          items.map((item, idx) => (
+            <span key={idx} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 font-bold text-[11px] px-2.5 py-0.5 rounded-full border border-blue-100 shadow-sm">
+              {item}
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => removeItem(idx)}
+                  className="text-blue-400 hover:text-blue-700 font-bold ml-0.5 focus:outline-none"
+                >
+                  &times;
+                </button>
+              )}
+            </span>
+          ))
+        )}
+      </div>
+      {!disabled && (
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className="w-full mt-1 px-3 py-1.5 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+        />
+      )}
+    </div>
+  );
+};
+
 interface TraineeDashboardProps {
   user: any;
 }
@@ -753,24 +820,26 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle</label>
-                    <input type="text" value={profile.officeTimings || ''} onChange={e => setProfile({...profile, officeTimings: e.target.value})} placeholder="e.g. 9 AM - 5 PM Shift A" disabled={!canEdit}
-                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500" />
+                    <textarea value={profile.officeTimings || ''} onChange={e => setProfile({...profile, officeTimings: e.target.value})} placeholder="e.g. 9 AM - 5 PM Shift A" disabled={!canEdit} rows={2}
+                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 resize-none" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed (Admin Managed Dropdown)</label>
-                    <select value={profile.educationCompleted || ''} onChange={e => setProfile({...profile, educationCompleted: e.target.value})} disabled={true}
-                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-gray-100 text-gray-500">
-                      <option value="">Select Education</option>
-                      {educations.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed</label>
+                    <ChipInput 
+                      value={profile.educationCompleted || ''} 
+                      onChange={val => setProfile({ ...profile, educationCompleted: val })}
+                      placeholder="Type degree & press Enter"
+                      disabled={!canEdit}
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1">Sub Classification (Admin Managed Dropdown)</label>
-                    <select value={profile.subClassification || ''} onChange={e => setProfile({...profile, subClassification: e.target.value})} disabled={true}
-                      className="w-full border rounded px-3 py-1.5 text-sm outline-none bg-gray-100 text-gray-500">
-                      <option value="">Select Classification</option>
-                      {classifications.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
+                    <label className="block text-xs font-bold text-gray-500 mb-1">Subjects / Modules classes that you can take</label>
+                    <ChipInput 
+                      value={profile.subClassification || ''} 
+                      onChange={val => setProfile({ ...profile, subClassification: val })}
+                      placeholder="Type module & press Enter"
+                      disabled={!canEdit}
+                    />
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-gray-500 mb-1">Present Address</label>

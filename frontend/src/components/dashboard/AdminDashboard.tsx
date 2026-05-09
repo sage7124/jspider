@@ -32,6 +32,73 @@ const FilePreview = ({ url, label }: { url: string; label: string }) => {
   );
 };
 
+const ChipInput = ({ 
+  value, 
+  onChange, 
+  placeholder, 
+  disabled 
+}: { 
+  value: string; 
+  onChange: (val: string) => void; 
+  placeholder: string; 
+  disabled?: boolean;
+}) => {
+  const [inputValue, setInputValue] = useState('');
+  const items = value ? value.split(',').map(item => item.trim()).filter(Boolean) : [];
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const cleanVal = inputValue.trim().replace(/,/g, '');
+      if (cleanVal && !items.includes(cleanVal)) {
+        const newItems = [...items, cleanVal];
+        onChange(newItems.join(', '));
+      }
+      setInputValue('');
+    }
+  };
+
+  const removeItem = (index: number) => {
+    const newItems = items.filter((_, i) => i !== index);
+    onChange(newItems.join(', '));
+  };
+
+  return (
+    <div className="w-full mt-1 text-left">
+      <div className="flex flex-wrap gap-1 bg-white min-h-[36px] p-1.5 border rounded border-gray-200">
+        {items.length === 0 ? (
+          <span className="text-gray-400 text-xs italic self-center px-1">None added yet</span>
+        ) : (
+          items.map((item, idx) => (
+            <span key={idx} className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 font-bold text-[11px] px-2.5 py-0.5 rounded-full border border-purple-100 shadow-sm">
+              {item}
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => removeItem(idx)}
+                  className="text-purple-400 hover:text-purple-700 font-bold ml-0.5 focus:outline-none"
+                >
+                  &times;
+                </button>
+              )}
+            </span>
+          ))
+        )}
+      </div>
+      {!disabled && (
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className="w-full mt-1 px-3 py-1.5 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs"
+        />
+      )}
+    </div>
+  );
+};
+
 const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAY_MAP: Record<string, string> = {
@@ -97,6 +164,68 @@ function buildInitSlots(slots: Slot[]): Record<string, DaySlots> {
   return init;
 }
 
+function parseTimeToMinutes(timeStr: string): number | null {
+  if (!timeStr || timeStr === '--') return null;
+  const parts = timeStr.trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  const timePart = parts[0];
+  const ampm = parts[1].toUpperCase();
+  const timeSplit = timePart.split(':');
+  if (timeSplit.length < 2) return null;
+  let hours = parseInt(timeSplit[0], 10);
+  const minutes = parseInt(timeSplit[1], 10);
+  if (isNaN(hours) || isNaN(minutes)) return null;
+  if (ampm === 'PM' && hours < 12) hours += 12;
+  if (ampm === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
+
+function calculateExtraWork(t: Trainee): string {
+  if (!t.in || t.in === '--' || !t.out || t.out === '--' || !t.slots || t.slots.length === 0) return '--';
+
+  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const todayDay = days[new Date().getDay()];
+
+  const todaySlots = t.slots.filter(s => s.day.toUpperCase() === todayDay);
+  if (todaySlots.length === 0) return '--';
+
+  let minStart = Infinity;
+  let maxEnd = -Infinity;
+
+  todaySlots.forEach(s => {
+    const startMin = parseTimeToMinutes(s.start);
+    const endMin = parseTimeToMinutes(s.end);
+    if (startMin !== null && startMin < minStart) minStart = startMin;
+    if (endMin !== null && endMin > maxEnd) maxEnd = endMin;
+  });
+
+  if (minStart === Infinity || maxEnd === -Infinity) return '--';
+
+  const actualIn = parseTimeToMinutes(t.in);
+  const actualOut = parseTimeToMinutes(t.out);
+
+  if (actualIn === null || actualOut === null) return '--';
+
+  let extraMinutes = 0;
+
+  if (actualIn < minStart) {
+    extraMinutes += (minStart - actualIn);
+  }
+
+  if (actualOut > maxEnd) {
+    extraMinutes += (actualOut - maxEnd);
+  }
+
+  if (extraMinutes <= 0) return '--';
+
+  const hrs = Math.floor(extraMinutes / 60);
+  const mins = extraMinutes % 60;
+  if (hrs > 0) {
+    return `${hrs} hr ${mins} mins`;
+  }
+  return `${mins} mins`;
+}
+
 // ── Select component ──────────────────────────────────────────────────────────
 const Sel = ({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) => (
   <select value={value} onChange={(e) => onChange(e.target.value)}
@@ -112,7 +241,7 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
   const [mobile, setMobile] = useState(trainee.empCode);
   const [email, setEmail] = useState(trainee.email || '');
 
-  const [leaves, setLeaves] = useState(trainee.totalLeaves || 0);
+  const [leaves, setLeaves] = useState(trainee.leaveBalance || 0);
 
   const handleUpdate = async () => {
     try {
@@ -121,7 +250,7 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
         fullName: name, 
         identifier: mobile, 
         email,
-        totalLeaves: leaves
+        leaveBalance: leaves
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -145,10 +274,10 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
             </div>
           ))}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Yearly Leave Quota</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Leave Balance</label>
             <input type="number" value={leaves} onChange={(e) => setLeaves(Number(e.target.value))}
               className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <p className="text-[10px] text-gray-400 mt-1">Updating this will reset the balance to this total.</p>
+            <p className="text-[10px] text-gray-400 mt-1">Directly sets the available leave balance for this teacher.</p>
           </div>
           
           <div className="mt-2 border-t pt-4">
@@ -905,6 +1034,7 @@ const AdminDashboard: React.FC = () => {
               <th className="px-4 py-4">Date</th>
               <th className="px-4 py-4">In</th>
               <th className="px-4 py-4">Out</th>
+              <th className="px-4 py-4">Extra Work</th>
               <th className="px-4 py-4 text-center">Action</th>
             </tr>
           </thead>
@@ -951,6 +1081,7 @@ const AdminDashboard: React.FC = () => {
                 <td className="px-4 py-4 text-gray-600">{t.date}</td>
                 <td className="px-4 py-4 font-medium">{t.in}</td>
                 <td className="px-4 py-4 font-medium">{t.out}</td>
+                <td className="px-4 py-4 font-bold text-indigo-600">{calculateExtraWork(t)}</td>
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-center gap-2">
                     <button onClick={() => setViewOnboardingUser(t)} className="text-purple-600 hover:text-purple-800 transition-colors" title="View Onboarding Profile"><User size={16} /></button>
@@ -1942,45 +2073,39 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Office Timings with Cycle</span>
                   {isEditing ? (
-                    <input type="text" value={profile.officeTimings || ''} onChange={e => setProfile({...profile, officeTimings: e.target.value})}
-                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1" />
+                    <textarea value={profile.officeTimings || ''} onChange={e => setProfile({...profile, officeTimings: e.target.value})} rows={2}
+                      className="w-full border rounded px-2 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1 resize-none" />
                   ) : (
-                    <span className="font-semibold text-gray-800 block mt-1">{profile.officeTimings || '--'}</span>
+                    <span className="font-semibold text-gray-800 block mt-1 whitespace-pre-wrap">{profile.officeTimings || '--'}</span>
                   )}
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Education Completed</span>
-                  <select 
+                  <ChipInput 
                     value={profile.educationCompleted || ''} 
-                    onChange={e => {
-                      if (isEditing) {
-                        setProfile({...profile, educationCompleted: e.target.value});
-                      } else {
-                        handleFieldChange('educationCompleted', e.target.value);
+                    onChange={val => {
+                      setProfile({ ...profile, educationCompleted: val });
+                      if (!isEditing) {
+                        handleFieldChange('educationCompleted', val);
                       }
                     }}
-                    className="w-full border rounded px-2.5 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1"
-                  >
-                    <option value="">Select Education</option>
-                    {educationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
+                    placeholder="Type degree & press Enter"
+                    disabled={!isEditing}
+                  />
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Sub Classification</span>
-                  <select 
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Subjects / Modules classes that you can take</span>
+                  <ChipInput 
                     value={profile.subClassification || ''} 
-                    onChange={e => {
-                      if (isEditing) {
-                        setProfile({...profile, subClassification: e.target.value});
-                      } else {
-                        handleFieldChange('subClassification', e.target.value);
+                    onChange={val => {
+                      setProfile({ ...profile, subClassification: val });
+                      if (!isEditing) {
+                        handleFieldChange('subClassification', val);
                       }
                     }}
-                    className="w-full border rounded px-2.5 py-1 text-xs font-semibold outline-none bg-white focus:ring-2 focus:ring-purple-500 text-gray-700 mt-1"
-                  >
-                    <option value="">Select Classification</option>
-                    {classificationOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
+                    placeholder="Type module & press Enter"
+                    disabled={!isEditing}
+                  />
                 </div>
                 <div className="md:col-span-2">
                   <span className="block text-[10px] font-bold text-gray-400 uppercase">Present Address</span>

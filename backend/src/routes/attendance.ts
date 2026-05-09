@@ -95,13 +95,54 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
 
     // Find all slots for today
     const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][now.getDay()];
-    const slots = await prisma.slot.findMany({
+    let slots = await prisma.slot.findMany({
       where: { userId, dayOfWeek },
       orderBy: { slotNo: 'asc' }
     });
 
     let isLate = false;
     let activeSlot = null;
+    let forwardedSuccessfully = false;
+
+    if (slots.length === 0) {
+      const sisterUrl = process.env.SISTER_INSTITUTE_API_URL;
+      const secretKey = process.env.CROSS_INSTITUTE_SECRET_KEY;
+
+      if (sisterUrl && secretKey) {
+        try {
+          const todayDateStr = today.toISOString().split('T')[0];
+          const punchTimeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+          const response = await fetch(`${sisterUrl}/api/admin/external-punch`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-cross-secret': secretKey
+            },
+            body: JSON.stringify({
+              identifier: user.identifier,
+              punchTime: punchTimeStr,
+              type: type === 'IN' ? 'in' : 'out',
+              slotNo: 1,
+              date: todayDateStr
+            })
+          });
+
+          if (response.ok) {
+            const resData: any = await response.json();
+            if (resData && resData.success) {
+              forwardedSuccessfully = true;
+            }
+          }
+        } catch (err: any) {
+          console.log("Sister institute does not have slot or request failed. Processing punch locally as fallback:", err.message);
+        }
+      }
+    }
+
+    if (forwardedSuccessfully) {
+      return res.json({ message: `Successfully punched ${type} (Forwarded to sister institute)` });
+    }
     if (slots.length > 0) {
       if (type === 'OUT' && existing) {
         // Find a slot that was punched IN but not punched OUT yet
