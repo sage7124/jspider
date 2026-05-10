@@ -208,6 +208,8 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       if (activeSlotNo === 1) dataUpdate.inTime1 = now;
       if (activeSlotNo === 2) dataUpdate.inTime2 = now;
       if (activeSlotNo === 3) dataUpdate.inTime3 = now;
+      if (activeSlotNo === 4) dataUpdate.inTime4 = now;
+      if (activeSlotNo === 5) dataUpdate.inTime5 = now;
 
       const dataCreate: any = {
         userId,
@@ -219,6 +221,8 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       if (activeSlotNo === 1) dataCreate.inTime1 = now;
       if (activeSlotNo === 2) dataCreate.inTime2 = now;
       if (activeSlotNo === 3) dataCreate.inTime3 = now;
+      if (activeSlotNo === 4) dataCreate.inTime4 = now;
+      if (activeSlotNo === 5) dataCreate.inTime5 = now;
 
       await prisma.attendance.upsert({
         where: { userId_date: { userId, date: today } },
@@ -237,6 +241,8 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       if (activeSlotNo === 1) dataUpdate.outTime1 = now;
       if (activeSlotNo === 2) dataUpdate.outTime2 = now;
       if (activeSlotNo === 3) dataUpdate.outTime3 = now;
+      if (activeSlotNo === 4) dataUpdate.outTime4 = now;
+      if (activeSlotNo === 5) dataUpdate.outTime5 = now;
 
       await prisma.attendance.update({
         where: { userId_date: { userId, date: today } },
@@ -304,6 +310,50 @@ router.post('/change-password', authenticateToken, async (req: AuthRequest, res)
   }
 });
 
+async function fetchSisterReportData(identifier: string, month: any, year: any) {
+  const sisterUrl = process.env.SISTER_INSTITUTE_API_URL;
+  const secretKey = process.env.CROSS_INSTITUTE_SECRET_KEY;
+  if (!sisterUrl || !secretKey) return null;
+  try {
+    const response = await fetch(`${sisterUrl}/api/admin/external-monthly-data`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-cross-secret': secretKey },
+      body: JSON.stringify({ identifier, month, year })
+    });
+    if (!response.ok) return null;
+    const resData: any = await response.json();
+    return resData.success ? resData : null;
+  } catch (e) {
+    console.log("Sister data fetch error:", e);
+    return null;
+  }
+}
+
+function mergeAttendances(localAtt: any[], remoteAtt: any[]) {
+  const mergedMap = new Map<string, any>();
+  localAtt.forEach(a => { mergedMap.set(new Date(a.date).toISOString().split('T')[0], { ...a }); });
+  
+  remoteAtt.forEach(rem => {
+    const key = new Date(rem.date).toISOString().split('T')[0];
+    if (!mergedMap.has(key)) {
+      mergedMap.set(key, rem);
+    } else {
+      const loc = mergedMap.get(key);
+      const combo = { ...loc, ...rem };
+      if (loc.inTime && rem.inTime) combo.inTime = new Date(loc.inTime) < new Date(rem.inTime) ? loc.inTime : rem.inTime;
+      if (loc.outTime && rem.outTime) combo.outTime = new Date(loc.outTime) > new Date(rem.outTime) ? loc.outTime : rem.outTime;
+      combo.isLate = loc.isLate || rem.isLate;
+      combo.status = (loc.status === 'IN' || rem.status === 'IN') ? 'IN' : 'OUT';
+      for(let i = 1; i <= 5; i++) {
+        combo[`inTime${i}`] = loc[`inTime${i}`] || rem[`inTime${i}`];
+        combo[`outTime${i}`] = loc[`outTime${i}`] || rem[`outTime${i}`];
+      }
+      mergedMap.set(key, combo);
+    }
+  });
+  return Array.from(mergedMap.values());
+}
+
 router.get('/reports/monthly-excel', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { month, year } = req.query;
@@ -347,7 +397,20 @@ router.get('/reports/monthly-excel', authenticateToken, async (req: AuthRequest,
 
     const workbook = new exceljs.Workbook();
     const ws = workbook.addWorksheet(`My Report - ${user.fullName}`);
-    generateTraineeWorksheet(ws, user, attendances, y, m, daysInMonth, holidays, leaves);
+
+    let finalAttendances = attendances;
+    let finalHolidays = holidays;
+    let finalLeaves = leaves;
+
+    // Fetch Sister Data dynamically
+    const sister = await fetchSisterReportData(user.identifier, m, y);
+    if (sister) {
+      finalAttendances = mergeAttendances(attendances, sister.attendances);
+      finalHolidays = [...holidays, ...sister.holidays];
+      finalLeaves = [...leaves, ...sister.leaves];
+    }
+
+    generateTraineeWorksheet(ws, user, finalAttendances, y, m, daysInMonth, finalHolidays, finalLeaves);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=My_Report_${m}_${y}.xlsx`);
@@ -401,7 +464,18 @@ router.get('/reports/monthly-json', authenticateToken, async (req: AuthRequest, 
       }
     });
 
-    const reportData = getTraineeReportData(user, attendances, y, m, daysInMonth, holidays, leaves);
+    let finalAttendances = attendances;
+    let finalHolidays = holidays;
+    let finalLeaves = leaves;
+
+    const sister = await fetchSisterReportData(user.identifier, m, y);
+    if (sister) {
+      finalAttendances = mergeAttendances(attendances, sister.attendances);
+      finalHolidays = [...holidays, ...sister.holidays];
+      finalLeaves = [...leaves, ...sister.leaves];
+    }
+
+    const reportData = getTraineeReportData(user, finalAttendances, y, m, daysInMonth, finalHolidays, finalLeaves);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');

@@ -108,7 +108,7 @@ const DAY_MAP: Record<string, string> = {
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MINS = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
 const AMPM = ['AM', 'PM'];
-const SLOT_COUNT = 3; // 3 slots per day
+const SLOT_COUNT = 5; // Allocating up to 5 dynamic slots per day
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Slot { day: string; start: string; end: string; slotNo: number }
@@ -328,6 +328,10 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
   const [saved, setSaved] = useState(false);
   const [sourceDay, setSourceDay] = useState('Monday');
   const [targetDays, setTargetDays] = useState<string[]>([]);
+  
+  // Initial state calculates current max assigned slot up to 5, but defaults minimum view to 3.
+  const initialMax = Math.max(3, ...trainee.slots.map(s => s.slotNo || 0));
+  const [visibleSlots, setVisibleSlots] = useState(Math.min(initialMax, SLOT_COUNT));
 
   const update = (day: string, slotIdx: number, side: 'from' | 'to', field: keyof TimeField, val: string) => {
     setDaySlots((prev) => {
@@ -393,13 +397,22 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
           >
             📋 Copy Monday to All Days
           </button>
+          
+          {visibleSlots < SLOT_COUNT && (
+            <button
+              onClick={() => setVisibleSlots(p => Math.min(p + 1, SLOT_COUNT))}
+              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-4 py-1.5 rounded font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              ➕ Add Extra Slot
+            </button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b">
                 <th className="py-2 px-2 text-left font-semibold w-24">Day</th>
-                {Array.from({ length: SLOT_COUNT }, (_, si) => (
+                {Array.from({ length: visibleSlots }, (_, si) => (
                   <React.Fragment key={si}>
                     <th className="py-2 px-1 text-center font-bold text-gray-700 border-l" colSpan={6}>
                       Slot-{si + 1}
@@ -409,7 +422,7 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
               </tr>
               <tr className="bg-gray-50 border-b text-gray-500">
                 <th className="py-1 px-2"></th>
-                {Array.from({ length: SLOT_COUNT }, (_, si) => (
+                {Array.from({ length: visibleSlots }, (_, si) => (
                   <React.Fragment key={si}>
                     <th className="py-1 px-1 text-center border-l" colSpan={3}>From</th>
                     <th className="py-1 px-1 text-center" colSpan={3}>To</th>
@@ -432,7 +445,7 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
                       </button>
                     </div>
                   </td>
-                  {Array.from({ length: SLOT_COUNT }, (_, si) => (
+                  {Array.from({ length: visibleSlots }, (_, si) => (
                     <React.Fragment key={si}>
                       {(['from', 'to'] as const).map((side) => (
                         <React.Fragment key={side}>

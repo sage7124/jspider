@@ -103,13 +103,17 @@ model Attendance {
   isLate         Boolean      @default(false)
   createdAt      DateTime     @default(now())
 
-  // Slot specific punches (New)
+  // Slot specific punches
   inTime1        DateTime?
   outTime1       DateTime?
   inTime2        DateTime?
   outTime2       DateTime?
   inTime3        DateTime?
   outTime3       DateTime?
+  inTime4        DateTime?
+  outTime4       DateTime?
+  inTime5        DateTime?
+  outTime5       DateTime?
 
   @@unique([userId, date])
 }
