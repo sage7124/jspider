@@ -406,6 +406,15 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
               ➕ Add Extra Slot
             </button>
           )}
+          
+          {visibleSlots > 3 && (
+            <button
+              onClick={() => setVisibleSlots(p => Math.max(3, p - 1))}
+              className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-1.5 rounded font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              ➖ Remove Last Slot
+            </button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
