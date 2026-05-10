@@ -8,6 +8,128 @@ import { generateTraineeWorksheet } from '../utils/excel';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// ── Cross-Institute Internal Webhook Handlers (Unsecured from Admin JWT) ────────
+// Middleware to verify cross-institute secret key
+const verifyCrossSecret = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const headerSecret = req.headers['x-cross-secret'];
+  const expectedSecret = process.env.CROSS_INSTITUTE_SECRET_KEY;
+  if (!expectedSecret || headerSecret !== expectedSecret) {
+    return res.status(401).json({ error: 'Unauthorized cross-institute access' });
+  }
+  next();
+};
+
+router.post('/external-punch', verifyCrossSecret, async (req, res) => {
+  try {
+    const { identifier, type } = req.body;
+    const user = await prisma.user.findUnique({ where: { identifier } });
+    if (!user) return res.status(404).json({ error: 'User not found locally' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][now.getDay()];
+
+    const slots = await prisma.slot.findMany({ where: { userId: user.id, dayOfWeek }, orderBy: { slotNo: 'asc' } });
+    
+    // User has no slot here today! Return error to signal calling institute to fallback to local logging!
+    if (slots.length === 0) {
+      return res.status(400).json({ error: 'No scheduled slots on this institute for today.' });
+    }
+
+    const existing = await prisma.attendance.findUnique({ where: { userId_date: { userId: user.id, date: today } } });
+
+    let activeSlot = null;
+    const typeUpper = (type as string).toUpperCase();
+
+    // Simple logical slot determination
+    if (typeUpper === 'OUT' && existing) {
+      for (const s of slots) {
+        if (existing[`inTime${s.slotNo}` as keyof typeof existing] && !existing[`outTime${s.slotNo}` as keyof typeof existing]) {
+          activeSlot = s;
+          break;
+        }
+      }
+    }
+    if (!activeSlot) {
+      for (const s of slots) {
+        const [eTime, eMod] = s.endTime.split(' ');
+        let [eh, em] = eTime.split(':').map(Number);
+        if (eMod === 'PM' && eh < 12) eh += 12;
+        if (eMod === 'AM' && eh === 12) eh = 0;
+        const slotEnd = new Date(today);
+        slotEnd.setHours(eh, em, 0, 0);
+        if (now.getTime() <= slotEnd.getTime()) {
+          activeSlot = s;
+          break;
+        }
+      }
+    }
+    if (!activeSlot) activeSlot = slots[slots.length - 1];
+    
+    let isLate = false;
+    if (typeUpper === 'IN') {
+      const [sTime, sMod] = activeSlot.startTime.split(' ');
+      let [sh, sm] = sTime.split(':').map(Number);
+      if (sMod === 'PM' && sh < 12) sh += 12;
+      if (sMod === 'AM' && sh === 12) sh = 0;
+      const slotStartTime = new Date(today);
+      slotStartTime.setHours(sh, sm, 0, 0);
+      if (now.getTime() > slotStartTime.getTime()) isLate = true;
+    }
+
+    const activeSlotNo = activeSlot.slotNo;
+
+    if (typeUpper === 'IN') {
+      if (existing?.status === 'IN') return res.json({ success: true, message: 'Already punched in' });
+      const updateD: any = { status: 'IN', inTime: existing?.inTime || now, isLate: existing ? existing.isLate : isLate };
+      const createD: any = { userId: user.id, date: today, status: 'IN', inTime: now, isLate };
+      if ([1,2,3,4,5].includes(activeSlotNo)) {
+        updateD[`inTime${activeSlotNo}`] = now;
+        createD[`inTime${activeSlotNo}`] = now;
+      }
+      await prisma.attendance.upsert({ where: { userId_date: { userId: user.id, date: today } }, update: updateD, create: createD });
+    } else {
+      if (!existing || existing.status === 'OUT') return res.json({ success: true, message: 'Not punched in' });
+      const updateD: any = { status: 'OUT', outTime: now };
+      if ([1,2,3,4,5].includes(activeSlotNo)) updateD[`outTime${activeSlotNo}`] = now;
+      await prisma.attendance.update({ where: { userId_date: { userId: user.id, date: today } }, data: updateD });
+    }
+
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/external-monthly-data', verifyCrossSecret, async (req, res) => {
+  try {
+    const { identifier, month, year } = req.body;
+    const user = await prisma.user.findUnique({ where: { identifier } });
+    if (!user) return res.json({ success: true, attendances: [], leaves: [], holidays: [] });
+
+    const m = parseInt(month);
+    const y = parseInt(year);
+    const startDate = new Date(y, m - 1, 1);
+    const endDate = new Date(y, m, 0);
+
+    const attendances = await prisma.attendance.findMany({
+      where: { userId: user.id, date: { gte: startDate, lte: endDate } }
+    });
+    const leaves = await prisma.leaveRequest.findMany({
+      where: { userId: user.id, status: 'APPROVED', OR: [{ startDate: { lte: endDate }, endDate: { gte: startDate } }] }
+    });
+    const holidays = await prisma.holiday.findMany({
+      where: { date: { gte: startDate, lte: endDate } }
+    });
+
+    res.json({ success: true, attendances, leaves, holidays });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Standard Secured API Endpoints (Require JWT & Admin Privileges) ──────────
 router.use(authenticateToken);
 router.use(requireAdmin);
 
@@ -1142,128 +1264,6 @@ router.post('/allow-all-edit-24h', async (req: AuthRequest, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ── Cross-Institute Internal Webhook Handlers ──────────────────────────────────
-
-// Middleware to verify cross-institute secret key
-const verifyCrossSecret = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const headerSecret = req.headers['x-cross-secret'];
-  const expectedSecret = process.env.CROSS_INSTITUTE_SECRET_KEY;
-  if (!expectedSecret || headerSecret !== expectedSecret) {
-    return res.status(401).json({ error: 'Unauthorized cross-institute access' });
-  }
-  next();
-};
-
-router.post('/external-punch', verifyCrossSecret, async (req, res) => {
-  try {
-    const { identifier, type } = req.body;
-    const user = await prisma.user.findUnique({ where: { identifier } });
-    if (!user) return res.status(404).json({ error: 'User not found locally' });
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const now = new Date();
-    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][now.getDay()];
-
-    const slots = await prisma.slot.findMany({ where: { userId: user.id, dayOfWeek }, orderBy: { slotNo: 'asc' } });
-    
-    // User has no slot here today! Return error to signal calling institute to fallback to local logging!
-    if (slots.length === 0) {
-      return res.status(400).json({ error: 'No scheduled slots on this institute for today.' });
-    }
-
-    const existing = await prisma.attendance.findUnique({ where: { userId_date: { userId: user.id, date: today } } });
-
-    let activeSlot = null;
-    const typeUpper = (type as string).toUpperCase();
-
-    // Simple logical slot determination
-    if (typeUpper === 'OUT' && existing) {
-      for (const s of slots) {
-        if (existing[`inTime${s.slotNo}` as keyof typeof existing] && !existing[`outTime${s.slotNo}` as keyof typeof existing]) {
-          activeSlot = s;
-          break;
-        }
-      }
-    }
-    if (!activeSlot) {
-      for (const s of slots) {
-        const [eTime, eMod] = s.endTime.split(' ');
-        let [eh, em] = eTime.split(':').map(Number);
-        if (eMod === 'PM' && eh < 12) eh += 12;
-        if (eMod === 'AM' && eh === 12) eh = 0;
-        const slotEnd = new Date(today);
-        slotEnd.setHours(eh, em, 0, 0);
-        if (now.getTime() <= slotEnd.getTime()) {
-          activeSlot = s;
-          break;
-        }
-      }
-    }
-    if (!activeSlot) activeSlot = slots[slots.length - 1];
-    
-    let isLate = false;
-    if (typeUpper === 'IN') {
-      const [sTime, sMod] = activeSlot.startTime.split(' ');
-      let [sh, sm] = sTime.split(':').map(Number);
-      if (sMod === 'PM' && sh < 12) sh += 12;
-      if (sMod === 'AM' && sh === 12) sh = 0;
-      const slotStartTime = new Date(today);
-      slotStartTime.setHours(sh, sm, 0, 0);
-      if (now.getTime() > slotStartTime.getTime()) isLate = true;
-    }
-
-    const activeSlotNo = activeSlot.slotNo;
-
-    if (typeUpper === 'IN') {
-      if (existing?.status === 'IN') return res.json({ success: true, message: 'Already punched in' });
-      const updateD: any = { status: 'IN', inTime: existing?.inTime || now, isLate: existing ? existing.isLate : isLate };
-      const createD: any = { userId: user.id, date: today, status: 'IN', inTime: now, isLate };
-      if ([1,2,3,4,5].includes(activeSlotNo)) {
-        updateD[`inTime${activeSlotNo}`] = now;
-        createD[`inTime${activeSlotNo}`] = now;
-      }
-      await prisma.attendance.upsert({ where: { userId_date: { userId: user.id, date: today } }, update: updateD, create: createD });
-    } else {
-      if (!existing || existing.status === 'OUT') return res.json({ success: true, message: 'Not punched in' });
-      const updateD: any = { status: 'OUT', outTime: now };
-      if ([1,2,3,4,5].includes(activeSlotNo)) updateD[`outTime${activeSlotNo}`] = now;
-      await prisma.attendance.update({ where: { userId_date: { userId: user.id, date: today } }, data: updateD });
-    }
-
-    res.json({ success: true });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-router.post('/external-monthly-data', verifyCrossSecret, async (req, res) => {
-  try {
-    const { identifier, month, year } = req.body;
-    const user = await prisma.user.findUnique({ where: { identifier } });
-    if (!user) return res.json({ success: true, attendances: [], leaves: [], holidays: [] });
-
-    const m = parseInt(month);
-    const y = parseInt(year);
-    const startDate = new Date(y, m - 1, 1);
-    const endDate = new Date(y, m, 0);
-
-    const attendances = await prisma.attendance.findMany({
-      where: { userId: user.id, date: { gte: startDate, lte: endDate } }
-    });
-    const leaves = await prisma.leaveRequest.findMany({
-      where: { userId: user.id, status: 'APPROVED', OR: [{ startDate: { lte: endDate }, endDate: { gte: startDate } }] }
-    });
-    const holidays = await prisma.holiday.findMany({
-      where: { date: { gte: startDate, lte: endDate } }
-    });
-
-    res.json({ success: true, attendances, leaves, holidays });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
   }
 });
 
