@@ -11,6 +11,51 @@ const prisma = new PrismaClient();
 router.use(authenticateToken);
 router.use(requireAdmin);
 
+// ── Cross-Institute Fetcher & Merger Helpers ─────────────────────────────────────
+async function fetchSisterReportData(identifier: string, month: any, year: any) {
+  const sisterUrl = process.env.SISTER_INSTITUTE_API_URL;
+  const secretKey = process.env.CROSS_INSTITUTE_SECRET_KEY;
+  if (!sisterUrl || !secretKey) return null;
+  try {
+    const response = await fetch(`${sisterUrl}/api/admin/external-monthly-data`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-cross-secret': secretKey },
+      body: JSON.stringify({ identifier, month, year })
+    });
+    if (!response.ok) return null;
+    const resData: any = await response.json();
+    return resData.success ? resData : null;
+  } catch (e) {
+    console.log("Sister data fetch error:", e);
+    return null;
+  }
+}
+
+function mergeAttendances(localAtt: any[], remoteAtt: any[]) {
+  const mergedMap = new Map<string, any>();
+  localAtt.forEach(a => { mergedMap.set(new Date(a.date).toISOString().split('T')[0], { ...a }); });
+  
+  remoteAtt.forEach(rem => {
+    const key = new Date(rem.date).toISOString().split('T')[0];
+    if (!mergedMap.has(key)) {
+      mergedMap.set(key, rem);
+    } else {
+      const loc = mergedMap.get(key);
+      const combo = { ...loc, ...rem };
+      if (loc.inTime && rem.inTime) combo.inTime = new Date(loc.inTime) < new Date(rem.inTime) ? loc.inTime : rem.inTime;
+      if (loc.outTime && rem.outTime) combo.outTime = new Date(loc.outTime) > new Date(rem.outTime) ? loc.outTime : rem.outTime;
+      combo.isLate = loc.isLate || rem.isLate;
+      combo.status = (loc.status === 'IN' || rem.status === 'IN') ? 'IN' : 'OUT';
+      for(let i = 1; i <= 5; i++) {
+        combo[`inTime${i}`] = loc[`inTime${i}`] || rem[`inTime${i}`];
+        combo[`outTime${i}`] = loc[`outTime${i}`] || rem[`outTime${i}`];
+      }
+      mergedMap.set(key, combo);
+    }
+  });
+  return Array.from(mergedMap.values());
+}
+
 // ── GET all trainees with today's attendance ──────────────────────────────────
 router.get('/attendance', async (_req: AuthRequest, res) => {
   try {
@@ -498,7 +543,19 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       }
     });
 
-    generateTraineeWorksheet(ws, user, attendances, year, mon, daysInMonth, holidays, leaves);
+    let finalAttendances = attendances;
+    let finalHolidays = holidays;
+    let finalLeaves = leaves;
+
+    // ── Fetch Sister Data & Cleverly Merge In Real Time
+    const sister = await fetchSisterReportData(user.identifier, mon, year);
+    if (sister) {
+      finalAttendances = mergeAttendances(attendances, sister.attendances);
+      finalHolidays = [...holidays, ...sister.holidays];
+      finalLeaves = [...leaves, ...sister.leaves];
+    }
+
+    generateTraineeWorksheet(ws, user, finalAttendances, year, mon, daysInMonth, finalHolidays, finalLeaves);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Report_${user.fullName}_${month}.xlsx`);
