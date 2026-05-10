@@ -423,8 +423,8 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
                 <th className="py-2 px-2 text-left font-semibold w-24">Day</th>
                 {Array.from({ length: visibleSlots }, (_, si) => (
                   <React.Fragment key={si}>
-                    <th className="py-2 px-1 text-center font-bold text-gray-700 border-l" colSpan={6}>
-                      Slot-{si + 1}
+                    <th className={`py-2 px-1 text-center font-bold border-l ${si + 1 > 3 ? 'bg-orange-50 text-orange-600' : 'text-gray-700'}`} colSpan={6}>
+                      {si + 1 > 3 ? `🔥 Extra Slot ${si - 2}` : `Slot-${si + 1}`}
                     </th>
                   </React.Fragment>
                 ))}
@@ -679,15 +679,16 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               }}
             >
               <option value="global">Overall Day Punch</option>
-              {trainee.slots.some(s => s.slotNo === 1) && (
-                <option value="1">Slot 1 {currentDaySlots.find(s => s.slotNo === 1) ? `(${currentDaySlots.find(s => s.slotNo === 1)?.start} - ${currentDaySlots.find(s => s.slotNo === 1)?.end})` : ''}</option>
-              )}
-              {trainee.slots.some(s => s.slotNo === 2) && (
-                <option value="2">Slot 2 {currentDaySlots.find(s => s.slotNo === 2) ? `(${currentDaySlots.find(s => s.slotNo === 2)?.start} - ${currentDaySlots.find(s => s.slotNo === 2)?.end})` : ''}</option>
-              )}
-              {trainee.slots.some(s => s.slotNo === 3) && (
-                <option value="3">Slot 3 {currentDaySlots.find(s => s.slotNo === 3) ? `(${currentDaySlots.find(s => s.slotNo === 3)?.start} - ${currentDaySlots.find(s => s.slotNo === 3)?.end})` : ''}</option>
-              )}
+              {[1, 2, 3, 4, 5].map(num => {
+                const hasSlot = trainee.slots.some(s => s.slotNo === num);
+                if (!hasSlot) return null;
+                const activeSlot = currentDaySlots.find(s => s.slotNo === num);
+                const label = num > 3 ? `🔥 Extra Slot ${num - 3}` : `Slot ${num}`;
+                const timeStr = activeSlot ? ` (${activeSlot.start} - ${activeSlot.end})` : '';
+                return (
+                  <option key={num} value={num.toString()}>{label}{timeStr}</option>
+                );
+              })}
             </select>
           </div>
 

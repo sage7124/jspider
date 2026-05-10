@@ -187,7 +187,7 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         slotStartTime.setHours(sh, sm, 0, 0);
 
         // Grace period removed - even 1 min late is late
-        if (now.getTime() > slotStartTime.getTime()) {
+        if (now.getTime() > slotStartTime.getTime() && activeSlot.slotNo <= 3) {
           isLate = true;
         }
       }

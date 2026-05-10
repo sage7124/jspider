@@ -75,7 +75,7 @@ router.post('/external-punch', verifyCrossSecret, async (req, res) => {
       if (sMod === 'AM' && sh === 12) sh = 0;
       const slotStartTime = new Date(today);
       slotStartTime.setHours(sh, sm, 0, 0);
-      if (now.getTime() > slotStartTime.getTime()) isLate = true;
+      if (now.getTime() > slotStartTime.getTime() && activeSlot.slotNo <= 3) isLate = true;
     }
 
     const activeSlotNo = activeSlot.slotNo;

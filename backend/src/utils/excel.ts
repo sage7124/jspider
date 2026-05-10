@@ -4,11 +4,15 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   let totalWorkedMinutes = 0;
   let totalLateMinutes = 0;
   let totalEarlyMinutes = 0;
+  let totalExtraMinutes = 0;
 
   const rows = [];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const now = new Date();
+
+  // Identify maximum slot number dynamically up to 5
+  const maxSlots = 5;
 
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(year, mon - 1, day);
@@ -19,7 +23,7 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     const isToday = currentDate.getTime() === today.getTime();
 
     const daySlots = user.slots?.filter((s: any) => s.dayOfWeek === dayStr).sort((a: any, b: any) => a.slotNo - b.slotNo) || [];
-    const att = attendances.find((a: any) => a.date.getDate() === day && a.date.getMonth() === (mon - 1));
+    const att = attendances.find((a: any) => new Date(a.date).getDate() === day && new Date(a.date).getMonth() === (mon - 1));
 
     // Check for Holiday
     const holiday = holidays.find(h => {
@@ -37,25 +41,34 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       return d >= start && d <= end && l.status === 'APPROVED';
     });
 
+    // Base row object populated dynamically later
+    const rowData: any = {
+      slNo: day,
+      day: fullDayStr,
+      date: currentDate.toLocaleDateString('en-IN'),
+      late: '0m',
+      earlyDeparture: '0m',
+      extraWork: '0m'
+    };
+
     if (holiday || leave) {
-      rows.push({
-        slNo: day,
-        day: fullDayStr,
-        date: currentDate.toLocaleDateString('en-IN'),
-        s1In: holiday ? 'HOLIDAY' : 'LEAVE',
-        s1Out: holiday ? holiday.name : (leave?.reason || 'Leave'),
-        s1Start: '--', s1End: '--', s1Late: '--', s1Early: '--',
-        s2In: '--', s2Out: '--', s2Start: '--', s2End: '--', s2Late: '--', s2Early: '--',
-        s3In: '--', s3Out: '--', s3Start: '--', s3End: '--', s3Late: '--', s3Early: '--',
-        late: '0m',
-        earlyDeparture: '0m'
-      });
+      // Pre-fill slots with labels and leave default values
+      for (let i = 1; i <= maxSlots; i++) {
+        if (i === 1) {
+          rowData[`s${i}In`] = holiday ? 'HOLIDAY' : 'LEAVE';
+          rowData[`s${i}Out`] = holiday ? holiday.name : (leave?.reason || 'Leave');
+        } else {
+          rowData[`s${i}In`] = '--';
+          rowData[`s${i}Out`] = '--';
+        }
+        rowData[`s${i}Start`] = '--';
+        rowData[`s${i}End`] = '--';
+        rowData[`s${i}Late`] = '--';
+        rowData[`s${i}Early`] = '--';
+      }
+      rows.push(rowData);
       continue;
     }
-
-    const s1 = daySlots.find((s: any) => s.slotNo === 1);
-    const s2 = daySlots.find((s: any) => s.slotNo === 2);
-    const s3 = daySlots.find((s: any) => s.slotNo === 3);
 
     const getSlotStartTime = (slot: any) => {
       if (!slot) return null;
@@ -68,12 +81,15 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       return d;
     };
 
-    let totalLateMins = 0;
-    let totalEarlyMins = 0;
+    let dayLateMins = 0;
+    let dayEarlyMins = 0;
+    let dayExtraMins = 0;
     const isSunday = currentDate.getDay() === 0;
 
-    const calcLate = (slot: any, dayInTime: Date, slotInTime?: Date) => {
+    const calcLate = (slot: any, dayInTime: Date, slotInTime?: Date, isExtra?: boolean) => {
       if (!slot) return '--';
+      if (isExtra) return '--'; // EXEMPT Extra Work from Lateness logic
+      
       const inTime = slotInTime || dayInTime;
       if (!inTime) {
         if (isFutureDay || isSunday) return '--';
@@ -94,24 +110,22 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
 
       const start = new Date(currentDate);
       start.setHours(h, m, 0, 0);
-      
       const end = new Date(currentDate);
       end.setHours(eh, em, 0, 0);
 
       if (inTime.getTime() > end.getTime()) {
-        if (isSunday) return '--';
-        return 'ABSENT';
+        return isSunday ? '--' : 'ABSENT';
       }
-
       if (inTime.getTime() > start.getTime()) {
-        const diff = inTime.getTime() - start.getTime();
-        return Math.floor(diff / 60000);
+        return Math.floor((inTime.getTime() - start.getTime()) / 60000);
       }
       return 0;
     };
 
-    const calcEarly = (slot: any, dayOutTime: Date, dayInTime: Date, slotOutTime?: Date, slotInTime?: Date) => {
+    const calcEarly = (slot: any, dayOutTime: Date, dayInTime: Date, slotOutTime?: Date, slotInTime?: Date, isExtra?: boolean) => {
       if (!slot) return '--';
+      if (isExtra) return '--'; // EXEMPT Extra Work from early departure logic
+      
       const outTime = slotOutTime || dayOutTime;
       const inTime = slotInTime || dayInTime;
 
@@ -130,133 +144,121 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       }
       
       if (outTime.getTime() < slotEnd.getTime()) {
-        const diff = slotEnd.getTime() - outTime.getTime();
-        return Math.floor(diff / 60000);
+        return Math.floor((slotEnd.getTime() - outTime.getTime()) / 60000);
       }
       return 0;
     };
 
-    let s1L: any = '--', s1E: any = '--', s2L: any = '--', s2E: any = '--', s3L: any = '--', s3E: any = '--';
-
-    const getDefaultStatus = (slot: any) => {
+    const getDefaultStatus = (slot: any, isExtra?: boolean) => {
       if (!slot) return '--';
+      if (isExtra) return '--'; // Extra slots are implicitly non-mandatory, return -- instead of ABSENT
       if (isFutureDay || isSunday) return '--';
       const start = getSlotStartTime(slot);
       if (isToday && start && start.getTime() > now.getTime()) return '--';
       return 'ABSENT';
     };
 
-    if (att) {
-      if (att.inTime && att.outTime) {
-        const diff = att.outTime.getTime() - att.inTime.getTime();
-        totalWorkedMinutes += Math.floor(diff / 60000);
-      }
+    const getSlotInTimeStatus = (slot: any, slotInTime?: Date, isExtra?: boolean) => {
+      if (slotInTime) return new Date(slotInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return getDefaultStatus(slot, isExtra);
+    };
 
-      const l1 = calcLate(s1, att.inTime, att.inTime1);
-      const l2 = calcLate(s2, att.inTime, att.inTime2);
-      const l3 = calcLate(s3, att.inTime, att.inTime3);
+    const getSlotOutTimeStatus = (slot: any, slotOutTime?: Date, hasIn?: boolean, isExtra?: boolean) => {
+      if (slotOutTime) return new Date(slotOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (!slot) return '--';
+      if (isExtra) return '--'; // Never display absent/missing on an empty extra slot.
+      if (isFutureDay) return '--';
+      const start = getSlotStartTime(slot);
+      if (isToday && start && start.getTime() > now.getTime()) return '--';
+      return hasIn ? 'MISSING OUT' : 'ABSENT';
+    };
+
+    // Core iteration processing all slots (1 to 5)
+    for (let si = 1; si <= maxSlots; si++) {
+      const slot = daySlots.find((s: any) => s.slotNo === si);
+      const isExtra = si > 3; // Definition of Extra Slot
       
-      if (typeof l1 === 'number') { s1L = `${l1}m`; totalLateMins += l1; } else { s1L = l1; }
-      if (typeof l2 === 'number') { s2L = `${l2}m`; totalLateMins += l2; } else { s2L = l2; }
-      if (typeof l3 === 'number') { s3L = `${l3}m`; totalLateMins += l3; } else { s3L = l3; }
+      let rawIn = att ? att[`inTime${si}`] : null;
+      let rawOut = att ? att[`outTime${si}`] : null;
 
-      if (s1L === 'ABSENT') s1E = 'ABSENT';
-      if (s2L === 'ABSENT') s2E = 'ABSENT';
-      if (s3L === 'ABSENT') s3E = 'ABSENT';
+      // Support legacy fields for Slot 1
+      if (si === 1 && att && !rawIn) rawIn = att.inTime;
+      if (si === 1 && att && !rawOut) rawOut = att.outTime;
 
-      const e1 = calcEarly(s1, att.outTime, att.inTime, att.outTime1, att.inTime1);
-      const e2 = calcEarly(s2, att.outTime, att.inTime, att.outTime2, att.inTime2);
-      const e3 = calcEarly(s3, att.outTime, att.inTime, att.outTime3, att.inTime3);
+      const sIn = rawIn ? new Date(rawIn) : undefined;
+      const sOut = rawOut ? new Date(rawOut) : undefined;
 
-      if (s1E !== 'ABSENT') {
-        if (typeof e1 === 'number') { s1E = `${e1}m`; totalEarlyMins += e1; } else { s1E = e1; }
-      }
-      if (s2E !== 'ABSENT') {
-        if (typeof e2 === 'number') { s2E = `${e2}m`; totalEarlyMins += e2; } else { s2E = e2; }
-      }
-      if (s3E !== 'ABSENT') {
-        if (typeof e3 === 'number') { s3E = `${e3}m`; totalEarlyMins += e3; } else { s3E = e3; }
+      rowData[`s${si}Start`] = slot?.startTime || '--';
+      rowData[`s${si}End`] = slot?.endTime || '--';
+      rowData[`s${si}In`] = getSlotInTimeStatus(slot, sIn, isExtra);
+      rowData[`s${si}Out`] = getSlotOutTimeStatus(slot, sOut, !!sIn, isExtra);
+
+      let finalLate: any = '--';
+      let finalEarly: any = '--';
+
+      if (att) {
+        // ── Calculation for Regular Slots ────────────────────────────────────
+        if (!isExtra) {
+          const l = calcLate(slot, new Date(att.inTime), sIn, false);
+          const e = calcEarly(slot, new Date(att.outTime), new Date(att.inTime), sOut, sIn, false);
+          
+          if (typeof l === 'number') { dayLateMins += l; finalLate = `${l}m`; } else { finalLate = l; }
+          
+          if (finalLate === 'ABSENT') {
+            finalEarly = 'ABSENT';
+          } else {
+            if (typeof e === 'number') { dayEarlyMins += e; finalEarly = `${e}m`; } else { finalEarly = e; }
+          }
+          
+          // Overwrite missing out for overall record safety
+          if (!att.outTime && !att.outTime1 && !att.outTime2 && !att.outTime3 && !att.outTime4 && !att.outTime5) {
+            if (finalLate !== 'ABSENT' && finalLate !== '--') finalEarly = 'MISSING OUT';
+          }
+        } 
+        // ── Calculation for Extra Slots ──────────────────────────────────────
+        else if (slot && sIn && sOut) {
+          // Only calculate duration IF they have a full set of punches!
+          const durationMins = Math.floor((sOut.getTime() - sIn.getTime()) / 60000);
+          if (durationMins > 0) {
+            dayExtraMins += durationMins;
+          }
+        }
+      } else {
+        // Explicit absent logic fallback
+        finalLate = getDefaultStatus(slot, isExtra);
+        finalEarly = getDefaultStatus(slot, isExtra);
       }
 
-      // Missing Out logic
-      if (!att.outTime && !att.outTime1 && !att.outTime2 && !att.outTime3) {
-        if (s1L !== 'ABSENT' && s1L !== '--') s1E = 'MISSING OUT';
-        if (s2L !== 'ABSENT' && s2L !== '--') s2E = 'MISSING OUT';
-        if (s3L !== 'ABSENT' && s3L !== '--') s3E = 'MISSING OUT';
-      }
-    } else {
-      s1L = getDefaultStatus(s1);
-      s2L = getDefaultStatus(s2);
-      s3L = getDefaultStatus(s3);
-      s1E = getDefaultStatus(s1);
-      s2E = getDefaultStatus(s2);
-      s3E = getDefaultStatus(s3);
+      rowData[`s${si}Late`] = finalLate;
+      rowData[`s${si}Early`] = finalEarly;
     }
 
-    totalLateMinutes += totalLateMins;
-    totalEarlyMinutes += totalEarlyMins;
+    totalLateMinutes += dayLateMins;
+    totalEarlyMinutes += dayEarlyMins;
+    totalExtraMinutes += dayExtraMins;
 
-    const getSlotInTimeStatus = (slot: any, slotInTime?: Date) => {
-      if (slotInTime) return slotInTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      if (!slot) return '--';
-      if (isFutureDay) return '--';
-      const start = getSlotStartTime(slot);
-      if (isToday && start && start.getTime() > now.getTime()) return '--';
-      return 'ABSENT';
-    };
+    // Update final row strings
+    rowData.late = dayLateMins > 0 ? `${Math.floor(dayLateMins / 60)}h ${dayLateMins % 60}m` : '0m';
+    rowData.earlyDeparture = dayEarlyMins > 0 ? `${Math.floor(dayEarlyMins / 60)}h ${dayEarlyMins % 60}m` : '0m';
+    rowData.extraWork = dayExtraMins > 0 ? `${Math.floor(dayExtraMins / 60)}h ${dayExtraMins % 60}m` : '0m';
 
-    const getSlotOutTimeStatus = (slot: any, slotOutTime?: Date, hasIn?: boolean) => {
-      if (slotOutTime) return slotOutTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      if (!slot) return '--';
-      if (isFutureDay) return '--';
-      const start = getSlotStartTime(slot);
-      if (isToday && start && start.getTime() > now.getTime()) return '--';
-      if (hasIn) return 'MISSING OUT';
-      return 'ABSENT';
-    };
-
-    rows.push({
-      slNo: day,
-      day: fullDayStr,
-      date: currentDate.toLocaleDateString('en-IN'),
-      s1In: getSlotInTimeStatus(s1, att?.inTime1 || att?.inTime),
-      s1Out: getSlotOutTimeStatus(s1, att?.outTime1 || att?.outTime, !!(att?.inTime1 || att?.inTime)),
-      s1Start: s1?.startTime || '--',
-      s1End: s1?.endTime || '--',
-      s1Late: s1L,
-      s1Early: s1E,
-      s2In: getSlotInTimeStatus(s2, att?.inTime2),
-      s2Out: getSlotOutTimeStatus(s2, att?.outTime2, !!(att?.inTime2)),
-      s2Start: s2?.startTime || '--',
-      s2End: s2?.endTime || '--',
-      s2Late: s2L,
-      s2Early: s2E,
-      s3In: getSlotInTimeStatus(s3, att?.inTime3),
-      s3Out: getSlotOutTimeStatus(s3, att?.outTime3, !!(att?.inTime3)),
-      s3Start: s3?.startTime || '--',
-      s3End: s3?.endTime || '--',
-      s3Late: s3L,
-      s3Early: s3E,
-      late: totalLateMins > 0 ? `${Math.floor(totalLateMins / 60)}h ${totalLateMins % 60}m` : '0m',
-      earlyDeparture: totalEarlyMins > 0 ? `${Math.floor(totalEarlyMins / 60)}h ${totalEarlyMins % 60}m` : '0m'
-    });
+    rows.push(rowData);
   }
 
   return {
     rows,
     totals: {
       late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
-      earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`
-    },
-    hasSlot1: user.slots?.some((s: any) => s.slotNo === 1) || false,
-    hasSlot2: user.slots?.some((s: any) => s.slotNo === 2) || false,
-    hasSlot3: user.slots?.some((s: any) => s.slotNo === 3) || false
+      earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`,
+      extraWork: `${Math.floor(totalExtraMinutes / 60)}h ${totalExtraMinutes % 60}m`
+    }
   };
 };
 
 
 export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number, holidays: any[] = [], leaves: any[] = []) => {
-  const maxSlot = user.slots?.reduce((max: number, slot: any) => Math.max(max, slot.slotNo), 0) || 1;
+  // Dynamic column expansion logic up to 5.
+  const maxSlot = 5;
 
   const baseColumns = [
     { header: 'Sl No', key: 'slNo', width: 8 },
@@ -266,53 +268,66 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
 
   const slotColumns: any[] = [];
   for (let i = 1; i <= maxSlot; i++) {
-    slotColumns.push({ header: `Slot-${i} In`, key: `s${i}In`, width: 15 });
-    slotColumns.push({ header: `Slot-${i} Out`, key: `s${i}Out`, width: 15 });
-    slotColumns.push({ header: `Slot-${i} Start`, key: `s${i}Start`, width: 12 });
-    slotColumns.push({ header: `Slot-${i} End`, key: `s${i}End`, width: 12 });
-    slotColumns.push({ header: `s${i} late punch in`, key: `s${i}Late`, width: 18 });
-    slotColumns.push({ header: `s${i} early departure`, key: `s${i}Early`, width: 18 });
+    const prefix = i > 3 ? `🔥 Extra Slot ${i - 3}` : `Slot ${i}`;
+    
+    slotColumns.push({ header: `${prefix} In`, key: `s${i}In`, width: 15 });
+    slotColumns.push({ header: `${prefix} Out`, key: `s${i}Out`, width: 15 });
+    slotColumns.push({ header: `${prefix} Start`, key: `s${i}Start`, width: 12 });
+    slotColumns.push({ header: `${prefix} End`, key: `s${i}End`, width: 12 });
+    
+    if (i <= 3) {
+      slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18 });
+      slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18 });
+    }
   }
 
   const endColumns = [
-    { header: 'Late Arrival', key: 'late', width: 15 },
-    { header: 'Early Departure', key: 'earlyDeparture', width: 18 }
+    { header: 'Total Late', key: 'late', width: 15 },
+    { header: 'Total Early', key: 'earlyDeparture', width: 15 },
+    { header: 'TOTAL EXTRA WORK', key: 'extraWork', width: 20 }
   ];
 
-  // Configure all columns first
   const allColumns = [...baseColumns, ...slotColumns, ...endColumns];
   ws.columns = allColumns.map(c => ({ key: c.key, width: c.width }));
 
-  // Add Name and Phone at the top, merged and centered
-  ws.addRow([]); // Row 1
-  ws.addRow([]); // Row 2 spacing
+  // Add merged header row
+  ws.addRow([]);
+  ws.addRow([]);
   
   const totalCols = allColumns.length;
   ws.mergeCells(1, 1, 1, totalCols);
   
   const titleCell = ws.getCell(1, 1);
-  titleCell.value = `Name: ${user.fullName}        |        Phone: ${user.identifier}`;
+  titleCell.value = `ATTENDANCE REPORT: ${user.fullName}   |   PHONE: ${user.identifier}`;
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
   titleCell.font = { bold: true, size: 14 };
 
-  // Set header values starting from row 3
-  ws.getRow(3).values = allColumns.map(c => c.header);
-  ws.getRow(3).font = { bold: true };
-  ws.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1976D2' } };
-  ws.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  // Set Sub-header values for each col on Row 3
+  const headerRow = ws.getRow(3);
+  headerRow.values = allColumns.map(c => c.header);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  
+  // Style regular slots different from extra slots in the header for visual delight
+  headerRow.eachCell((cell, colNum) => {
+    const headerName = allColumns[colNum - 1]?.header || '';
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerName.includes('EXTRA') ? 'FFEA580C' : 'FF1976D2' } };
+  });
 
   const reportData = getTraineeReportData(user, attendances, year, mon, daysInMonth, holidays, leaves);
-
 
   for (const row of reportData.rows) {
     ws.addRow(row);
   }
 
-  // Add total row
+  // Total Footer Row
   const totalRow = ws.addRow({
-    slNo: 'TOTAL',
+    slNo: 'GRAND TOTAL',
     late: reportData.totals.late,
-    earlyDeparture: reportData.totals.earlyDeparture
+    earlyDeparture: reportData.totals.earlyDeparture,
+    extraWork: reportData.totals.extraWork
   });
   totalRow.font = { bold: true };
+  totalRow.eachCell((cell) => {
+     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+  });
 };
