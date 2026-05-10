@@ -672,9 +672,24 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
     // ── Fetch Sister Data & Cleverly Merge In Real Time
     const sister = await fetchSisterReportData(user.identifier, mon, year);
     if (sister) {
-      finalAttendances = mergeAttendances(attendances, sister.attendances);
-      finalHolidays = [...holidays, ...sister.holidays];
-      finalLeaves = [...leaves, ...sister.leaves];
+      // Convert serialized JSON strings back into native JS Date objects expected by Excel utility
+      const remoteAtt = (sister.attendances || []).map((a: any) => {
+        const res = { ...a, date: new Date(a.date) };
+        if (a.inTime) res.inTime = new Date(a.inTime);
+        if (a.outTime) res.outTime = new Date(a.outTime);
+        for(let i=1; i<=5; i++) {
+          if (a[`inTime${i}`]) res[`inTime${i}`] = new Date(a[`inTime${i}`]);
+          if (a[`outTime${i}`]) res[`outTime${i}`] = new Date(a[`outTime${i}`]);
+        }
+        return res;
+      });
+
+      const remoteHolidays = (sister.holidays || []).map((h: any) => ({ ...h, date: new Date(h.date) }));
+      const remoteLeaves = (sister.leaves || []).map((l: any) => ({ ...l, startDate: new Date(l.startDate), endDate: new Date(l.endDate) }));
+
+      finalAttendances = mergeAttendances(attendances, remoteAtt);
+      finalHolidays = [...holidays, ...remoteHolidays];
+      finalLeaves = [...leaves, ...remoteLeaves];
     }
 
     generateTraineeWorksheet(ws, user, finalAttendances, year, mon, daysInMonth, finalHolidays, finalLeaves);
