@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Info } from 'lucide-react';
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
@@ -113,6 +113,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [changingPass, setChangingPass] = useState(false);
   const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const hasAlertedForgetRef = useRef(false);
 
   // Profile Onboarding states
   const [profile, setProfile] = useState<any>(null);
@@ -158,6 +159,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStatus(res.data);
+      
+      if (res.data.forgotPunchOut && !hasAlertedForgetRef.current) {
+        alert("⚠️ IMPORTANT: You forgot to punch out during a previous session! Contact admin ASAP.");
+        hasAlertedForgetRef.current = true;
+      }
     } catch (err) {
       console.error('Failed to fetch status', err);
     }

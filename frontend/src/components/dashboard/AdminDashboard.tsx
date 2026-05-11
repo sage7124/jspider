@@ -1082,8 +1082,9 @@ const AdminDashboard: React.FC = () => {
                           {daySlots.map((s, i) => {
                             const isExtra = s.slotNo > 3;
                             return (
-                              <span key={i} className={`font-medium flex items-center gap-1 ${isExtra ? 'text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded text-[10px] border border-amber-200' : 'text-[#be123c]'}`}>
-                                {isExtra ? `🔥 Extra Slot ${s.slotNo - 3}` : `⏰ ${s.start} – ${s.end}`}
+                              <span key={i} className={`font-medium flex items-center gap-1 ${isExtra ? 'text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded text-[10px] border border-amber-200 shadow-sm' : 'text-[#be123c]'}`}>
+                                {isExtra ? `🔥 Extra Slot ${s.slotNo - 3}: ` : '⏰ '}
+                                {s.start} – {s.end}
                               </span>
                             );
                           })}

@@ -297,7 +297,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
         date: today.toLocaleDateString('en-IN'),
         in: (() => {
           if (!attendance) return '--';
-          const inTimes = [attendance.inTime, attendance.inTime1, attendance.inTime2, attendance.inTime3]
+          const inTimes = [attendance.inTime1, attendance.inTime2, attendance.inTime3]
             .filter(t => t)
             .map(t => new Date(t));
           if (inTimes.length === 0) return '--';
@@ -306,7 +306,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
         })(),
         out: (() => {
           if (!attendance) return '--';
-          const outTimes = [attendance.outTime, attendance.outTime1, attendance.outTime2, attendance.outTime3]
+          const outTimes = [attendance.outTime1, attendance.outTime2, attendance.outTime3]
             .filter(t => t)
             .map(t => new Date(t));
           if (outTimes.length === 0) return '--';

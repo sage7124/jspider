@@ -30,10 +30,28 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
       orderBy: { slotNo: 'asc' }
     });
 
+    const recentAtt = await prisma.attendance.findFirst({
+      where: { userId, date: { lt: today } },
+      orderBy: { date: 'desc' }
+    });
+    let forgotPunchOut = false;
+    if (recentAtt) {
+      // Check if any punched slot failed to record corresponding punch out
+      for (let i = 1; i <= 5; i++) {
+        const inT = recentAtt[`inTime${i}` as keyof typeof recentAtt];
+        const outT = recentAtt[`outTime${i}` as keyof typeof recentAtt];
+        if (inT && !outT) {
+          forgotPunchOut = true;
+          break;
+        }
+      }
+    }
+
     res.json({
       status: attendance?.status || 'OUT',
       inTime: attendance?.inTime,
       outTime: attendance?.outTime,
+      forgotPunchOut,
       slots: slots.map(s => `${s.startTime} - ${s.endTime}`)
     });
   } catch (error) {
