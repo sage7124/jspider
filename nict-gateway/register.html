@@ -51,7 +51,7 @@
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name *</label>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name with Initials *</label>
                         <input type="text" id="f_name" required class="input-field" placeholder="Your Full Name">
                     </div>
                     <div>
@@ -59,7 +59,7 @@
                         <input type="tel" id="f_mobile" required maxlength="10" pattern="[0-9]*" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="input-field" placeholder="10-Digit Number">
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Email ID *</label>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">EMail ID *</label>
                         <input type="email" id="f_email" required class="input-field" placeholder="example@email.com">
                     </div>
                     <div>
@@ -101,10 +101,10 @@
                     </div>
                 </div>
                 <div class="mt-4 bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300">
-                    <label class="text-xs font-bold text-slate-600 block mb-2">Student Profile Photo</label>
+                    <label class="text-xs font-bold text-slate-600 block mb-2">Profile Photo</label>
                     <div class="flex gap-3 items-center">
                         <input type="file" accept="image/*" onchange="handleUpload(this, 'p_photoUrl', 'lbl_photo')" class="hidden" id="in_photo">
-                        <label for="in_photo" id="lbl_photo" class="flex-1 text-center text-xs font-bold p-3 border border-slate-300 rounded bg-white cursor-pointer hover:bg-slate-100 transition-colors">📷 Click to Choose Photo</label>
+                        <label for="in_photo" id="lbl_photo" class="flex-1 text-center text-xs font-bold p-3 border border-slate-300 rounded bg-white cursor-pointer hover:bg-slate-100 transition-colors">📷 Photo (Less than 1 MB) upload in Image format</label>
                         <input type="hidden" id="p_photoUrl">
                     </div>
                 </div>
@@ -115,12 +115,12 @@
                 <h3 class="font-bold text-base text-slate-800 mb-4 border-b pb-2">Academic & Scheduling</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-semibold text-slate-500">Date of Joining</label>
+                        <label class="text-xs font-semibold text-slate-500">Date of Joining NICT (DDMMYYYY)</label>
                         <input type="date" id="o_doj" class="input-field">
                     </div>
                     <div>
-                        <label class="text-xs font-semibold text-slate-500">Timing Slot</label>
-                        <input type="text" id="o_time" placeholder="e.g. 10AM-6PM" class="input-field">
+                        <label class="text-xs font-semibold text-slate-500">Your office timings with Cycle:</label>
+                        <textarea id="o_time" rows="2" placeholder="e.g. 9AM-5PM Shift" class="input-field resize-none"></textarea>
                     </div>
                     <div class="md:col-span-2">
                         <label class="text-xs font-semibold text-slate-500">Education History (Enter multiple separated by comma)</label>
@@ -156,14 +156,14 @@
                         <label class="text-xs font-bold text-slate-600">Aadhaar Number</label>
                         <input type="text" id="o_aadhaar" pattern="[0-9]*" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="12" class="input-field mb-2" placeholder="12-Digit UID">
                         <input type="file" onchange="handleUpload(this, 'p_aadhaarUrl', 'lbl_aadhaar')" class="hidden" id="in_aad">
-                        <label for="in_aad" id="lbl_aadhaar" class="block text-center text-xs font-medium p-2 border border-dashed border-slate-300 rounded bg-white cursor-pointer hover:bg-blue-50">📎 Upload Copy</label>
+                        <label for="in_aad" id="lbl_aadhaar" class="block text-center text-xs font-medium p-2 border border-dashed border-slate-300 rounded bg-white cursor-pointer hover:bg-blue-50">📎 Aadhaar Photo (Image/PDF) less than 1 MB</label>
                         <input type="hidden" id="p_aadhaarUrl">
                     </div>
                     <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
                         <label class="text-xs font-bold text-slate-600">PAN Number</label>
                         <input type="text" id="o_pan" class="input-field mb-2" placeholder="Alpha-numeric PAN">
                         <input type="file" onchange="handleUpload(this, 'p_panUrl', 'lbl_pan')" class="hidden" id="in_pan">
-                        <label for="in_pan" id="lbl_pan" class="block text-center text-xs font-medium p-2 border border-dashed border-slate-300 rounded bg-white cursor-pointer hover:bg-blue-50">📎 Upload Copy</label>
+                        <label for="in_pan" id="lbl_pan" class="block text-center text-xs font-medium p-2 border border-dashed border-slate-300 rounded bg-white cursor-pointer hover:bg-blue-50">📎 Pan Photo (Image/PDF) less than 1 MB</label>
                         <input type="hidden" id="p_panUrl">
                     </div>
                 </div>
@@ -174,15 +174,15 @@
                 <h3 class="font-bold text-base text-slate-800 mb-4 border-b pb-2">Bank Credentials</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input type="text" id="o_bname" placeholder="Bank Name" class="input-field sm:col-span-2">
-                    <input type="text" id="o_bacc" pattern="[0-9]*" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Account Number" class="input-field">
-                    <input type="text" id="o_bifsc" placeholder="IFSC Code" class="input-field">
-                    <input type="text" id="o_bbr" placeholder="Branch Details" class="input-field sm:col-span-2">
+                    <input type="text" id="o_bacc" pattern="[0-9]*" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Bank Account No:" class="input-field">
+                    <input type="text" id="o_bifsc" placeholder="Bank IFSC Code" class="input-field">
+                    <input type="text" id="o_bbr" placeholder="Bank Branch Name:" class="input-field sm:col-span-2">
                 </div>
             </div>
 
             <!-- Emergency -->
             <div class="section-card">
-                <h3 class="font-bold text-base text-slate-800 mb-4 border-b pb-2">Emergency Contact</h3>
+                <h3 class="font-bold text-base text-slate-800 mb-4 border-b pb-2">In case of emergency whom to contact Name & Mobile Number</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input type="text" id="o_ename" placeholder="Full Contact Name" class="input-field">
                     <input type="tel" id="o_emob" pattern="[0-9]*" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="10" placeholder="Emergency Mobile No" class="input-field">
