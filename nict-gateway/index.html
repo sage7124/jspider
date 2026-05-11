@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NICT Portal Gateway | Official</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    animation: {
+                        'blob': 'blob 10s infinite',
+                        'fade-in': 'fadeIn 0.8s ease-out forwards',
+                        'slide-up': 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    },
+                    keyframes: {
+                        blob: {
+                            "0%": { transform: "translate(0px, 0px) scale(1)", opacity: 0.4 },
+                            "33%": { transform: "translate(40px, -60px) scale(1.2)", opacity: 0.6 },
+                            "66%": { transform: "translate(-30px, 30px) scale(0.8)", opacity: 0.4 },
+                            "100%": { transform: "translate(0px, 0px) scale(1)", opacity: 0.4 },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(30px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-dark {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .card-glow:hover {
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(56, 189, 248, 0.4);
+        }
+        body {
+            background: radial-gradient(circle at 50% 0%, #1e3a8a 0%, #1e1b4b 50%, #0f172a 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden text-white selection:bg-blue-500 selection:text-white">
+    
+    <!-- Deep Luxury Blue Ambient Glowing Blobs -->
+    <div class="absolute top-0 -left-10 w-96 h-96 bg-blue-600 rounded-full mix-blend-screen filter blur-3xl animate-blob"></div>
+    <div class="absolute -bottom-20 -right-10 w-96 h-96 bg-indigo-600 rounded-full mix-blend-screen filter blur-3xl animate-blob" style="animation-delay: 2s;"></div>
+    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-900/30 rounded-full filter blur-[100px]"></div>
+
+    <!-- Main Content Container -->
+    <main class="relative w-full max-w-md z-10">
+        
+        <!-- Header Branding Section -->
+        <div class="text-center mb-8 animate-fade-in opacity-0">
+            <!-- Interactive Logo Container (Automatically loads logo.png if you put it in the folder) -->
+            <div class="relative w-24 h-24 mx-auto mb-6 group cursor-default">
+                <div class="absolute inset-0 bg-blue-500 rounded-3xl rotate-6 opacity-20 group-hover:rotate-12 transition-transform duration-500"></div>
+                <div class="absolute inset-0 bg-indigo-500 rounded-3xl -rotate-6 opacity-20 group-hover:-rotate-12 transition-transform duration-500"></div>
+                
+                <div class="relative w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl shadow-2xl flex items-center justify-center overflow-hidden border border-white/20">
+                    <!-- Try to show real image first, fallback to Text -->
+                    <img src="logo.jpeg" alt="NICT Logo" class="w-full h-full object-contain p-1 hidden" onload="this.classList.remove('hidden'); this.nextElementSibling.classList.add('hidden')" onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden')">
+                    <div class="flex flex-col items-center">
+                        <span class="text-white font-extrabold text-3xl tracking-tighter">NICT</span>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="text-[11px] font-extrabold text-cyan-400 uppercase tracking-[0.3em] mb-2 drop-shadow-lg">
+                NICT Computer Education Pvt Ltd
+            </h2>
+            <h1 class="text-2xl font-extrabold text-white tracking-tight drop-shadow-md">
+                Data Management System
+            </h1>
+        </div>
+
+        <!-- Glass Gateway Card -->
+        <div class="glass-dark rounded-[2.5rem] p-8 animate-slide-up opacity-0" style="animation-delay: 0.2s;">
+            <div class="mb-8 text-center border-b border-white/10 pb-5">
+                <p class="text-sm text-blue-200/70 font-medium">Secure Central Access</p>
+                <p class="text-xl font-bold text-white mt-1 tracking-wide flex items-center justify-center gap-2">
+                    <span class="text-2xl">🌐</span> Select your NICT Location
+                </p>
+            </div>
+
+            <!-- Option Buttons -->
+            <div class="space-y-5">
+                
+                <!-- Institute 1 Button -->
+                <a href="https://nictjayanagar.vercel.app/login" 
+                   class="card-glow group relative flex items-center justify-between w-full p-5 bg-white/5 rounded-2xl border border-white/10 transition-all duration-300 transform active:scale-[0.98]">
+                    <div class="flex items-center gap-4">
+                        <!-- Dynamic Letter Icon -->
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center font-extrabold text-xl text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                            J
+                        </div>
+                        <div class="text-left">
+                            <h3 class="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">NICT Jayanagar</h3>
+                            <p class="text-[11px] text-blue-200/60 font-medium mt-0.5">Launch Digital Portal</p>
+                        </div>
+                    </div>
+                    <!-- Interactive Arrow -->
+                    <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center opacity-50 group-hover:opacity-100 group-hover:bg-blue-500 transition-all transform group-hover:translate-x-1">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Institute 2 Button -->
+                <a href="https://nicthanumanthnagar.vercel.app/login" 
+                   class="card-glow group relative flex items-center justify-between w-full p-5 bg-white/5 rounded-2xl border border-white/10 transition-all duration-300 transform active:scale-[0.98]">
+                    <div class="flex items-center gap-4">
+                        <!-- Dynamic Letter Icon -->
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-400 flex items-center justify-center font-extrabold text-xl text-white shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform">
+                            H
+                        </div>
+                        <div class="text-left">
+                            <h3 class="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">NICT Hanumanthanagar</h3>
+                            <p class="text-[11px] text-blue-200/60 font-medium mt-0.5">Launch Digital Portal</p>
+                        </div>
+                    </div>
+                    <!-- Interactive Arrow -->
+                    <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center opacity-50 group-hover:opacity-100 group-hover:bg-indigo-500 transition-all transform group-hover:translate-x-1">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </div>
+                </a>
+
+            </div>
+
+            <!-- System Connectivity Footer -->
+            <div class="mt-8 flex justify-center">
+                <div class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5">
+                    <div class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] animate-pulse"></div>
+                    <span class="text-[10px] font-bold text-emerald-200 uppercase tracking-wider">Secure Servers Connected</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Copyright -->
+        <p class="text-center mt-10 text-xs text-blue-200/40 font-medium animate-fade-in opacity-0" style="animation-delay: 0.6s;">
+            &copy; 2026 NICT Computer Education Pvt Ltd.<br>All rights strictly reserved.
+        </p>
+    </main>
+</body>
+</html>

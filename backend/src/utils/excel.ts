@@ -11,8 +11,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   today.setHours(0, 0, 0, 0);
   const now = new Date();
 
-  // Identify maximum slot number dynamically up to 5
-  const maxSlots = 5;
+  // Dynamically detect the max slot assigned to this specific user
+  const maxSlots = user.slots?.reduce((max: number, s: any) => Math.max(max, s.slotNo || 0), 0) || 1;
+  const hasExtraSlots = maxSlots > 3;
 
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(year, mon - 1, day);
@@ -251,14 +252,17 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
       earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`,
       extraWork: `${Math.floor(totalExtraMinutes / 60)}h ${totalExtraMinutes % 60}m`
-    }
+    },
+    maxSlots,
+    hasExtraSlots
   };
 };
 
 
 export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number, holidays: any[] = [], leaves: any[] = []) => {
-  // Dynamic column expansion logic up to 5.
-  const maxSlot = 5;
+  // Dynamic: only show slots that are actually assigned to THIS user
+  const maxSlot = user.slots?.reduce((max: number, slot: any) => Math.max(max, slot.slotNo), 0) || 1;
+  const hasExtraSlots = maxSlot > 3;
 
   const baseColumns = [
     { header: 'Sl No', key: 'slNo', width: 8 },
@@ -284,8 +288,11 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   const endColumns = [
     { header: 'Total Late', key: 'late', width: 15 },
     { header: 'Total Early', key: 'earlyDeparture', width: 15 },
-    { header: 'TOTAL EXTRA WORK', key: 'extraWork', width: 20 }
   ];
+  // Only add extra work column if the user actually has extra slots
+  if (hasExtraSlots) {
+    endColumns.push({ header: 'TOTAL EXTRA WORK', key: 'extraWork', width: 20 });
+  }
 
   const allColumns = [...baseColumns, ...slotColumns, ...endColumns];
   ws.columns = allColumns.map(c => ({ key: c.key, width: c.width }));
@@ -319,13 +326,15 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
     ws.addRow(row);
   }
 
-  // Total Footer Row
-  const totalRow = ws.addRow({
+  const totalRowData: any = {
     slNo: 'GRAND TOTAL',
     late: reportData.totals.late,
     earlyDeparture: reportData.totals.earlyDeparture,
-    extraWork: reportData.totals.extraWork
-  });
+  };
+  if (hasExtraSlots) {
+    totalRowData.extraWork = reportData.totals.extraWork;
+  }
+  const totalRow = ws.addRow(totalRowData);
   totalRow.font = { bold: true };
   totalRow.eachCell((cell) => {
      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
