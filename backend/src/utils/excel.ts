@@ -11,9 +11,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   today.setHours(0, 0, 0, 0);
   const now = new Date();
 
-  // Dynamically detect the max slot assigned to this specific user
-  const maxSlots = user.slots?.reduce((max: number, s: any) => Math.max(max, s.slotNo || 0), 0) || 1;
-  const hasExtraSlots = maxSlots > 3;
+  // Build a distinct sorted set of slot numbers actually assigned to this user
+  const assignedSlotNos: number[] = (user.slots || []).map((s: any) => Number(s.slotNo)).filter((v: number, i: number, a: number[]) => a.indexOf(v) === i).sort((a: number, b: number) => a - b);
+  const hasExtraSlots = assignedSlotNos.some(n => n > 3);
 
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(year, mon - 1, day);
@@ -53,20 +53,20 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     };
 
     if (holiday || leave) {
-      // Pre-fill slots with labels and leave default values
-      for (let i = 1; i <= maxSlots; i++) {
-        if (i === 1) {
-          rowData[`s${i}In`] = holiday ? 'HOLIDAY' : 'LEAVE';
-          rowData[`s${i}Out`] = holiday ? holiday.name : (leave?.reason || 'Leave');
+      // Pre-fill only assigned slots with labels
+      assignedSlotNos.forEach((si, idx) => {
+        if (idx === 0) {
+          rowData[`s${si}In`] = holiday ? 'HOLIDAY' : 'LEAVE';
+          rowData[`s${si}Out`] = holiday ? holiday.name : (leave?.reason || 'Leave');
         } else {
-          rowData[`s${i}In`] = '--';
-          rowData[`s${i}Out`] = '--';
+          rowData[`s${si}In`] = '--';
+          rowData[`s${si}Out`] = '--';
         }
-        rowData[`s${i}Start`] = '--';
-        rowData[`s${i}End`] = '--';
-        rowData[`s${i}Late`] = '--';
-        rowData[`s${i}Early`] = '--';
-      }
+        rowData[`s${si}Start`] = '--';
+        rowData[`s${si}End`] = '--';
+        rowData[`s${si}Late`] = '--';
+        rowData[`s${si}Early`] = '--';
+      });
       rows.push(rowData);
       continue;
     }
@@ -174,8 +174,8 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       return hasIn ? 'MISSING OUT' : 'ABSENT';
     };
 
-    // Core iteration processing all slots (1 to 5)
-    for (let si = 1; si <= maxSlots; si++) {
+    // Core iteration — only process slots that are actually assigned
+    for (const si of assignedSlotNos) {
       const slot = daySlots.find((s: any) => s.slotNo === si);
       const isExtra = si > 3; // Definition of Extra Slot
       
@@ -253,16 +253,16 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`,
       extraWork: `${Math.floor(totalExtraMinutes / 60)}h ${totalExtraMinutes % 60}m`
     },
-    maxSlots,
+    assignedSlotNos,
     hasExtraSlots
   };
 };
 
 
 export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number, holidays: any[] = [], leaves: any[] = []) => {
-  // Dynamic: only show slots that are actually assigned to THIS user
-  const maxSlot = user.slots?.reduce((max: number, slot: any) => Math.max(max, slot.slotNo), 0) || 1;
-  const hasExtraSlots = maxSlot > 3;
+  // Build distinct sorted set of slot numbers — only columns for these will appear
+  const assignedSlotNos: number[] = (user.slots || []).map((s: any) => Number(s.slotNo)).filter((v: number, i: number, a: number[]) => a.indexOf(v) === i).sort((a: number, b: number) => a - b);
+  const hasExtraSlots = assignedSlotNos.some(n => n > 3);
 
   const baseColumns = [
     { header: 'Sl No', key: 'slNo', width: 8 },
@@ -271,7 +271,7 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   ];
 
   const slotColumns: any[] = [];
-  for (let i = 1; i <= maxSlot; i++) {
+  for (const i of assignedSlotNos) {
     const prefix = i > 3 ? `🔥 Extra Slot ${i - 3}` : `Slot ${i}`;
     
     slotColumns.push({ header: `${prefix} In`, key: `s${i}In`, width: 15 });
