@@ -411,14 +411,22 @@
             document.getElementById('form-error').classList.add('hidden');
             
             if (viewName === 'register') {
+                // Hide Gateway, Show Register
                 v_gate.classList.add('hidden');
+                v_gate.classList.remove('block');
+                
                 v_reg.classList.remove('hidden');
+                v_reg.classList.add('block');
                 setTimeout(() => v_reg.classList.remove('opacity-0'), 10);
             } else {
+                // Hide Register, Show Gateway
                 v_reg.classList.add('opacity-0');
                 setTimeout(() => {
                     v_reg.classList.add('hidden');
+                    v_reg.classList.remove('block');
+                    
                     v_gate.classList.remove('hidden');
+                    v_gate.classList.add('block');
                 }, 300);
             }
         }
