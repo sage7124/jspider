@@ -105,8 +105,8 @@ router.post('/external-punch', verifyCrossSecret, async (req, res) => {
 router.post('/external-monthly-data', verifyCrossSecret, async (req, res) => {
   try {
     const { identifier, month, year } = req.body;
-    const user = await prisma.user.findUnique({ where: { identifier } });
-    if (!user) return res.json({ success: true, attendances: [], leaves: [], holidays: [] });
+    const user = await prisma.user.findUnique({ where: { identifier }, include: { slots: true } });
+    if (!user) return res.json({ success: true, attendances: [], leaves: [], holidays: [], slots: [] });
 
     const m = parseInt(month);
     const y = parseInt(year);
@@ -123,7 +123,7 @@ router.post('/external-monthly-data', verifyCrossSecret, async (req, res) => {
       where: { date: { gte: startDate, lte: endDate } }
     });
 
-    res.json({ success: true, attendances, leaves, holidays });
+    res.json({ success: true, attendances, leaves, holidays, slots: user.slots });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -745,6 +745,16 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       finalAttendances = mergeAttendances(attendances, remoteAtt);
       finalHolidays = [...holidays, ...remoteHolidays];
       finalLeaves = [...leaves, ...remoteLeaves];
+
+      // ── Explicitly merge remote slots so the report utility has all schedule definitions!
+      const remoteSlots = sister.slots || [];
+      remoteSlots.forEach((rs: any) => {
+        const exists = user.slots.find(s => s.dayOfWeek === rs.dayOfWeek && s.slotNo === rs.slotNo);
+        if (!exists) {
+          // Temporarily add to local user copy for worksheet generation
+          user.slots.push(rs);
+        }
+      });
     }
 
     generateTraineeWorksheet(ws, user, finalAttendances, year, mon, daysInMonth, finalHolidays, finalLeaves);
