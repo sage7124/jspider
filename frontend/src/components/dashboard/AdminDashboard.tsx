@@ -680,13 +680,12 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               }}
             >
               <option value="global">Overall Day Punch</option>
-              {[1, 2, 3, 4, 5].map(num => {
-                const hasSlot = trainee.slots.some(s => s.slotNo === num);
-                if (!hasSlot) return null;
-                const activeSlot = currentDaySlots.find(s => s.slotNo === num);
+              {currentDaySlots.map((activeSlot) => {
+                const num = activeSlot.slotNo;
                 const isExtra = num > 3;
                 const label = isExtra ? `🔥 Extra Slot ${num - 3}` : `Slot ${num}`;
-                const timeStr = (!isExtra && activeSlot) ? ` (${activeSlot.start} - ${activeSlot.end})` : '';
+                // Consistently include time range next to slot so admin knows exactly which one they are targeting
+                const timeStr = ` (${activeSlot.start} - ${activeSlot.end})`;
                 return (
                   <option key={num} value={num.toString()}>{label}{timeStr}</option>
                 );

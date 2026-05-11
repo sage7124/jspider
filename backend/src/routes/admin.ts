@@ -1073,7 +1073,7 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
     if (status) updateData.status = status;
     
     if (clearPunchOut) {
-      if (slotNo && [1, 2, 3].includes(Number(slotNo))) {
+      if (slotNo && [1, 2, 3, 4, 5].includes(Number(slotNo))) {
         updateData[`outTime${slotNo}`] = null;
         updateData.outTime = null;
       } else {
@@ -1081,6 +1081,8 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
         updateData.outTime1 = null;
         updateData.outTime2 = null;
         updateData.outTime3 = null;
+        updateData.outTime4 = null;
+        updateData.outTime5 = null;
       }
       updateData.status = 'IN';
     }
@@ -1093,36 +1095,45 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
     };
 
     if (!clearPunchOut) {
-      if (slotNo && [1, 2, 3].includes(Number(slotNo))) {
+      if (slotNo && [1, 2, 3, 4, 5].includes(Number(slotNo))) {
+        const sNum = Number(slotNo);
         if (inTime === '') {
-          updateData[`inTime${slotNo}`] = null;
+          updateData[`inTime${sNum}`] = null;
         } else if (inTime && inTime !== '--') {
-          updateData[`inTime${slotNo}`] = setTime(inTime);
+          updateData[`inTime${sNum}`] = setTime(inTime);
         }
 
         if (outTime === '') {
-          updateData[`outTime${slotNo}`] = null;
+          updateData[`outTime${sNum}`] = null;
         } else if (outTime && outTime !== '--') {
-          updateData[`outTime${slotNo}`] = setTime(outTime);
+          updateData[`outTime${sNum}`] = setTime(outTime);
         }
 
         const existing = await prisma.attendance.findUnique({
           where: { userId_date: { userId: Number(traineeId), date: targetDate } }
         });
 
-        const finalIn1 = inTime !== undefined ? (inTime === '' ? null : setTime(inTime)) : (existing?.inTime1 || null);
-        const finalIn2 = existing?.inTime2 || null;
-        const finalIn3 = existing?.inTime3 || null;
+        // Collate all punch timings across ALL slots (1-5) to compute proper new global mins/maxes!
+        const allIns: (Date | null)[] = [];
+        const allOuts: (Date | null)[] = [];
 
-        const finalOut1 = outTime !== undefined ? (outTime === '' ? null : setTime(outTime)) : (existing?.outTime1 || null);
-        const finalOut2 = existing?.outTime2 || null;
-        const finalOut3 = existing?.outTime3 || null;
+        for (let i = 1; i <= 5; i++) {
+          let finalI = existing?.[`inTime${i}` as keyof typeof existing] as Date || null;
+          let finalO = existing?.[`outTime${i}` as keyof typeof existing] as Date || null;
 
-        const ins = [finalIn1, finalIn2, finalIn3].filter(Boolean) as Date[];
-        const outs = [finalOut1, finalOut2, finalOut3].filter(Boolean) as Date[];
+          if (i === sNum) {
+             if (inTime !== undefined) finalI = inTime === '' ? null : setTime(inTime);
+             if (outTime !== undefined) finalO = outTime === '' ? null : setTime(outTime);
+          }
+          allIns.push(finalI);
+          allOuts.push(finalO);
+        }
 
-        updateData.inTime = ins.length > 0 ? new Date(Math.min(...ins.map(d => d.getTime()))) : null;
-        updateData.outTime = outs.length > 0 ? new Date(Math.max(...outs.map(d => d.getTime()))) : null;
+        const validIns = allIns.filter(Boolean) as Date[];
+        const validOuts = allOuts.filter(Boolean) as Date[];
+
+        updateData.inTime = validIns.length > 0 ? new Date(Math.min(...validIns.map(d => d.getTime()))) : null;
+        updateData.outTime = validOuts.length > 0 ? new Date(Math.max(...validOuts.map(d => d.getTime()))) : null;
 
         if (!updateData.inTime) {
           updateData.status = 'ABSENT';
@@ -1137,6 +1148,8 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
           updateData.inTime1 = null;
           updateData.inTime2 = null;
           updateData.inTime3 = null;
+          updateData.inTime4 = null;
+          updateData.inTime5 = null;
         } else if (inTime && inTime !== '--') {
           updateData.inTime = setTime(inTime);
         }
@@ -1146,6 +1159,8 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
           updateData.outTime1 = null;
           updateData.outTime2 = null;
           updateData.outTime3 = null;
+          updateData.outTime4 = null;
+          updateData.outTime5 = null;
         } else if (outTime && outTime !== '--') {
           updateData.outTime = setTime(outTime);
         }

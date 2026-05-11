@@ -182,9 +182,7 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       let rawIn = att ? att[`inTime${si}`] : null;
       let rawOut = att ? att[`outTime${si}`] : null;
 
-      // Support legacy fields for Slot 1
-      if (si === 1 && att && !rawIn) rawIn = att.inTime;
-      if (si === 1 && att && !rawOut) rawOut = att.outTime;
+      // Legacy fallback injection removed so overall punches no longer pollute Column D if Slot 1 is cleared.
 
       const sIn = rawIn ? new Date(rawIn) : undefined;
       const sOut = rawOut ? new Date(rawOut) : undefined;
