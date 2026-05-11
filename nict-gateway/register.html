@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NICT | Central Registration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+        .input-field { 
+            width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; 
+            font-size: 0.875rem; margin-top: 0.25rem; transition: all 0.2s; 
+        }
+        .input-field:focus { outline: none; border-color: #2563eb; ring: 2px solid rgba(37,99,235,0.2); }
+        .section-card { background: white; padding: 1.5rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e5e7eb; margin-bottom: 1.5rem; }
+        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #2563eb; width: 20px; height: 20px; -webkit-animation: spin 1s linear infinite; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
+        @-webkit-keyframes spin { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .collapsible-content.expanded { max-height: 2000px; transition: max-height 0.5s ease-in; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col py-8 px-4 sm:px-6 lg:px-8">
+
+    <!-- Top Header -->
+    <div class="w-full max-w-3xl mx-auto mb-6 flex items-center justify-between">
+        <a href="index.html" class="text-sm font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            ← Back to Home
+        </a>
+        <div class="font-bold text-gray-400 text-xs tracking-widest uppercase">NICT Central Portal</div>
+    </div>
+
+    <!-- Main Content Wrapper -->
+    <div id="main-form-wrapper" class="w-full max-w-3xl mx-auto">
+        
+        <!-- Page Title -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Central Student Registration</h1>
+            <p class="mt-2 text-gray-600 text-sm">Complete the form below to initialize your profile within our ecosystem.</p>
+        </div>
+
+        <!-- Status Bucket -->
+        <div id="status-box" class="hidden mb-6 p-4 rounded-lg border text-sm font-medium"></div>
+
+        <!-- The Form -->
+        <form id="regForm" class="w-full">
+
+            <!-- Step 1: Core Identity -->
+            <div class="section-card">
+                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span class="bg-blue-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">1</span>
+                    Required Credentials
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 uppercase">Full Name *</label>
+                        <input type="text" id="f_name" required class="input-field" placeholder="Ex. Rahul Gupta">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 uppercase">Mobile Number *</label>
+                        <input type="tel" id="f_mobile" required maxlength="10" class="input-field" placeholder="10-digit Mobile">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 uppercase">Email ID *</label>
+                        <input type="email" id="f_email" required class="input-field" placeholder="name@example.com">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 uppercase">Create Password *</label>
+                        <input type="password" id="f_pass" required class="input-field" placeholder="••••••••">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Destination Config -->
+            <div class="section-card border-t-4 border-t-blue-600">
+                <h2 class="text-lg font-bold text-gray-800 mb-2">Select Target Institute</h2>
+                <p class="text-xs text-gray-500 mb-4">Choose where your profile should be instantly synchronized.</p>
+                <select id="f_inst" required class="input-field py-3 bg-blue-50 font-semibold border-blue-200 text-blue-900 cursor-pointer">
+                    <option value="" disabled selected>-- Choose Destination --</option>
+                    <option value="JAYANAGAR">NICT Jayanagar Branch</option>
+                    <option value="HANUMANTHNAGAR">NICT Hanumanthanagar Branch</option>
+                    <option value="BOTH">★ BOTH BRANCHES (Multi-Sync)</option>
+                </select>
+            </div>
+
+            <!-- Optional Advanced Fields Toggle -->
+            <button type="button" onclick="toggleOptional()" class="w-full flex items-center justify-between bg-gray-200 hover:bg-gray-300 p-4 rounded-lg mb-4 font-bold text-gray-700 text-sm transition-colors">
+                <span>📄 Add Extra Profile Details (Optional)</span>
+                <span id="chev">▼</span>
+            </button>
+
+            <!-- Collapsible Part -->
+            <div id="extra-container" class="collapsible-content">
+                
+                <!-- Personal Group -->
+                <div class="section-card bg-gray-50">
+                    <h3 class="font-bold text-sm text-gray-700 border-b pb-2 mb-3 uppercase">Family & Photo</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="text-xs text-gray-500">Father's Name</label>
+                            <input type="text" id="o_father" class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Mother's Name</label>
+                            <input type="text" id="o_mother" class="input-field">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">Profile Photo</label>
+                        <div class="flex gap-3 items-center mt-1">
+                            <input type="file" accept="image/*" onchange="handleUpload(this, 'p_photoUrl', 'lbl_photo')" class="hidden" id="in_photo">
+                            <label for="in_photo" id="lbl_photo" class="flex-1 text-center text-xs font-bold p-3 border-2 border-dashed border-gray-300 rounded bg-white cursor-pointer hover:bg-gray-100">📁 Click to Upload Photo</label>
+                            <input type="hidden" id="p_photoUrl">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Work Group -->
+                <div class="section-card bg-gray-50">
+                    <h3 class="font-bold text-sm text-gray-700 border-b pb-2 mb-3 uppercase">Onboarding</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500">Date of Joining</label>
+                            <input type="date" id="o_doj" class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Office Timings</label>
+                            <input type="text" id="o_time" placeholder="e.g. 9AM-5PM" class="input-field">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs text-gray-500">Education Details</label>
+                            <input type="text" id="o_edu" placeholder="Ex: B.Tech, M.Com" class="input-field">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs text-gray-500">Preferred Modules/Classes</label>
+                            <input type="text" id="o_sub" placeholder="Ex: C++, Java, Tally" class="input-field">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs text-gray-500">Current Address</label>
+                            <textarea id="o_addr1" rows="2" class="input-field resize-none"></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="text-xs text-gray-500">Permanent Address</label>
+                            <textarea id="o_addr2" rows="2" class="input-field resize-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Identity Group -->
+                <div class="section-card bg-gray-50">
+                    <h3 class="font-bold text-sm text-gray-700 border-b pb-2 mb-3 uppercase">Verification Docs</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-gray-500">Aadhaar Number</label>
+                            <input type="text" id="o_aadhaar" class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Upload Aadhaar</label>
+                            <input type="file" onchange="handleUpload(this, 'p_aadhaarUrl', 'lbl_aadhaar')" class="hidden" id="in_aad">
+                            <label for="in_aad" id="lbl_aadhaar" class="block text-center text-xs p-2 border border-dashed rounded bg-white cursor-pointer">📁 Upload</label>
+                            <input type="hidden" id="p_aadhaarUrl">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">PAN Number</label>
+                            <input type="text" id="o_pan" class="input-field">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">Upload PAN</label>
+                            <input type="file" onchange="handleUpload(this, 'p_panUrl', 'lbl_pan')" class="hidden" id="in_pan">
+                            <label for="in_pan" id="lbl_pan" class="block text-center text-xs p-2 border border-dashed rounded bg-white cursor-pointer">📁 Upload</label>
+                            <input type="hidden" id="p_panUrl">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bank Group -->
+                <div class="section-card bg-gray-50">
+                    <h3 class="font-bold text-sm text-gray-700 border-b pb-2 mb-3 uppercase">Financials</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" id="o_bname" placeholder="Bank Name" class="input-field col-span-2">
+                        <input type="text" id="o_bacc" placeholder="Account No" class="input-field">
+                        <input type="text" id="o_bifsc" placeholder="IFSC" class="input-field">
+                        <input type="text" id="o_bbr" placeholder="Branch Name" class="input-field col-span-2">
+                    </div>
+                </div>
+
+                <!-- Emergency Group -->
+                <div class="section-card bg-gray-50">
+                    <h3 class="font-bold text-sm text-gray-700 border-b pb-2 mb-3 uppercase">Emergency Contacts</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" id="o_ename" placeholder="Emergency Name" class="input-field">
+                        <input type="tel" id="o_emob" placeholder="Emergency Phone" class="input-field">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Submit Area -->
+            <button type="submit" id="subBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg py-4 rounded-lg shadow-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50">
+                <span id="btxt">Confirm & Register Profile</span>
+                <div id="bspin" class="hidden loader ml-2"></div>
+            </button>
+
+        </form>
+
+        <p class="text-center text-xs text-gray-400 mt-10">&copy; 2026 NICT Computer Education Pvt Ltd. All rights reserved.</p>
+    </div>
+
+    <!-- Success Screen Wrapper -->
+    <div id="success-wrapper" class="hidden w-full max-w-md mx-auto my-auto text-center bg-white p-8 rounded-xl shadow-2xl border border-green-100">
+        <div class="w-20 h-20 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-4 text-4xl">✓</div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Registration Successful!</h2>
+        <p id="suc-msg" class="text-gray-600 mb-6"></p>
+        <a href="index.html" class="inline-block bg-gray-900 text-white font-bold px-6 py-3 rounded-lg hover:bg-gray-800">Return to Dashboard</a>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        // 1. Configure Endpoints
+        const APIS = {
+            JAYANAGAR: "https://nictjayanagar.onrender.com",
+            HANUMANTHNAGAR: "https://nicthanumanthnagar.onrender.com"
+        };
+        const SB_URL = 'https://uzbobbzbbkqzgtjemayu.supabase.co';
+        const SB_KEY = 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr';
+        const supabase = window.supabase.createClient(SB_URL, SB_KEY);
+
+        // UI Handler
+        function toggleOptional() {
+            const el = document.getElementById('extra-container');
+            const ch = document.getElementById('chev');
+            el.classList.toggle('expanded');
+            ch.innerText = el.classList.contains('expanded') ? '▲' : '▼';
+        }
+
+        // File Handler
+        async function handleUpload(inp, hidId, labId) {
+            const f = inp.files[0];
+            if(!f) return;
+            if(f.size > 1024*1024) { alert("Max 1MB allowed"); inp.value=''; return; }
+            
+            const lbl = document.getElementById(labId);
+            lbl.innerText = "⌛ Uploading...";
+            lbl.style.backgroundColor = "#fef3c7";
+
+            try {
+                const p = `documents/gtw_${Date.now()}_${f.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+                const { data, error } = await supabase.storage.from('nict-onboarding').upload(p, f, { upsert: true });
+                if(error) throw error;
+
+                const { data: { publicUrl } } = supabase.storage.from('nict-onboarding').getPublicUrl(p);
+                document.getElementById(hidId).value = publicUrl;
+                lbl.innerText = "✅ Uploaded Successfully";
+                lbl.style.backgroundColor = "#d1fae5";
+                lbl.style.borderColor = "#10b981";
+                lbl.style.color = "#065f46";
+            } catch (e) {
+                alert("Upload failed: " + e.message);
+                lbl.innerText = "❌ Failed. Try again?";
+                lbl.style.backgroundColor = "#fee2e2";
+            }
+        }
+
+        // Submit Handler
+        document.getElementById('regForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('subBtn');
+            const txt = document.getElementById('btxt');
+            const ldr = document.getElementById('bspin');
+            const sbx = document.getElementById('status-box');
+
+            // Lock UI
+            btn.disabled = true;
+            txt.innerText = "Processing... Please wait";
+            ldr.classList.remove('hidden');
+            sbx.classList.add('hidden');
+
+            const payload = {
+                fullName: document.getElementById('f_name').value,
+                mobile: document.getElementById('f_mobile').value,
+                email: document.getElementById('f_email').value,
+                password: document.getElementById('f_pass').value,
+                department: "Central",
+
+                fatherName: document.getElementById('o_father').value || null,
+                motherName: document.getElementById('o_mother').value || null,
+                photoUrl: document.getElementById('p_photoUrl').value || null,
+                dateOfJoining: document.getElementById('o_doj').value || null,
+                officeTimings: document.getElementById('o_time').value || null,
+                educationCompleted: document.getElementById('o_edu').value || null,
+                subClassification: document.getElementById('o_sub').value || null,
+                presentAddress: document.getElementById('o_addr1').value || null,
+                permanentAddress: document.getElementById('o_addr2').value || null,
+
+                aadhaarNumber: document.getElementById('o_aadhaar').value || null,
+                aadhaarPhotoUrl: document.getElementById('p_aadhaarUrl').value || null,
+                panNumber: document.getElementById('o_pan').value || null,
+                panPhotoUrl: document.getElementById('p_panUrl').value || null,
+
+                bankName: document.getElementById('o_bname').value || null,
+                bankAccountNo: document.getElementById('o_bacc').value || null,
+                bankIfscCode: document.getElementById('o_bifsc').value || null,
+                bankBranchName: document.getElementById('o_bbr').value || null,
+
+                emergencyContactName: document.getElementById('o_ename').value || null,
+                emergencyContactMobile: document.getElementById('o_emob').value || null
+            };
+
+            const dest = document.getElementById('f_inst').value;
+            const calls = [];
+
+            if(dest === 'JAYANAGAR' || dest === 'BOTH') {
+                calls.push(fetch(`${APIS.JAYANAGAR}/api/auth/register`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+                }).then(r => checkResp(r, 'Jayanagar')));
+            }
+            if(dest === 'HANUMANTHNAGAR' || dest === 'BOTH') {
+                calls.push(fetch(`${APIS.HANUMANTHNAGAR}/api/auth/register`, {
+                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
+                }).then(r => checkResp(r, 'Hanumanthnagar')));
+            }
+
+            try {
+                const res = await Promise.all(calls);
+                const bad = res.find(o => !o.ok);
+                if(bad) throw new Error(`[${bad.tag}]: ${bad.msg}`);
+
+                // Confetti and Complete
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                document.getElementById('main-form-wrapper').classList.add('hidden');
+                
+                const sMsg = dest === 'BOTH' 
+                    ? "Congratulations! Your student profile has been successfully provisioned and synchronized on BOTH Branch server nodes simultaneously."
+                    : `Great success! Your profile is now registered securely on our ${dest} repository.`;
+                
+                document.getElementById('suc-msg').innerText = sMsg;
+                document.getElementById('success-wrapper').classList.remove('hidden');
+                window.scrollTo(0,0);
+
+            } catch(err) {
+                sbx.innerText = "ERROR: " + err.message;
+                sbx.className = "mb-6 p-4 rounded-lg border text-sm font-bold bg-red-50 border-red-200 text-red-700 block";
+                btn.disabled = false;
+                txt.innerText = "Confirm & Register Profile";
+                ldr.classList.add('hidden');
+                window.scrollTo(0,0);
+            }
+        });
+
+        async function checkResp(r, tag) {
+            const text = await r.text();
+            let d = {}; try { d = JSON.parse(text); } catch(e) {}
+            return r.ok ? {ok:true} : {ok:false, tag, msg: d.error || "Server disruption observed"};
+        }
+    </script>
+</body>
+</html>
