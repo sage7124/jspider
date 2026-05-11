@@ -6,8 +6,9 @@
     <title>NICT | Central Registration</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Notice: We defer libraries to prevent blocking -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
         .input-field { 
@@ -34,12 +35,13 @@
         
         <div class="text-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Student Registration Portal</h1>
-            <p class="mt-2 text-slate-500 text-sm font-medium">Please fill out the information requested below. Critical fields are marked with *.</p>
+            <p class="mt-2 text-slate-500 text-sm font-medium">Please fill out requested information below. Fields marked with * are Mandatory.</p>
         </div>
 
         <div id="status-box" class="hidden mb-6 p-4 rounded-lg border text-sm font-bold"></div>
 
-        <form id="regForm" class="w-full space-y-6">
+        <!-- WE USE A TRADITIONAL ACTIONLESS FORM TO ENSURE TOTAL JS CAPTURE -->
+        <form id="regForm" class="w-full space-y-6" action="javascript:void(0);" onsubmit="handleFormSubmit(event)">
 
             <!-- 1. REQUIRED CREDENTIALS -->
             <div class="section-card">
@@ -82,7 +84,6 @@
                 </select>
             </div>
 
-            <!-- 3. OPTIONAL PROFILE GROUPS (FULLY VISIBLE NOW) -->
             <div class="bg-slate-200 text-slate-600 px-4 py-2 rounded-md text-xs font-black tracking-widest uppercase text-center mb-4">
                 Optional Additional Details Below
             </div>
@@ -189,12 +190,13 @@
                 </div>
             </div>
 
-            <!-- Submission Fixed Trigger -->
-            <div class="sticky bottom-4 bg-white/90 backdrop-blur p-4 rounded-xl border border-slate-200 shadow-2xl">
-                <button type="submit" id="subBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-lg py-4 rounded-lg transition-all transform active:scale-95 flex items-center justify-center shadow-xl">
-                    <span id="btxt">Submit & Create Profile Now</span>
+            <!-- Submission Trigger -->
+            <div class="sticky bottom-4 bg-white/95 backdrop-blur-md p-4 rounded-xl border-2 border-blue-200 shadow-2xl mt-12">
+                <button type="submit" id="subBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xl py-5 rounded-lg transition-all transform active:scale-95 flex items-center justify-center shadow-xl border-b-4 border-blue-800">
+                    <span id="btxt">SUBMIT & ACTIVATE PROFILE</span>
                     <div id="bspin" class="hidden loader ml-3"></div>
                 </button>
+                <p class="text-center text-xs text-blue-600 font-bold mt-2">🚀 Press here after filling all required details Above.</p>
             </div>
 
         </form>
@@ -205,142 +207,189 @@
     <!-- Success Block -->
     <div id="success-wrapper" class="hidden w-full max-w-md mx-auto my-auto text-center bg-white p-8 rounded-xl shadow-2xl border border-green-100 border-t-8 border-t-green-500">
         <div class="w-20 h-20 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-4 text-4xl">✓</div>
-        <h2 class="text-2xl font-bold text-slate-900 mb-2">Success!</h2>
+        <h2 class="text-2xl font-bold text-slate-900 mb-2">Registration Success!</h2>
         <p id="suc-msg" class="text-slate-600 font-medium mb-8"></p>
-        <a href="index.html" class="block w-full bg-slate-900 text-white font-bold px-6 py-4 rounded-lg hover:bg-slate-800 transition-colors">Return to Dashboard</a>
+        <a href="index.html" class="block w-full bg-slate-900 text-white font-bold px-6 py-4 rounded-lg hover:bg-slate-800 transition-colors">Back to Home</a>
     </div>
 
+    <!-- TRIPLE BULLETPROOF SCRIPT ARCHITECTURE -->
     <script>
-        const APIS = {
-            JAYANAGAR: "https://nictjayanagar.onrender.com",
-            HANUMANTHNAGAR: "https://nicthanumanthnagar.onrender.com"
+        // Force crash dump globally just in case!
+        window.onerror = function(msg, url, ln) {
+            alert("SYSTEM ERROR LOGGED: " + msg + "\nLine " + ln);
+            return false;
         };
-        const SB_URL = 'https://uzbobbzbbkqzgtjemayu.supabase.co';
-        const SB_KEY = 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr';
-        const supabase = window.supabase.createClient(SB_URL, SB_KEY);
 
-        async function handleUpload(inp, hidId, labId) {
-            const f = inp.files[0];
-            if(!f) return;
-            if(f.size > 1024*1024) { alert("Error: Max size 1MB per file."); inp.value=''; return; }
-            
-            const lbl = document.getElementById(labId);
-            lbl.innerText = "🔄 Processing...";
-            lbl.className = "flex-1 text-center text-xs font-bold p-3 border border-amber-300 rounded bg-amber-50 text-amber-800 cursor-pointer";
+        const CONFIG = {
+            APIS: {
+                JAYANAGAR: "https://nictjayanagar.onrender.com",
+                HANUMANTHNAGAR: "https://nicthanumanthnagar.onrender.com"
+            },
+            SB_URL: 'https://uzbobbzbbkqzgtjemayu.supabase.co',
+            SB_KEY: 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr'
+        };
 
-            try {
-                const p = `documents/ext_${Date.now()}_${f.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-                const { data, error } = await supabase.storage.from('nict-onboarding').upload(p, f, { upsert: true });
-                if(error) throw error;
-
-                const { data: { publicUrl } } = supabase.storage.from('nict-onboarding').getPublicUrl(p);
-                document.getElementById(hidId).value = publicUrl;
-                
-                lbl.innerText = "✅ File Stored Successfully";
-                lbl.className = "flex-1 text-center text-xs font-bold p-3 border border-emerald-400 rounded bg-emerald-50 text-emerald-700 cursor-default";
-            } catch (e) {
-                alert("Warning: Upload system timed out. Attempting raw creation without document attached.");
-                lbl.innerText = "⚠️ Upload Incomplete";
-                lbl.className = "flex-1 text-center text-xs font-bold p-3 border border-red-300 rounded bg-red-50 text-red-600 cursor-pointer";
+        // Lazy init supabase ONLY when upload runs, to prevent boot crashes!
+        let supabaseClient = null;
+        function getSupabase() {
+            if (!supabaseClient) {
+                if (!window.supabase) throw new Error("Supabase Library has not finished loading. Please wait 2 seconds and retry.");
+                supabaseClient = window.supabase.createClient(CONFIG.SB_URL, CONFIG.SB_KEY);
             }
+            return supabaseClient;
         }
 
-        document.getElementById('regForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // 1. Explicit In-Line Form Capture Trigger
+        async function handleFormSubmit(event) {
+            console.log("Form Submit Activated");
+            if(event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             
             const btn = document.getElementById('subBtn');
             const txt = document.getElementById('btxt');
             const ldr = document.getElementById('bspin');
             const sbx = document.getElementById('status-box');
 
-            // Explicit check for Target Institute (Fallback for native validation failure)
-            const dest = document.getElementById('f_inst').value;
-            if(!dest || dest === "") {
-                alert("CRITICAL ERROR: Please select a 'Target Campus' in section 2 above!");
-                document.getElementById('f_inst').scrollIntoView({behavior:'smooth', block:'center'});
-                document.getElementById('f_inst').focus();
+            try {
+                // Immediate Input Grabs (Inside try block to protect execution)
+                const i_inst = document.getElementById('f_inst');
+                const dest = i_inst.value;
+                
+                if(!dest || dest === "") {
+                    alert("⚠️ ERROR: You MUST scroll up and select a 'Target Campus' first!");
+                    i_inst.scrollIntoView({behavior:'smooth', block:'center'});
+                    i_inst.focus();
+                    return false;
+                }
+
+                // UI Status Switch
+                btn.disabled = true;
+                txt.innerText = "ESTABLISHING SECURE LINK...";
+                ldr.classList.remove('hidden');
+                sbx.classList.add('hidden');
+
+                const pl = {
+                    fullName: document.getElementById('f_name').value.trim(),
+                    mobile: document.getElementById('f_mobile').value.trim(),
+                    email: document.getElementById('f_email').value.trim(),
+                    password: document.getElementById('f_pass').value,
+                    department: "Central Enrollment",
+                    fatherName: document.getElementById('o_father').value.trim() || null,
+                    motherName: document.getElementById('o_mother').value.trim() || null,
+                    photoUrl: document.getElementById('p_photoUrl').value || null,
+                    dateOfJoining: document.getElementById('o_doj').value || null,
+                    officeTimings: document.getElementById('o_time').value.trim() || null,
+                    educationCompleted: document.getElementById('o_edu').value.trim() || null,
+                    subClassification: document.getElementById('o_sub').value.trim() || null,
+                    presentAddress: document.getElementById('o_addr1').value.trim() || null,
+                    permanentAddress: document.getElementById('o_addr2').value.trim() || null,
+                    aadhaarNumber: document.getElementById('o_aadhaar').value.trim() || null,
+                    aadhaarPhotoUrl: document.getElementById('p_aadhaarUrl').value || null,
+                    panNumber: document.getElementById('o_pan').value.trim() || null,
+                    panPhotoUrl: document.getElementById('p_panUrl').value || null,
+                    bankName: document.getElementById('o_bname').value.trim() || null,
+                    bankAccountNo: document.getElementById('o_bacc').value.trim() || null,
+                    bankIfscCode: document.getElementById('o_bifsc').value.trim() || null,
+                    bankBranchName: document.getElementById('o_bbr').value.trim() || null,
+                    emergencyContactName: document.getElementById('o_ename').value.trim() || null,
+                    emergencyContactMobile: document.getElementById('o_emob').value.trim() || null
+                };
+
+                txt.innerText = "SENDING DATA PACKETS...";
+                const reqs = [];
+                
+                if(dest === 'JAYANAGAR' || dest === 'BOTH') {
+                    reqs.push(dispatchReg(CONFIG.APIS.JAYANAGAR, pl, "Jayanagar"));
+                }
+                if(dest === 'HANUMANTHNAGAR' || dest === 'BOTH') {
+                    reqs.push(dispatchReg(CONFIG.APIS.HANUMANTHNAGAR, pl, "Hanumanthanagar"));
+                }
+
+                const results = await Promise.all(reqs);
+                
+                // Inspect response array
+                const fail = results.find(r => !r.ok);
+                if(fail) {
+                    throw new Error("Server Refused Registration: " + fail.message);
+                }
+
+                // Success Branch
+                if (window.confetti) {
+                   window.confetti({ particleCount: 180, spread: 85, origin: { y: 0.6 } });
+                }
+                document.getElementById('main-form-wrapper').classList.add('hidden');
+                document.getElementById('suc-msg').innerText = "Your profile has been accepted. " + (dest === 'BOTH' ? "Synched globally." : `Registered on ${dest}.`);
+                document.getElementById('success-wrapper').classList.remove('hidden');
+                window.scrollTo(0, 0);
+
+            } catch (majorErr) {
+                btn.disabled = false;
+                ldr.classList.add('hidden');
+                txt.innerText = "RETRY SUBMISSION NOW";
+                sbx.innerText = majorErr.message;
+                sbx.className = "mb-6 p-5 border-2 border-red-600 bg-red-50 text-red-800 rounded-xl font-extrabold block";
+                sbx.scrollIntoView({behavior:'smooth'});
+            }
+            return false; // Absolutely block any standard HTML posting actions.
+        }
+
+        async function dispatchReg(baseUrl, dataObj, nameTag) {
+            try {
+                const resp = await fetch(baseUrl + '/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataObj)
+                });
+                const resText = await resp.text();
+                let parsed = {};
+                try { parsed = JSON.parse(resText); } catch(e){}
+                
+                if(resp.ok) return { ok: true };
+                return { ok: false, message: `[${nameTag}] -> ${parsed.error || "Connectivity Interrupt"}` };
+            } catch (netErr) {
+                return { ok: false, message: `[${nameTag}] Node Offline: Network Failure.` };
+            }
+        }
+
+        // 2. Upload Function
+        async function handleUpload(inputElem, hiddenInputId, labelId) {
+            const targetFile = inputElem.files[0];
+            if(!targetFile) return;
+            if(targetFile.size > 1024 * 1024) {
+                alert("FILE TOO LARGE: Maximum allowed size is 1MB.");
+                inputElem.value = '';
                 return;
             }
-
-            // Lock UI
-            btn.disabled = true;
-            txt.innerText = "SYNCHRONIZING SERVERS...";
-            ldr.classList.remove('hidden');
-            sbx.classList.add('hidden');
-
-            const payload = {
-                fullName: document.getElementById('f_name').value.trim(),
-                mobile: document.getElementById('f_mobile').value.trim(),
-                email: document.getElementById('f_email').value.trim(),
-                password: document.getElementById('f_pass').value,
-                department: "Central Enrollment",
-
-                fatherName: document.getElementById('o_father').value.trim() || null,
-                motherName: document.getElementById('o_mother').value.trim() || null,
-                photoUrl: document.getElementById('p_photoUrl').value || null,
-                dateOfJoining: document.getElementById('o_doj').value || null,
-                officeTimings: document.getElementById('o_time').value.trim() || null,
-                educationCompleted: document.getElementById('o_edu').value.trim() || null,
-                subClassification: document.getElementById('o_sub').value.trim() || null,
-                presentAddress: document.getElementById('o_addr1').value.trim() || null,
-                permanentAddress: document.getElementById('o_addr2').value.trim() || null,
-
-                aadhaarNumber: document.getElementById('o_aadhaar').value.trim() || null,
-                aadhaarPhotoUrl: document.getElementById('p_aadhaarUrl').value || null,
-                panNumber: document.getElementById('o_pan').value.trim() || null,
-                panPhotoUrl: document.getElementById('p_panUrl').value || null,
-
-                bankName: document.getElementById('o_bname').value.trim() || null,
-                bankAccountNo: document.getElementById('o_bacc').value.trim() || null,
-                bankIfscCode: document.getElementById('o_bifsc').value.trim() || null,
-                bankBranchName: document.getElementById('o_bbr').value.trim() || null,
-
-                emergencyContactName: document.getElementById('o_ename').value.trim() || null,
-                emergencyContactMobile: document.getElementById('o_emob').value.trim() || null
-            };
-
-            const calls = [];
-            if(dest === 'JAYANAGAR' || dest === 'BOTH') {
-                calls.push(fetch(`${APIS.JAYANAGAR}/api/auth/register`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
-                }).then(r => checkResp(r, 'NICT Jayanagar Node')));
-            }
-            if(dest === 'HANUMANTHNAGAR' || dest === 'BOTH') {
-                calls.push(fetch(`${APIS.HANUMANTHNAGAR}/api/auth/register`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
-                }).then(r => checkResp(r, 'NICT Hanumanthanagar Node')));
-            }
+            
+            const label = document.getElementById(labelId);
+            const oldText = label.innerText;
+            const oldStyle = label.className;
 
             try {
-                const res = await Promise.all(calls);
-                const bad = res.find(o => !o.ok);
-                if(bad) throw new Error(`[SERVER REFUSAL]: ${bad.msg}`);
-
-                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-                document.getElementById('main-form-wrapper').classList.add('hidden');
+                label.innerText = "⏳ UPLOADING CLOUD STORAGE...";
+                label.className = "flex-1 text-center text-xs font-black p-3 bg-amber-100 text-amber-900 border-2 border-amber-400 rounded";
                 
-                const sMsg = dest === 'BOTH' 
-                    ? "Successfully provisioned user record securely on BOTH active campus server grids. Data is now persistent."
-                    : `Deployment Complete. Your profile has been indexed on the ${dest} registry successfully.`;
-                
-                document.getElementById('suc-msg').innerText = sMsg;
-                document.getElementById('success-wrapper').classList.remove('hidden');
-                window.scrollTo({top:0, behavior:'smooth'});
+                // Instantiate supabase ONLY on-demand
+                const sb = getSupabase();
+                const cleanName = targetFile.name.replace(/[^a-zA-Z0-9.]/g, '');
+                const cloudPath = "documents/reg_" + Date.now() + "_" + cleanName;
 
-            } catch(err) {
-                sbx.innerText = "EXECUTION FAILED: " + err.message;
-                sbx.className = "mb-6 p-4 rounded-lg border-2 text-base font-black bg-red-50 border-red-500 text-red-700 block";
-                btn.disabled = false;
-                txt.innerText = "Submit & Create Profile Now";
-                ldr.classList.add('hidden');
-                window.scrollTo({top:0, behavior:'smooth'});
+                const { data, error } = await sb.storage.from('nict-onboarding').upload(cloudPath, targetFile, { upsert: true });
+                if (error) throw error;
+
+                const { data: { publicUrl } } = sb.storage.from('nict-onboarding').getPublicUrl(cloudPath);
+                document.getElementById(hiddenInputId).value = publicUrl;
+
+                label.innerText = "✅ ATTACHED SUCCESSFULLY";
+                label.className = "flex-1 text-center text-xs font-black p-3 bg-emerald-100 text-emerald-800 border-2 border-emerald-500 rounded";
+
+            } catch (upErr) {
+                alert("CLOUD ERROR: Upload timed out or failed. File not attached.\nDetail: " + upErr.message);
+                label.innerText = "⚠️ UPLOAD FAILED - CLICK AGAIN";
+                label.className = "flex-1 text-center text-xs font-bold p-3 bg-red-50 text-red-700 border border-red-300 rounded cursor-pointer";
             }
-        });
-
-        async function checkResp(r, tag) {
-            const text = await r.text();
-            let d = {}; try { d = JSON.parse(text); } catch(e) {}
-            return r.ok ? {ok:true} : {ok:false, tag, msg: `${tag} -> ${d.error || "Network Disconnect or Validation Error"}`};
         }
     </script>
 </body>
