@@ -26,8 +26,7 @@
                     keyframes: {
                         blob: {
                             "0%": { transform: "translate(0px, 0px) scale(1)", opacity: 0.4 },
-                            "33%": { transform: "translate(40px, -60px) scale(1.2)", opacity: 0.6 },
-                            "66%": { transform: "translate(-30px, 30px) scale(0.8)", opacity: 0.4 },
+                            "50%": { transform: "translate(20px, -20px) scale(1.05)", opacity: 0.5 },
                             "100%": { transform: "translate(0px, 0px) scale(1)", opacity: 0.4 },
                         },
                         fadeIn: {
@@ -45,16 +44,17 @@
     </script>
     <style>
         .glass-dark {
-            background: rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4);
+            will-change: transform, opacity;
         }
         .card-glow:hover {
-            box-shadow: 0 0 25px rgba(56, 189, 248, 0.2);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
             background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(56, 189, 248, 0.4);
+            border-color: rgba(56, 189, 248, 0.3);
         }
         body {
             background: radial-gradient(circle at 50% 0%, #1e3a8a 0%, #1e1b4b 50%, #0f172a 100%);
@@ -411,22 +411,27 @@
             document.getElementById('form-error').classList.add('hidden');
             
             if (viewName === 'register') {
-                // Hide Gateway, Show Register
-                v_gate.classList.add('hidden');
-                v_gate.classList.remove('block');
+                // FORCE HIDE GATEWAY, FORCE SHOW REGISTER
+                v_gate.style.setProperty('display', 'none', 'important');
                 
                 v_reg.classList.remove('hidden');
-                v_reg.classList.add('block');
-                setTimeout(() => v_reg.classList.remove('opacity-0'), 10);
-            } else {
-                // Hide Register, Show Gateway
-                v_reg.classList.add('opacity-0');
+                v_reg.style.setProperty('display', 'block', 'important');
+                
+                // Slight delay to let display apply before triggering opacity fade
                 setTimeout(() => {
-                    v_reg.classList.add('hidden');
-                    v_reg.classList.remove('block');
+                    v_reg.classList.remove('opacity-0');
+                    v_reg.style.opacity = '1';
+                }, 50);
+            } else {
+                // FORCE HIDE REGISTER, FORCE SHOW GATEWAY
+                v_reg.style.opacity = '0';
+                v_reg.classList.add('opacity-0');
+                
+                setTimeout(() => {
+                    v_reg.style.setProperty('display', 'none', 'important');
                     
-                    v_gate.classList.remove('hidden');
-                    v_gate.classList.add('block');
+                    v_gate.style.setProperty('display', 'block', 'important');
+                    v_gate.style.opacity = '1';
                 }, 300);
             }
         }
