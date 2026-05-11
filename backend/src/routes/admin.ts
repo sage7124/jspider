@@ -153,6 +153,47 @@ async function fetchSisterReportData(identifier: string, month: any, year: any) 
   }
 }
 
+async function broadcastLeaveToSister(payload: any) {
+  const sisterUrl = process.env.SISTER_INSTITUTE_API_URL;
+  const secretKey = process.env.CROSS_INSTITUTE_SECRET_KEY;
+  if (!sisterUrl || !secretKey) return;
+  try {
+    await fetch(`${sisterUrl}/api/admin/external-leave-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-cross-secret': secretKey },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.log("Leave broadcast failure:", e);
+  }
+}
+
+router.post('/external-leave-push', verifyCrossSecret, async (req, res) => {
+  try {
+    const { identifier, startDate, endDate, reason, adminReason, appliedDate, remarksAlternative, remarksOfficeUse } = req.body;
+    const user = await prisma.user.findUnique({ where: { identifier } });
+    if (!user) return res.status(404).json({ success: false, error: 'User unknown on this node' });
+
+    // Replicate the authorized leave instantly without double-dipping leave balances, keeping visual parity!
+    await prisma.leaveRequest.create({
+      data: {
+        userId: user.id,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        reason: reason || 'Synced Leave',
+        status: 'APPROVED',
+        adminReason: adminReason || 'Cross-institute Sync',
+        appliedDate: appliedDate ? new Date(appliedDate) : new Date(),
+        remarksAlternative: remarksAlternative || null,
+        remarksOfficeUse: remarksOfficeUse || null
+      }
+    });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 function mergeAttendances(localAtt: any[], remoteAtt: any[]) {
   const mergedMap = new Map<string, any>();
   localAtt.forEach(a => { mergedMap.set(new Date(a.date).toISOString().split('T')[0], { ...a }); });
@@ -488,6 +529,18 @@ router.post('/leaves/direct', async (req: AuthRequest, res) => {
         data: { leaveBalance: { decrement: days } }
       })
     ]);
+    
+    // Async broadcast to sister node instantaneously
+    broadcastLeaveToSister({
+      identifier: user.identifier,
+      startDate: start,
+      endDate: end,
+      reason: reason || 'Direct leave by admin',
+      adminReason: 'Direct assignment',
+      appliedDate: appliedDate ? new Date(appliedDate) : new Date(),
+      remarksAlternative: remarksAlternative || null,
+      remarksOfficeUse: remarksOfficeUse || null
+    }).catch(() => {});
 
     res.json({ message: 'Leave assigned successfully' });
   } catch (error) {
@@ -886,6 +939,18 @@ router.post('/leaves/process', async (req: AuthRequest, res) => {
           data: { leaveBalance: { decrement: days } }
         })
       ]);
+
+      // Cascade approval state to remote institutes instantly
+      broadcastLeaveToSister({
+        identifier: request.user.identifier,
+        startDate: request.startDate,
+        endDate: finalEndDate,
+        reason: request.reason,
+        adminReason: adminReason || 'Approved on primary',
+        appliedDate: request.appliedDate,
+        remarksAlternative: request.remarksAlternative || null,
+        remarksOfficeUse: request.remarksOfficeUse || null
+      }).catch(() => {});
     } else {
       await prisma.leaveRequest.update({ 
         where: { id: requestId }, 

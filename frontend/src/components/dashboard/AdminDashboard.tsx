@@ -1078,12 +1078,15 @@ const AdminDashboard: React.FC = () => {
                         <span className="bg-[#e0f2fe] text-[#0369a1] font-bold px-2 py-0.5 rounded flex items-center justify-center gap-1 min-w-[72px] shadow-sm whitespace-nowrap">
                           📅 {day}
                         </span>
-                        <div className="flex gap-4">
-                          {daySlots.filter(s => s.slotNo <= 3).map((s, i) => (
-                            <span key={i} className="text-[#be123c] font-medium flex items-center gap-1">
-                              ⏰ {s.start} – {s.end}
-                            </span>
-                          ))}
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
+                          {daySlots.map((s, i) => {
+                            const isExtra = s.slotNo > 3;
+                            return (
+                              <span key={i} className={`font-medium flex items-center gap-1 ${isExtra ? 'text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded text-[10px] border border-amber-200' : 'text-[#be123c]'}`}>
+                                {isExtra ? `🔥 Extra Slot ${s.slotNo - 3}` : `⏰ ${s.start} – ${s.end}`}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
