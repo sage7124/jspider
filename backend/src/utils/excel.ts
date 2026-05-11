@@ -200,8 +200,11 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       if (att) {
         // ── Calculation for Regular Slots ────────────────────────────────────
         if (!isExtra) {
-          const l = calcLate(slot, new Date(att.inTime), sIn, false);
-          const e = calcEarly(slot, new Date(att.outTime), new Date(att.inTime), sOut, sIn, false);
+          const safeIn = att.inTime ? new Date(att.inTime) : undefined;
+          const safeOut = att.outTime ? new Date(att.outTime) : undefined;
+          
+          const l = calcLate(slot, safeIn, sIn, false);
+          const e = calcEarly(slot, safeOut, safeIn, sOut, sIn, false);
           
           if (typeof l === 'number') { dayLateMins += l; finalLate = `${l}m`; } else { finalLate = l; }
           

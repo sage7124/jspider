@@ -1079,7 +1079,7 @@ const AdminDashboard: React.FC = () => {
                           📅 {day}
                         </span>
                         <div className="flex gap-4">
-                          {daySlots.map((s, i) => (
+                          {daySlots.filter(s => s.slotNo <= 3).map((s, i) => (
                             <span key={i} className="text-[#be123c] font-medium flex items-center gap-1">
                               ⏰ {s.start} – {s.end}
                             </span>
@@ -1398,6 +1398,10 @@ const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
                   <th className="px-2 py-3 font-semibold text-gray-600 text-center bg-indigo-50/30">Slot 2 Out</th>
                   <th className="px-2 py-3 font-semibold text-gray-600 text-center border-l bg-purple-50/30">Slot 3 In</th>
                   <th className="px-2 py-3 font-semibold text-gray-600 text-center bg-purple-50/30">Slot 3 Out</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center border-l bg-teal-50/30">🔥 Slot 4 In</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center bg-teal-50/30">🔥 Slot 4 Out</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center border-l bg-rose-50/30">🔥 Slot 5 In</th>
+                  <th className="px-2 py-3 font-semibold text-gray-600 text-center bg-rose-50/30">🔥 Slot 5 Out</th>
                 </tr>
               </thead>
               <tbody>
@@ -1435,6 +1439,10 @@ const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
                       <td className="px-2 py-3 text-center text-gray-600">{r.outTime2 || '--'}</td>
                       <td className="px-2 py-3 text-center border-l text-gray-600">{r.inTime3 || '--'}</td>
                       <td className="px-2 py-3 text-center text-gray-600">{r.outTime3 || '--'}</td>
+                      <td className="px-2 py-3 text-center border-l text-gray-600 font-medium text-teal-600">{r.inTime4 || '--'}</td>
+                      <td className="px-2 py-3 text-center text-gray-600 font-medium text-teal-600">{r.outTime4 || '--'}</td>
+                      <td className="px-2 py-3 text-center border-l text-gray-600 font-medium text-rose-600">{r.inTime5 || '--'}</td>
+                      <td className="px-2 py-3 text-center text-gray-600 font-medium text-rose-600">{r.outTime5 || '--'}</td>
                     </tr>
                   ))
                 )}

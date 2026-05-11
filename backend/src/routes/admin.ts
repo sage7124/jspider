@@ -169,8 +169,21 @@ function mergeAttendances(localAtt: any[], remoteAtt: any[]) {
       combo.isLate = loc.isLate || rem.isLate;
       combo.status = (loc.status === 'IN' || rem.status === 'IN') ? 'IN' : 'OUT';
       for(let i = 1; i <= 5; i++) {
-        combo[`inTime${i}`] = loc[`inTime${i}`] || rem[`inTime${i}`];
-        combo[`outTime${i}`] = loc[`outTime${i}`] || rem[`outTime${i}`];
+        const lIn = loc[`inTime${i}`];
+        const rIn = rem[`inTime${i}`];
+        if (lIn && rIn) {
+          combo[`inTime${i}`] = new Date(lIn) < new Date(rIn) ? lIn : rIn;
+        } else {
+          combo[`inTime${i}`] = lIn || rIn;
+        }
+
+        const lOut = loc[`outTime${i}`];
+        const rOut = rem[`outTime${i}`];
+        if (lOut && rOut) {
+          combo[`outTime${i}`] = new Date(lOut) > new Date(rOut) ? lOut : rOut;
+        } else {
+          combo[`outTime${i}`] = lOut || rOut;
+        }
       }
       mergedMap.set(key, combo);
     }
@@ -202,11 +215,28 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
       },
     });
 
+    const leaves = await prisma.leaveRequest.findMany({
+      where: {
+        status: 'APPROVED',
+        AND: [
+          { startDate: { lte: today } },
+          { endDate: { gte: today } }
+        ]
+      }
+    });
+
     const result = users.map((user) => {
       const attendance = user.attendances[0];
+      const leave = leaves.find(l => l.userId === user.id);
       const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][today.getDay()];
       const daySlots = user.slots.filter((s) => s.dayOfWeek === dayOfWeek) || [];
       const hasSlot = daySlots.length > 0;
+      
+      let status = attendance?.status;
+      if (!status) {
+        if (leave) status = 'LEAVE';
+        else status = hasSlot ? 'ABSENT' : '--';
+      }
 
       return {
         id: user.id,
@@ -220,7 +250,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
           end: s.endTime,
           slotNo: s.slotNo,
         })),
-        status: attendance?.status || (hasSlot ? 'ABSENT' : '--'),
+        status,
         date: today.toLocaleDateString('en-IN'),
         in: (() => {
           if (!attendance) return '--';
@@ -421,10 +451,23 @@ router.post('/leaves/direct', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Invalid dates' });
     }
     
-    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
-    const user = await prisma.user.findUnique({ where: { id: Number(traineeId) } });
+    const user = await prisma.user.findUnique({ where: { id: Number(traineeId) }, include: { slots: true } });
     if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    // Dynamically calculate working days in range based on assigned slot configuration
+    let days = 0;
+    const scheduledDays = new Set(user.slots.map(s => s.dayOfWeek.toUpperCase()));
+    const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const curDay = dMap[d.getDay()];
+      if (scheduledDays.has(curDay)) {
+        days += 1;
+      }
+    }
+    
+    // Fallback to safety ensure at least 0
+    days = Math.max(0, days);
 
     await prisma.$transaction([
       prisma.leaveRequest.create({
@@ -539,6 +582,18 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
         inTime3: att?.inTime3 ? new Date(att.inTime3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
         outTime3: att?.outTime3 ? (() => {
           const d = new Date(att.outTime3);
+          if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })() : '--',
+        inTime4: att?.inTime4 ? new Date(att.inTime4).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime4: att?.outTime4 ? (() => {
+          const d = new Date(att.outTime4);
+          if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
+          return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        })() : '--',
+        inTime5: att?.inTime5 ? new Date(att.inTime5).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--',
+        outTime5: att?.outTime5 ? (() => {
+          const d = new Date(att.outTime5);
           if (d.getHours() === 0 && d.getMinutes() === 0) return '--';
           return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         })() : '--',
@@ -797,7 +852,19 @@ router.post('/leaves/process', async (req: AuthRequest, res) => {
       }
 
       // Calculate days
-      const days = Math.ceil((finalEndDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      // Calculate working days based on schedule config dynamically
+      let days = 0;
+      const userWithSlots = await prisma.user.findUnique({ where: { id: request.userId }, include: { slots: true } });
+      const scheduledDays = new Set(userWithSlots?.slots.map(s => s.dayOfWeek.toUpperCase()));
+      const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+      for (let d = new Date(request.startDate); d <= finalEndDate; d.setDate(d.getDate() + 1)) {
+        const curDay = dMap[d.getDay()];
+        if (scheduledDays.has(curDay)) {
+          days += 1;
+        }
+      }
+      days = Math.max(0, days);
 
       await prisma.$transaction([
         prisma.leaveRequest.update({ 
