@@ -272,14 +272,16 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
 
   const slotColumns: any[] = [];
   for (const i of assignedSlotNos) {
-    const prefix = i > 3 ? `🔥 Extra Slot ${i - 3}` : `Slot ${i}`;
+    const isExtra = i > 3;
+    const prefix = isExtra ? `🔥 Extra Slot ${i - 3}` : `Slot ${i}`;
     
     slotColumns.push({ header: `${prefix} In`, key: `s${i}In`, width: 15 });
     slotColumns.push({ header: `${prefix} Out`, key: `s${i}Out`, width: 15 });
-    slotColumns.push({ header: `${prefix} Start`, key: `s${i}Start`, width: 12 });
-    slotColumns.push({ header: `${prefix} End`, key: `s${i}End`, width: 12 });
     
-    if (i <= 3) {
+    // Only show Start/End/Late/Early for regular slots, not extra work slots
+    if (!isExtra) {
+      slotColumns.push({ header: `${prefix} Start`, key: `s${i}Start`, width: 12 });
+      slotColumns.push({ header: `${prefix} End`, key: `s${i}End`, width: 12 });
       slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18 });
       slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18 });
     }

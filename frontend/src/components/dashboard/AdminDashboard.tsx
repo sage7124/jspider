@@ -354,6 +354,7 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
     const slots: any[] = [];
     DAYS.forEach((day) => {
       daySlots[day].forEach((row, idx) => {
+        if (idx >= visibleSlots) return; // Skip slots beyond current visible count (handles removal)
         const from = fieldToStr(row.from);
         const to = fieldToStr(row.to);
         if (from !== '--' && to !== '--') {
@@ -683,8 +684,9 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
                 const hasSlot = trainee.slots.some(s => s.slotNo === num);
                 if (!hasSlot) return null;
                 const activeSlot = currentDaySlots.find(s => s.slotNo === num);
-                const label = num > 3 ? `🔥 Extra Slot ${num - 3}` : `Slot ${num}`;
-                const timeStr = activeSlot ? ` (${activeSlot.start} - ${activeSlot.end})` : '';
+                const isExtra = num > 3;
+                const label = isExtra ? `🔥 Extra Slot ${num - 3}` : `Slot ${num}`;
+                const timeStr = (!isExtra && activeSlot) ? ` (${activeSlot.start} - ${activeSlot.end})` : '';
                 return (
                   <option key={num} value={num.toString()}>{label}{timeStr}</option>
                 );
