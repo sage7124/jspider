@@ -62,7 +62,8 @@ const AuthPage: React.FC = () => {
             )}
           </div>
 
-          {/* Toggle Login/Register for NICTians */}
+          {/* Native Registration disabled. Enforcing usage of central gateway registration instead */}
+          {/* 
           {activeTab === 'NICTIANS' && (
             <div className="mt-6 text-center">
               <button
@@ -73,6 +74,7 @@ const AuthPage: React.FC = () => {
               </button>
             </div>
           )}
+          */}
         </div>
       </main>
     </div>

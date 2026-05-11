@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -56,6 +57,31 @@
         body {
             background: radial-gradient(circle at 50% 0%, #1e3a8a 0%, #1e1b4b 50%, #0f172a 100%);
         }
+        .input-glass {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .input-glass:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(56, 189, 248, 0.5);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.1);
+            outline: none;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        .loader {
+            border-top-color: transparent;
+            -webkit-animation: spinner 0.6s linear infinite;
+            animation: spinner 0.6s linear infinite;
+        }
+        @-webkit-keyframes spinner { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden text-white selection:bg-blue-500 selection:text-white">
@@ -66,17 +92,15 @@
     <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-900/30 rounded-full filter blur-[100px]"></div>
 
     <!-- Main Content Container -->
-    <main class="relative w-full max-w-md z-10">
+    <main class="relative w-full max-w-md z-10 my-12">
         
         <!-- Header Branding Section -->
         <div class="text-center mb-8 animate-fade-in opacity-0">
-            <!-- Interactive Logo Container (Automatically loads logo.png if you put it in the folder) -->
             <div class="relative w-24 h-24 mx-auto mb-6 group cursor-default">
                 <div class="absolute inset-0 bg-blue-500 rounded-3xl rotate-6 opacity-20 group-hover:rotate-12 transition-transform duration-500"></div>
                 <div class="absolute inset-0 bg-indigo-500 rounded-3xl -rotate-6 opacity-20 group-hover:-rotate-12 transition-transform duration-500"></div>
                 
                 <div class="relative w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl shadow-2xl flex items-center justify-center overflow-hidden border border-white/20">
-                    <!-- Try to show real image first, fallback to Text -->
                     <img src="logo.jpeg" alt="NICT Logo" class="w-full h-full object-contain p-1 hidden" onload="this.classList.remove('hidden'); this.nextElementSibling.classList.add('hidden')" onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden')">
                     <div class="flex flex-col items-center">
                         <span class="text-white font-extrabold text-3xl tracking-tighter">NICT</span>
@@ -88,40 +112,34 @@
                 NICT Computer Education Pvt Ltd
             </h2>
             <h1 class="text-2xl font-extrabold text-white tracking-tight drop-shadow-md">
-                Data Management System
+                Central Control Gateway
             </h1>
         </div>
 
-        <!-- Glass Gateway Card -->
-        <div class="glass-dark rounded-[2.5rem] p-8 animate-slide-up opacity-0" style="animation-delay: 0.2s;">
+        <!-- ── VIEW 1: LOGIN GATEWAY SELECTION ──────────────────────── -->
+        <div id="gateway-view" class="glass-dark rounded-[2.5rem] p-8 animate-slide-up opacity-0 block" style="animation-delay: 0.2s;">
             <div class="mb-8 text-center border-b border-white/10 pb-5">
-                <p class="text-sm text-blue-200/70 font-medium">Secure Central Access</p>
+                <p class="text-sm text-blue-200/70 font-medium">Registered Portals</p>
                 <p class="text-xl font-bold text-white mt-1 tracking-wide flex items-center justify-center gap-2">
-                    <span class="text-2xl">🌐</span> Select your NICT Location
+                    <span class="text-2xl">🔒</span> User Log In
                 </p>
             </div>
 
-            <!-- Option Buttons -->
             <div class="space-y-5">
-                
                 <!-- Institute 1 Button -->
                 <a href="https://nictjayanagar.vercel.app/login" 
                    class="card-glow group relative flex items-center justify-between w-full p-5 bg-white/5 rounded-2xl border border-white/10 transition-all duration-300 transform active:scale-[0.98]">
                     <div class="flex items-center gap-4">
-                        <!-- Dynamic Letter Icon -->
                         <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center font-extrabold text-xl text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
                             J
                         </div>
                         <div class="text-left">
                             <h3 class="text-base font-bold text-white group-hover:text-cyan-300 transition-colors">NICT Jayanagar</h3>
-                            <p class="text-[11px] text-blue-200/60 font-medium mt-0.5">Launch Digital Portal</p>
+                            <p class="text-[11px] text-blue-200/60 font-medium mt-0.5">Access Student Hub</p>
                         </div>
                     </div>
-                    <!-- Interactive Arrow -->
                     <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center opacity-50 group-hover:opacity-100 group-hover:bg-blue-500 transition-all transform group-hover:translate-x-1">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path>
-                        </svg>
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
                     </div>
                 </a>
 
@@ -129,32 +147,129 @@
                 <a href="https://nicthanumanthnagar.vercel.app/login" 
                    class="card-glow group relative flex items-center justify-between w-full p-5 bg-white/5 rounded-2xl border border-white/10 transition-all duration-300 transform active:scale-[0.98]">
                     <div class="flex items-center gap-4">
-                        <!-- Dynamic Letter Icon -->
                         <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-400 flex items-center justify-center font-extrabold text-xl text-white shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform">
                             H
                         </div>
                         <div class="text-left">
                             <h3 class="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">NICT Hanumanthanagar</h3>
-                            <p class="text-[11px] text-blue-200/60 font-medium mt-0.5">Launch Digital Portal</p>
+                            <p class="text-[11px] text-blue-200/60 font-medium mt-0.5">Access Student Hub</p>
                         </div>
                     </div>
-                    <!-- Interactive Arrow -->
                     <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center opacity-50 group-hover:opacity-100 group-hover:bg-indigo-500 transition-all transform group-hover:translate-x-1">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path>
-                        </svg>
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
                     </div>
                 </a>
-
             </div>
 
-            <!-- System Connectivity Footer -->
-            <div class="mt-8 flex justify-center">
-                <div class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/5">
-                    <div class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] animate-pulse"></div>
-                    <span class="text-[10px] font-bold text-emerald-200 uppercase tracking-wider">Secure Servers Connected</span>
+            <!-- Action Divider / Subtext -->
+            <div class="relative flex py-8 items-center">
+                <div class="flex-grow border-t border-white/5"></div>
+                <span class="flex-shrink mx-4 text-[10px] text-blue-200/30 uppercase font-bold tracking-widest">New User Registration</span>
+                <div class="flex-grow border-t border-white/5"></div>
+            </div>
+
+            <!-- Go to Register Form -->
+            <button onclick="toggleView('register')" class="w-full group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-300 bg-gradient-to-r from-cyan-600 to-blue-700 rounded-xl hover:from-cyan-500 hover:to-blue-600 hover:scale-[1.02] active:scale-95 shadow-xl shadow-blue-900/20 overflow-hidden">
+                <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-white/20 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                <span class="flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                    Start Central Enrollment
+                </span>
+            </button>
+        </div>
+
+        <!-- ── VIEW 2: CENTRAL REGISTRATION FORM ───────────────────── -->
+        <div id="register-view" class="glass-dark rounded-[2.5rem] p-8 hidden opacity-0 transition-opacity duration-300">
+            <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                <button onclick="toggleView('gateway')" class="text-white/50 hover:text-white flex items-center gap-1 text-xs font-bold transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    Back
+                </button>
+                <h3 class="font-extrabold text-lg tracking-wide text-center flex-1 pr-6">
+                    📝 Central Enrollment
+                </h3>
+            </div>
+
+            <!-- Subtext Instruction -->
+            <p class="text-center text-xs text-blue-200/60 mb-6 font-medium">
+                Fill basic details to auto-generate your profile accounts.
+            </p>
+
+            <!-- Actual Form Layout -->
+            <form id="enrollment-form" class="space-y-4">
+                <!-- Error Display Bucket -->
+                <div id="form-error" class="hidden bg-rose-500/20 border border-rose-500/40 text-rose-200 px-4 py-3 rounded-xl text-xs font-medium flex items-start gap-2">
+                    <svg class="w-4 h-4 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                    <span id="error-text">An unexpected error occurred.</span>
                 </div>
+
+                <!-- Full Name Input -->
+                <div>
+                    <label class="block text-[10px] font-bold text-blue-200/70 uppercase tracking-widest mb-1.5 ml-1">Full Name *</label>
+                    <input type="text" id="f_name" required placeholder="Ex. Ravi Kumar" class="w-full input-glass px-4 py-3 rounded-xl text-sm placeholder:text-white/20 font-semibold">
+                </div>
+
+                <!-- Grid for Mobile & Email -->
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-blue-200/70 uppercase tracking-widest mb-1.5 ml-1">Mobile Phone *</label>
+                        <input type="tel" id="f_mobile" required placeholder="10 Digit Number" maxlength="10" class="w-full input-glass px-4 py-3 rounded-xl text-sm placeholder:text-white/20 font-semibold tracking-wider">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-blue-200/70 uppercase tracking-widest mb-1.5 ml-1">Email Address (Optional)</label>
+                        <input type="email" id="f_email" placeholder="example@gmail.com" class="w-full input-glass px-4 py-3 rounded-xl text-sm placeholder:text-white/20 font-semibold">
+                    </div>
+                </div>
+
+                <!-- Password Area -->
+                <div>
+                    <label class="block text-[10px] font-bold text-blue-200/70 uppercase tracking-widest mb-1.5 ml-1">Set Password *</label>
+                    <input type="password" id="f_pass" required placeholder="••••••••" class="w-full input-glass px-4 py-3 rounded-xl text-sm placeholder:text-white/20 font-semibold">
+                </div>
+
+                <!-- ❗ THE MAGIC DROPDOWN SELECTOR ❗ -->
+                <div class="pt-2">
+                    <label class="block text-[10px] font-extrabold text-cyan-300 uppercase tracking-widest mb-1.5 ml-1 flex items-center gap-1">
+                        <span class="animate-pulse">⚡</span> Registration Destination *
+                    </label>
+                    <div class="relative group">
+                        <select id="f_institute" required class="w-full input-glass px-4 py-3.5 rounded-xl text-sm appearance-none bg-slate-900 cursor-pointer font-bold border border-cyan-500/30 text-cyan-50 shadow-lg shadow-cyan-900/20 group-hover:border-cyan-400 transition-all duration-300">
+                            <option value="" disabled selected class="text-white/50">-- Choose Target Hub --</option>
+                            <option value="JAYANAGAR" class="bg-slate-900 text-white font-semibold py-2">🏫 Institute 1: JAYANAGAR</option>
+                            <option value="HANUMANTHNAGAR" class="bg-slate-900 text-white font-semibold py-2">🏫 Institute 2: HANUMANTHNAGAR</option>
+                            <option value="BOTH" class="bg-gradient-to-r from-blue-900 to-cyan-900 text-emerald-300 font-extrabold py-2">🌟 MULTI-HUB: REGISTER ON BOTH</option>
+                        </select>
+                        <!-- Custom select arrow -->
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-cyan-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-white/30 mt-2 text-center italic">Selecting BOTH automatically mirrors your profile across both cloud clusters.</p>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-4">
+                    <button type="submit" id="submit-btn" class="w-full group relative inline-flex items-center justify-center px-8 py-4 font-extrabold text-white transition-all duration-300 bg-gradient-to-r from-indigo-600 to-cyan-500 rounded-xl hover:scale-[1.02] active:scale-95 shadow-2xl shadow-cyan-900/40 disabled:opacity-70 disabled:cursor-not-allowed">
+                        <span id="btn-text" class="flex items-center gap-2">Complete System Sync</span>
+                        <!-- Loading spinner hidden by default -->
+                        <div id="btn-loader" class="hidden loader ease-linear rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ── VIEW 3: SUCCESS CONFIRMATION ────────────────────────── -->
+        <div id="success-view" class="glass-dark rounded-[2.5rem] p-10 hidden opacity-0 text-center">
+            <div class="w-20 h-20 bg-gradient-to-tr from-emerald-500 to-teal-300 rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-emerald-500/40 animate-bounce">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
             </div>
+            <h2 class="text-2xl font-extrabold text-emerald-300 mb-2">Registration Success!</h2>
+            <p id="success-message" class="text-blue-200/80 text-sm mb-8 font-medium leading-relaxed">Your credentials have been verified and provisioned within the central network.</p>
+            
+            <button onclick="window.location.reload()" class="bg-white/10 hover:bg-white/20 border border-white/10 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 mx-auto">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                Return to Main Menu
+            </button>
         </div>
 
         <!-- Global Copyright -->
@@ -162,5 +277,169 @@
             &copy; 2026 NICT Computer Education Pvt Ltd.<br>All rights strictly reserved.
         </p>
     </main>
+
+    <!-- ── DYNAMIC BACKEND ORCHESTRATOR SCRIPT ──────────────────────── -->
+    <script>
+        // ─────────────────────────────────────────────────────────────────────
+        // 🔒 API ENDPOINT CONFIGURATION
+        // REPLACE THESE TWO WITH YOUR ACTUAL LIVE RENDER / VERCEL BACKEND URLs
+        // ─────────────────────────────────────────────────────────────────────
+        const APIS = {
+            JAYANAGAR: "http://localhost:5000",
+            HANUMANTHNAGAR: "http://localhost:5000"
+        };
+        // ─────────────────────────────────────────────────────────────────────
+
+        // VIEW CONTROLLER: Swaps visible panels with soft opacity fades
+        function toggleView(viewName) {
+            const v_gate = document.getElementById('gateway-view');
+            const v_reg = document.getElementById('register-view');
+            
+            // Prepare clean UI
+            document.getElementById('form-error').classList.add('hidden');
+            
+            if (viewName === 'register') {
+                v_gate.classList.add('hidden');
+                v_reg.classList.remove('hidden');
+                setTimeout(() => v_reg.classList.remove('opacity-0'), 10);
+            } else {
+                v_reg.classList.add('opacity-0');
+                setTimeout(() => {
+                    v_reg.classList.add('hidden');
+                    v_gate.classList.remove('hidden');
+                }, 300);
+            }
+        }
+
+        // FORM SUBMISSION PIPELINE
+        document.getElementById('enrollment-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // UI State Locking
+            const btn = document.getElementById('submit-btn');
+            const bText = document.getElementById('btn-text');
+            const bLoader = document.getElementById('btn-loader');
+            const errorPanel = document.getElementById('form-error');
+            const errTxt = document.getElementById('error-text');
+
+            btn.disabled = true;
+            bText.classList.add('hidden');
+            bLoader.classList.remove('hidden');
+            errorPanel.classList.add('hidden');
+
+            // Extract Form Values
+            const payload = {
+                fullName: document.getElementById('f_name').value,
+                mobile: document.getElementById('f_mobile').value,
+                email: document.getElementById('f_email').value || null,
+                password: document.getElementById('f_pass').value,
+                department: "Central" // Basic fallback defaults
+            };
+            const selectedMode = document.getElementById('f_institute').value;
+
+            // Safety Check
+            if (payload.mobile.length < 10) {
+                showError("Valid 10-digit mobile number is required.");
+                return unlock();
+            }
+
+            // 🎯 CONSTRUCT DYNAMIC FETCH PROMISES 🎯
+            const calls = [];
+            
+            if (selectedMode === 'JAYANAGAR' || selectedMode === 'BOTH') {
+                calls.push(
+                    fetch(`${APIS.JAYANAGAR}/api/auth/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }).then(r => handleResponse(r, "Jayanagar"))
+                );
+            }
+            
+            if (selectedMode === 'HANUMANTHNAGAR' || selectedMode === 'BOTH') {
+                calls.push(
+                    fetch(`${APIS.HANUMANTHNAGAR}/api/auth/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }).then(r => handleResponse(r, "Hanumanthnagar"))
+                );
+            }
+
+            try {
+                // AWAIT PARALLEL EXECUTION ON ALL CHOSEN GATEWAYS
+                const results = await Promise.all(calls);
+                
+                // Validate results - find first failure
+                const failure = results.find(res => !res.ok);
+                if (failure) {
+                    throw new Error(`[${failure.src}]: ${failure.msg}`);
+                }
+
+                // 🎉 SUCCESS SEQUENCE 🎉
+                fireConfetti();
+                document.getElementById('register-view').classList.add('hidden');
+                const succView = document.getElementById('success-view');
+                
+                let msg = "Your account is successfully generated.";
+                if (selectedMode === 'BOTH') {
+                    msg = "🌟 Spectacular! Dual enrollment achieved. Your accounts have been auto-synchronized at both Jayanagar & Hanumanthnagar systems simultaneously.";
+                } else {
+                    msg = `✨ Excellent! Your profile has been successfully provisioned within the ${selectedMode} portal ecosystem.`;
+                }
+                
+                document.getElementById('success-message').innerText = msg;
+                succView.classList.remove('hidden');
+                setTimeout(() => succView.classList.remove('opacity-0'), 10);
+
+            } catch (err) {
+                showError(err.message || "Network connection disruption. Servers may be offline.");
+                unlock();
+            }
+
+            // Helper functions internal to submission handler
+            function unlock() {
+                btn.disabled = false;
+                bLoader.classList.add('hidden');
+                bText.classList.remove('hidden');
+            }
+            function showError(msg) {
+                errTxt.innerText = msg;
+                errorPanel.classList.remove('hidden');
+            }
+        });
+
+        // Helper: Generic fetch response flattener
+        async function handleResponse(res, originName) {
+            // Read text first to be safe if not json
+            const text = await res.text();
+            let data = {};
+            try {
+                data = JSON.parse(text);
+            } catch(e) {}
+
+            if (!res.ok) {
+                return { ok: false, src: originName, msg: data.error || "Internal system error" };
+            }
+            return { ok: true, src: originName };
+        }
+
+        // Visual Delight Helper
+        function fireConfetti() {
+            const count = 200;
+            const defaults = { origin: { y: 0.7 }, zIndex: 9999 };
+            
+            function fire(particleRatio, opts) {
+                confetti(Object.assign({}, defaults, opts, {
+                    particleCount: Math.floor(count * particleRatio)
+                }));
+            }
+            fire(0.25, { spread: 26, startVelocity: 55 });
+            fire(0.2, { spread: 60 });
+            fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+            fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+            fire(0.1, { spread: 120, startVelocity: 45 });
+        }
+    </script>
 </body>
 </html>
