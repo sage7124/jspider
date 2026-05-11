@@ -56,7 +56,7 @@
                     </div>
                     <div>
                         <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mobile Number *</label>
-                        <input type="tel" id="f_mobile" required maxlength="10" class="input-field" placeholder="10-Digit Number">
+                        <input type="tel" id="f_mobile" required maxlength="10" pattern="[0-9]*" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="input-field" placeholder="10-Digit Number">
                     </div>
                     <div>
                         <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Email ID *</label>
@@ -123,12 +123,12 @@
                         <input type="text" id="o_time" placeholder="e.g. 10AM-6PM" class="input-field">
                     </div>
                     <div class="md:col-span-2">
-                        <label class="text-xs font-semibold text-slate-500">Education History</label>
-                        <input type="text" id="o_edu" placeholder="Degree, School, etc." class="input-field">
+                        <label class="text-xs font-semibold text-slate-500">Education History (Enter multiple separated by comma)</label>
+                        <textarea id="o_edu" rows="2" placeholder="e.g. B.Tech, M.Com, Diploma, SSLC" class="input-field resize-none"></textarea>
                     </div>
                     <div class="md:col-span-2">
-                        <label class="text-xs font-semibold text-slate-500">Registered Courses/Modules</label>
-                        <input type="text" id="o_sub" placeholder="Python, Web Dev, Tally" class="input-field">
+                        <label class="text-xs font-semibold text-slate-500">Subjects / Modules classes that you can take:</label>
+                        <textarea id="o_sub" rows="2" placeholder="e.g. Python, Web Dev, Tally" class="input-field resize-none"></textarea>
                     </div>
                 </div>
             </div>
@@ -154,7 +154,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
                         <label class="text-xs font-bold text-slate-600">Aadhaar Number</label>
-                        <input type="text" id="o_aadhaar" class="input-field mb-2" placeholder="12-Digit UID">
+                        <input type="text" id="o_aadhaar" pattern="[0-9]*" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="12" class="input-field mb-2" placeholder="12-Digit UID">
                         <input type="file" onchange="handleUpload(this, 'p_aadhaarUrl', 'lbl_aadhaar')" class="hidden" id="in_aad">
                         <label for="in_aad" id="lbl_aadhaar" class="block text-center text-xs font-medium p-2 border border-dashed border-slate-300 rounded bg-white cursor-pointer hover:bg-blue-50">📎 Upload Copy</label>
                         <input type="hidden" id="p_aadhaarUrl">
@@ -174,7 +174,7 @@
                 <h3 class="font-bold text-base text-slate-800 mb-4 border-b pb-2">Bank Credentials</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input type="text" id="o_bname" placeholder="Bank Name" class="input-field sm:col-span-2">
-                    <input type="text" id="o_bacc" placeholder="Account Number" class="input-field">
+                    <input type="text" id="o_bacc" pattern="[0-9]*" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Account Number" class="input-field">
                     <input type="text" id="o_bifsc" placeholder="IFSC Code" class="input-field">
                     <input type="text" id="o_bbr" placeholder="Branch Details" class="input-field sm:col-span-2">
                 </div>
@@ -185,7 +185,7 @@
                 <h3 class="font-bold text-base text-slate-800 mb-4 border-b pb-2">Emergency Contact</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input type="text" id="o_ename" placeholder="Full Contact Name" class="input-field">
-                    <input type="tel" id="o_emob" placeholder="Emergency Mobile No" class="input-field">
+                    <input type="tel" id="o_emob" pattern="[0-9]*" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="10" placeholder="Emergency Mobile No" class="input-field">
                 </div>
             </div>
 
