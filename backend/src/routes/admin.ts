@@ -237,6 +237,8 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(today);
+    endOfToday.setHours(23, 59, 59, 999);
 
     const { search } = _req.query;
     const users = await prisma.user.findMany({
@@ -260,7 +262,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
       where: {
         status: 'APPROVED',
         AND: [
-          { startDate: { lte: today } },
+          { startDate: { lte: endOfToday } },
           { endDate: { gte: today } }
         ]
       }
@@ -560,6 +562,8 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
 
     const targetDate = new Date(date as string);
     targetDate.setHours(0, 0, 0, 0);
+    const endOfTarget = new Date(targetDate);
+    endOfTarget.setHours(23, 59, 59, 999);
 
     const trainees = await prisma.user.findMany({
       where: { role: 'TRAINEE' },
@@ -578,7 +582,7 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
       where: {
         status: 'APPROVED',
         AND: [
-          { startDate: { lte: targetDate } },
+          { startDate: { lte: endOfTarget } },
           { endDate: { gte: targetDate } }
         ]
       }
@@ -594,6 +598,9 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
       const hasSlot = daySlots.length > 0;
 
       let status = att ? att.status : (hasSlot ? 'ABSENT' : '--');
+      if (!att && leave) {
+        status = 'LEAVE';
+      }
       let inTime = att?.inTime ? new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
       let outTime = att?.outTime ? (() => {
         const d = new Date(att.outTime);
