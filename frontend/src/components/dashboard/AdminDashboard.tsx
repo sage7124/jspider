@@ -266,7 +266,7 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 relative">
         <h2 className="text-lg font-bold text-center mb-6">Edit User Information</h2>
         <div className="flex flex-col gap-4">
-          {[['Name', name, setName], ['Mobile', mobile, setMobile], ['Email', email, setEmail]].map(([label, val, setter]) => (
+          {[['Name', name, setName], ['Mobile', mobile, setMobile]].map(([label, val, setter]) => (
             <div key={label as string}>
               <label className="block text-sm font-medium text-gray-700 mb-1">{label as string}</label>
               <input value={val as string} onChange={(e) => (setter as any)(e.target.value)}
@@ -275,9 +275,9 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
           ))}
           {/* Leave balance input removed */}
           
-          <div className="mt-2 border-t pt-4">
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Security & Devices</label>
-            <div className="flex gap-2">
+          <div className="mt-2 border-t pt-4 flex flex-col gap-3">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-0">Security & Devices</label>
+            <div className="flex gap-3">
               <button 
                 onClick={async () => {
                   if(!confirm('Reset Mobile lock?')) return;
@@ -399,7 +399,8 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
             📋 Copy Monday to All Days
           </button>
           
-          {visibleSlots < SLOT_COUNT && (
+          {/* Add/Remove Extra Slot buttons explicitly disabled visually as requested by user to hide functionality without deleting source */}
+          {false && visibleSlots < SLOT_COUNT && (
             <button
               onClick={() => setVisibleSlots(p => Math.min(p + 1, SLOT_COUNT))}
               className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-4 py-1.5 rounded font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-sm"
@@ -408,7 +409,7 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
             </button>
           )}
           
-          {visibleSlots > 3 && (
+          {false && visibleSlots > 3 && (
             <button
               onClick={() => setVisibleSlots(p => Math.max(3, p - 1))}
               className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-4 py-1.5 rounded font-extrabold text-xs transition-all flex items-center gap-1.5 shadow-sm"
@@ -422,7 +423,7 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
             <thead>
               <tr className="bg-gray-50 border-b">
                 <th className="py-2 px-2 text-left font-semibold w-24">Day</th>
-                {Array.from({ length: visibleSlots }, (_, si) => (
+                {Array.from({ length: Math.min(visibleSlots, 3) }, (_, si) => (
                   <React.Fragment key={si}>
                     <th className={`py-2 px-1 text-center font-bold border-l ${si + 1 > 3 ? 'bg-orange-50 text-orange-600' : 'text-gray-700'}`} colSpan={6}>
                       {si + 1 > 3 ? `🔥 Extra Slot ${si - 2}` : `Slot-${si + 1}`}
@@ -432,7 +433,7 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
               </tr>
               <tr className="bg-gray-50 border-b text-gray-500">
                 <th className="py-1 px-2"></th>
-                {Array.from({ length: visibleSlots }, (_, si) => (
+                {Array.from({ length: Math.min(visibleSlots, 3) }, (_, si) => (
                   <React.Fragment key={si}>
                     <th className="py-1 px-1 text-center border-l" colSpan={3}>From</th>
                     <th className="py-1 px-1 text-center" colSpan={3}>To</th>
@@ -455,7 +456,7 @@ const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: (
                       </button>
                     </div>
                   </td>
-                  {Array.from({ length: visibleSlots }, (_, si) => (
+                  {Array.from({ length: Math.min(visibleSlots, 3) }, (_, si) => (
                     <React.Fragment key={si}>
                       {(['from', 'to'] as const).map((side) => (
                         <React.Fragment key={side}>
@@ -680,7 +681,7 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               }}
             >
               <option value="global">Overall Day Punch</option>
-              {currentDaySlots.map((activeSlot) => {
+              {currentDaySlots.filter(s => s.slotNo <= 3).map((activeSlot) => {
                 const num = activeSlot.slotNo;
                 const isExtra = num > 3;
                 const label = isExtra ? `🔥 Extra Slot ${num - 3}` : `Slot ${num}`;
@@ -1078,7 +1079,7 @@ const AdminDashboard: React.FC = () => {
                           📅 {day}
                         </span>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 items-center">
-                          {daySlots.map((s, i) => {
+                          {daySlots.filter(s => s.slotNo <= 3).map((s, i) => {
                             const isExtra = s.slotNo > 3;
                             return (
                               <span key={i} className={`font-medium flex items-center gap-1 ${isExtra ? 'text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded text-[10px] border border-amber-200 shadow-sm' : 'text-[#be123c]'}`}>

@@ -272,7 +272,7 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   ];
 
   const slotColumns: any[] = [];
-  for (const i of assignedSlotNos) {
+  for (const i of assignedSlotNos.filter(n => n <= 3)) {
     const isExtra = i > 3;
     const prefix = isExtra ? `🔥 Extra Slot ${i - 3}` : `Slot ${i}`;
     
@@ -292,8 +292,8 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
     { header: 'Total Late', key: 'late', width: 15 },
     { header: 'Total Early', key: 'earlyDeparture', width: 15 },
   ];
-  // Only add extra work column if the user actually has extra slots
-  if (hasExtraSlots) {
+  // Conditionally gating extra work column to hide functionally per user's instructions (can restore boolean check later if wanted)
+  if (false && hasExtraSlots) {
     endColumns.push({ header: 'TOTAL EXTRA WORK', key: 'extraWork', width: 20 });
   }
 
