@@ -187,9 +187,9 @@ const RegisterForm: React.FC = () => {
     setError('');
     setSuccess(false);
 
-    // ONLY Require Step 1 for overall submission
-    if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName || !formData.photoUrl) {
-      setError('Please complete Step 1 fully (including Father/Mother Name and Profile Photo) before submitting.');
+    // ONLY Require Step 1 for overall submission (Photo is now optional!)
+    if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName) {
+      setError('Please complete Step 1 fully (excluding photo) before submitting.');
       return;
     }
 
@@ -215,8 +215,8 @@ const RegisterForm: React.FC = () => {
 
   const nextStep = () => {
     if (step === 1) {
-      if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName || !formData.photoUrl) {
-        setError('Please fill in all Step 1 fields completely.');
+      if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName) {
+        setError('Please fill in all required Step 1 fields (Full Name, Credentials, Parent details).');
         return;
       }
     }
@@ -293,14 +293,14 @@ const RegisterForm: React.FC = () => {
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo *</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo (Optional)</label>
                 <div className="flex gap-2 items-center">
                   <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'photoUrl')} disabled={uploadingField === 'photoUrl'} className="hidden" id="reg-photo-input" />
                   <label htmlFor="reg-photo-input" className={`flex-1 border-2 border-dashed rounded px-3 py-2 text-xs font-bold text-center cursor-pointer transition-all ${
                     uploadingField === 'photoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
                     formData.photoUrl ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
                   }`}>
-                    {uploadingField === 'photoUrl' ? '⏳ Uploading...' : formData.photoUrl ? '✅ Uploaded successfully' : '📁 Upload Photo (<1MB)'}
+                    {uploadingField === 'photoUrl' ? '⏳ Uploading...' : formData.photoUrl ? '✅ Photo Uploaded' : '📁 Upload Photo (Optional)'}
                   </label>
                   {formData.photoUrl && (
                     <a href={formData.photoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-2 text-xs font-bold whitespace-nowrap">
