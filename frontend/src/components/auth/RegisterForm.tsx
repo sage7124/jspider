@@ -187,12 +187,9 @@ const RegisterForm: React.FC = () => {
     setError('');
     setSuccess(false);
 
-    // Strict submission validation for all fields across 5 steps
-    if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName || !formData.photoUrl ||
-        !formData.dateOfJoining || !formData.officeTimings || !formData.presentAddress || !formData.permanentAddress || !formData.educationCompleted || !formData.subClassification ||
-        !formData.aadhaarNumber || !formData.aadhaarPhotoUrl || !formData.panNumber || !formData.panPhotoUrl ||
-        !formData.bankName || !formData.bankAccountNo || !formData.bankIfscCode || !formData.bankBranchName || !formData.emergencyContactName || !formData.emergencyContactMobile) {
-      setError('Please complete all 5 steps and fill in all details before submitting.');
+    // ONLY Require Step 1 for overall submission
+    if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName || !formData.photoUrl) {
+      setError('Please complete Step 1 fully (including Father/Mother Name and Profile Photo) before submitting.');
       return;
     }
 
@@ -219,28 +216,11 @@ const RegisterForm: React.FC = () => {
   const nextStep = () => {
     if (step === 1) {
       if (!formData.fullName || !formData.email || !formData.mobile || !formData.password || !formData.fatherName || !formData.motherName || !formData.photoUrl) {
-        setError('Please fill in all fields (including Father Name, Mother Name, and Profile Photo upload).');
+        setError('Please fill in all Step 1 fields completely.');
         return;
       }
     }
-    if (step === 2) {
-      if (!formData.dateOfJoining || !formData.officeTimings || !formData.presentAddress || !formData.permanentAddress || !formData.educationCompleted || !formData.subClassification) {
-        setError('Please fill in all fields (including Date of Joining, Office Timings, Education Completed, Subjects/Modules, and Address).');
-        return;
-      }
-    }
-    if (step === 3) {
-      if (!formData.aadhaarNumber || !formData.aadhaarPhotoUrl || !formData.panNumber || !formData.panPhotoUrl) {
-        setError('Please fill in all fields (including Aadhaar No, PAN No, and document uploads).');
-        return;
-      }
-    }
-    if (step === 4) {
-      if (!formData.bankName || !formData.bankAccountNo || !formData.bankIfscCode || !formData.bankBranchName) {
-        setError('Please fill in all Bank Account details before proceeding.');
-        return;
-      }
-    }
+    // Rest of steps are now OPTIONAL as per user instruction! Users can navigate freely.
     setError('');
     setStep(prev => prev + 1);
   };
@@ -339,17 +319,17 @@ const RegisterForm: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 2: Onboarding & Address Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Date of Joining *</label>
-                <input type="date" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange} required
+                <label className="block text-xs font-bold text-gray-500 mb-1">Date of Joining (Optional)</label>
+                <input type="date" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle *</label>
-                <textarea name="officeTimings" value={formData.officeTimings} onChange={handleChange} placeholder="e.g. 9 AM - 5 PM Shift A" rows={2} required
+                <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle (Optional)</label>
+                <textarea name="officeTimings" value={formData.officeTimings} onChange={handleChange} placeholder="e.g. 9 AM - 5 PM Shift A" rows={2}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed *</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed (Optional)</label>
                 <ChipInput 
                   value={formData.educationCompleted} 
                   onChange={(val) => setFormData(prev => ({ ...prev, educationCompleted: val }))} 
@@ -357,7 +337,7 @@ const RegisterForm: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Subjects / Modules classes that you can take *</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Subjects / Modules (Optional)</label>
                 <ChipInput 
                   value={formData.subClassification} 
                   onChange={(val) => setFormData(prev => ({ ...prev, subClassification: val }))} 
@@ -365,13 +345,13 @@ const RegisterForm: React.FC = () => {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-500 mb-1">Present Address *</label>
-                <textarea name="presentAddress" value={formData.presentAddress} onChange={handleChange} rows={2} required
+                <label className="block text-xs font-bold text-gray-500 mb-1">Present Address (Optional)</label>
+                <textarea name="presentAddress" value={formData.presentAddress} onChange={handleChange} rows={2}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-500 mb-1">Permanent Address *</label>
-                <textarea name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} rows={2} required
+                <label className="block text-xs font-bold text-gray-500 mb-1">Permanent Address (Optional)</label>
+                <textarea name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} rows={2}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
             </div>
@@ -384,47 +364,37 @@ const RegisterForm: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 3: Document Verification</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Number *</label>
-                <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleNumericChange} placeholder="e.g. 12-digit number" required inputMode="numeric" pattern="[0-9]*"
+                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Number (Optional)</label>
+                <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleNumericChange} placeholder="e.g. 12-digit number" inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document *</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document (Optional)</label>
                 <div className="flex gap-2 items-center">
                   <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileUpload(e, 'aadhaarPhotoUrl')} disabled={uploadingField === 'aadhaarPhotoUrl'} className="hidden" id="reg-aadhaar-input" />
                   <label htmlFor="reg-aadhaar-input" className={`flex-1 border-2 border-dashed rounded px-3 py-2 text-xs font-bold text-center cursor-pointer transition-all ${
                     uploadingField === 'aadhaarPhotoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
                     formData.aadhaarPhotoUrl ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
                   }`}>
-                    {uploadingField === 'aadhaarPhotoUrl' ? '⏳ Uploading...' : formData.aadhaarPhotoUrl ? '✅ Uploaded successfully' : '📁 Upload Aadhaar (<1MB)'}
+                    {uploadingField === 'aadhaarPhotoUrl' ? '⏳ Uploading...' : formData.aadhaarPhotoUrl ? '✅ Uploaded' : '📁 Upload Aadhaar'}
                   </label>
-                  {formData.aadhaarPhotoUrl && (
-                    <a href={formData.aadhaarPhotoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-2 text-xs font-bold whitespace-nowrap">
-                      👁️ View
-                    </a>
-                  )}
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Number *</label>
-                <input type="text" name="panNumber" value={formData.panNumber} onChange={handleChange} placeholder="e.g. ABCDE1234F" required
+                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Number (Optional)</label>
+                <input type="text" name="panNumber" value={formData.panNumber} onChange={handleChange} placeholder="e.g. ABCDE1234F"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document *</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document (Optional)</label>
                 <div className="flex gap-2 items-center">
                   <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileUpload(e, 'panPhotoUrl')} disabled={uploadingField === 'panPhotoUrl'} className="hidden" id="reg-pan-input" />
                   <label htmlFor="reg-pan-input" className={`flex-1 border-2 border-dashed rounded px-3 py-2 text-xs font-bold text-center cursor-pointer transition-all ${
                     uploadingField === 'panPhotoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
                     formData.panPhotoUrl ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
                   }`}>
-                    {uploadingField === 'panPhotoUrl' ? '⏳ Uploading...' : formData.panPhotoUrl ? '✅ Uploaded successfully' : '📁 Upload PAN (<1MB)'}
+                    {uploadingField === 'panPhotoUrl' ? '⏳ Uploading...' : formData.panPhotoUrl ? '✅ Uploaded' : '📁 Upload PAN'}
                   </label>
-                  {formData.panPhotoUrl && (
-                    <a href={formData.panPhotoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-2 text-xs font-bold whitespace-nowrap">
-                      👁️ View
-                    </a>
-                  )}
                 </div>
               </div>
             </div>
@@ -437,23 +407,23 @@ const RegisterForm: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 4: Bank Account Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Name *</label>
-                <input type="text" name="bankName" value={formData.bankName} onChange={handleChange} required
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Name (Optional)</label>
+                <input type="text" name="bankName" value={formData.bankName} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Account Number *</label>
-                <input type="text" name="bankAccountNo" value={formData.bankAccountNo} onChange={handleNumericChange} required inputMode="numeric" pattern="[0-9]*"
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Account Number (Optional)</label>
+                <input type="text" name="bankAccountNo" value={formData.bankAccountNo} onChange={handleNumericChange} inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank IFSC Code *</label>
-                <input type="text" name="bankIfscCode" value={formData.bankIfscCode} onChange={handleChange} required
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank IFSC Code (Optional)</label>
+                <input type="text" name="bankIfscCode" value={formData.bankIfscCode} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Branch Name *</label>
-                <input type="text" name="bankBranchName" value={formData.bankBranchName} onChange={handleChange} required
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Branch Name (Optional)</label>
+                <input type="text" name="bankBranchName" value={formData.bankBranchName} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
@@ -466,13 +436,13 @@ const RegisterForm: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 5: Emergency Contacts</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Name *</label>
-                <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} required
+                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Name (Optional)</label>
+                <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Mobile *</label>
-                <input type="text" name="emergencyContactMobile" value={formData.emergencyContactMobile} onChange={handleNumericChange} required inputMode="numeric" pattern="[0-9]*"
+                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Mobile (Optional)</label>
+                <input type="text" name="emergencyContactMobile" value={formData.emergencyContactMobile} onChange={handleNumericChange} inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
@@ -480,25 +450,27 @@ const RegisterForm: React.FC = () => {
         )}
 
         {/* Form controls */}
-        <div className="flex gap-4 pt-4 border-t mt-6 justify-between">
-          {step > 1 && (
-            <button type="button" onClick={prevStep}
-              className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded font-bold text-xs transition-all active:scale-95">
-              <ArrowLeft size={14} /> Back
-            </button>
-          )}
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t mt-6 justify-between items-center">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between">
+            {step > 1 && (
+              <button type="button" onClick={prevStep}
+                className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded font-bold text-xs transition-all active:scale-95 shadow-sm">
+                <ArrowLeft size={14} /> Back
+              </button>
+            )}
+            
+            {step < 5 && (
+              <button type="button" onClick={nextStep}
+                className="flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded font-bold text-xs transition-all active:scale-95 shadow-sm">
+                Next Step <ArrowRight size={14} />
+              </button>
+            )}
+          </div>
           
-          {step < 5 ? (
-            <button type="button" onClick={nextStep}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded font-bold text-xs ml-auto transition-all active:scale-95 shadow-sm">
-              Next <ArrowRight size={14} />
-            </button>
-          ) : (
-            <button type="submit" disabled={loading}
-              className="flex items-center gap-2 bg-[#1976D2] hover:bg-blue-700 text-white px-6 py-2.5 rounded font-bold text-xs ml-auto transition-all active:scale-95 disabled:opacity-50 shadow-md">
-              {loading ? 'SUBMITTING...' : 'SUBMIT REGISTRATION'}
-            </button>
-          )}
+          <button type="submit" disabled={loading}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#2E7D32] hover:bg-green-800 text-white px-6 py-2.5 rounded font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-50 shadow-md">
+            {loading ? 'SUBMITTING...' : '✅ FINISH REGISTRATION NOW'}
+          </button>
         </div>
 
       </form>
