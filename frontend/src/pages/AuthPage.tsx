@@ -63,18 +63,16 @@ const AuthPage: React.FC = () => {
           </div>
 
           {/* Native Registration disabled. Enforcing usage of central gateway registration instead */}
-          {/* 
           {activeTab === 'NICTIANS' && (
             <div className="mt-6 text-center">
               <button
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-gray-500 hover:text-[#1976D2] transition-colors"
+                className="text-sm text-gray-500 hover:text-[#1976D2] transition-colors font-semibold"
               >
-                {isLogin ? 'New user? Register here' : 'Already registered? Login'}
+                {isLogin ? 'New NICTian? Register Here' : 'Already have an account? Sign In'}
               </button>
             </div>
           )}
-          */}
         </div>
       </main>
     </div>

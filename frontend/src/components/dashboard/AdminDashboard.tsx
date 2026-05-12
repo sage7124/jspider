@@ -1644,7 +1644,7 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
 };
 // ── Settings Modal ────────────────────────────────────────────────────────────
 const SettingsModal = ({ onClose }: { onClose: () => void }) => {
-  const [settings, setSettings] = useState({ lat: '', lng: '', radius: '' });
+  const [settings, setSettings] = useState({ lat: '', lng: '', radius: '', lat2: '', lng2: '', radius2: '' });
   const [passwords, setPasswords] = useState({ current: '', new: '' });
   const [activeTab, setActiveTab] = useState<'gps' | 'password'>('gps');
   const [saving, setSaving] = useState(false);
@@ -1657,12 +1657,26 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
     const res = await axios.get(`${API}/settings`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     });
-    setSettings({ lat: res.data.lat.toString(), lng: res.data.lng.toString(), radius: res.data.radius.toString() });
+    setSettings({ 
+      lat: res.data.lat?.toString() || '', 
+      lng: res.data.lng?.toString() || '', 
+      radius: res.data.radius?.toString() || '',
+      lat2: res.data.lat2?.toString() || '',
+      lng2: res.data.lng2?.toString() || '',
+      radius2: res.data.radius2?.toString() || ''
+    });
   };
 
   const saveSettings = async () => {
     setSaving(true);
-    await axios.put(`${API}/settings`, settings, {
+    await axios.put(`${API}/settings`, {
+      lat: parseFloat(settings.lat),
+      lng: parseFloat(settings.lng),
+      radius: parseInt(settings.radius, 10),
+      lat2: parseFloat(settings.lat2),
+      lng2: parseFloat(settings.lng2),
+      radius2: parseInt(settings.radius2, 10)
+    }, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     });
     setSaving(false);
@@ -1693,11 +1707,26 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
         </div>
 
         {activeTab === 'gps' ? (
-          <div className="space-y-4">
-            <div><label className="block text-xs font-bold text-gray-500 mb-1">LATITUDE</label><input value={settings.lat} onChange={e => setSettings({...settings, lat: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
-            <div><label className="block text-xs font-bold text-gray-500 mb-1">LONGITUDE</label><input value={settings.lng} onChange={e => setSettings({...settings, lng: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
-            <div><label className="block text-xs font-bold text-gray-500 mb-1">RADIUS (METERS)</label><input value={settings.radius} onChange={e => setSettings({...settings, radius: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
-            <button onClick={saveSettings} disabled={saving} className="w-full bg-blue-600 text-white py-2 rounded font-bold">{saving ? 'Saving...' : 'Save Settings'}</button>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
+            <div className="p-3 bg-blue-50 rounded border border-blue-100">
+              <h4 className="text-sm font-black text-blue-700 mb-3 border-b border-blue-200 pb-1">LOCATION 1 (SPOT A)</h4>
+              <div className="space-y-3">
+                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Latitude</label><input value={settings.lat} onChange={e => setSettings({...settings, lat: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 12.926" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Longitude</label><input value={settings.lng} onChange={e => setSettings({...settings, lng: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 77.584" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Radius (Meters)</label><input value={settings.radius} onChange={e => setSettings({...settings, radius: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="50" /></div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-emerald-50 rounded border border-emerald-100">
+              <h4 className="text-sm font-black text-emerald-700 mb-3 border-b border-emerald-200 pb-1">LOCATION 2 (SPOT B)</h4>
+              <div className="space-y-3">
+                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Latitude</label><input value={settings.lat2} onChange={e => setSettings({...settings, lat2: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 12.930" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Longitude</label><input value={settings.lng2} onChange={e => setSettings({...settings, lng2: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 77.590" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Radius (Meters)</label><input value={settings.radius2} onChange={e => setSettings({...settings, radius2: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="50" /></div>
+              </div>
+            </div>
+
+            <button onClick={saveSettings} disabled={saving} className="w-full bg-blue-600 text-white py-3 rounded-lg font-extrabold shadow hover:bg-blue-700 transition-colors">{saving ? 'Saving All Settings...' : 'Save BOTH Locations'}</button>
           </div>
         ) : (
           <div className="space-y-4">

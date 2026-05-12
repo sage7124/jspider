@@ -123,6 +123,9 @@ model InstituteSettings {
   lat            Float    @default(12.9716)
   lng            Float    @default(77.5946)
   radius         Int      @default(500) // Meters
+  lat2           Float    @default(12.9716)
+  lng2           Float    @default(77.5946)
+  radius2        Int      @default(500) // Meters
   totalHolidaysQuota Int    @default(0)
   updatedAt      DateTime @updatedAt
 }

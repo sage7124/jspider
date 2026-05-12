@@ -87,13 +87,21 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(403).json({ error: `Attendance can only be marked from your registered ${platform}.` });
     }
 
-    const distance = getDistance(
+    const dist1 = getDistance(
       { latitude: lat, longitude: lng },
       { latitude: settings.lat, longitude: settings.lng }
     );
 
-    if (distance > settings.radius) {
-      return res.status(403).json({ error: 'You are outside the institute premises.' });
+    const dist2 = getDistance(
+      { latitude: lat, longitude: lng },
+      { latitude: settings.lat2, longitude: settings.lng2 }
+    );
+
+    const isAtSpot1 = dist1 <= settings.radius;
+    const isAtSpot2 = dist2 <= settings.radius2;
+
+    if (!isAtSpot1 && !isAtSpot2) {
+      return res.status(403).json({ error: 'You are outside the permitted institute premises (Both Locations checked).' });
     }
 
     // 2. QR Token validation removed as requested by user
