@@ -1693,6 +1693,12 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const loadBranchToEdit = (b: any) => {
+    setNewBranch({ name: b.name, lat: b.lat.toString(), lng: b.lng.toString(), radius: b.radius.toString() });
+    // Scroll slightly to give feedback
+    document.getElementById('new-branch-form-header')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const changePassword = async () => {
     try {
       setSaving(true);
@@ -1732,13 +1738,22 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                           <p className="font-extrabold text-blue-800 text-sm">{b.name}</p>
                           <p className="text-[10px] text-blue-600/70 font-mono">{b.lat}, {b.lng} (Radius: {b.radius}m)</p>
                         </div>
-                        <button 
-                          onClick={() => deleteBranch(b.id)}
-                          className="text-red-400 hover:text-red-700 p-1.5 bg-white/50 hover:bg-red-50 rounded transition-all"
-                          title="Delete Branch"
-                        >
-                          🗑️
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => loadBranchToEdit(b)}
+                            className="text-blue-600 hover:text-blue-800 p-1.5 bg-white/50 hover:bg-blue-100 rounded transition-all border border-blue-100"
+                            title="Edit Branch"
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            onClick={() => deleteBranch(b.id)}
+                            className="text-red-400 hover:text-red-700 p-1.5 bg-white/50 hover:bg-red-50 rounded transition-all border border-red-100"
+                            title="Delete Branch"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1749,7 +1764,10 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
 
               {/* Add New Branch Form */}
               <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 shadow-inner">
-                <h4 className="text-sm font-black text-emerald-700 mb-3 border-b border-emerald-200 pb-1 uppercase tracking-wide">Add New Institute Branch</h4>
+                <h4 id="new-branch-form-header" className="text-sm font-black text-emerald-700 mb-3 border-b border-emerald-200 pb-1 uppercase tracking-wide flex justify-between items-center">
+                  <span>Add or Update Institute Branch</span>
+                  {newBranch.name && <span className="text-[9px] bg-emerald-200 px-1.5 py-0.5 rounded animate-pulse text-emerald-800">Editing Mode</span>}
+                </h4>
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Branch Name</label>
@@ -1772,8 +1790,8 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                     <input type="number" value={newBranch.radius} onChange={e => setNewBranch({...newBranch, radius: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white text-sm" placeholder="100" />
                   </div>
 
-                  <button onClick={addBranch} disabled={saving} className="w-full mt-2 bg-emerald-600 text-white py-3 rounded-lg font-black tracking-wide shadow-md hover:bg-emerald-700 active:scale-95 transition-all">
-                    {saving ? 'CREATING...' : '➕ REGISTER THIS BRANCH'}
+                  <button onClick={addBranch} disabled={saving} className="w-full mt-2 bg-emerald-600 text-white py-3 rounded-lg font-black tracking-wide shadow-md hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                    {saving ? 'UPDATING...' : <span>💾 {branches.some(b => b.name.toUpperCase() === newBranch.name.trim().toUpperCase()) ? 'SAVE CHANGES' : 'REGISTER NEW BRANCH'}</span>}
                   </button>
                 </div>
               </div>
