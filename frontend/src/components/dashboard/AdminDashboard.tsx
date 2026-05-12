@@ -1825,7 +1825,7 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                 </div>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'password' ? (
             <div className="space-y-4 pt-2">
               <div><label className="block text-xs font-bold text-gray-500 mb-1">CURRENT PASSWORD</label><input type="password" value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
               <div><label className="block text-xs font-bold text-gray-500 mb-1">NEW PASSWORD</label><input type="password" value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
