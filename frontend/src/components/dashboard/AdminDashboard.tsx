@@ -1709,7 +1709,7 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
         {activeTab === 'gps' ? (
           <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
             <div className="p-3 bg-blue-50 rounded border border-blue-100">
-              <h4 className="text-sm font-black text-blue-700 mb-3 border-b border-blue-200 pb-1">LOCATION 1 (SPOT A)</h4>
+              <h4 className="text-sm font-black text-blue-700 mb-3 border-b border-blue-200 pb-1">JAYANAGAR</h4>
               <div className="space-y-3">
                 <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Latitude</label><input value={settings.lat} onChange={e => setSettings({...settings, lat: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 12.926" /></div>
                 <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Longitude</label><input value={settings.lng} onChange={e => setSettings({...settings, lng: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 77.584" /></div>
@@ -1718,7 +1718,7 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
             </div>
 
             <div className="p-3 bg-emerald-50 rounded border border-emerald-100">
-              <h4 className="text-sm font-black text-emerald-700 mb-3 border-b border-emerald-200 pb-1">LOCATION 2 (SPOT B)</h4>
+              <h4 className="text-sm font-black text-emerald-700 mb-3 border-b border-emerald-200 pb-1">HANUMANTHANAGAR</h4>
               <div className="space-y-3">
                 <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Latitude</label><input value={settings.lat2} onChange={e => setSettings({...settings, lat2: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 12.930" /></div>
                 <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Longitude</label><input value={settings.lng2} onChange={e => setSettings({...settings, lng2: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 77.590" /></div>
