@@ -1501,5 +1501,105 @@ router.delete('/branches/:id', async (req: AuthRequest, res) => {
   }
 });
 
+router.post('/sync-sister-permanent', async (req: AuthRequest, res) => {
+  try {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    // Pull all trainees
+    const users = await prisma.user.findMany({
+      where: { role: 'TRAINEE' },
+      select: { id: true, identifier: true }
+    });
+
+    let syncCount = 0;
+    let recordCount = 0;
+
+    // Iterate and pull from sister node
+    for (const u of users) {
+      const sisterData = await fetchSisterReportData(u.identifier, currentMonth, currentYear);
+      if (!sisterData || !sisterData.attendances) continue;
+
+      syncCount++;
+      const remoteAtts = sisterData.attendances;
+
+      for (const rem of remoteAtts) {
+        // Normalize date to ensure composite index safety
+        const rDate = new Date(rem.date);
+        rDate.setHours(0, 0, 0, 0);
+
+        // Check for existing local entry
+        const localAtt = await prisma.attendance.findUnique({
+          where: { userId_date: { userId: u.id, date: rDate } }
+        });
+
+        const inTime = rem.inTime ? new Date(rem.inTime) : null;
+        const outTime = rem.outTime ? new Date(rem.outTime) : null;
+        
+        const dataToSave: any = {
+          status: rem.status || 'OUT',
+          isLate: rem.isLate || false,
+        };
+
+        if (inTime) dataToSave.inTime = inTime;
+        if (outTime) dataToSave.outTime = outTime;
+
+        for (let i = 1; i <= 5; i++) {
+          if (rem[`inTime${i}`]) dataToSave[`inTime${i}`] = new Date(rem[`inTime${i}`]);
+          if (rem[`outTime${i}`]) dataToSave[`outTime${i}`] = new Date(rem[`outTime${i}`]);
+        }
+
+        if (localAtt) {
+          // Intelligent merge: preserve local records, blend with sister records
+          const mergedData = { ...dataToSave };
+          
+          if (localAtt.inTime && inTime) {
+            mergedData.inTime = new Date(localAtt.inTime) < inTime ? localAtt.inTime : inTime;
+          } else {
+            mergedData.inTime = localAtt.inTime || dataToSave.inTime;
+          }
+
+          if (localAtt.outTime && outTime) {
+            mergedData.outTime = new Date(localAtt.outTime) > outTime ? localAtt.outTime : outTime;
+          } else {
+            mergedData.outTime = localAtt.outTime || dataToSave.outTime;
+          }
+
+          mergedData.isLate = localAtt.isLate || rem.isLate;
+
+          for (let i = 1; i <= 5; i++) {
+            mergedData[`inTime${i}`] = localAtt[`inTime${i}`] || dataToSave[`inTime${i}`] || null;
+            mergedData[`outTime${i}`] = localAtt[`outTime${i}`] || dataToSave[`outTime${i}`] || null;
+          }
+
+          await prisma.attendance.update({
+            where: { id: localAtt.id },
+            data: mergedData
+          });
+        } else {
+          // Direct fresh insertion
+          await prisma.attendance.create({
+            data: {
+              userId: u.id,
+              date: rDate,
+              ...dataToSave
+            }
+          });
+        }
+        recordCount++;
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Permanently fused data. Synced ${syncCount} active users and committed ${recordCount} attendance records.` 
+    });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message || 'Failed to perform permanent sister synchronization' });
+  }
+});
+
 export default router;
 
