@@ -74,7 +74,7 @@ const ChipInput = ({
   );
 };
 
-const RegisterForm: React.FC = () => {
+const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin }) => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -231,7 +231,21 @@ const RegisterForm: React.FC = () => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 max-w-2xl mx-auto">
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 max-w-2xl mx-auto relative">
+      
+      {/* Back to Login Action Bar */}
+      {onBackToLogin && (
+        <div className="flex justify-start mb-4 pb-2 border-b border-gray-50">
+          <button 
+            type="button" 
+            onClick={onBackToLogin}
+            className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-blue-600 hover:text-blue-800 transition-colors group"
+          >
+            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" /> Back to Login
+          </button>
+        </div>
+      )}
+
       {/* Step Indicator */}
       <div className="flex items-center justify-between mb-8 px-1">
         {[1, 2, 3, 4, 5].map((s) => (

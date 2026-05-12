@@ -1255,10 +1255,22 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     const end = new Date(endDate);
     start.setHours(0, 0, 0, 0);
     end.setHours(0, 0, 0, 0);
-    const diffTime = end.getTime() - start.getTime();
-    if (diffTime < 0) return 'Invalid Date Range';
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return `${diffDays} Day${diffDays > 1 ? 's' : ''}`;
+    
+    if (end.getTime() < start.getTime()) return 'Invalid Date Range';
+
+    // Track which days the trainee actually has scheduled slots
+    const scheduledDays = new Set((trainee.slots || []).map(s => s.day.toUpperCase()));
+    const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    
+    let diffDays = 0;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const curDay = dMap[d.getDay()];
+      if (scheduledDays.has(curDay)) {
+        diffDays += 1;
+      }
+    }
+
+    return `${diffDays} Day${diffDays !== 1 ? 's' : ''} (Active working days in range)`;
   };
 
   return (

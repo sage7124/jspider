@@ -54,7 +54,7 @@ const AuthPage: React.FC = () => {
             {isLogin ? (
               <LoginForm role={activeTab} />
             ) : (
-              <RegisterForm />
+              <RegisterForm onBackToLogin={() => setIsLogin(true)} />
             )}
           </div>
 

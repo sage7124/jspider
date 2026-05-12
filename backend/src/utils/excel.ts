@@ -42,6 +42,18 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       return d >= start && d <= end && l.status === 'APPROVED';
     });
 
+    // Check if before Date of Joining
+    let isBeforeJoining = false;
+    if (user.dateOfJoining) {
+      const joiningDate = new Date(user.dateOfJoining);
+      joiningDate.setHours(0,0,0,0);
+      const cmpDate = new Date(currentDate);
+      cmpDate.setHours(0,0,0,0);
+      if (cmpDate < joiningDate) {
+        isBeforeJoining = true;
+      }
+    }
+
     // Base row object populated dynamically later
     const rowData: any = {
       slNo: day,
@@ -51,6 +63,19 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       earlyDeparture: '0m',
       extraWork: '0m'
     };
+
+    if (isBeforeJoining) {
+      assignedSlotNos.forEach((si) => {
+        rowData[`s${si}In`] = '---';
+        rowData[`s${si}Out`] = '---';
+        rowData[`s${si}Start`] = '---';
+        rowData[`s${si}End`] = '---';
+        rowData[`s${si}Late`] = '---';
+        rowData[`s${si}Early`] = '---';
+      });
+      rows.push(rowData);
+      continue;
+    }
 
     if (holiday || leave) {
       // Pre-fill only assigned slots with labels
@@ -255,7 +280,10 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       extraWork: `${Math.floor(totalExtraMinutes / 60)}h ${totalExtraMinutes % 60}m`
     },
     assignedSlotNos,
-    hasExtraSlots
+    hasExtraSlots,
+    hasSlot1: assignedSlotNos.includes(1),
+    hasSlot2: assignedSlotNos.includes(2),
+    hasSlot3: assignedSlotNos.includes(3)
   };
 };
 
