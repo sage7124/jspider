@@ -70,8 +70,9 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Location coordinates required' });
     }
 
-    const settings = await prisma.instituteSettings.findFirst() || { lat: 12.9716, lng: 77.5946, radius: 500, lat2: 12.9716, lng2: 77.5946, radius2: 500 };
-    
+    // Get all dynamically saved Branch Geofences
+    const branches = await prisma.branchLocation.findMany();
+
     // 1. Verify Device Lock (Allow both Mobile and Laptop)
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -87,21 +88,22 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(403).json({ error: `Attendance can only be marked from your registered ${platform}.` });
     }
 
-    const dist1 = getDistance(
-      { latitude: lat, longitude: lng },
-      { latitude: settings.lat, longitude: settings.lng }
-    );
+    // 🚀 Dynamic Geofence Check for INFINITE LOCATIONS
+    if (branches.length === 0) {
+      // Fallback to basic check if someone deleted all branches
+      return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Please contact Admin.' });
+    }
 
-    const dist2 = getDistance(
-      { latitude: lat, longitude: lng },
-      { latitude: settings.lat2, longitude: settings.lng2 }
-    );
+    const isWithinAnyBranch = branches.some(branch => {
+      const distance = getDistance(
+        { latitude: lat, longitude: lng },
+        { latitude: branch.lat, longitude: branch.lng }
+      );
+      return distance <= branch.radius;
+    });
 
-    const isAtSpot1 = dist1 <= settings.radius;
-    const isAtSpot2 = dist2 <= settings.radius2;
-
-    if (!isAtSpot1 && !isAtSpot2) {
-      return res.status(403).json({ error: 'You are outside the permitted institute premises (Both Locations checked).' });
+    if (!isWithinAnyBranch) {
+      return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
     }
 
     // 2. QR Token validation removed as requested by user

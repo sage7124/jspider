@@ -1453,5 +1453,53 @@ router.post('/allow-all-edit-24h', async (req: AuthRequest, res) => {
   }
 });
 
+// ── Dynamic Branch Locations ───────────────────────────────────────────────────
+router.get('/branches', async (req: AuthRequest, res) => {
+  try {
+    const branches = await prisma.branchLocation.findMany({ orderBy: { name: 'asc' } });
+    res.json(branches);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/branches', async (req: AuthRequest, res) => {
+  try {
+    const { name, lat, lng, radius } = req.body;
+    if (!name || !lat || !lng) return res.status(400).json({ error: 'Missing required branch fields' });
+    
+    const branch = await prisma.branchLocation.upsert({
+      where: { name: name.trim().toUpperCase() },
+      update: {
+        lat: Number(lat),
+        lng: Number(lng),
+        radius: Number(radius || 100)
+      },
+      create: {
+        name: name.trim().toUpperCase(),
+        lat: Number(lat),
+        lng: Number(lng),
+        radius: Number(radius || 100)
+      }
+    });
+    res.json(branch);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/branches/:id', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.branchLocation.delete({ where: { id: Number(id) } });
+    res.json({ message: 'Branch deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

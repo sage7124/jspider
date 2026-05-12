@@ -1643,44 +1643,54 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
   );
 };
 // ── Settings Modal ────────────────────────────────────────────────────────────
+// ── Settings Modal ────────────────────────────────────────────────────────────
 const SettingsModal = ({ onClose }: { onClose: () => void }) => {
-  const [settings, setSettings] = useState({ lat: '', lng: '', radius: '', lat2: '', lng2: '', radius2: '' });
+  const [branches, setBranches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newBranch, setNewBranch] = useState({ name: '', lat: '', lng: '', radius: '100' });
   const [passwords, setPasswords] = useState({ current: '', new: '' });
   const [activeTab, setActiveTab] = useState<'gps' | 'password'>('gps');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchSettings();
+    fetchBranches();
   }, []);
 
-  const fetchSettings = async () => {
-    const res = await axios.get(`${API}/settings`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    });
-    setSettings({ 
-      lat: res.data.lat?.toString() || '', 
-      lng: res.data.lng?.toString() || '', 
-      radius: res.data.radius?.toString() || '',
-      lat2: res.data.lat2?.toString() || '',
-      lng2: res.data.lng2?.toString() || '',
-      radius2: res.data.radius2?.toString() || ''
-    });
+  const fetchBranches = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API}/branches`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setBranches(res.data);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
-  const saveSettings = async () => {
+  const addBranch = async () => {
+    if (!newBranch.name || !newBranch.lat || !newBranch.lng) return alert('Fill name, lat, and lng');
     setSaving(true);
-    await axios.put(`${API}/settings`, {
-      lat: parseFloat(settings.lat),
-      lng: parseFloat(settings.lng),
-      radius: parseInt(settings.radius, 10),
-      lat2: parseFloat(settings.lat2),
-      lng2: parseFloat(settings.lng2),
-      radius2: parseInt(settings.radius2, 10)
-    }, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    });
-    setSaving(false);
-    onClose();
+    try {
+      await axios.post(`${API}/branches`, newBranch, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setNewBranch({ name: '', lat: '', lng: '', radius: '100' });
+      await fetchBranches();
+    } catch (e) {
+      alert('Failed to add branch');
+    } finally { setSaving(false); }
+  };
+
+  const deleteBranch = async (id: number) => {
+    if (!window.confirm('Delete this location permanently?')) return;
+    try {
+      await axios.delete(`${API}/branches/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      await fetchBranches();
+    } catch (e) {
+      alert('Failed to delete');
+    }
   };
 
   const changePassword = async () => {
@@ -1700,42 +1710,86 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
-        <div className="flex border-b mb-4">
-          <button onClick={() => setActiveTab('gps')} className={`flex-1 py-2 font-bold ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>GPS Settings</button>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
+        <div className="flex border-b mb-4 flex-shrink-0">
+          <button onClick={() => setActiveTab('gps')} className={`flex-1 py-2 font-bold ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Dynamic Locations</button>
           <button onClick={() => setActiveTab('password')} className={`flex-1 py-2 font-bold ${activeTab === 'password' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Change Password</button>
         </div>
 
-        {activeTab === 'gps' ? (
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1">
-            <div className="p-3 bg-blue-50 rounded border border-blue-100">
-              <h4 className="text-sm font-black text-blue-700 mb-3 border-b border-blue-200 pb-1">JAYANAGAR</h4>
-              <div className="space-y-3">
-                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Latitude</label><input value={settings.lat} onChange={e => setSettings({...settings, lat: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 12.926" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Longitude</label><input value={settings.lng} onChange={e => setSettings({...settings, lng: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 77.584" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Radius (Meters)</label><input value={settings.radius} onChange={e => setSettings({...settings, radius: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="50" /></div>
+        <div className="flex-1 overflow-y-auto pr-1">
+          {activeTab === 'gps' ? (
+            <div className="space-y-6">
+              {/* Saved Branches List */}
+              <div>
+                <h3 className="text-sm font-black text-gray-700 uppercase mb-3 tracking-wider">SAVED BRANCHES</h3>
+                {loading ? <p className="text-xs text-gray-500 italic">Loading locations...</p> : branches.length === 0 ? (
+                  <p className="text-sm text-gray-400 bg-gray-50 p-3 rounded border border-dashed text-center">No branches configured yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {branches.map((b) => (
+                      <div key={b.id} className="flex justify-between items-center p-3 bg-blue-50 border border-blue-100 rounded-lg shadow-sm hover:bg-blue-100 transition-colors group">
+                        <div>
+                          <p className="font-extrabold text-blue-800 text-sm">{b.name}</p>
+                          <p className="text-[10px] text-blue-600/70 font-mono">{b.lat}, {b.lng} (Radius: {b.radius}m)</p>
+                        </div>
+                        <button 
+                          onClick={() => deleteBranch(b.id)}
+                          className="text-red-400 hover:text-red-700 p-1.5 bg-white/50 hover:bg-red-50 rounded transition-all"
+                          title="Delete Branch"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-gray-200" />
+
+              {/* Add New Branch Form */}
+              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 shadow-inner">
+                <h4 className="text-sm font-black text-emerald-700 mb-3 border-b border-emerald-200 pb-1 uppercase tracking-wide">Add New Institute Branch</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Branch Name</label>
+                    <input value={newBranch.name} onChange={e => setNewBranch({...newBranch, name: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-bold text-gray-700" placeholder="e.g., INDIRANAGAR" />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Latitude</label>
+                      <input value={newBranch.lat} onChange={e => setNewBranch({...newBranch, lat: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-mono text-sm" placeholder="12.9716" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Longitude</label>
+                      <input value={newBranch.lng} onChange={e => setNewBranch({...newBranch, lng: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-mono text-sm" placeholder="77.5946" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Validation Radius (Meters)</label>
+                    <input type="number" value={newBranch.radius} onChange={e => setNewBranch({...newBranch, radius: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white text-sm" placeholder="100" />
+                  </div>
+
+                  <button onClick={addBranch} disabled={saving} className="w-full mt-2 bg-emerald-600 text-white py-3 rounded-lg font-black tracking-wide shadow-md hover:bg-emerald-700 active:scale-95 transition-all">
+                    {saving ? 'CREATING...' : '➕ REGISTER THIS BRANCH'}
+                  </button>
+                </div>
               </div>
             </div>
-
-            <div className="p-3 bg-emerald-50 rounded border border-emerald-100">
-              <h4 className="text-sm font-black text-emerald-700 mb-3 border-b border-emerald-200 pb-1">HANUMANTHANAGAR</h4>
-              <div className="space-y-3">
-                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Latitude</label><input value={settings.lat2} onChange={e => setSettings({...settings, lat2: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 12.930" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Longitude</label><input value={settings.lng2} onChange={e => setSettings({...settings, lng2: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="e.g., 77.590" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Radius (Meters)</label><input value={settings.radius2} onChange={e => setSettings({...settings, radius2: e.target.value})} className="w-full border rounded px-3 py-2 bg-white" placeholder="50" /></div>
-              </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <div><label className="block text-xs font-bold text-gray-500 mb-1">CURRENT PASSWORD</label><input type="password" value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
+              <div><label className="block text-xs font-bold text-gray-500 mb-1">NEW PASSWORD</label><input type="password" value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
+              <button onClick={changePassword} disabled={saving} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold tracking-wide mt-2">{saving ? 'Updating...' : 'Update Admin Password'}</button>
             </div>
+          )}
+        </div>
 
-            <button onClick={saveSettings} disabled={saving} className="w-full bg-blue-600 text-white py-3 rounded-lg font-extrabold shadow hover:bg-blue-700 transition-colors">{saving ? 'Saving All Settings...' : 'Save BOTH Locations'}</button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div><label className="block text-xs font-bold text-gray-500 mb-1">CURRENT PASSWORD</label><input type="password" value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
-            <div><label className="block text-xs font-bold text-gray-500 mb-1">NEW PASSWORD</label><input type="password" value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
-            <button onClick={changePassword} disabled={saving} className="w-full bg-blue-600 text-white py-2 rounded font-bold">{saving ? 'Saving...' : 'Update Password'}</button>
-          </div>
-        )}
-        <button onClick={onClose} className="w-full mt-2 text-gray-500 text-sm">Cancel</button>
+        <div className="pt-4 mt-2 border-t flex-shrink-0">
+          <button onClick={onClose} className="w-full py-2 text-gray-500 hover:text-gray-800 text-sm font-bold transition-colors">DONE & CLOSE</button>
+        </div>
       </div>
     </div>
   );
