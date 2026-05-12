@@ -9,18 +9,14 @@ const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9] flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-[#E3F2FD] via-[#BBDEFB] to-[#90CAF9] flex flex-col">
       <Header />
       
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-md w-full max-w-md relative pt-12 pb-8 px-8 mt-8">
           {/* Profile Icon / Logo Badge */}
           <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white rounded-full p-2 shadow-md border border-gray-100 flex items-center justify-center w-16 h-16 overflow-hidden">
-            {import.meta.env.VITE_INSTITUTE_LOGO ? (
-              <img src={import.meta.env.VITE_INSTITUTE_LOGO} alt="Institute Logo" className="w-full h-full object-contain" />
-            ) : (
-              <User className="h-7 w-7 text-[#1a1f2e]" />
-            )}
+            <img src={import.meta.env.VITE_INSTITUTE_LOGO || '/nict-logo.jpeg'} alt="Institute Logo" className="w-full h-full object-contain" />
           </div>
 
           {/* Tabs */}
