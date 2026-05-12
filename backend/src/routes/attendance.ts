@@ -70,7 +70,7 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Location coordinates required' });
     }
 
-    const settings = await prisma.instituteSettings.findFirst() || { lat: 12.9716, lng: 77.5946, radius: 500 };
+    const settings = await prisma.instituteSettings.findFirst() || { lat: 12.9716, lng: 77.5946, radius: 500, lat2: 12.9716, lng2: 77.5946, radius2: 500 };
     
     // 1. Verify Device Lock (Allow both Mobile and Laptop)
     const user = await prisma.user.findUnique({ where: { id: userId } });
