@@ -471,7 +471,7 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
         <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t mt-6 justify-between items-center w-full">
           <button type="submit" disabled={loading}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-50 shadow-md order-2 sm:order-1">
-            {loading ? 'SUBMITTING...' : '✅ FINISH REGISTRATION NOW'}
+            {loading ? 'SUBMITTING...' : '✅ SAVE AND COMPLETE LATER'}
           </button>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end order-1 sm:order-2">
@@ -484,7 +484,7 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
             
             {step < 5 && (
               <button type="button" onClick={nextStep}
-                className="flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2.5 rounded font-bold text-xs transition-all active:scale-95 shadow-sm">
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded font-bold text-xs transition-all active:scale-95 shadow-sm">
                 Next Step <ArrowRight size={14} />
               </button>
             )}
