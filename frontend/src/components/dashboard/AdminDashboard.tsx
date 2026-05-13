@@ -1661,24 +1661,8 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const [loading, setLoading] = useState(true);
   const [newBranch, setNewBranch] = useState({ name: '', lat: '', lng: '', radius: '100' });
   const [passwords, setPasswords] = useState({ current: '', new: '' });
-  const [activeTab, setActiveTab] = useState<'gps' | 'password' | 'system'>('gps');
+  const [activeTab, setActiveTab] = useState<'gps' | 'password'>('gps');
   const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-
-  const handleForceSync = async () => {
-    if (!window.confirm('Are you sure you want to execute the Master Cloud Sync?\n\nThis will fetch ALL active records from the sister system and merge them permanently into this database.')) return;
-    setSyncing(true);
-    try {
-      const res = await axios.post(`${API}/sync-sister-permanent`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      alert(res.data.message || 'Cloud fusion successful!');
-    } catch (e: any) {
-      alert(e.response?.data?.error || 'Sister Sync Failed. Please check server logs.');
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   useEffect(() => {
     fetchBranches();
@@ -1745,10 +1729,9 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
-        <div className="flex border-b mb-4 flex-shrink-0 text-[11px] xs:text-xs sm:text-sm overflow-x-auto whitespace-nowrap">
-          <button onClick={() => setActiveTab('gps')} className={`flex-1 py-2 font-bold px-2 ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Dynamic Locations</button>
-          <button onClick={() => setActiveTab('password')} className={`flex-1 py-2 font-bold px-2 ${activeTab === 'password' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Change Password</button>
-          <button onClick={() => setActiveTab('system')} className={`flex-1 py-2 font-bold px-2 ${activeTab === 'system' ? 'border-b-2 border-orange-600 text-orange-600' : 'text-gray-400 hover:text-orange-500'} transition-colors`}>⚡ Cloud Sync</button>
+        <div className="flex border-b mb-4 flex-shrink-0">
+          <button onClick={() => setActiveTab('gps')} className={`flex-1 py-2 font-bold ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Dynamic Locations</button>
+          <button onClick={() => setActiveTab('password')} className={`flex-1 py-2 font-bold ${activeTab === 'password' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Change Password</button>
         </div>
 
         <div className="flex-1 overflow-y-auto pr-1">
@@ -1825,41 +1808,11 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                 </div>
               </div>
             </div>
-          ) : activeTab === 'password' ? (
+          ) : (
             <div className="space-y-4 pt-2">
               <div><label className="block text-xs font-bold text-gray-500 mb-1">CURRENT PASSWORD</label><input type="password" value={passwords.current} onChange={e => setPasswords({...passwords, current: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
               <div><label className="block text-xs font-bold text-gray-500 mb-1">NEW PASSWORD</label><input type="password" value={passwords.new} onChange={e => setPasswords({...passwords, new: e.target.value})} className="w-full border rounded px-3 py-2" /></div>
               <button onClick={changePassword} disabled={saving} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold tracking-wide mt-2">{saving ? 'Updating...' : 'Update Admin Password'}</button>
-            </div>
-          ) : (
-            <div className="space-y-6 pt-2">
-              <div className="bg-orange-50 border border-orange-100 rounded-xl p-5 shadow-inner relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-red-500" />
-                <h3 className="text-lg font-black text-orange-800 flex items-center gap-2 mb-2">
-                  ⚡ Master Cloud Synchronization
-                </h3>
-                <p className="text-xs text-orange-700/90 font-semibold leading-relaxed mb-6">
-                  This command executes a permanent database fusion. It queries all records from the sister system for this month and merges them physically into this local server. Run this if you want to safely transition from the old platform.
-                </p>
-                
-                <button 
-                  onClick={handleForceSync} 
-                  disabled={syncing}
-                  className={`w-full py-4 rounded-lg font-black text-sm uppercase tracking-wider shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
-                    syncing 
-                      ? 'bg-orange-200 text-orange-600 border border-orange-300 cursor-not-allowed animate-pulse' 
-                      : 'bg-gradient-to-r from-orange-600 to-red-600 text-white hover:from-orange-700 hover:to-red-700 hover:shadow-lg hover:-translate-y-0.5'
-                  }`}
-                >
-                  {syncing ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
-                      Fusing Datasets...
-                    </>
-                  ) : 'Execute Permanent Data Sync Now'}
-                </button>
-              </div>
-              <p className="text-[10px] text-gray-400 italic text-center font-bold tracking-tight">Note: This operation utilizes advanced upsert logic ensuring local records are protected.</p>
             </div>
           )}
         </div>
