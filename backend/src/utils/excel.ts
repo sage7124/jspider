@@ -354,7 +354,7 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
     let color = 'FF475569'; // Standard Slate Grey for Day & Date
 
     if (headerName.includes('Slot 1') || headerName.includes('S1 ')) {
-      color = 'FF1E3A8A'; // Navy Blue for Slot 1
+      color = 'FF2563EB'; // Vivid Bright Blue for Slot 1
     } else if (headerName.includes('Slot 2') || headerName.includes('S2 ')) {
       color = 'FF047857'; // Emerald/Teal for Slot 2
     } else if (headerName.includes('Slot 3') || headerName.includes('S3 ')) {
