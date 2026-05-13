@@ -264,8 +264,12 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
       </div>
 
       {error && <div className="text-red-500 text-xs font-bold mb-4 p-2 bg-red-50 rounded text-center">{error}</div>}
-      {success && <div className="text-green-700 text-sm font-bold mb-4 p-3 bg-green-50 rounded text-center">🎉 Registration successful! Please wait for Admin approval.</div>}
-
+      
+      {success ? (
+        <div className="text-green-700 text-lg font-bold p-8 bg-green-50 rounded text-center border border-green-200 mt-4 shadow-sm">
+          🎉 Data saved! Please wait for admin approval.
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-4 text-left">
 
         {/* STEP 1: Account & Personal */}
@@ -307,14 +311,14 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Profile Photo</label>
                 <div className="flex gap-2 items-center">
                   <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'photoUrl')} disabled={uploadingField === 'photoUrl'} className="hidden" id="reg-photo-input" />
                   <label htmlFor="reg-photo-input" className={`flex-1 border-2 border-dashed rounded px-3 py-2 text-xs font-bold text-center cursor-pointer transition-all ${
                     uploadingField === 'photoUrl' ? 'bg-indigo-50 border-indigo-300 text-indigo-700 animate-pulse' :
                     formData.photoUrl ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-600'
                   }`}>
-                    {uploadingField === 'photoUrl' ? '⏳ Uploading...' : formData.photoUrl ? '✅ Photo Uploaded' : '📁 Upload Photo (Optional)'}
+                    {uploadingField === 'photoUrl' ? '⏳ Uploading...' : formData.photoUrl ? '✅ Photo Uploaded' : '📁 Upload Photo'}
                   </label>
                   {formData.photoUrl && (
                     <a href={formData.photoUrl} target="_blank" rel="noreferrer" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded px-2.5 py-2 text-xs font-bold whitespace-nowrap">
@@ -333,17 +337,17 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 2: Onboarding & Address Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Date of Joining (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Date of Joining</label>
                 <input type="date" name="dateOfJoining" value={formData.dateOfJoining} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Office Timings with Cycle</label>
                 <textarea name="officeTimings" value={formData.officeTimings} onChange={handleChange} placeholder="e.g. 9 AM - 5 PM Shift A" rows={2}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Education Completed (add , or press enter to add more)</label>
                 <ChipInput 
                   value={formData.educationCompleted} 
                   onChange={(val) => setFormData(prev => ({ ...prev, educationCompleted: val }))} 
@@ -351,7 +355,7 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Subjects / Modules (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Subjects / Modules (add , or press enter to add more)</label>
                 <ChipInput 
                   value={formData.subClassification} 
                   onChange={(val) => setFormData(prev => ({ ...prev, subClassification: val }))} 
@@ -359,12 +363,12 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-500 mb-1">Present Address (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Present Address</label>
                 <textarea name="presentAddress" value={formData.presentAddress} onChange={handleChange} rows={2}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-gray-500 mb-1">Permanent Address (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Permanent Address</label>
                 <textarea name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} rows={2}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
@@ -378,12 +382,12 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 3: Document Verification</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Number (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Number</label>
                 <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleNumericChange} placeholder="e.g. 12-digit number" inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Aadhaar Document</label>
                 <div className="flex gap-2 items-center">
                   <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileUpload(e, 'aadhaarPhotoUrl')} disabled={uploadingField === 'aadhaarPhotoUrl'} className="hidden" id="reg-aadhaar-input" />
                   <label htmlFor="reg-aadhaar-input" className={`flex-1 border-2 border-dashed rounded px-3 py-2 text-xs font-bold text-center cursor-pointer transition-all ${
@@ -395,12 +399,12 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Number (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Number</label>
                 <input type="text" name="panNumber" value={formData.panNumber} onChange={handleChange} placeholder="e.g. ABCDE1234F"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">PAN Document</label>
                 <div className="flex gap-2 items-center">
                   <input type="file" accept="image/*,application/pdf" onChange={(e) => handleFileUpload(e, 'panPhotoUrl')} disabled={uploadingField === 'panPhotoUrl'} className="hidden" id="reg-pan-input" />
                   <label htmlFor="reg-pan-input" className={`flex-1 border-2 border-dashed rounded px-3 py-2 text-xs font-bold text-center cursor-pointer transition-all ${
@@ -421,22 +425,22 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 4: Bank Account Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Name (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Name</label>
                 <input type="text" name="bankName" value={formData.bankName} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Account Number (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Account Number</label>
                 <input type="text" name="bankAccountNo" value={formData.bankAccountNo} onChange={handleNumericChange} inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank IFSC Code (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank IFSC Code</label>
                 <input type="text" name="bankIfscCode" value={formData.bankIfscCode} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Branch Name (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Bank Branch Name</label>
                 <input type="text" name="bankBranchName" value={formData.bankBranchName} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
@@ -450,12 +454,12 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider border-b pb-1">Step 5: Emergency Contacts</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Name (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Name</label>
                 <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange}
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Mobile (Optional)</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Emergency Contact Mobile</label>
                 <input type="text" name="emergencyContactMobile" value={formData.emergencyContactMobile} onChange={handleNumericChange} inputMode="numeric" pattern="[0-9]*"
                   className="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
@@ -464,8 +468,13 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
         )}
 
         {/* Form controls */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t mt-6 justify-between items-center">
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t mt-6 justify-between items-center w-full">
+          <button type="submit" disabled={loading}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-50 shadow-md order-2 sm:order-1">
+            {loading ? 'SUBMITTING...' : '✅ FINISH REGISTRATION NOW'}
+          </button>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end order-1 sm:order-2">
             {step > 1 && (
               <button type="button" onClick={prevStep}
                 className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded font-bold text-xs transition-all active:scale-95 shadow-sm">
@@ -480,14 +489,10 @@ const RegisterForm: React.FC<{ onBackToLogin?: () => void }> = ({ onBackToLogin 
               </button>
             )}
           </div>
-          
-          <button type="submit" disabled={loading}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#2E7D32] hover:bg-green-800 text-white px-6 py-2.5 rounded font-black text-xs uppercase transition-all active:scale-95 disabled:opacity-50 shadow-md">
-            {loading ? 'SUBMITTING...' : '✅ FINISH REGISTRATION NOW'}
-          </button>
         </div>
 
       </form>
+      )}
     </div>
   );
 };

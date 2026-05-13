@@ -1466,18 +1466,20 @@ router.get('/branches', async (req: AuthRequest, res) => {
 
 router.post('/branches', async (req: AuthRequest, res) => {
   try {
-    const { name, lat, lng, radius } = req.body;
+    const { name, branchCode, lat, lng, radius } = req.body;
     if (!name || !lat || !lng) return res.status(400).json({ error: 'Missing required branch fields' });
     
     const branch = await prisma.branchLocation.upsert({
       where: { name: name.trim().toUpperCase() },
       update: {
+        branchCode: branchCode ? branchCode.trim().toUpperCase() : null,
         lat: Number(lat),
         lng: Number(lng),
         radius: Number(radius || 100)
       },
       create: {
         name: name.trim().toUpperCase(),
+        branchCode: branchCode ? branchCode.trim().toUpperCase() : null,
         lat: Number(lat),
         lng: Number(lng),
         radius: Number(radius || 100)

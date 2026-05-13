@@ -94,7 +94,7 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Please contact Admin.' });
     }
 
-    const isWithinAnyBranch = branches.some(branch => {
+    const validBranch = branches.find(branch => {
       const distance = getDistance(
         { latitude: lat, longitude: lng },
         { latitude: branch.lat, longitude: branch.lng }
@@ -102,9 +102,10 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       return distance <= branch.radius;
     });
 
-    if (!isWithinAnyBranch) {
+    if (!validBranch) {
       return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
     }
+    const punchedBranchName = validBranch.name;
 
     // 2. QR Token validation removed as requested by user
     /*
@@ -233,11 +234,11 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         inTime: existing?.inTime || now,
         isLate: existing ? existing.isLate : isLate
       };
-      if (activeSlotNo === 1) dataUpdate.inTime1 = now;
-      if (activeSlotNo === 2) dataUpdate.inTime2 = now;
-      if (activeSlotNo === 3) dataUpdate.inTime3 = now;
-      if (activeSlotNo === 4) dataUpdate.inTime4 = now;
-      if (activeSlotNo === 5) dataUpdate.inTime5 = now;
+      if (activeSlotNo === 1) { dataUpdate.inTime1 = now; dataUpdate.inBranch1 = punchedBranchName; }
+      if (activeSlotNo === 2) { dataUpdate.inTime2 = now; dataUpdate.inBranch2 = punchedBranchName; }
+      if (activeSlotNo === 3) { dataUpdate.inTime3 = now; dataUpdate.inBranch3 = punchedBranchName; }
+      if (activeSlotNo === 4) { dataUpdate.inTime4 = now; }
+      if (activeSlotNo === 5) { dataUpdate.inTime5 = now; }
 
       const dataCreate: any = {
         userId,
@@ -246,11 +247,11 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         inTime: now,
         isLate
       };
-      if (activeSlotNo === 1) dataCreate.inTime1 = now;
-      if (activeSlotNo === 2) dataCreate.inTime2 = now;
-      if (activeSlotNo === 3) dataCreate.inTime3 = now;
-      if (activeSlotNo === 4) dataCreate.inTime4 = now;
-      if (activeSlotNo === 5) dataCreate.inTime5 = now;
+      if (activeSlotNo === 1) { dataCreate.inTime1 = now; dataCreate.inBranch1 = punchedBranchName; }
+      if (activeSlotNo === 2) { dataCreate.inTime2 = now; dataCreate.inBranch2 = punchedBranchName; }
+      if (activeSlotNo === 3) { dataCreate.inTime3 = now; dataCreate.inBranch3 = punchedBranchName; }
+      if (activeSlotNo === 4) { dataCreate.inTime4 = now; }
+      if (activeSlotNo === 5) { dataCreate.inTime5 = now; }
 
       await prisma.attendance.upsert({
         where: { userId_date: { userId, date: today } },
@@ -266,11 +267,11 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         status: 'OUT',
         outTime: now
       };
-      if (activeSlotNo === 1) dataUpdate.outTime1 = now;
-      if (activeSlotNo === 2) dataUpdate.outTime2 = now;
-      if (activeSlotNo === 3) dataUpdate.outTime3 = now;
-      if (activeSlotNo === 4) dataUpdate.outTime4 = now;
-      if (activeSlotNo === 5) dataUpdate.outTime5 = now;
+      if (activeSlotNo === 1) { dataUpdate.outTime1 = now; dataUpdate.outBranch1 = punchedBranchName; }
+      if (activeSlotNo === 2) { dataUpdate.outTime2 = now; dataUpdate.outBranch2 = punchedBranchName; }
+      if (activeSlotNo === 3) { dataUpdate.outTime3 = now; dataUpdate.outBranch3 = punchedBranchName; }
+      if (activeSlotNo === 4) { dataUpdate.outTime4 = now; }
+      if (activeSlotNo === 5) { dataUpdate.outTime5 = now; }
 
       await prisma.attendance.update({
         where: { userId_date: { userId, date: today } },

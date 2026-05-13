@@ -184,13 +184,19 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       return 'ABSENT';
     };
 
-    const getSlotInTimeStatus = (slot: any, slotInTime?: Date, isExtra?: boolean) => {
-      if (slotInTime) return new Date(slotInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const getSlotInTimeStatus = (slot: any, slotInTime?: Date, isExtra?: boolean, branchName?: string) => {
+      if (slotInTime) {
+        const timeStr = new Date(slotInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return branchName ? `${timeStr}, ${branchName}` : timeStr;
+      }
       return getDefaultStatus(slot, isExtra);
     };
 
-    const getSlotOutTimeStatus = (slot: any, slotOutTime?: Date, hasIn?: boolean, isExtra?: boolean) => {
-      if (slotOutTime) return new Date(slotOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const getSlotOutTimeStatus = (slot: any, slotOutTime?: Date, hasIn?: boolean, isExtra?: boolean, branchName?: string) => {
+      if (slotOutTime) {
+        const timeStr = new Date(slotOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return branchName ? `${timeStr}, ${branchName}` : timeStr;
+      }
       if (!slot) return '--';
       if (isExtra) return '--'; // Never display absent/missing on an empty extra slot.
       if (isFutureDay) return '--';
@@ -206,16 +212,16 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       
       let rawIn = att ? att[`inTime${si}`] : null;
       let rawOut = att ? att[`outTime${si}`] : null;
+      let inBranch = att ? att[`inBranch${si}`] : null;
+      let outBranch = att ? att[`outBranch${si}`] : null;
 
       // Legacy fallback injection removed so overall punches no longer pollute Column D if Slot 1 is cleared.
 
       const sIn = rawIn ? new Date(rawIn) : undefined;
       const sOut = rawOut ? new Date(rawOut) : undefined;
 
-      rowData[`s${si}Start`] = slot?.startTime || '--';
-      rowData[`s${si}End`] = slot?.endTime || '--';
-      rowData[`s${si}In`] = getSlotInTimeStatus(slot, sIn, isExtra);
-      rowData[`s${si}Out`] = getSlotOutTimeStatus(slot, sOut, !!sIn, isExtra);
+      rowData[`s${si}In`] = getSlotInTimeStatus(slot, sIn, isExtra, inBranch);
+      rowData[`s${si}Out`] = getSlotOutTimeStatus(slot, sOut, !!sIn, isExtra, outBranch);
 
       let finalLate: any = '--';
       let finalEarly: any = '--';
@@ -307,10 +313,8 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
     slotColumns.push({ header: `${prefix} In`, key: `s${i}In`, width: 15 });
     slotColumns.push({ header: `${prefix} Out`, key: `s${i}Out`, width: 15 });
     
-    // Only show Start/End/Late/Early for regular slots, not extra work slots
+    // Only show Late/Early for regular slots, not extra work slots
     if (!isExtra) {
-      slotColumns.push({ header: `${prefix} Start`, key: `s${i}Start`, width: 12 });
-      slotColumns.push({ header: `${prefix} End`, key: `s${i}End`, width: 12 });
       slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18 });
       slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18 });
     }
@@ -370,4 +374,20 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   totalRow.eachCell((cell) => {
      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
   });
+
+  // Append user's assigned weekly schedule below the grand total
+  ws.addRow([]);
+  ws.addRow([]);
+  const scheduleTitleRow = ws.addRow(['ASSIGNED WEEKLY SCHEDULE']);
+  scheduleTitleRow.font = { bold: true, size: 12, color: { argb: 'FF1976D2' } };
+
+  const daysOfWeek = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+  for (const day of daysOfWeek) {
+    const daySlots = (user.slots || []).filter((s: any) => s.dayOfWeek === day).sort((a: any, b: any) => a.slotNo - b.slotNo);
+    if (daySlots.length > 0) {
+      const scheduleString = daySlots.map((s: any) => `Slot ${s.slotNo}: ${s.startTime} - ${s.endTime}`).join('  |  ');
+      const row = ws.addRow(['', day, scheduleString]);
+      row.getCell(2).font = { bold: true };
+    }
+  }
 };

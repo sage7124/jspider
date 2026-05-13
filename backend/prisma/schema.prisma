@@ -106,10 +106,16 @@ model Attendance {
   // Slot specific punches
   inTime1        DateTime?
   outTime1       DateTime?
+  inBranch1      String?
+  outBranch1     String?
   inTime2        DateTime?
   outTime2       DateTime?
+  inBranch2      String?
+  outBranch2     String?
   inTime3        DateTime?
   outTime3       DateTime?
+  inBranch3      String?
+  outBranch3     String?
   inTime4        DateTime?
   outTime4       DateTime?
   inTime5        DateTime?
@@ -157,6 +163,7 @@ model DropdownOption {
 model BranchLocation {
   id        Int      @id @default(autoincrement())
   name      String   @unique
+  branchCode String?
   lat       Float
   lng       Float
   radius    Int      @default(100)

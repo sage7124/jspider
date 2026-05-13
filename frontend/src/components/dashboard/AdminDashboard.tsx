@@ -1659,7 +1659,7 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
 const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newBranch, setNewBranch] = useState({ name: '', lat: '', lng: '', radius: '100' });
+  const [newBranch, setNewBranch] = useState({ name: '', branchCode: '', lat: '', lng: '', radius: '100' });
   const [passwords, setPasswords] = useState({ current: '', new: '' });
   const [activeTab, setActiveTab] = useState<'gps' | 'password'>('gps');
   const [saving, setSaving] = useState(false);
@@ -1686,7 +1686,7 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
       await axios.post(`${API}/branches`, newBranch, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
-      setNewBranch({ name: '', lat: '', lng: '', radius: '100' });
+      setNewBranch({ name: '', branchCode: '', lat: '', lng: '', radius: '100' });
       await fetchBranches();
     } catch (e) {
       alert('Failed to add branch');
@@ -1706,7 +1706,7 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   };
 
   const loadBranchToEdit = (b: any) => {
-    setNewBranch({ name: b.name, lat: b.lat.toString(), lng: b.lng.toString(), radius: b.radius.toString() });
+    setNewBranch({ name: b.name, branchCode: b.branchCode || '', lat: b.lat.toString(), lng: b.lng.toString(), radius: b.radius.toString() });
     // Scroll slightly to give feedback
     document.getElementById('new-branch-form-header')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -1730,7 +1730,7 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
         <div className="flex border-b mb-4 flex-shrink-0">
-          <button onClick={() => setActiveTab('gps')} className={`flex-1 py-2 font-bold ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Dynamic Locations</button>
+          <button onClick={() => setActiveTab('gps')} className={`flex-1 py-2 font-bold ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Add GPS Location</button>
           <button onClick={() => setActiveTab('password')} className={`flex-1 py-2 font-bold ${activeTab === 'password' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Change Password</button>
         </div>
 
@@ -1747,7 +1747,7 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                     {branches.map((b) => (
                       <div key={b.id} className="flex justify-between items-center p-3 bg-blue-50 border border-blue-100 rounded-lg shadow-sm hover:bg-blue-100 transition-colors group">
                         <div>
-                          <p className="font-extrabold text-blue-800 text-sm">{b.name}</p>
+                          <p className="font-extrabold text-blue-800 text-sm">{b.name} {b.branchCode ? `(${b.branchCode})` : ''}</p>
                           <p className="text-[10px] text-blue-600/70 font-mono">{b.lat}, {b.lng} (Radius: {b.radius}m)</p>
                         </div>
                         <div className="flex items-center gap-1">
@@ -1781,9 +1781,15 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                   {newBranch.name && <span className="text-[9px] bg-emerald-200 px-1.5 py-0.5 rounded animate-pulse text-emerald-800">Editing Mode</span>}
                 </h4>
                 <div className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Branch Name</label>
-                    <input value={newBranch.name} onChange={e => setNewBranch({...newBranch, name: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-bold text-gray-700" placeholder="e.g., INDIRANAGAR" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Branch Name</label>
+                      <input value={newBranch.name} onChange={e => setNewBranch({...newBranch, name: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-bold text-gray-700" placeholder="e.g., INDIRANAGAR" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Branch Code</label>
+                      <input value={newBranch.branchCode} onChange={e => setNewBranch({...newBranch, branchCode: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-bold text-gray-700 uppercase" placeholder="e.g., IND-01" />
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3">
