@@ -1033,7 +1033,7 @@ const AdminDashboard: React.FC = () => {
           </button>
           <button onClick={() => setShowSettings(true)}
             className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
-            Settings
+            Add GPS Location
           </button>
           <button onClick={() => setShowDownload(true)}
             className="flex items-center gap-2 bg-[#1976D2] hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
