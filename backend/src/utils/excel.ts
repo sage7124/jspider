@@ -300,7 +300,6 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   const hasExtraSlots = assignedSlotNos.some(n => n > 3);
 
   const baseColumns = [
-    { header: 'Sl No', key: 'slNo', width: 8 },
     { header: 'Day', key: 'day', width: 12 },
     { header: 'Date', key: 'date', width: 15 },
   ];
@@ -349,10 +348,24 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   headerRow.values = allColumns.map(c => c.header);
   headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   
-  // Style regular slots different from extra slots in the header for visual delight
+  // Define color-coded theme mapping for the header row columns
   headerRow.eachCell((cell, colNum) => {
     const headerName = allColumns[colNum - 1]?.header || '';
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerName.includes('EXTRA') ? 'FFEA580C' : 'FF1976D2' } };
+    let color = 'FF475569'; // Standard Slate Grey for Day & Date
+
+    if (headerName.includes('Slot 1') || headerName.includes('S1 ')) {
+      color = 'FF1E3A8A'; // Navy Blue for Slot 1
+    } else if (headerName.includes('Slot 2') || headerName.includes('S2 ')) {
+      color = 'FF047857'; // Emerald/Teal for Slot 2
+    } else if (headerName.includes('Slot 3') || headerName.includes('S3 ')) {
+      color = 'FF6D28D9'; // Deep Purple for Slot 3
+    } else if (headerName.includes('Total')) {
+      color = 'FFBE123C'; // Crimson Red for Grand Totals
+    } else if (headerName.includes('EXTRA')) {
+      color = 'FFEA580C'; // Orange for any remaining Extra tasks
+    }
+
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
   });
 
   const reportData = getTraineeReportData(user, attendances, year, mon, daysInMonth, holidays, leaves);
@@ -362,7 +375,7 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   }
 
   const totalRowData: any = {
-    slNo: 'GRAND TOTAL',
+    day: 'GRAND TOTAL',
     late: reportData.totals.late,
     earlyDeparture: reportData.totals.earlyDeparture,
   };
