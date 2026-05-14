@@ -77,15 +77,26 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const isMobile = platform === 'mobile';
-    const currentLockedId = isMobile ? user.mobileDeviceId : user.desktopDeviceId;
+    // ── Master Kiosk Bypass ─────────────────────────────────────────────────
+    // Check if the trainee is punching from an officially whitelisted reception kiosk PC/Tablet
+    const isKioskDevice = await prisma.branchLocation.findFirst({
+      where: { kioskDeviceId: deviceId }
+    });
 
-    if (!currentLockedId) {
-      return res.status(403).json({ error: `This ${platform} device is not registered to your account. Please logout and login again.` });
-    }
+    if (isKioskDevice) {
+      console.log(`[Punch] Trusted Master Kiosk detected (${isKioskDevice.name}). Device lock bypassed.`);
+    } else {
+      // Proceed with standard strict single-device hardware checks
+      const isMobile = platform === 'mobile';
+      const currentLockedId = isMobile ? user.mobileDeviceId : user.desktopDeviceId;
 
-    if (deviceId !== currentLockedId) {
-      return res.status(403).json({ error: `Attendance can only be marked from your registered ${platform}.` });
+      if (!currentLockedId) {
+        return res.status(403).json({ error: `This ${platform} device is not registered to your account. Please logout and login again.` });
+      }
+
+      if (deviceId !== currentLockedId) {
+        return res.status(403).json({ error: `Attendance can only be marked from your registered ${platform}.` });
+      }
     }
 
     // 🚀 Dynamic Geofence Check for INFINITE LOCATIONS
