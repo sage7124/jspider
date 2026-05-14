@@ -1663,6 +1663,17 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const [passwords, setPasswords] = useState({ current: '', new: '' });
   const [activeTab, setActiveTab] = useState<'gps' | 'password'>('gps');
   const [saving, setSaving] = useState(false);
+  const [assigningKiosk, setAssigningKiosk] = useState<number | null>(null);
+
+  // Ensure a stable device fingerprint is accessible
+  useEffect(() => {
+    let devId = localStorage.getItem('deviceId');
+    if (!devId) {
+      devId = crypto.randomUUID();
+      localStorage.setItem('deviceId', devId);
+    }
+  }, []);
+
 
   useEffect(() => {
     fetchBranches();
@@ -1705,6 +1716,45 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const assignCurrentAsKiosk = async (branchId: number) => {
+    try {
+      let deviceId = localStorage.getItem('deviceId');
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem('deviceId', deviceId);
+      }
+      setAssigningKiosk(branchId);
+      const res = await axios.post(`${API}/branches/${branchId}/kiosk`, { deviceId }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      alert(res.data.message || 'Central device assigned successfully!');
+      await fetchBranches();
+    } catch (e: any) {
+      console.error(e);
+      alert(e.response?.data?.error || 'Failed to assign this device as the kiosk.');
+    } finally {
+      setAssigningKiosk(null);
+    }
+  };
+
+  const removeKiosk = async (branchId: number) => {
+    if (!window.confirm('Revoke the configured central kiosk from this branch? Any students logging in from that hardware will revert to strict personal device lockouts.')) return;
+    try {
+      setAssigningKiosk(branchId);
+      await axios.delete(`${API}/branches/${branchId}/kiosk`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      alert('Center kiosk cleared successfully.');
+      await fetchBranches();
+    } catch (e: any) {
+      console.error(e);
+      alert('Failed to revoke central device assignment.');
+    } finally {
+      setAssigningKiosk(null);
+    }
+  };
+
+
   const loadBranchToEdit = (b: any) => {
     setNewBranch({ name: b.name, branchCode: b.branchCode || '', lat: b.lat.toString(), lng: b.lng.toString(), radius: b.radius.toString() });
     // Scroll slightly to give feedback
@@ -1745,30 +1795,67 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                 ) : (
                   <div className="space-y-2">
                     {branches.map((b) => (
-                      <div key={b.id} className="flex justify-between items-center p-3 bg-blue-50 border border-blue-100 rounded-lg shadow-sm hover:bg-blue-100 transition-colors group">
-                        <div>
-                          <p className="font-extrabold text-blue-800 text-sm">{b.name} {b.branchCode ? `(${b.branchCode})` : ''}</p>
-                          <p className="text-[10px] text-blue-600/70 font-mono">{b.lat}, {b.lng} (Radius: {b.radius}m)</p>
+                      <div key={b.id} className="flex flex-col gap-2 p-3 bg-blue-50 border border-blue-100 rounded-lg shadow-sm hover:bg-blue-100/70 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="font-extrabold text-blue-800 text-sm">{b.name} {b.branchCode ? `(${b.branchCode})` : ''}</p>
+                            <p className="text-[10px] text-blue-600/70 font-mono">{b.lat}, {b.lng} (Radius: {b.radius}m)</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button 
+                              onClick={() => loadBranchToEdit(b)}
+                              className="text-blue-600 hover:text-blue-800 p-1.5 bg-white/50 hover:bg-blue-100 rounded transition-all border border-blue-100"
+                              title="Edit Branch"
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              onClick={() => deleteBranch(b.id)}
+                              className="text-red-400 hover:text-red-700 p-1.5 bg-white/50 hover:bg-red-50 rounded transition-all border border-red-100"
+                              title="Delete Branch"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <button 
-                            onClick={() => loadBranchToEdit(b)}
-                            className="text-blue-600 hover:text-blue-800 p-1.5 bg-white/50 hover:bg-blue-100 rounded transition-all border border-blue-100"
-                            title="Edit Branch"
-                          >
-                            ✏️
-                          </button>
-                          <button 
-                            onClick={() => deleteBranch(b.id)}
-                            className="text-red-400 hover:text-red-700 p-1.5 bg-white/50 hover:bg-red-50 rounded transition-all border border-red-100"
-                            title="Delete Branch"
-                          >
-                            🗑️
-                          </button>
+
+                        {/* Central Kiosk Mode Row */}
+                        <div className="mt-1 pt-2 border-t border-blue-200/50 flex items-center justify-between bg-white/30 px-2 py-1 rounded">
+                          <span className="text-[9px] font-extrabold text-blue-900/60 uppercase tracking-wider flex items-center gap-1">
+                            🖥️ Kiosk Device
+                          </span>
+                          {b.kioskDeviceId ? (
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[9px] px-2 py-0.5 rounded font-black uppercase tracking-tighter ${
+                                b.kioskDeviceId === localStorage.getItem('deviceId') 
+                                  ? 'bg-emerald-200 text-emerald-900 border border-emerald-300' 
+                                  : 'bg-slate-200 text-slate-700 border border-slate-300'
+                              }`}>
+                                {b.kioskDeviceId === localStorage.getItem('deviceId') ? '✅ THIS DEVICE' : '🔒 CONFIGURED'}
+                              </span>
+                              <button 
+                                onClick={() => removeKiosk(b.id)} 
+                                disabled={assigningKiosk !== null}
+                                className="text-[9px] font-black text-red-600 hover:text-red-800 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded tracking-tight uppercase active:scale-95 transition-all disabled:opacity-50"
+                                title="Revoke device bypass whitelist"
+                              >
+                                {assigningKiosk === b.id ? '...' : 'Revoke'}
+                              </button>
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => assignCurrentAsKiosk(b.id)} 
+                              disabled={assigningKiosk !== null}
+                              className="text-[9px] font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded uppercase tracking-tight shadow-sm active:scale-95 transition-all disabled:opacity-50"
+                            >
+                              {assigningKiosk === b.id ? 'Saving...' : '🔗 Assign This Device'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
+
                 )}
               </div>
 

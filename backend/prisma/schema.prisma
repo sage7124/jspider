@@ -164,6 +164,7 @@ model BranchLocation {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   branchCode String?
+  kioskDeviceId String? @unique
   lat       Float
   lng       Float
   radius    Int      @default(100)

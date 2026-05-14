@@ -1503,6 +1503,56 @@ router.delete('/branches/:id', async (req: AuthRequest, res) => {
   }
 });
 
+// ── Master Kiosk Device Endpoints ─────────────────────────────────────────────
+router.post('/branches/:id/kiosk', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { deviceId } = req.body;
+    if (!deviceId) return res.status(400).json({ error: 'Device fingerprint ID is required' });
+
+    // 1. Enforce global uniqueness safety check
+    const existingAssignment = await prisma.branchLocation.findFirst({
+      where: { kioskDeviceId: deviceId }
+    });
+
+    if (existingAssignment) {
+      if (existingAssignment.id === Number(id)) {
+        return res.json({ message: 'This device is already configured as the kiosk for this center.', branch: existingAssignment });
+      } else {
+        return res.status(400).json({ 
+          error: `Action Blocked: This device is already allocated to the "${existingAssignment.name}" branch.` 
+        });
+      }
+    }
+
+    // 2. Success path: update the specific branch's whitelist
+    const updatedBranch = await prisma.branchLocation.update({
+      where: { id: Number(id) },
+      data: { kioskDeviceId: deviceId }
+    });
+
+    res.json({ message: 'Device successfully assigned as the center kiosk!', branch: updatedBranch });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/branches/:id/kiosk', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.branchLocation.update({
+      where: { id: Number(id) },
+      data: { kioskDeviceId: null }
+    });
+    res.json({ message: 'Center kiosk device successfully revoked and cleared.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
 router.post('/sync-sister-permanent', async (req: AuthRequest, res) => {
   try {
     const now = new Date();

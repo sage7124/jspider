@@ -91,8 +91,22 @@ router.post('/login', async (req, res) => {
 
     // Device Locking Logic for Trainees
     if (role === 'TRAINEE' && deviceId) {
-      const isMobile = platform === 'mobile';
-      const currentLockedId = isMobile ? user.mobileDeviceId : user.desktopDeviceId;
+      // ── Master Kiosk Bypass ─────────────────────────────────────────────────
+      // Check if the user is logging in from an officially whitelisted reception kiosk PC/Tablet
+      const isKioskDevice = await prisma.branchLocation.findFirst({
+        where: { kioskDeviceId: deviceId }
+      });
+
+      if (isKioskDevice) {
+        // It is a trusted central kiosk! Bypass all user-device fingerprint binds, 
+        // allowing unrestricted logins from this physical device WITHOUT altering 
+        // the student's personal device configuration.
+        console.log(`[Login] Trusted Master Kiosk detected (${isKioskDevice.name}). Locking bypassed.`);
+      } else {
+        // Proceed with standard strict single-device binding anti-cheat
+        const isMobile = platform === 'mobile';
+        const currentLockedId = isMobile ? user.mobileDeviceId : user.desktopDeviceId;
+
 
       if (!currentLockedId) {
         // Check if this deviceId is already taken by ANY OTHER user
@@ -117,10 +131,11 @@ router.post('/login', async (req, res) => {
           where: { id: user.id },
           data: isMobile ? { mobileDeviceId: deviceId } : { desktopDeviceId: deviceId }
         });
-      } else if (currentLockedId !== deviceId) {
-        return res.status(403).json({ 
-          error: `This account is locked to another ${platform} device. Please contact Admin to reset.` 
-        });
+        } else if (currentLockedId !== deviceId) {
+          return res.status(403).json({ 
+            error: `This account is locked to another ${platform} device. Please contact Admin to reset.` 
+          });
+        }
       }
     }
 
