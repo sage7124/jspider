@@ -2891,6 +2891,22 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
   const [editNoticeId, setEditNoticeId] = useState<number | null>(null);
   const [noticeTab, setNoticeTab] = useState<'active' | 'previous'>('active');
 
+  const getCombinedTarget = () => {
+    if (userId) return `USER:${userId}`;
+    return `GROUP:${targetGroup || 'ALL'}`;
+  };
+
+  const handleCombinedTargetChange = (val: string) => {
+    if (val.startsWith('GROUP:')) {
+      setTargetGroup(val.split(':')[1]);
+      setUserId('');
+    } else if (val.startsWith('USER:')) {
+      setUserId(val.split(':')[1]);
+      // Ensure backend respects userId override by resetting group context or leaving standard
+      setTargetGroup('ALL'); 
+    }
+  };
+
   const todayStr = new Date().toISOString().split('T')[0];
   const activeNotices = notices.filter(n => n.toDate.split('T')[0] >= todayStr);
   const previousNotices = notices.filter(n => n.toDate.split('T')[0] < todayStr);
@@ -2986,24 +3002,24 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
                   <input type="date" required className="w-full border p-2 rounded" value={toDate} onChange={e => setToDate(e.target.value)} />
                 </div>
               </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Target Group Audience</label>
-                  <select className="w-full border p-2 rounded text-sm bg-amber-50/30" value={targetGroup} onChange={e => setTargetGroup(e.target.value)} disabled={!!userId}>
-                    <option value="ALL">🌍 EVERYONE (Admin, Supervisor, Trainee)</option>
-                    <option value="SUPERVISOR">👥 ALL SUPERVISORS</option>
-                    <option value="TRAINEE">🎓 ALL NICTIANS (Trainees)</option>
-                  </select>
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Specific Target NICTian (Overrides Group)</label>
-                  <select className="w-full border p-2 rounded text-sm" value={userId} onChange={e => setUserId(e.target.value)}>
-                    <option value="">Group Selected Above</option>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Select Target Audience</label>
+                <select 
+                  className="w-full border p-2.5 rounded text-sm bg-white focus:border-teal-500 font-semibold" 
+                  value={getCombinedTarget()} 
+                  onChange={e => handleCombinedTargetChange(e.target.value)}
+                >
+                  <optgroup label="📢 BROADCAST GROUPS">
+                    <option value="GROUP:ALL">🌍 EVERYONE (Admin, Supervisor, Trainees)</option>
+                    <option value="GROUP:SUPERVISOR">👥 ALL SUPERVISORS</option>
+                    <option value="GROUP:TRAINEE">🎓 ALL NICTIANS (Trainees)</option>
+                  </optgroup>
+                  <optgroup label="👤 SPECIFIC INDIVIDUALS">
                     {trainees.map(t => (
-                      <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
+                      <option key={t.id} value={`USER:${t.id}`}>👤 {t.name} ({t.empCode})</option>
                     ))}
-                  </select>
-                </div>
+                  </optgroup>
+                </select>
               </div>
               <div className="flex gap-2 mt-2">
                 <button type="submit" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded transition-colors">
