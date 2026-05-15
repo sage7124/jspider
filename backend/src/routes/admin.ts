@@ -1403,7 +1403,7 @@ router.post('/supervisors', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Unauthorised: Only a Super Admin can provision new Supervisor privileges.' });
     }
 
-    const { fullName, mobile, password, email } = req.body;
+    const { fullName, mobile, password, email, permissions } = req.body;
     if (!fullName || !mobile || !password) {
       return res.status(400).json({ error: 'Full Name, Mobile Number, and Password are required placeholders.' });
     }
@@ -1425,6 +1425,11 @@ router.post('/supervisors', async (req: AuthRequest, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // If provided as an array, join to string. Default is fallback.
+    const permsStr = Array.isArray(permissions) 
+      ? permissions.join(',') 
+      : (typeof permissions === 'string' ? permissions : "RESET_PASSWORD,DIRECT_LEAVE,DOWNLOAD_REPORT");
+
     const supervisorUser = await prisma.user.create({
       data: {
         role: 'SUPERVISOR',
@@ -1432,7 +1437,8 @@ router.post('/supervisors', async (req: AuthRequest, res) => {
         identifier: mobile,
         email: email || null,
         password: hashedPassword,
-        isApproved: true // Supervisor accounts bypass manual onboarding approval pipelines!
+        isApproved: true, // Supervisor accounts bypass manual onboarding approval pipelines!
+        permissions: permsStr
       }
     });
 
@@ -1458,7 +1464,7 @@ router.get('/supervisors', async (req: AuthRequest, res) => {
     }
     const listing = await prisma.user.findMany({
       where: { role: 'SUPERVISOR' },
-      select: { id: true, fullName: true, identifier: true, email: true, createdAt: true },
+      select: { id: true, fullName: true, identifier: true, email: true, createdAt: true, permissions: true },
       orderBy: { createdAt: 'desc' }
     });
     res.json(listing);

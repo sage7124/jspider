@@ -901,6 +901,26 @@ interface AdminDashboardProps {
 }
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [myPermissions, setMyPermissions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      try {
+        const parsed = JSON.parse(userData);
+        if (parsed.permissions) {
+          setMyPermissions(parsed.permissions.split(','));
+        }
+      } catch (e) {
+        console.error('Failed to parse user permissions', e);
+      }
+    }
+  }, []);
+
+  const hasPermission = (perm: string) => {
+    if (role === 'ADMIN') return true;
+    return myPermissions.includes(perm);
+  };
   const [pendingCount, setPendingCount] = useState(0);
   const [qrToken, setQrToken] = useState('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
   const [search, setSearch] = useState('');
@@ -1011,7 +1031,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
-          {role !== 'SUPERVISOR' && (
+          {hasPermission('GEOLOCATION') && (
             <div className="bg-white p-3 rounded shadow-sm border border-blue-100 flex items-center gap-3">
               <MapPin className="text-blue-600" size={24} />
               <div>
@@ -1024,13 +1044,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
             className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-medium transition-colors">
             Leaves
           </button>
-          {role !== 'SUPERVISOR' && (
+          {hasPermission('HOLIDAYS') && (
             <button onClick={() => setShowHolidays(true)}
               className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded font-medium transition-colors">
               Holidays
             </button>
           )}
-          {role !== 'SUPERVISOR' && (
+          {hasPermission('NOTICES') && (
             <button onClick={() => setShowNotices(true)}
               className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded font-medium transition-colors">
               Notices
@@ -1040,7 +1060,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
             <Calendar size={18} /> Daily Report
           </button>
-          {role !== 'SUPERVISOR' && (
+          {hasPermission('GPS_LOCATION') && (
             <button onClick={() => setShowSettings(true)}
               className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
               Add GPS Location
@@ -1117,16 +1137,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
                 <td className="px-4 py-4 font-medium">{t.out}</td>
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-center gap-2">
-                    {role !== 'SUPERVISOR' && <button onClick={() => setViewOnboardingUser(t)} className="text-purple-600 hover:text-purple-800 transition-colors" title="View Onboarding Profile"><User size={16} /></button>}
-                    {role !== 'SUPERVISOR' && <button onClick={() => setEditUser(t)} className="text-emerald-600 hover:text-emerald-800 transition-colors" title="Edit User Info"><Edit size={16} /></button>}
-                    {role !== 'SUPERVISOR' && <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots"><Clock size={16} /></button>}
-                    <button onClick={() => setResetUser(t)} className="text-yellow-600 hover:text-yellow-800 transition-colors" title="Reset Password"><Key size={16} /></button>
-                    {role !== 'SUPERVISOR' && <button onClick={() => setManualPunchUser(t)} className="text-orange-600 hover:text-orange-800 transition-colors" title="Manual Attendance"><Clock size={16} /></button>}
-                    <button onClick={() => setDirectLeaveUser(t)} className="text-indigo-600 hover:text-indigo-800 transition-colors" title="Direct Leave"><Calendar size={16} /></button>
-                    {role !== 'SUPERVISOR' && <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>}
-                    {role !== 'SUPERVISOR' && <button onClick={() => setViewDetailUser(t)} className="text-pink-600 hover:text-pink-800 transition-colors" title="View Slot Statuses"><Eye size={16} /></button>}
-                    <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>
-                    {role !== 'SUPERVISOR' && (
+                    {hasPermission('VIEW_PROFILE') && <button onClick={() => setViewOnboardingUser(t)} className="text-purple-600 hover:text-purple-800 transition-colors" title="View Onboarding Profile"><User size={16} /></button>}
+                    {hasPermission('EDIT_USER') && <button onClick={() => setEditUser(t)} className="text-emerald-600 hover:text-emerald-800 transition-colors" title="Edit User Info"><Edit size={16} /></button>}
+                    {hasPermission('UPDATE_SLOTS') && <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots"><Clock size={16} /></button>}
+                    {hasPermission('RESET_PASSWORD') && <button onClick={() => setResetUser(t)} className="text-yellow-600 hover:text-yellow-800 transition-colors" title="Reset Password"><Key size={16} /></button>}
+                    {hasPermission('MANUAL_ATTENDANCE') && <button onClick={() => setManualPunchUser(t)} className="text-orange-600 hover:text-orange-800 transition-colors" title="Manual Attendance"><Clock size={16} /></button>}
+                    {hasPermission('DIRECT_LEAVE') && <button onClick={() => setDirectLeaveUser(t)} className="text-indigo-600 hover:text-indigo-800 transition-colors" title="Direct Leave"><Calendar size={16} /></button>}
+                    {hasPermission('DELETE_USER') && <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>}
+                    {hasPermission('VIEW_SLOT_STATUS') && <button onClick={() => setViewDetailUser(t)} className="text-pink-600 hover:text-pink-800 transition-colors" title="View Slot Statuses"><Eye size={16} /></button>}
+                    {hasPermission('DOWNLOAD_REPORT') && <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>}
+                    {hasPermission('FORCE_LOGOUT') && (
                       <button onClick={async () => {
                         if(!confirm('Force Punch Out for this user?')) return;
                         const token = localStorage.getItem('token');
@@ -1681,6 +1701,14 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   // Supervisor Account Provisioning States
   const [supervisors, setSupervisors] = useState<any[]>([]);
   const [supForm, setSupForm] = useState({ fullName: '', mobile: '', password: '', email: '' });
+  const [selectedPerms, setSelectedPerms] = useState<string[]>(["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
+
+  const togglePerm = (perm: string) => {
+    if (["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"].includes(perm)) return;
+    setSelectedPerms(prev => 
+      prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
+    );
+  };
 
   // Ensure a stable device fingerprint is accessible
   useEffect(() => {
@@ -1711,11 +1739,12 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
     if (!supForm.fullName || !supForm.mobile || !supForm.password) return alert('Required fields missing.');
     setSaving(true);
     try {
-      await axios.post(`${API}/supervisors`, supForm, {
+      await axios.post(`${API}/supervisors`, { ...supForm, permissions: selectedPerms }, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       alert('🎉 Supervisor identity created and activated successfully!');
       setSupForm({ fullName: '', mobile: '', password: '', email: '' });
+      setSelectedPerms(["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
       fetchSupervisors();
     } catch (err: any) {
       alert(err.response?.data?.error || 'Supervisor creation aborted.');
@@ -2033,6 +2062,39 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                         onChange={e => setSupForm({...supForm, email: e.target.value})} 
                         className="w-full border border-blue-100 rounded px-2.5 py-2 bg-white text-xs outline-none focus:border-blue-400" 
                         placeholder="abc@domain.com" />
+                    </div>
+                  </div>
+
+                  <div className="py-1">
+                    <label className="block text-[9px] font-black text-blue-600 mb-2 uppercase tracking-wider">Configure Dynamic Clearance Access</label>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-white p-3 rounded border border-blue-100 max-h-48 overflow-y-auto shadow-inner">
+                      {[
+                        { id: 'RESET_PASSWORD', label: '🔑 Reset Password', core: true },
+                        { id: 'DIRECT_LEAVE', label: '📅 Direct Leave', core: true },
+                        { id: 'DOWNLOAD_REPORT', label: '📊 Download Report', core: true },
+                        { id: 'VIEW_PROFILE', label: '👤 View User Profile', core: false },
+                        { id: 'EDIT_USER', label: '✏️ Edit User Info', core: false },
+                        { id: 'UPDATE_SLOTS', label: '🕒 Manage Slots', core: false },
+                        { id: 'MANUAL_ATTENDANCE', label: '⏰ Manual Punch', core: false },
+                        { id: 'DELETE_USER', label: '🗑️ Delete Users', core: false },
+                        { id: 'VIEW_SLOT_STATUS', label: '👁️ View Slot Status', core: false },
+                        { id: 'FORCE_LOGOUT', label: '🚪 Force Logout', core: false },
+                        { id: 'GEOLOCATION', label: '📍 Geofence Status', core: false },
+                        { id: 'HOLIDAYS', label: '🌴 Manage Holidays', core: false },
+                        { id: 'NOTICES', label: '📢 Manage Notices', core: false },
+                        { id: 'GPS_LOCATION', label: '📡 Branch GPS Config', core: false },
+                      ].map(p => (
+                        <label key={p.id} className={`flex items-center gap-2 cursor-pointer text-[10px] font-bold select-none ${p.core ? 'text-gray-400' : 'text-gray-700 hover:text-blue-700'}`}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedPerms.includes(p.id)} 
+                            disabled={p.core} 
+                            onChange={() => togglePerm(p.id)}
+                            className="accent-blue-600 w-3 h-3 rounded"
+                          />
+                          <span className="truncate">{p.label} {p.core && <span className="text-[7px] text-blue-500 bg-blue-50 px-1 rounded font-black">CORE</span>}</span>
+                        </label>
+                      ))}
                     </div>
                   </div>
 
@@ -2878,22 +2940,24 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
                   <input type="date" required className="w-full border p-2 rounded" value={toDate} onChange={e => setToDate(e.target.value)} />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Target Group Audience</label>
-                <select className="w-full border p-2 rounded text-sm bg-amber-50/30" value={targetGroup} onChange={e => setTargetGroup(e.target.value)} disabled={!!userId}>
-                  <option value="ALL">🌍 EVERYONE (Admin, Supervisor, Trainee)</option>
-                  <option value="SUPERVISOR">👥 ALL SUPERVISORS</option>
-                  <option value="TRAINEE">🎓 ALL NICTIANS (Trainees)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Specific Target NICTian (Overrides Group)</label>
-                <select className="w-full border p-2 rounded text-sm" value={userId} onChange={e => setUserId(e.target.value)}>
-                  <option value="">Group Selected Above</option>
-                  {trainees.map(t => (
-                    <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
-                  ))}
-                </select>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Target Group Audience</label>
+                  <select className="w-full border p-2 rounded text-sm bg-amber-50/30" value={targetGroup} onChange={e => setTargetGroup(e.target.value)} disabled={!!userId}>
+                    <option value="ALL">🌍 EVERYONE (Admin, Supervisor, Trainee)</option>
+                    <option value="SUPERVISOR">👥 ALL SUPERVISORS</option>
+                    <option value="TRAINEE">🎓 ALL NICTIANS (Trainees)</option>
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Specific Target NICTian (Overrides Group)</label>
+                  <select className="w-full border p-2 rounded text-sm" value={userId} onChange={e => setUserId(e.target.value)}>
+                    <option value="">Group Selected Above</option>
+                    {trainees.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="flex gap-2 mt-2">
                 <button type="submit" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded transition-colors">

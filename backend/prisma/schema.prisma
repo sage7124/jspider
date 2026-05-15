@@ -54,6 +54,8 @@ model User {
   educationCompleted     String?
   subClassification      String?
   
+  permissions            String       @default("RESET_PASSWORD,DIRECT_LEAVE,DOWNLOAD_REPORT")
+  
   slots          Slot[]       // Slots assigned to this trainee
   attendances    Attendance[]
   leaveRequests  LeaveRequest[]
