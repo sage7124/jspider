@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 
 interface LoginFormProps {
-  role: 'NICTIANS' | 'ADMIN';
+  role: 'NICTIANS' | 'ADMIN' | 'SUPERVISOR';
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
@@ -20,8 +20,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
     setError('');
     setLoading(true);
     try {
-      // Map NICTIANS tab → TRAINEE role for backend
-      const backendRole = role === 'NICTIANS' ? 'TRAINEE' : 'ADMIN';
+      // Map tab selection to target backend identity role
+      const backendRole = 
+        role === 'NICTIANS' ? 'TRAINEE' : 
+        role === 'SUPERVISOR' ? 'SUPERVISOR' : 'ADMIN';
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
       // Device Locking Logic
@@ -54,8 +56,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ role }) => {
       {error && <div className="text-red-500 text-sm text-center">{error}</div>}
       <div>
         <input
-          type={role === 'ADMIN' ? "text" : "text"}
-          placeholder={role === 'ADMIN' ? "Mobile No." : "Mobile Number"}
+          type="text"
+          placeholder={
+            role === 'ADMIN' ? "Mobile No." : 
+            role === 'SUPERVISOR' ? "Supervisor Mobile / ID" : "Mobile Number"
+          }
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
           className="w-full px-4 py-3 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1976D2] focus:border-transparent"

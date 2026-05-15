@@ -131,7 +131,41 @@ router.post('/external-monthly-data', verifyCrossSecret, async (req, res) => {
 
 // ── Standard Secured API Endpoints (Require JWT & Admin Privileges) ──────────
 router.use(authenticateToken);
-router.use(requireAdmin);
+// ── Dynamic Multi-Role Sandboxed Access Control Middleware ──────────────────
+router.use((req: AuthRequest, res, next) => {
+  const role = req.user?.role;
+  if (role === 'ADMIN') {
+    return next(); // Super Admin has full absolute system-level read/write access
+  }
+  
+  if (role === 'SUPERVISOR') {
+    // The Supervisor only gets access to specific operational pathways:
+    // 1. View trainees & attendance records
+    // 2. View, generate and download monthly reports
+    // 3. Reset student passwords
+    // 4. Direct, Process and Approve leave requests
+    // 5. Create, view and delete notices (targeted announcements)
+    const path = req.path.toLowerCase();
+    const allowedPrefixes = [
+      '/attendance',
+      '/reports',
+      '/change-password',
+      '/leaves',
+      '/notices'
+    ];
+    
+    const isAllowed = allowedPrefixes.some(p => path.startsWith(p));
+    if (isAllowed) {
+      return next();
+    }
+    
+    return res.status(403).json({ 
+      error: 'Access Denied: Supervisors are restricted to Leaves, Reports, Password Resets, and Notices management only.' 
+    });
+  }
+  
+  return res.status(403).json({ error: 'Admin access required' });
+});
 
 // ── Cross-Institute Fetcher & Merger Helpers ─────────────────────────────────────
 async function fetchSisterReportData(identifier: string, month: any, year: any) {
@@ -1329,7 +1363,7 @@ router.get('/notices', async (req: AuthRequest, res) => {
 
 router.post('/notices', async (req: AuthRequest, res) => {
   try {
-    const { message, fromDate, toDate, userId } = req.body;
+    const { message, fromDate, toDate, userId, targetGroup } = req.body;
     if (!message || !fromDate || !toDate) {
       return res.status(400).json({ error: 'Message, fromDate, and toDate are required' });
     }
@@ -1339,7 +1373,8 @@ router.post('/notices', async (req: AuthRequest, res) => {
         message,
         fromDate: new Date(fromDate),
         toDate: new Date(toDate),
-        userId: userId ? Number(userId) : null
+        userId: userId ? Number(userId) : null,
+        targetGroup: targetGroup || 'ALL'
       },
       include: { user: { select: { fullName: true, identifier: true } } }
     });
@@ -1357,6 +1392,91 @@ router.delete('/notices/:id', async (req: AuthRequest, res) => {
     res.json({ message: 'Notice deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Supervisor Account Provisioning Endpoints (Locked strictly to super ADMIN) ─
+router.post('/supervisors', async (req: AuthRequest, res) => {
+  try {
+    // Strict secondary assurance block: only fully authenticated Super Admins can build Supervisor identities!
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Unauthorised: Only a Super Admin can provision new Supervisor privileges.' });
+    }
+
+    const { fullName, mobile, password, email } = req.body;
+    if (!fullName || !mobile || !password) {
+      return res.status(400).json({ error: 'Full Name, Mobile Number, and Password are required placeholders.' });
+    }
+
+    // Check for pre-existing collision
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { identifier: mobile },
+          email ? { email } : { id: -1 }
+        ]
+      }
+    });
+
+    if (existing) {
+      return res.status(400).json({ error: 'Account Conflict: A user already exists bearing that exact identifier or email.' });
+    }
+
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const supervisorUser = await prisma.user.create({
+      data: {
+        role: 'SUPERVISOR',
+        fullName,
+        identifier: mobile,
+        email: email || null,
+        password: hashedPassword,
+        isApproved: true // Supervisor accounts bypass manual onboarding approval pipelines!
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Supervisor provisions established successfully.',
+      user: {
+        id: supervisorUser.id,
+        fullName: supervisorUser.fullName,
+        identifier: supervisorUser.identifier
+      }
+    });
+  } catch (err: any) {
+    console.error('[Supervisor-Creation-Error]', err);
+    res.status(500).json({ error: 'Internal dynamic system error establishing supervisor context.' });
+  }
+});
+
+router.get('/supervisors', async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin visibility permissions required.' });
+    }
+    const listing = await prisma.user.findMany({
+      where: { role: 'SUPERVISOR' },
+      select: { id: true, fullName: true, identifier: true, email: true, createdAt: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(listing);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Internal listing fetcher fault.' });
+  }
+});
+
+router.delete('/supervisors/:id', async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Administrative destructive action limits reached.' });
+    }
+    const { id } = req.params;
+    await prisma.user.delete({ where: { id: Number(id) } });
+    res.json({ success: true, message: 'Supervisor authority credentials revoked and erased.' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Erase execution failure.' });
   }
 });
 

@@ -1661,9 +1661,13 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const [loading, setLoading] = useState(true);
   const [newBranch, setNewBranch] = useState({ name: '', branchCode: '', lat: '', lng: '', radius: '100' });
   const [passwords, setPasswords] = useState({ current: '', new: '' });
-  const [activeTab, setActiveTab] = useState<'gps' | 'password'>('gps');
+  const [activeTab, setActiveTab] = useState<'gps' | 'password' | 'supervisors'>('gps');
   const [saving, setSaving] = useState(false);
   const [assigningKiosk, setAssigningKiosk] = useState<number | null>(null);
+
+  // Supervisor Account Provisioning States
+  const [supervisors, setSupervisors] = useState<any[]>([]);
+  const [supForm, setSupForm] = useState({ fullName: '', mobile: '', password: '', email: '' });
 
   // Ensure a stable device fingerprint is accessible
   useEffect(() => {
@@ -1677,7 +1681,43 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
 
   useEffect(() => {
     fetchBranches();
+    fetchSupervisors();
   }, []);
+
+  const fetchSupervisors = async () => {
+    try {
+      const res = await axios.get(`${API}/supervisors`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setSupervisors(res.data || []);
+    } catch (err) { console.error(err); }
+  };
+
+  const createSupervisor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supForm.fullName || !supForm.mobile || !supForm.password) return alert('Required fields missing.');
+    setSaving(true);
+    try {
+      await axios.post(`${API}/supervisors`, supForm, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      alert('🎉 Supervisor identity created and activated successfully!');
+      setSupForm({ fullName: '', mobile: '', password: '', email: '' });
+      fetchSupervisors();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Supervisor creation aborted.');
+    } finally { setSaving(false); }
+  };
+
+  const deleteSupervisor = async (id: number) => {
+    if (!confirm('⚠️ WARNING: Are you sure you want to permanently revoke this supervisor\'s clearance?')) return;
+    try {
+      await axios.delete(`${API}/supervisors/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      fetchSupervisors();
+    } catch (err) { alert('Revocation action failed.'); }
+  };
 
   const fetchBranches = async () => {
     setLoading(true);
@@ -1779,9 +1819,10 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
-        <div className="flex border-b mb-4 flex-shrink-0">
-          <button onClick={() => setActiveTab('gps')} className={`flex-1 py-2 font-bold ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Add GPS Location</button>
-          <button onClick={() => setActiveTab('password')} className={`flex-1 py-2 font-bold ${activeTab === 'password' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Change Password</button>
+        <div className="flex border-b mb-4 flex-shrink-0 text-xs">
+          <button onClick={() => setActiveTab('gps')} className={`flex-1 py-3 font-black uppercase tracking-wider ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Branch Config</button>
+          <button onClick={() => setActiveTab('supervisors')} className={`flex-1 py-3 font-black uppercase tracking-wider ${activeTab === 'supervisors' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Supervisors</button>
+          <button onClick={() => setActiveTab('password')} className={`flex-1 py-3 font-black uppercase tracking-wider ${activeTab === 'password' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Auth Key</button>
         </div>
 
         <div className="flex-1 overflow-y-auto pr-1">
@@ -1899,6 +1940,96 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                     {saving ? 'UPDATING...' : <span>💾 {branches.some(b => b.name.toUpperCase() === newBranch.name.trim().toUpperCase()) ? 'SAVE CHANGES' : 'REGISTER NEW BRANCH'}</span>}
                   </button>
                 </div>
+              </div>
+            </div>
+          ) : activeTab === 'supervisors' ? (
+            <div className="space-y-6">
+              {/* Active Supervisor Index */}
+              <div>
+                <h3 className="text-sm font-black text-gray-700 uppercase mb-3 tracking-wider flex items-center gap-1">
+                  <span>👥 ACTIVE SUPERVISORS</span>
+                  <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full">{supervisors.length}</span>
+                </h3>
+                {supervisors.length === 0 ? (
+                  <p className="text-xs text-gray-400 bg-gray-50 p-3 rounded border border-dashed text-center">No delegated supervisor clearance accounts created yet.</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {supervisors.map(s => (
+                      <div key={s.id} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-lg group hover:bg-slate-100 transition-colors">
+                        <div>
+                          <p className="font-black text-slate-800 text-xs">{s.fullName}</p>
+                          <p className="text-[10px] text-slate-500 font-mono">📲 {s.identifier} {s.email ? `| 📧 ${s.email}` : ''}</p>
+                        </div>
+                        <button 
+                          onClick={() => deleteSupervisor(s.id)}
+                          className="text-gray-400 hover:text-red-600 p-1.5 bg-white/80 border hover:border-red-100 hover:bg-red-50 rounded transition-all"
+                          title="Revoke Clearance">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Deploy New Supervisor Frame */}
+              <div className="p-4 bg-blue-50/70 rounded-xl border border-blue-100 shadow-inner">
+                <h4 className="text-sm font-black text-blue-800 mb-3 uppercase tracking-wide">Provision New Supervisor</h4>
+                <form onSubmit={createSupervisor} className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">Full Name</label>
+                      <input 
+                        required 
+                        type="text" 
+                        value={supForm.fullName} 
+                        onChange={e => setSupForm({...supForm, fullName: e.target.value})} 
+                        className="w-full border border-blue-100 rounded px-2.5 py-2 bg-white font-bold text-xs outline-none focus:border-blue-400" 
+                        placeholder="Assignee Name" />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">Mobile (ID)</label>
+                      <input 
+                        required 
+                        type="text" 
+                        value={supForm.mobile} 
+                        onChange={e => setSupForm({...supForm, mobile: e.target.value})} 
+                        className="w-full border border-blue-100 rounded px-2.5 py-2 bg-white font-mono text-xs outline-none focus:border-blue-400" 
+                        placeholder="Numeric ID" />
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">Temp Password</label>
+                      <input 
+                        required 
+                        type="password" 
+                        value={supForm.password} 
+                        onChange={e => setSupForm({...supForm, password: e.target.value})} 
+                        className="w-full border border-blue-100 rounded px-2.5 py-2 bg-white text-xs outline-none focus:border-blue-400" 
+                        placeholder="🔑 Strong Pass" />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">Email (Optional)</label>
+                      <input 
+                        type="email" 
+                        value={supForm.email} 
+                        onChange={e => setSupForm({...supForm, email: e.target.value})} 
+                        className="w-full border border-blue-100 rounded px-2.5 py-2 bg-white text-xs outline-none focus:border-blue-400" 
+                        placeholder="abc@domain.com" />
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={saving} 
+                    className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-black tracking-widest text-[10px] uppercase shadow-md shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-1">
+                    {saving ? 'PROVISIONING...' : '🔥 Activate Supervisor Authority'}
+                  </button>
+                </form>
               </div>
             </div>
           ) : (
@@ -2635,6 +2766,7 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [userId, setUserId] = useState<string>('');
+  const [targetGroup, setTargetGroup] = useState('ALL');
   const [editNoticeId, setEditNoticeId] = useState<number | null>(null);
   const [noticeTab, setNoticeTab] = useState<'active' | 'previous'>('active');
 
@@ -2666,7 +2798,7 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
     if (!message || !fromDate || !toDate) return alert('Message, From Date, and To Date are required');
     try {
       const token = localStorage.getItem('token');
-      const payload = { message, fromDate, toDate, userId: userId ? Number(userId) : null };
+      const payload = { message, fromDate, toDate, userId: userId ? Number(userId) : null, targetGroup };
       
       if (editNoticeId) {
         await axios.put(`${API}/notices/${editNoticeId}`, payload, { headers: { Authorization: `Bearer ${token}` } });
@@ -2674,7 +2806,7 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
         await axios.post(`${API}/notices`, payload, { headers: { Authorization: `Bearer ${token}` } });
       }
       
-      setMessage(''); setFromDate(''); setToDate(''); setUserId(''); setEditNoticeId(null);
+      setMessage(''); setFromDate(''); setToDate(''); setUserId(''); setTargetGroup('ALL'); setEditNoticeId(null);
       fetchNotices();
     } catch (err: any) {
       alert(err.response?.data?.error || `Failed to ${editNoticeId ? 'update' : 'add'} notice`);
@@ -2687,6 +2819,7 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
     setFromDate(n.fromDate.split('T')[0]);
     setToDate(n.toDate.split('T')[0]);
     setUserId(n.userId ? String(n.userId) : '');
+    setTargetGroup(n.targetGroup || 'ALL');
   };
 
   const handleDeleteNotice = async (id: number) => {
@@ -2733,9 +2866,17 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Target NICTian (Optional)</label>
-                <select className="w-full border p-2 rounded" value={userId} onChange={e => setUserId(e.target.value)}>
-                  <option value="">All NICTians</option>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Target Group Audience</label>
+                <select className="w-full border p-2 rounded text-sm bg-amber-50/30" value={targetGroup} onChange={e => setTargetGroup(e.target.value)} disabled={!!userId}>
+                  <option value="ALL">🌍 EVERYONE (Admin, Supervisor, Trainee)</option>
+                  <option value="SUPERVISOR">👥 ALL SUPERVISORS</option>
+                  <option value="TRAINEE">🎓 ALL NICTIANS (Trainees)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Specific Target NICTian (Overrides Group)</label>
+                <select className="w-full border p-2 rounded text-sm" value={userId} onChange={e => setUserId(e.target.value)}>
+                  <option value="">Group Selected Above</option>
                   {trainees.map(t => (
                     <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
                   ))}

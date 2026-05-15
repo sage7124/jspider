@@ -191,8 +191,17 @@ router.get('/notices', authenticateToken, async (req: AuthRequest, res) => {
           { toDate: { gte: todayStart } },
           {
             OR: [
-              { userId: null },
-              { userId: userId }
+              { userId: userId },
+              {
+                AND: [
+                  { userId: null },
+                  {
+                    targetGroup: {
+                      in: ['ALL', req.user?.role || 'TRAINEE']
+                    }
+                  }
+                ]
+              }
             ]
           }
         ]

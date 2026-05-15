@@ -5,7 +5,7 @@ import RegisterForm from '../components/auth/RegisterForm';
 import { User } from 'lucide-react';
 
 const AuthPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'NICTIANS' | 'ADMIN'>('NICTIANS');
+  const [activeTab, setActiveTab] = useState<'NICTIANS' | 'ADMIN' | 'SUPERVISOR'>('NICTIANS');
   const [isLogin, setIsLogin] = useState(true);
 
   return (
@@ -22,7 +22,7 @@ const AuthPage: React.FC = () => {
           {/* Tabs */}
           <div className="flex border-b border-gray-200 mb-6">
             <button
-              className={`flex-1 py-2 text-sm font-semibold uppercase tracking-wider transition-colors ${
+              className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider transition-colors ${
                 activeTab === 'NICTIANS'
                   ? 'text-[#1976D2] border-b-2 border-[#1976D2]'
                   : 'text-gray-400 hover:text-gray-600'
@@ -35,7 +35,20 @@ const AuthPage: React.FC = () => {
               NICTians
             </button>
             <button
-              className={`flex-1 py-2 text-sm font-semibold uppercase tracking-wider transition-colors ${
+              className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                activeTab === 'SUPERVISOR'
+                  ? 'text-[#1976D2] border-b-2 border-[#1976D2]'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+              onClick={() => {
+                setActiveTab('SUPERVISOR');
+                setIsLogin(true);
+              }}
+            >
+              Supervisor
+            </button>
+            <button
+              className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider transition-colors ${
                 activeTab === 'ADMIN'
                   ? 'text-[#1976D2] border-b-2 border-[#1976D2]'
                   : 'text-gray-400 hover:text-gray-600'

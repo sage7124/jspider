@@ -150,6 +150,7 @@ model Notice {
   toDate         DateTime
   userId         Int?     // null means for everyone
   user           User?    @relation(fields: [userId], references: [id])
+  targetGroup    String   @default("ALL") // "ALL", "SUPERVISOR", "TRAINEE"
   createdAt      DateTime @default(now())
 }
 

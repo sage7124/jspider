@@ -37,3 +37,10 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
   }
   next();
 };
+
+export const requireAdminOrSupervisor = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPERVISOR') {
+    return res.status(403).json({ error: 'Admin or Supervisor access required' });
+  }
+  next();
+};
