@@ -997,14 +997,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
           <h2 className="text-xl font-bold">NICTian Attendance</h2>
 
           {/* 🔔 Notification Bell */}
-          <button onClick={() => setView('pending')} className="relative ml-2 text-gray-500 hover:text-yellow-500 transition-colors" title="Pending Approvals">
-            <Bell size={22} />
-            {pendingCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                {pendingCount}
-              </span>
-            )}
-          </button>
+          {role === 'ADMIN' && (
+            <button onClick={() => setView('pending')} className="relative ml-2 text-gray-500 hover:text-yellow-500 transition-colors" title="Pending Approvals">
+              <Bell size={22} />
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {/* 🔍 Global Search */}
@@ -1889,7 +1891,9 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
         <div className="flex border-b mb-4 flex-shrink-0 text-xs">
           <button onClick={() => setActiveTab('gps')} className={`flex-1 py-3 font-black uppercase tracking-wider ${activeTab === 'gps' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Branch Config</button>
-          <button onClick={() => setActiveTab('supervisors')} className={`flex-1 py-3 font-black uppercase tracking-wider ${activeTab === 'supervisors' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Supervisors</button>
+          {role === 'ADMIN' && (
+            <button onClick={() => setActiveTab('supervisors')} className={`flex-1 py-3 font-black uppercase tracking-wider ${activeTab === 'supervisors' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Supervisors</button>
+          )}
           <button onClick={() => setActiveTab('password')} className={`flex-1 py-3 font-black uppercase tracking-wider ${activeTab === 'password' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-400'}`}>Auth Key</button>
         </div>
 
