@@ -1183,12 +1183,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showLeaves && <LeaveManagementModal onClose={() => setShowLeaves(null as any)} onProcessed={fetchTrainees} canManage={hasPermission('DIRECT_LEAVE')} />}
       {showDownload && <MonthlyDownloadModal onClose={() => setShowDownload(false)} />}
       {individualReport && <IndividualDownloadModal trainee={individualReport} onClose={() => setIndividualReport(null)} />}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} role={role} canManage={hasPermission('GPS_LOCATION')} />}
       {directLeaveUser && <DirectLeaveModal trainee={directLeaveUser} onClose={() => setDirectLeaveUser(null)} onSave={fetchTrainees} />}
       {viewDetailUser && <ViewSlotsDetailModal trainee={viewDetailUser} onClose={() => setViewDetailUser(null)} />}
       {showDailyReport && <DailyReportModal onClose={() => setShowDailyReport(false)} />}
-      {showHolidays && <HolidayManagementModal onClose={() => setShowHolidays(false)} />}
-      {showNotices && <NoticesModal onClose={() => setShowNotices(false)} />}
+      {showHolidays && <HolidayManagementModal onClose={() => setShowHolidays(false)} canManage={hasPermission('HOLIDAYS')} />}
+      {showNotices && <NoticesModal onClose={() => setShowNotices(false)} canManage={hasPermission('NOTICES')} />}
       {showDropdownOptions && <DropdownOptionsModal onClose={() => setShowDropdownOptions(false)} />}
       {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => { setViewOnboardingUser(null); fetchTrainees(); }} />}
     </div>
@@ -1703,7 +1703,7 @@ const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: ()
 };
 // ── Settings Modal ────────────────────────────────────────────────────────────
 // ── Settings Modal ────────────────────────────────────────────────────────────
-const SettingsModal = ({ onClose }: { onClose: () => void }) => {
+const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role: string; canManage: boolean }) => {
   const [branches, setBranches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newBranch, setNewBranch] = useState({ name: '', branchCode: '', lat: '', lng: '', radius: '100' });
@@ -1914,22 +1914,24 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                             <p className="font-extrabold text-blue-800 text-sm">{b.name} {b.branchCode ? `(${b.branchCode})` : ''}</p>
                             <p className="text-[10px] text-blue-600/70 font-mono">{b.lat}, {b.lng} (Radius: {b.radius}m)</p>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <button 
-                              onClick={() => loadBranchToEdit(b)}
-                              className="text-blue-600 hover:text-blue-800 p-1.5 bg-white/50 hover:bg-blue-100 rounded transition-all border border-blue-100"
-                              title="Edit Branch"
-                            >
-                              ✏️
-                            </button>
-                            <button 
-                              onClick={() => deleteBranch(b.id)}
-                              className="text-red-400 hover:text-red-700 p-1.5 bg-white/50 hover:bg-red-50 rounded transition-all border border-red-100"
-                              title="Delete Branch"
-                            >
-                              🗑️
-                            </button>
-                          </div>
+                          {canManage && (
+                            <div className="flex items-center gap-1">
+                              <button 
+                                onClick={() => loadBranchToEdit(b)}
+                                className="text-blue-600 hover:text-blue-800 p-1.5 bg-white/50 hover:bg-blue-100 rounded transition-all border border-blue-100"
+                                title="Edit Branch"
+                              >
+                                ✏️
+                              </button>
+                              <button 
+                                onClick={() => deleteBranch(b.id)}
+                                className="text-red-400 hover:text-red-700 p-1.5 bg-white/50 hover:bg-red-50 rounded transition-all border border-red-100"
+                                title="Delete Branch"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         {/* Central Kiosk Mode Row */}
@@ -1946,23 +1948,29 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                               }`}>
                                 {b.kioskDeviceId === localStorage.getItem('deviceId') ? '✅ THIS DEVICE' : '🔒 CONFIGURED'}
                               </span>
-                              <button 
-                                onClick={() => removeKiosk(b.id)} 
-                                disabled={assigningKiosk !== null}
-                                className="text-[9px] font-black text-red-600 hover:text-red-800 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded tracking-tight uppercase active:scale-95 transition-all disabled:opacity-50"
-                                title="Revoke device bypass whitelist"
-                              >
-                                {assigningKiosk === b.id ? '...' : 'Revoke'}
-                              </button>
+                              {canManage && (
+                                <button 
+                                  onClick={() => removeKiosk(b.id)} 
+                                  disabled={assigningKiosk !== null}
+                                  className="text-[9px] font-black text-red-600 hover:text-red-800 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded tracking-tight uppercase active:scale-95 transition-all disabled:opacity-50"
+                                  title="Revoke device bypass whitelist"
+                                >
+                                  {assigningKiosk === b.id ? '...' : 'Revoke'}
+                                </button>
+                              )}
                             </div>
                           ) : (
-                            <button 
-                              onClick={() => assignCurrentAsKiosk(b.id)} 
-                              disabled={assigningKiosk !== null}
-                              className="text-[9px] font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded uppercase tracking-tight shadow-sm active:scale-95 transition-all disabled:opacity-50"
-                            >
-                              {assigningKiosk === b.id ? 'Saving...' : '🔗 Assign This Device'}
-                            </button>
+                            canManage ? (
+                              <button 
+                                onClick={() => assignCurrentAsKiosk(b.id)} 
+                                disabled={assigningKiosk !== null}
+                                className="text-[9px] font-black bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded uppercase tracking-tight shadow-sm active:scale-95 transition-all disabled:opacity-50"
+                              >
+                                {assigningKiosk === b.id ? 'Saving...' : '🔗 Assign This Device'}
+                              </button>
+                            ) : (
+                              <span className="text-[9px] text-gray-400 italic font-bold">NOT CONFIGURED</span>
+                            )
                           )}
                         </div>
                       </div>
@@ -1975,46 +1983,48 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
               <hr className="border-gray-200" />
 
               {/* Add New Branch Form */}
-              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 shadow-inner">
-                <h4 id="new-branch-form-header" className="text-sm font-black text-emerald-700 mb-3 border-b border-emerald-200 pb-1 uppercase tracking-wide flex justify-between items-center">
-                  <span>Add or Update Institute Branch</span>
-                  {newBranch.name && <span className="text-[9px] bg-emerald-200 px-1.5 py-0.5 rounded animate-pulse text-emerald-800">Editing Mode</span>}
-                </h4>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Branch Name</label>
-                      <input value={newBranch.name} onChange={e => setNewBranch({...newBranch, name: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-bold text-gray-700" placeholder="e.g., INDIRANAGAR" />
+              {canManage && (
+                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 shadow-inner">
+                  <h4 id="new-branch-form-header" className="text-sm font-black text-emerald-700 mb-3 border-b border-emerald-200 pb-1 uppercase tracking-wide flex justify-between items-center">
+                    <span>Add or Update Institute Branch</span>
+                    {newBranch.name && <span className="text-[9px] bg-emerald-200 px-1.5 py-0.5 rounded animate-pulse text-emerald-800">Editing Mode</span>}
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Branch Name</label>
+                        <input value={newBranch.name} onChange={e => setNewBranch({...newBranch, name: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-bold text-gray-700" placeholder="e.g., INDIRANAGAR" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Branch Code</label>
+                        <input value={newBranch.branchCode} onChange={e => setNewBranch({...newBranch, branchCode: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-bold text-gray-700 uppercase" placeholder="e.g., IND-01" />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Branch Code</label>
-                      <input value={newBranch.branchCode} onChange={e => setNewBranch({...newBranch, branchCode: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-bold text-gray-700 uppercase" placeholder="e.g., IND-01" />
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Latitude</label>
+                        <input value={newBranch.lat} onChange={e => setNewBranch({...newBranch, lat: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-mono text-sm" placeholder="12.9716" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Longitude</label>
+                        <input value={newBranch.lng} onChange={e => setNewBranch({...newBranch, lng: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-mono text-sm" placeholder="77.5946" />
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Latitude</label>
-                      <input value={newBranch.lat} onChange={e => setNewBranch({...newBranch, lat: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-mono text-sm" placeholder="12.9716" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Longitude</label>
-                      <input value={newBranch.lng} onChange={e => setNewBranch({...newBranch, lng: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white font-mono text-sm" placeholder="77.5946" />
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Validation Radius (Meters)</label>
-                    <input type="number" value={newBranch.radius} onChange={e => setNewBranch({...newBranch, radius: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white text-sm" placeholder="100" />
-                  </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-emerald-600 mb-1 uppercase">Validation Radius (Meters)</label>
+                      <input type="number" value={newBranch.radius} onChange={e => setNewBranch({...newBranch, radius: e.target.value})} className="w-full border border-emerald-200 rounded px-3 py-2 bg-white text-sm" placeholder="100" />
+                    </div>
 
-                  <button onClick={addBranch} disabled={saving} className="w-full mt-2 bg-emerald-600 text-white py-3 rounded-lg font-black tracking-wide shadow-md hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2">
-                    {saving ? 'UPDATING...' : <span>💾 {branches.some(b => b.name.toUpperCase() === newBranch.name.trim().toUpperCase()) ? 'SAVE CHANGES' : 'REGISTER NEW BRANCH'}</span>}
-                  </button>
+                    <button onClick={addBranch} disabled={saving} className="w-full mt-2 bg-emerald-600 text-white py-3 rounded-lg font-black tracking-wide shadow-md hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+                      {saving ? 'UPDATING...' : <span>💾 {branches.some(b => b.name.toUpperCase() === newBranch.name.trim().toUpperCase()) ? 'SAVE CHANGES' : 'REGISTER NEW BRANCH'}</span>}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          ) : activeTab === 'supervisors' ? (
+          ) : activeTab === 'supervisors' && role === 'ADMIN' ? (
             <div className="space-y-6">
               {/* Active Supervisor Index */}
               <div>
@@ -2185,7 +2195,7 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
 };
 
 // ── Holiday Management Modal ──────────────────────────────────────────────────
-const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
+const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; canManage: boolean }) => {
   const [holidays, setHolidays] = useState<any[]>([]);
   const [quota, setQuota] = useState(0);
   const [newDate, setNewDate] = useState('');
@@ -2260,32 +2270,36 @@ const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
           <Calendar className="text-pink-600" /> Holiday Management
         </h2>
 
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
+        <div className={`grid ${canManage ? 'md:grid-cols-2' : 'grid-cols-1'} gap-8 mb-8`}>
           <div className="bg-pink-50 p-4 rounded-lg border border-pink-100">
             <h3 className="text-sm font-bold text-pink-700 mb-4 uppercase tracking-wider">Holiday Quota</h3>
             <div className="flex gap-2">
-              <input type="number" value={quota} onChange={e => setQuota(parseInt(e.target.value) || 0)}
-                className="flex-1 border border-pink-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none" />
-              <button onClick={handleUpdateQuota} className="bg-pink-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-pink-700 transition-colors">
-                Set Quota
-              </button>
+              <input type="number" value={quota} onChange={e => setQuota(parseInt(e.target.value) || 0)} disabled={!canManage}
+                className="flex-1 border border-pink-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none disabled:bg-gray-100 disabled:text-gray-500" />
+              {canManage && (
+                <button onClick={handleUpdateQuota} className="bg-pink-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-pink-700 transition-colors">
+                  Set Quota
+                </button>
+              )}
             </div>
             <p className="text-[10px] text-pink-600 mt-2 italic font-medium">Total holidays allowed for this session</p>
           </div>
 
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">Add New Holiday</h3>
-            <div className="space-y-2">
-              <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-              <input type="text" placeholder="Holiday Name (e.g., Diwali)" value={newName} onChange={e => setNewName(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
-              <button onClick={handleAddHoliday} disabled={saving}
-                className="w-full bg-blue-600 text-white py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
-                {saving ? 'Adding...' : 'Add Holiday'}
-              </button>
+          {canManage && (
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">Add New Holiday</h3>
+              <div className="space-y-2">
+                <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                <input type="text" placeholder="Holiday Name (e.g., Diwali)" value={newName} onChange={e => setNewName(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                <button onClick={handleAddHoliday} disabled={saving}
+                  className="w-full bg-blue-600 text-white py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
+                  {saving ? 'Adding...' : 'Add Holiday'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -2302,12 +2316,12 @@ const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
                   <th className="px-4 py-3 font-semibold text-gray-600">Date</th>
                   <th className="px-4 py-3 font-semibold text-gray-600">Day</th>
                   <th className="px-4 py-3 font-semibold text-gray-600">Holiday Name</th>
-                  <th className="px-4 py-3 text-right">Action</th>
+                  {canManage && <th className="px-4 py-3 text-right">Action</th>}
                 </tr>
               </thead>
               <tbody>
                 {holidays.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-10 text-center text-gray-400">No holidays scheduled</td></tr>
+                  <tr><td colSpan={canManage ? 4 : 3} className="px-4 py-10 text-center text-gray-400">No holidays scheduled</td></tr>
                 ) : (
                   holidays.map((h) => {
                     const d = new Date(h.date);
@@ -2316,11 +2330,13 @@ const HolidayManagementModal = ({ onClose }: { onClose: () => void }) => {
                         <td className="px-4 py-3 font-medium">{d.toLocaleDateString()}</td>
                         <td className="px-4 py-3 text-gray-500">{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</td>
                         <td className="px-4 py-3 font-bold">{h.name}</td>
-                        <td className="px-4 py-3 text-right">
-                          <button onClick={() => handleDeleteHoliday(h.id)} className="text-red-500 hover:text-red-700 p-1">
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
+                        {canManage && (
+                          <td className="px-4 py-3 text-right">
+                            <button onClick={() => handleDeleteHoliday(h.id)} className="text-red-500 hover:text-red-700 p-1">
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
@@ -2892,7 +2908,7 @@ const DropdownOptionsModal = ({ onClose }: { onClose: () => void }) => {
 };
 
 // ── Notices Management Modal ───────────────────────────────────────────────────
-const NoticesModal = ({ onClose }: { onClose: () => void }) => {
+const NoticesModal = ({ onClose, canManage }: { onClose: () => void; canManage: boolean }) => {
   const [notices, setNotices] = useState<any[]>([]);
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [loading, setLoading] = useState(false);
@@ -2993,60 +3009,62 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 flex flex-col md:flex-row gap-8">
-          <div className="flex-1">
-            <h3 className="font-bold mb-4">{editNoticeId ? 'Update Notice' : 'Add New Notice'}</h3>
-            <form onSubmit={handleAddNotice} className="flex flex-col gap-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Message</label>
-                <textarea 
-                  className="w-full border p-2 rounded" 
-                  rows={3} 
-                  required 
-                  value={message} 
-                  onChange={e => setMessage(e.target.value)} 
-                />
-              </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-bold text-gray-700 mb-1">From Date</label>
-                  <input type="date" required className="w-full border p-2 rounded" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+          {canManage && (
+            <div className="flex-1">
+              <h3 className="font-bold mb-4">{editNoticeId ? 'Update Notice' : 'Add New Notice'}</h3>
+              <form onSubmit={handleAddNotice} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Message</label>
+                  <textarea 
+                    className="w-full border p-2 rounded" 
+                    rows={3} 
+                    required 
+                    value={message} 
+                    onChange={e => setMessage(e.target.value)} 
+                  />
                 </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-bold text-gray-700 mb-1">To Date</label>
-                  <input type="date" required className="w-full border p-2 rounded" value={toDate} onChange={e => setToDate(e.target.value)} />
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-bold text-gray-700 mb-1">From Date</label>
+                    <input type="date" required className="w-full border p-2 rounded" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-bold text-gray-700 mb-1">To Date</label>
+                    <input type="date" required className="w-full border p-2 rounded" value={toDate} onChange={e => setToDate(e.target.value)} />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Select Target Audience</label>
-                <select 
-                  className="w-full border p-2.5 rounded text-sm bg-white focus:border-teal-500 font-semibold" 
-                  value={getCombinedTarget()} 
-                  onChange={e => handleCombinedTargetChange(e.target.value)}
-                >
-                  <optgroup label="📢 BROADCAST GROUPS">
-                    <option value="GROUP:ALL">🌍 EVERYONE (Admin, Supervisor, Trainees)</option>
-                    <option value="GROUP:SUPERVISOR">👥 ALL SUPERVISORS</option>
-                    <option value="GROUP:TRAINEE">🎓 ALL NICTIANS (Trainees)</option>
-                  </optgroup>
-                  <optgroup label="👤 SPECIFIC INDIVIDUALS">
-                    {trainees.map(t => (
-                      <option key={t.id} value={`USER:${t.id}`}>👤 {t.name} ({t.empCode})</option>
-                    ))}
-                  </optgroup>
-                </select>
-              </div>
-              <div className="flex gap-2 mt-2">
-                <button type="submit" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded transition-colors">
-                  {editNoticeId ? 'Update Notice' : 'Send Notice'}
-                </button>
-                {editNoticeId && (
-                  <button type="button" onClick={() => { setEditNoticeId(null); setMessage(''); setFromDate(''); setToDate(''); setUserId(''); }} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors">
-                    Cancel
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Select Target Audience</label>
+                  <select 
+                    className="w-full border p-2.5 rounded text-sm bg-white focus:border-teal-500 font-semibold" 
+                    value={getCombinedTarget()} 
+                    onChange={e => handleCombinedTargetChange(e.target.value)}
+                  >
+                    <optgroup label="📢 BROADCAST GROUPS">
+                      <option value="GROUP:ALL">🌍 EVERYONE (Admin, Supervisor, Trainees)</option>
+                      <option value="GROUP:SUPERVISOR">👥 ALL SUPERVISORS</option>
+                      <option value="GROUP:TRAINEE">🎓 ALL NICTIANS (Trainees)</option>
+                    </optgroup>
+                    <optgroup label="👤 SPECIFIC INDIVIDUALS">
+                      {trainees.map(t => (
+                        <option key={t.id} value={`USER:${t.id}`}>👤 {t.name} ({t.empCode})</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button type="submit" className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 rounded transition-colors">
+                    {editNoticeId ? 'Update Notice' : 'Send Notice'}
                   </button>
-                )}
-              </div>
-            </form>
-          </div>
+                  {editNoticeId && (
+                    <button type="button" onClick={() => { setEditNoticeId(null); setMessage(''); setFromDate(''); setToDate(''); setUserId(''); }} className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition-colors">
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          )}
 
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex border-b mb-4">
@@ -3081,14 +3099,16 @@ const NoticesModal = ({ onClose }: { onClose: () => void }) => {
                           Target: {n.userId ? `${n.user?.fullName} (${n.user?.identifier})` : 'All NICTians'}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-2 self-start">
-                        <button onClick={() => handleEditClick(n)} className="text-blue-500 hover:bg-blue-100 p-2 rounded">
-                          <Edit size={18} />
-                        </button>
-                        <button onClick={() => handleDeleteNotice(n.id)} className="text-red-500 hover:bg-red-100 p-2 rounded">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
+                      {canManage && (
+                        <div className="flex flex-col gap-2 self-start">
+                          <button onClick={() => handleEditClick(n)} className="text-blue-500 hover:bg-blue-100 p-2 rounded">
+                            <Edit size={18} />
+                          </button>
+                          <button onClick={() => handleDeleteNotice(n.id)} className="text-red-500 hover:bg-red-100 p-2 rounded">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
