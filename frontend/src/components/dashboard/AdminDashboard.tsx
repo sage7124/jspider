@@ -896,7 +896,10 @@ const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApp
 };
 
 // ── Main Admin Dashboard ──────────────────────────────────────────────────────
-const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  role?: 'ADMIN' | 'SUPERVISOR';
+}
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [qrToken, setQrToken] = useState('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -1008,33 +1011,41 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="bg-white p-3 rounded shadow-sm border border-blue-100 flex items-center gap-3">
-            <MapPin className="text-blue-600" size={24} />
-            <div>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Geofence Status</p>
-              <p className="text-xs font-bold text-green-600">Active & Secure</p>
+          {role !== 'SUPERVISOR' && (
+            <div className="bg-white p-3 rounded shadow-sm border border-blue-100 flex items-center gap-3">
+              <MapPin className="text-blue-600" size={24} />
+              <div>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Geofence Status</p>
+                <p className="text-xs font-bold text-green-600">Active & Secure</p>
+              </div>
             </div>
-          </div>
+          )}
           <button onClick={() => setShowLeaves(true)}
             className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-medium transition-colors">
             Leaves
           </button>
-          <button onClick={() => setShowHolidays(true)}
-            className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded font-medium transition-colors">
-            Holidays
-          </button>
-          <button onClick={() => setShowNotices(true)}
-            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded font-medium transition-colors">
-            Notices
-          </button>
+          {role !== 'SUPERVISOR' && (
+            <button onClick={() => setShowHolidays(true)}
+              className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              Holidays
+            </button>
+          )}
+          {role !== 'SUPERVISOR' && (
+            <button onClick={() => setShowNotices(true)}
+              className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              Notices
+            </button>
+          )}
           <button onClick={() => setShowDailyReport(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
             <Calendar size={18} /> Daily Report
           </button>
-          <button onClick={() => setShowSettings(true)}
-            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
-            Add GPS Location
-          </button>
+          {role !== 'SUPERVISOR' && (
+            <button onClick={() => setShowSettings(true)}
+              className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
+              Add GPS Location
+            </button>
+          )}
           <button onClick={() => setShowDownload(true)}
             className="flex items-center gap-2 bg-[#1976D2] hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
             <Download size={18} /> Download
@@ -1107,21 +1118,23 @@ const AdminDashboard: React.FC = () => {
                 <td className="px-4 py-4">
                   <div className="flex items-center justify-center gap-2">
                     <button onClick={() => setViewOnboardingUser(t)} className="text-purple-600 hover:text-purple-800 transition-colors" title="View Onboarding Profile"><User size={16} /></button>
-                    <button onClick={() => setEditUser(t)} className="text-emerald-600 hover:text-emerald-800 transition-colors" title="Edit User Info"><Edit size={16} /></button>
-                    <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots"><Clock size={16} /></button>
+                    {role !== 'SUPERVISOR' && <button onClick={() => setEditUser(t)} className="text-emerald-600 hover:text-emerald-800 transition-colors" title="Edit User Info"><Edit size={16} /></button>}
+                    {role !== 'SUPERVISOR' && <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots"><Clock size={16} /></button>}
                     <button onClick={() => setResetUser(t)} className="text-yellow-600 hover:text-yellow-800 transition-colors" title="Reset Password"><Key size={16} /></button>
-                    <button onClick={() => setManualPunchUser(t)} className="text-orange-600 hover:text-orange-800 transition-colors" title="Manual Attendance"><Clock size={16} /></button>
+                    {role !== 'SUPERVISOR' && <button onClick={() => setManualPunchUser(t)} className="text-orange-600 hover:text-orange-800 transition-colors" title="Manual Attendance"><Clock size={16} /></button>}
                     <button onClick={() => setDirectLeaveUser(t)} className="text-indigo-600 hover:text-indigo-800 transition-colors" title="Direct Leave"><Calendar size={16} /></button>
-                    <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>
-                    <button onClick={() => setViewDetailUser(t)} className="text-pink-600 hover:text-pink-800 transition-colors" title="View Slot Statuses"><Eye size={16} /></button>
+                    {role !== 'SUPERVISOR' && <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>}
+                    {role !== 'SUPERVISOR' && <button onClick={() => setViewDetailUser(t)} className="text-pink-600 hover:text-pink-800 transition-colors" title="View Slot Statuses"><Eye size={16} /></button>}
                     <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>
-                    <button onClick={async () => {
-                      if(!confirm('Force Punch Out for this user?')) return;
-                      const token = localStorage.getItem('token');
-                      await axios.post(`${API}/force-logout/${t.id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
-                      fetchTrainees();
-                      alert('User forced to punch out');
-                    }} className="text-red-600 hover:text-red-800 transition-colors" title="Force Logout"><LogOut size={16} /></button>
+                    {role !== 'SUPERVISOR' && (
+                      <button onClick={async () => {
+                        if(!confirm('Force Punch Out for this user?')) return;
+                        const token = localStorage.getItem('token');
+                        await axios.post(`${API}/force-logout/${t.id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                        fetchTrainees();
+                        alert('User forced to punch out');
+                      }} className="text-red-600 hover:text-red-800 transition-colors" title="Force Logout"><LogOut size={16} /></button>
+                    )}
                   </div>
                 </td>
               </tr>

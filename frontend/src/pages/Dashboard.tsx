@@ -4,7 +4,7 @@ import axios from 'axios';
 import Header from '../components/Header';
 import TraineeDashboard from '../components/dashboard/TraineeDashboard';
 import AdminDashboard from '../components/dashboard/AdminDashboard';
-import SupervisorDashboard from '../components/dashboard/SupervisorDashboard';
+
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {user.role === 'TRAINEE' && <TraineeDashboard user={user} />}
-        {user.role === 'SUPERVISOR' && <SupervisorDashboard />}
+        {user.role === 'SUPERVISOR' && <AdminDashboard role="SUPERVISOR" />}
         {user.role === 'ADMIN' && <AdminDashboard />}
       </main>
     </div>
