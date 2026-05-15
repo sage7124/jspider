@@ -1473,6 +1473,51 @@ router.get('/supervisors', async (req: AuthRequest, res) => {
   }
 });
 
+router.put('/supervisors/:id', async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Unauthorized: Admin privileges required.' });
+    }
+    const { id } = req.params;
+    const { fullName, mobile, password, email, permissions } = req.body;
+
+    const existing = await prisma.user.findUnique({ where: { id: Number(id) } });
+    if (!existing || existing.role !== 'SUPERVISOR') {
+      return res.status(404).json({ error: 'Supervisor record not found.' });
+    }
+
+    const updateData: any = {};
+    if (fullName) updateData.fullName = fullName;
+    if (mobile) {
+      const collision = await prisma.user.findFirst({
+        where: { identifier: mobile, NOT: { id: Number(id) } }
+      });
+      if (collision) return res.status(400).json({ error: 'Mobile ID already taken by another account.' });
+      updateData.identifier = mobile;
+    }
+    if (email !== undefined) updateData.email = email || null;
+    if (permissions !== undefined) {
+      updateData.permissions = Array.isArray(permissions) 
+        ? permissions.join(',') 
+        : (typeof permissions === 'string' ? permissions : "RESET_PASSWORD,DIRECT_LEAVE,DOWNLOAD_REPORT");
+    }
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: Number(id) },
+      data: updateData,
+      select: { id: true, fullName: true, identifier: true, email: true, permissions: true }
+    });
+
+    res.json({ success: true, user: updated, message: 'Supervisor profile and permissions updated successfully.' });
+  } catch (err) {
+    console.error('[Update-Supervisor-Error]', err);
+    res.status(500).json({ error: 'Failed to process supervisor update.' });
+  }
+});
+
 router.delete('/supervisors/:id', async (req: AuthRequest, res) => {
   try {
     if (req.user?.role !== 'ADMIN') {

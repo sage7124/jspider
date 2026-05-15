@@ -1702,6 +1702,13 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   const [supervisors, setSupervisors] = useState<any[]>([]);
   const [supForm, setSupForm] = useState({ fullName: '', mobile: '', password: '', email: '' });
   const [selectedPerms, setSelectedPerms] = useState<string[]>(["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
+  const [editSupervisorId, setEditSupervisorId] = useState<number | null>(null);
+
+  const resetSupForm = () => {
+    setSupForm({ fullName: '', mobile: '', password: '', email: '' });
+    setSelectedPerms(["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
+    setEditSupervisorId(null);
+  };
 
   const togglePerm = (perm: string) => {
     if (["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"].includes(perm)) return;
@@ -1734,20 +1741,28 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
     } catch (err) { console.error(err); }
   };
 
-  const createSupervisor = async (e: React.FormEvent) => {
+  const handleSupervisorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supForm.fullName || !supForm.mobile || !supForm.password) return alert('Required fields missing.');
+    if (!supForm.fullName || !supForm.mobile) return alert('Required fields missing.');
+    if (!editSupervisorId && !supForm.password) return alert('Password is required for new accounts.');
     setSaving(true);
     try {
-      await axios.post(`${API}/supervisors`, { ...supForm, permissions: selectedPerms }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      alert('🎉 Supervisor identity created and activated successfully!');
-      setSupForm({ fullName: '', mobile: '', password: '', email: '' });
-      setSelectedPerms(["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
+      const token = localStorage.getItem('token');
+      if (editSupervisorId) {
+        await axios.put(`${API}/supervisors/${editSupervisorId}`, { ...supForm, permissions: selectedPerms }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('✅ Supervisor credentials and privileges updated successfully!');
+      } else {
+        await axios.post(`${API}/supervisors`, { ...supForm, permissions: selectedPerms }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('🎉 Supervisor identity created and activated successfully!');
+      }
+      resetSupForm();
       fetchSupervisors();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Supervisor creation aborted.');
+      alert(err.response?.data?.error || 'Process aborted due to an API exception.');
     } finally { setSaving(false); }
   };
 
@@ -2002,12 +2017,29 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                           <p className="font-black text-slate-800 text-xs">{s.fullName}</p>
                           <p className="text-[10px] text-slate-500 font-mono">📲 {s.identifier} {s.email ? `| 📧 ${s.email}` : ''}</p>
                         </div>
-                        <button 
-                          onClick={() => deleteSupervisor(s.id)}
-                          className="text-gray-400 hover:text-red-600 p-1.5 bg-white/80 border hover:border-red-100 hover:bg-red-50 rounded transition-all"
-                          title="Revoke Clearance">
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button 
+                            onClick={() => {
+                              setEditSupervisorId(s.id);
+                              setSupForm({
+                                fullName: s.fullName,
+                                mobile: s.identifier,
+                                email: s.email || '',
+                                password: '' // Change only if provided
+                              });
+                              setSelectedPerms(s.permissions ? s.permissions.split(',') : ["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
+                            }}
+                            className="text-blue-400 hover:text-blue-600 p-1.5 bg-white/80 border hover:border-blue-100 hover:bg-blue-50 rounded transition-all"
+                            title="Edit Account Credentials & Access">
+                            <Edit size={13} />
+                          </button>
+                          <button 
+                            onClick={() => deleteSupervisor(s.id)}
+                            className="text-gray-400 hover:text-red-600 p-1.5 bg-white/80 border hover:border-red-100 hover:bg-red-50 rounded transition-all"
+                            title="Revoke Clearance">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2017,9 +2049,11 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
               <hr className="border-gray-100" />
 
               {/* Deploy New Supervisor Frame */}
-              <div className="p-4 bg-blue-50/70 rounded-xl border border-blue-100 shadow-inner">
-                <h4 className="text-sm font-black text-blue-800 mb-3 uppercase tracking-wide">Provision New Supervisor</h4>
-                <form onSubmit={createSupervisor} className="space-y-3">
+              <div className={`p-4 rounded-xl border shadow-inner transition-all duration-300 ${editSupervisorId ? 'bg-amber-50/70 border-amber-200' : 'bg-blue-50/70 border-blue-100'}`}>
+                <h4 className={`text-sm font-black mb-3 uppercase tracking-wide ${editSupervisorId ? 'text-amber-800' : 'text-blue-800'}`}>
+                  {editSupervisorId ? '🛠️ Update Supervisor Configuration' : 'Provision New Supervisor'}
+                </h4>
+                <form onSubmit={handleSupervisorSubmit} className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">Full Name</label>
@@ -2045,14 +2079,16 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                   
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">Temp Password</label>
+                      <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">
+                        {editSupervisorId ? 'Change Password' : 'Temp Password'}
+                      </label>
                       <input 
-                        required 
+                        required={!editSupervisorId} 
                         type="password" 
                         value={supForm.password} 
                         onChange={e => setSupForm({...supForm, password: e.target.value})} 
                         className="w-full border border-blue-100 rounded px-2.5 py-2 bg-white text-xs outline-none focus:border-blue-400" 
-                        placeholder="🔑 Strong Pass" />
+                        placeholder={editSupervisorId ? 'Leave blank to keep current' : '🔑 Strong Pass'} />
                     </div>
                     <div>
                       <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">Email (Optional)</label>
@@ -2098,12 +2134,22 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                     </div>
                   </div>
 
-                  <button 
-                    type="submit" 
-                    disabled={saving} 
-                    className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-black tracking-widest text-[10px] uppercase shadow-md shadow-blue-100 hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-1">
-                    {saving ? 'PROVISIONING...' : '🔥 Activate Supervisor Authority'}
-                  </button>
+                  <div className="flex gap-2 pt-1">
+                    {editSupervisorId && (
+                      <button 
+                        type="button" 
+                        onClick={resetSupForm}
+                        className="flex-1 bg-white border border-gray-200 text-gray-600 py-2.5 rounded-lg font-bold tracking-wider text-[10px] uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all">
+                        Cancel Edit
+                      </button>
+                    )}
+                    <button 
+                      type="submit" 
+                      disabled={saving} 
+                      className={`flex-[2] text-white py-2.5 rounded-lg font-black tracking-widest text-[10px] uppercase shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 ${editSupervisorId ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-100' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-100'}`}>
+                      {saving ? 'SAVING...' : editSupervisorId ? '💾 Commit Account Modifications' : '🔥 Activate Supervisor Authority'}
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
