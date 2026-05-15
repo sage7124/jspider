@@ -1711,7 +1711,6 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
   };
 
   const togglePerm = (perm: string) => {
-    if (["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"].includes(perm)) return;
     setSelectedPerms(prev => 
       prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
     );
@@ -2120,15 +2119,14 @@ const SettingsModal = ({ onClose }: { onClose: () => void }) => {
                         { id: 'NOTICES', label: '📢 Manage Notices', core: false },
                         { id: 'GPS_LOCATION', label: '📡 Branch GPS Config', core: false },
                       ].map(p => (
-                        <label key={p.id} className={`flex items-center gap-2 cursor-pointer text-[10px] font-bold select-none ${p.core ? 'text-gray-400' : 'text-gray-700 hover:text-blue-700'}`}>
+                        <label key={p.id} className="flex items-center gap-2 cursor-pointer text-[10px] font-bold select-none text-gray-700 hover:text-blue-700">
                           <input 
                             type="checkbox" 
                             checked={selectedPerms.includes(p.id)} 
-                            disabled={p.core} 
                             onChange={() => togglePerm(p.id)}
                             className="accent-blue-600 w-3 h-3 rounded"
                           />
-                          <span className="truncate">{p.label} {p.core && <span className="text-[7px] text-blue-500 bg-blue-50 px-1 rounded font-black">CORE</span>}</span>
+                          <span className="truncate">{p.label} {p.core && <span className="text-[7px] text-blue-500 bg-blue-50 px-1 rounded font-black">DEFAULT</span>}</span>
                         </label>
                       ))}
                     </div>
