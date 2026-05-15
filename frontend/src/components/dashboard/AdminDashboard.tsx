@@ -1040,10 +1040,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
               </div>
             </div>
           )}
-          <button onClick={() => setShowLeaves(true)}
-            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-medium transition-colors">
-            Leaves
-          </button>
+          {hasPermission('DIRECT_LEAVE') && (
+            <button onClick={() => setShowLeaves(true)}
+              className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              Leaves
+            </button>
+          )}
           {hasPermission('HOLIDAYS') && (
             <button onClick={() => setShowHolidays(true)}
               className="flex items-center gap-2 bg-pink-600 hover:bg-pink-700 text-white px-4 py-2 rounded font-medium transition-colors">
@@ -1056,20 +1058,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
               Notices
             </button>
           )}
-          <button onClick={() => setShowDailyReport(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
-            <Calendar size={18} /> Daily Report
-          </button>
+          {hasPermission('DOWNLOAD_REPORT') && (
+            <button onClick={() => setShowDailyReport(true)}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <Calendar size={18} /> Daily Report
+            </button>
+          )}
           {hasPermission('GPS_LOCATION') && (
             <button onClick={() => setShowSettings(true)}
               className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
               Add GPS Location
             </button>
           )}
-          <button onClick={() => setShowDownload(true)}
-            className="flex items-center gap-2 bg-[#1976D2] hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
-            <Download size={18} /> Download
-          </button>
+          {hasPermission('DOWNLOAD_REPORT') && (
+            <button onClick={() => setShowDownload(true)}
+              className="flex items-center gap-2 bg-[#1976D2] hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <Download size={18} /> Download
+            </button>
+          )}
         </div>
       </div>
 
@@ -1172,7 +1178,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {resetUser && <ResetPasswordModal trainee={resetUser} onClose={() => setResetUser(null)} />}
       {manualPunchUser && <ManualPunchModal trainee={manualPunchUser} onClose={() => setManualPunchUser(null)} onSave={fetchTrainees} />}
       {deleteUser && <DeleteConfirmModal trainee={deleteUser} onClose={() => setDeleteUser(null)} onDeleted={fetchTrainees} />}
-      {showLeaves && <LeaveManagementModal onClose={() => setShowLeaves(null as any)} onProcessed={fetchTrainees} />}
+      {showLeaves && <LeaveManagementModal onClose={() => setShowLeaves(null as any)} onProcessed={fetchTrainees} canManage={hasPermission('DIRECT_LEAVE')} />}
       {showDownload && <MonthlyDownloadModal onClose={() => setShowDownload(false)} />}
       {individualReport && <IndividualDownloadModal trainee={individualReport} onClose={() => setIndividualReport(null)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
@@ -1527,7 +1533,7 @@ const DeleteConfirmModal = ({ trainee, onClose, onDeleted }: { trainee: Trainee;
 };
 
 // ── Leave Management Modal ──────────────────────────────────────────────────
-const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; onProcessed: () => void }) => {
+const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: () => void; onProcessed: () => void; canManage: boolean }) => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editedEndDates, setEditedEndDates] = useState<Record<number, string>>({});
@@ -1613,7 +1619,7 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                       <div className="text-xs font-medium flex items-center gap-2">
                         <span>{startDate.toLocaleDateString()} ({startDate.toLocaleDateString('en-US', { weekday: 'long' })})</span>
                         <span>–</span>
-                        {r.status === 'PENDING' ? (
+                        {r.status === 'PENDING' && canManage ? (
                           <div className="flex items-center gap-1.5">
                             <input 
                               type="date" 
@@ -1654,27 +1660,33 @@ const LeaveManagementModal = ({ onClose, onProcessed }: { onClose: () => void; o
                     <td className="px-4 py-3 text-right">
                       <div className="flex flex-col gap-2 items-end">
                         {r.status === 'PENDING' ? (
-                          <div className="flex flex-col gap-2 items-end">
-                            <input 
-                              type="text" 
-                              placeholder="Optional remark..." 
-                              className="border rounded px-2 py-1 text-xs w-48"
-                              value={adminReasons[r.id] || ''}
-                              onChange={(e) => setAdminReasons({...adminReasons, [r.id]: e.target.value})}
-                            />
-                            <div className="flex gap-2">
-                              <button onClick={() => handleProcess(r.id, 'APPROVED')} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1 rounded">Approve</button>
-                              <button onClick={() => handleProcess(r.id, 'REJECTED')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1 rounded">Reject</button>
+                          canManage ? (
+                            <div className="flex flex-col gap-2 items-end">
+                              <input 
+                                type="text" 
+                                placeholder="Optional remark..." 
+                                className="border rounded px-2 py-1 text-xs w-48"
+                                value={adminReasons[r.id] || ''}
+                                onChange={(e) => setAdminReasons({...adminReasons, [r.id]: e.target.value})}
+                              />
+                              <div className="flex gap-2">
+                                <button onClick={() => handleProcess(r.id, 'APPROVED')} className="bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold px-3 py-1 rounded">Approve</button>
+                                <button onClick={() => handleProcess(r.id, 'REJECTED')} className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold px-3 py-1 rounded">Reject</button>
+                              </div>
                             </div>
-                          </div>
+                          ) : (
+                            <span className="text-xs text-gray-400 italic">Pending review</span>
+                          )
                         ) : (
                           <div className="text-xs text-gray-500 italic max-w-[200px] ml-auto">
                             {r.adminReason ? `Admin: "${r.adminReason}"` : '--'}
                           </div>
                         )}
-                        <button onClick={() => handleDeleteLeave(r.id)} className="text-red-500 hover:text-red-700 p-1 flex items-center gap-1 text-[10px] font-bold mt-1" title="Delete Leave Record">
-                          <Trash2 size={12} /> Remove Record
-                        </button>
+                        {canManage && (
+                          <button onClick={() => handleDeleteLeave(r.id)} className="text-red-500 hover:text-red-700 p-1 flex items-center gap-1 text-[10px] font-bold mt-1" title="Delete Leave Record">
+                            <Trash2 size={12} /> Remove Record
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
