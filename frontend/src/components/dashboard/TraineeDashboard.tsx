@@ -112,6 +112,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [changingPass, setChangingPass] = useState(false);
+  const [showAdminNoticeModal, setShowAdminNoticeModal] = useState(false);
 
   const hasAlertedForgetRef = useRef(false);
 
@@ -222,6 +223,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotices(res.data);
+      
+      // Show premium notice popup on first login / session initialization if any notices exist
+      if (res.data && res.data.length > 0 && !sessionStorage.getItem('adminNoticeShown')) {
+        setShowAdminNoticeModal(true);
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -973,7 +979,60 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         </div>
       )}
 
-
+      {/* 📢 Dynamic Live Admin Notice Modal */}
+      {showAdminNoticeModal && notices && notices.length > 0 && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200 text-left">
+            <div className="bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-5 flex items-center gap-3 text-white border-b border-orange-100/20">
+              <div className="bg-white/20 p-2 rounded-xl shadow-inner">
+                <Info size={24} className="animate-pulse text-white" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg tracking-wide leading-tight">Important Admin Announcement</h3>
+                <p className="text-[10px] font-bold opacity-90 uppercase tracking-wider mt-0.5">High Priority Bulletin</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowAdminNoticeModal(false);
+                  sessionStorage.setItem('adminNoticeShown', 'true');
+                }} 
+                className="ml-auto text-white/80 hover:text-white hover:bg-white/20 p-2 rounded-xl transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-6 max-h-[50vh] overflow-y-auto space-y-4 bg-amber-50/20 custom-scrollbar">
+              {notices.map((n: any) => (
+                <div key={n.id} className="p-5 bg-white border border-amber-100 rounded-2xl shadow-sm text-left relative group hover:border-amber-200 transition-colors">
+                  <div className="absolute top-4 right-4 bg-amber-100 text-amber-800 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    📢 Latest
+                  </div>
+                  <p className="font-bold text-gray-800 text-sm leading-relaxed pt-3 whitespace-pre-line">{n.message}</p>
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+                    <span className="text-[10px] font-black text-gray-400 uppercase">Administration Desk</span>
+                    <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-1 rounded-lg">
+                      📆 {new Date(n.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="p-4 bg-white border-t flex items-center justify-end shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
+              <button
+                onClick={() => {
+                  setShowAdminNoticeModal(false);
+                  sessionStorage.setItem('adminNoticeShown', 'true');
+                }}
+                className="w-full bg-gray-900 hover:bg-black text-white font-black py-3.5 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all transform active:scale-95 tracking-wider text-xs uppercase"
+              >
+                I Acknowledge and Understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
