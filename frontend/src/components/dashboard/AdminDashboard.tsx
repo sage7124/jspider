@@ -266,13 +266,22 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6 relative">
         <h2 className="text-lg font-bold text-center mb-6">Edit User Information</h2>
         <div className="flex flex-col gap-4">
-          {[['Name', name, setName], ['Mobile', mobile, setMobile]].map(([label, val, setter]) => (
-            <div key={label as string}>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{label as string}</label>
-              <input value={val as string} onChange={(e) => (setter as any)(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          ))}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input value={name} onChange={(e) => setName(e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mobile</label>
+            <input 
+              value={mobile} 
+              maxLength={10}
+              onChange={(e) => {
+                const numericVal = e.target.value.replace(/\D/g, '').slice(0, 10);
+                setMobile(numericVal);
+              }}
+              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
           {/* Leave balance input removed */}
           
           <div className="mt-2 border-t pt-4 flex flex-col gap-3">

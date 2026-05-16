@@ -422,8 +422,8 @@ router.put('/user/:id', async (req: AuthRequest, res) => {
 
     const updateData: any = {};
     if (fullName !== undefined) updateData.fullName = fullName;
-    if (identifier !== undefined) updateData.identifier = identifier;
-    if (email !== undefined) updateData.email = email;
+    if (identifier !== undefined) updateData.identifier = String(identifier).replace(/\D/g, '').slice(0, 10);
+    if (email !== undefined) updateData.email = email === '' ? null : email;
     if (educationCompleted !== undefined) updateData.educationCompleted = educationCompleted;
     if (subClassification !== undefined) updateData.subClassification = subClassification;
     if (fatherName !== undefined) updateData.fatherName = fatherName;
