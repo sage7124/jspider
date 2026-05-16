@@ -285,29 +285,6 @@ const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose
           {/* Leave balance input removed */}
           
           <div className="mt-2 border-t pt-4 flex flex-col gap-3">
-            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-0">Security & Devices</label>
-            <div className="flex gap-3">
-              <button 
-                onClick={async () => {
-                  if(!confirm('Reset Mobile lock?')) return;
-                  const token = localStorage.getItem('token');
-                  await axios.post(`${API}/reset-device/${trainee.id}`, { type: 'mobile' }, { headers: { Authorization: `Bearer ${token}` } });
-                  alert('Mobile lock reset');
-                }}
-                className="flex-1 bg-orange-50 text-orange-700 border border-orange-200 py-2 rounded text-xs font-bold hover:bg-orange-100 transition-colors">
-                Reset Mobile Lock
-              </button>
-              <button 
-                onClick={async () => {
-                  if(!confirm('Reset Laptop lock?')) return;
-                  const token = localStorage.getItem('token');
-                  await axios.post(`${API}/reset-device/${trainee.id}`, { type: 'desktop' }, { headers: { Authorization: `Bearer ${token}` } });
-                  alert('Laptop lock reset');
-                }}
-                className="flex-1 bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded text-xs font-bold hover:bg-blue-100 transition-colors">
-                Reset Laptop Lock
-              </button>
-            </div>
             <button 
               onClick={async () => {
                 if(!confirm('Grant 24-hour Profile Edit Override?')) return;

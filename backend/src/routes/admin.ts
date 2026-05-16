@@ -1036,40 +1036,6 @@ router.delete('/leaves/:id', async (req: AuthRequest, res) => {
 
 
 // ── Reset Device Locks ───────────────────────────────────────────────────────
-router.post('/reset-device/:id', async (req: AuthRequest, res) => {
-  try {
-    const { id } = req.params;
-    const { type } = req.body; // 'mobile', 'desktop', or 'both'
-    const data: any = {};
-    if (type === 'mobile' || type === 'both') data.mobileDeviceId = null;
-    if (type === 'desktop' || type === 'both') data.desktopDeviceId = null;
-    await prisma.user.update({ where: { id: Number(id) }, data });
-    res.json({ message: `Device lock (${type}) reset successfully` });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// ── Find User by Device ID ───────────────────────────────────────────────────
-router.get('/device/:deviceId', async (req: AuthRequest, res) => {
-  try {
-    const { deviceId } = req.params;
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { mobileDeviceId: deviceId as string },
-          { desktopDeviceId: deviceId as string }
-        ]
-      },
-      select: { id: true, identifier: true, fullName: true, role: true }
-    });
-
-    if (!user) return res.status(404).json({ error: 'No user found with this device ID' });
-    res.json(user);
-  } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // ── Force Logout (Punch Out + Optional Reset) ─────────────────────────────
 router.post('/force-logout/:id', async (req: AuthRequest, res) => {
