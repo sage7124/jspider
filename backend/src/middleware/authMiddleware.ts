@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
+const prisma = new PrismaClient();
 
 export interface AuthRequest extends Request {
   user?: {
@@ -11,7 +13,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -19,16 +21,32 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) {
-      if (err.name === 'TokenExpiredError') {
-        return res.status(401).json({ error: 'Your session has expired. Please log out and log in again.' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    req.user = decoded;
+
+    // For trainees: check if this token is still the active session
+    if (decoded.role === 'TRAINEE') {
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { activeSessionToken: true }
+      });
+
+      if (user && user.activeSessionToken && user.activeSessionToken !== token) {
+        return res.status(401).json({ 
+          error: 'You have been logged in on another device. Please login again.',
+          code: 'SESSION_REPLACED'
+        });
       }
-      return res.status(401).json({ error: 'Invalid session token. Please log out and log in again.' });
     }
-    req.user = user;
+
     next();
-  });
+  } catch (err: any) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Your session has expired. Please log out and log in again.' });
+    }
+    return res.status(401).json({ error: 'Invalid session token. Please log out and log in again.' });
+  }
 };
 
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {

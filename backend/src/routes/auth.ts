@@ -150,6 +150,14 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    // For trainees: save the active token so only one session is valid at a time
+    if (user.role === 'TRAINEE') {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { activeSessionToken: token }
+      });
+    }
+
     res.json({ token, user: { id: user.id, role: user.role, fullName: user.fullName, permissions: user.permissions } });
   } catch (error: any) {
     console.error('Login error:', error);

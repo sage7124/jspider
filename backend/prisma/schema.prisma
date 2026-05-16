@@ -56,6 +56,8 @@ model User {
   
   permissions            String       @default("RESET_PASSWORD,DIRECT_LEAVE,DOWNLOAD_REPORT")
   
+  activeSessionToken     String?      // Only one active session allowed at a time (Trainees only)
+  
   slots          Slot[]       // Slots assigned to this trainee
   attendances    Attendance[]
   leaveRequests  LeaveRequest[]

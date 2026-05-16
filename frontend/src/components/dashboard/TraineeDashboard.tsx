@@ -142,6 +142,23 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     fetchProfile();
     fetchDropdowns();
     
+    // Global interceptor: auto-logout if session was replaced by another device
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401 && error.response?.data?.code === 'SESSION_REPLACED') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          alert('You have been logged in on another device. Please login again.');
+          window.location.href = '/';
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
 
   }, []);
 
