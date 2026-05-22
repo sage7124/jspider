@@ -184,18 +184,20 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       return 'ABSENT';
     };
 
-    const getSlotInTimeStatus = (slot: any, slotInTime?: Date, isExtra?: boolean, branchName?: string) => {
+    const getSlotInTimeStatus = (slot: any, slotInTime?: Date, isExtra?: boolean, branchName?: string, infoText?: string) => {
       if (slotInTime) {
         const timeStr = new Date(slotInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        return branchName ? `${timeStr}, ${branchName}` : timeStr;
+        const base = branchName ? `${timeStr}, ${branchName}` : timeStr;
+        return infoText ? `${base} (${infoText})` : base;
       }
       return getDefaultStatus(slot, isExtra);
     };
 
-    const getSlotOutTimeStatus = (slot: any, slotOutTime?: Date, hasIn?: boolean, isExtra?: boolean, branchName?: string) => {
+    const getSlotOutTimeStatus = (slot: any, slotOutTime?: Date, hasIn?: boolean, isExtra?: boolean, branchName?: string, infoText?: string) => {
       if (slotOutTime) {
         const timeStr = new Date(slotOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        return branchName ? `${timeStr}, ${branchName}` : timeStr;
+        const base = branchName ? `${timeStr}, ${branchName}` : timeStr;
+        return infoText ? `${base} (${infoText})` : base;
       }
       if (!slot) return '--';
       if (isExtra) return '--'; // Never display absent/missing on an empty extra slot.
@@ -214,14 +216,15 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       let rawOut = att ? att[`outTime${si}`] : null;
       let inBranch = att ? att[`inBranch${si}`] : null;
       let outBranch = att ? att[`outBranch${si}`] : null;
+      const infoText = att ? (att[`info${si}`] || (si === 1 ? att.info : null)) : null;
 
       // Legacy fallback injection removed so overall punches no longer pollute Column D if Slot 1 is cleared.
 
       const sIn = rawIn ? new Date(rawIn) : undefined;
       const sOut = rawOut ? new Date(rawOut) : undefined;
 
-      rowData[`s${si}In`] = getSlotInTimeStatus(slot, sIn, isExtra, inBranch);
-      rowData[`s${si}Out`] = getSlotOutTimeStatus(slot, sOut, !!sIn, isExtra, outBranch);
+      rowData[`s${si}In`] = getSlotInTimeStatus(slot, sIn, isExtra, inBranch, infoText);
+      rowData[`s${si}Out`] = getSlotOutTimeStatus(slot, sOut, !!sIn, isExtra, outBranch, infoText);
 
       let finalLate: any = '--';
       let finalEarly: any = '--';

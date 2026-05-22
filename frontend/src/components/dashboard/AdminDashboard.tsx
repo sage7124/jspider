@@ -563,6 +563,7 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
   const [slotNo, setSlotNo] = useState<number | null>(null);
   const [inTime, setInTime] = useState('');
   const [outTime, setOutTime] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
 
   const getLocalDay = (dateStr: string) => {
@@ -590,7 +591,8 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
         date, 
         slotNo,
         inTime,
-        outTime
+        outTime,
+        info
       };
 
       await axios.put(`${API}/attendance-manual/${trainee.id}`, payload, {
@@ -707,6 +709,17 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               <input type="time" value={outTime} onChange={e => setOutTime(e.target.value)}
                 className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Info</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Late due to heavy rain, forgot punch, etc."
+              value={info} 
+              onChange={e => setInfo(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm placeholder-gray-400" 
+            />
           </div>
         </div>
 

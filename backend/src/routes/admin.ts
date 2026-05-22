@@ -243,7 +243,9 @@ function mergeAttendances(localAtt: any[], remoteAtt: any[]) {
       if (loc.outTime && rem.outTime) combo.outTime = new Date(loc.outTime) > new Date(rem.outTime) ? loc.outTime : rem.outTime;
       combo.isLate = loc.isLate || rem.isLate;
       combo.status = (loc.status === 'IN' || rem.status === 'IN') ? 'IN' : 'OUT';
+      combo.info = loc.info || rem.info;
       for(let i = 1; i <= 5; i++) {
+        combo[`info${i}`] = loc[`info${i}`] || rem[`info${i}`];
         const lIn = loc[`inTime${i}`];
         const rIn = rem[`inTime${i}`];
         if (lIn && rIn) {
@@ -1064,7 +1066,7 @@ router.post('/force-logout/:id', async (req: AuthRequest, res) => {
 router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
   try {
     const { traineeId } = req.params;
-    const { inTime, outTime, status, date, slotNo, clearPunchOut } = req.body; // inTime/outTime format "HH:mm"
+    const { inTime, outTime, status, date, slotNo, clearPunchOut, info } = req.body; // inTime/outTime format "HH:mm"
     
     // Use provided date or fallback to today
     const targetDate = date ? new Date(date) : new Date();
@@ -1108,6 +1110,10 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
           updateData[`outTime${sNum}`] = null;
         } else if (outTime && outTime !== '--') {
           updateData[`outTime${sNum}`] = setTime(outTime);
+        }
+
+        if (info !== undefined) {
+          updateData[`info${sNum}`] = info || null;
         }
 
         const existing = await prisma.attendance.findUnique({
@@ -1179,6 +1185,10 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
           } else {
             updateData.status = 'IN';
           }
+        }
+
+        if (info !== undefined) {
+          updateData.info = info || null;
         }
       }
     }

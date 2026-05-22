@@ -125,6 +125,13 @@ model Attendance {
   inTime5        DateTime?
   outTime5       DateTime?
 
+  info           String?
+  info1          String?
+  info2          String?
+  info3          String?
+  info4          String?
+  info5          String?
+
   @@unique([userId, date])
 }
 

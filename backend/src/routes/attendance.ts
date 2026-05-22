@@ -385,9 +385,11 @@ function mergeAttendances(localAtt: any[], remoteAtt: any[]) {
       if (loc.outTime && rem.outTime) combo.outTime = new Date(loc.outTime) > new Date(rem.outTime) ? loc.outTime : rem.outTime;
       combo.isLate = loc.isLate || rem.isLate;
       combo.status = (loc.status === 'IN' || rem.status === 'IN') ? 'IN' : 'OUT';
+      combo.info = loc.info || rem.info;
       for(let i = 1; i <= 5; i++) {
         combo[`inTime${i}`] = loc[`inTime${i}`] || rem[`inTime${i}`];
         combo[`outTime${i}`] = loc[`outTime${i}`] || rem[`outTime${i}`];
+        combo[`info${i}`] = loc[`info${i}`] || rem[`info${i}`];
       }
       mergedMap.set(key, combo);
     }
