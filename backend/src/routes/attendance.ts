@@ -79,9 +79,9 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
 
     // ── Master Kiosk Bypass ─────────────────────────────────────────────────
     // Check if the trainee is punching from an officially whitelisted reception kiosk PC/Tablet
-    const isKioskDevice = await prisma.branchLocation.findFirst({
+    const isKioskDevice = (deviceId && typeof deviceId === 'string' && deviceId.trim() !== '') ? await prisma.branchLocation.findFirst({
       where: { kioskDeviceId: deviceId }
-    });
+    }) : null;
 
     if (isKioskDevice) {
       console.log(`[Punch] Trusted Master Kiosk detected (${isKioskDevice.name}). Device lock bypassed.`);
@@ -117,7 +117,9 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
     }
     const baseBranchCode = validBranch.branchCode || validBranch.name;
-    const punchedBranchName = isKioskDevice ? `${baseBranchCode}, MOBILE` : baseBranchCode;
+    const punchedBranchName = isKioskDevice 
+      ? baseBranchCode 
+      : (platform === 'mobile' ? `${baseBranchCode}, MOBILE` : baseBranchCode);
 
     // 2. QR Token validation removed as requested by user
     /*
