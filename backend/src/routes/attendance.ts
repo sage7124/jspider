@@ -84,19 +84,7 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     }) : null;
 
     if (isKioskDevice) {
-      console.log(`[Punch] Trusted Master Kiosk detected (${isKioskDevice.name}). Device lock bypassed.`);
-    } else {
-      // Proceed with standard strict single-device hardware checks
-      const isMobile = platform === 'mobile';
-      const currentLockedId = isMobile ? user.mobileDeviceId : user.desktopDeviceId;
-
-      if (!currentLockedId) {
-        return res.status(403).json({ error: `This ${platform} device is not registered to your account. Please logout and login again.` });
-      }
-
-      if (deviceId !== currentLockedId) {
-        return res.status(403).json({ error: `Attendance can only be marked from your registered ${platform}.` });
-      }
+      console.log(`[Punch] Trusted Master Kiosk detected (${isKioskDevice.name}).`);
     }
 
     // 🚀 Dynamic Geofence Check for INFINITE LOCATIONS
