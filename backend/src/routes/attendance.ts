@@ -117,9 +117,7 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
     }
     const baseBranchCode = validBranch.branchCode || validBranch.name;
-    const punchedBranchName = isKioskDevice 
-      ? baseBranchCode 
-      : (platform === 'mobile' ? `${baseBranchCode}, MOBILE` : baseBranchCode);
+    const punchedBranchName = isKioskDevice ? `${baseBranchCode}, MOBILE` : baseBranchCode;
 
     // 2. QR Token validation removed as requested by user
     /*
