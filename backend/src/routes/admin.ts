@@ -1807,6 +1807,29 @@ router.post('/sync-sister-permanent', async (req: AuthRequest, res) => {
 });
 
 // ── Teacher Memos Management ──────────────────────────────────────────────────
+router.get('/memos/recipients', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Unauthorized: Admin privileges required.' });
+    }
+    const list = await prisma.user.findMany({
+      where: {
+        role: { in: ['SUPERVISOR', 'TRAINEE'] }
+      },
+      select: {
+        id: true,
+        fullName: true,
+        identifier: true,
+        role: true
+      },
+      orderBy: { fullName: 'asc' }
+    });
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.post('/memos', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user!.role !== 'ADMIN') {

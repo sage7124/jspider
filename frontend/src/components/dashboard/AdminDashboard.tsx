@@ -3167,7 +3167,7 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
   const fetchSupervisors = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/supervisors`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${API}/memos/recipients`, { headers: { Authorization: `Bearer ${token}` } });
       setSupervisors(res.data || []);
     } catch (e) {
       console.error(e);
@@ -3270,9 +3270,11 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Select Teacher</label>
                     <select value={recipientId} onChange={e => setRecipientId(e.target.value)} required
                       className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-500">
-                      <option value="">-- Choose Supervisor --</option>
+                      <option value="">-- Choose Teacher / Supervisor --</option>
                       {supervisors.map(s => (
-                        <option key={s.id} value={s.id}>{s.fullName} ({s.identifier})</option>
+                        <option key={s.id} value={s.id}>
+                          {s.fullName} ({s.identifier}) - {s.role === 'TRAINEE' ? 'Teacher' : 'Supervisor'}
+                        </option>
                       ))}
                     </select>
                   </div>

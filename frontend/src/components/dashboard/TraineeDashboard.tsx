@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Info } from 'lucide-react';
+import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Info, Mail } from 'lucide-react';
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 
@@ -130,6 +130,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [profile, setProfile] = useState<any>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showMemos, setShowMemos] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [educations, setEducations] = useState<string[]>([]);
   const [classifications, setClassifications] = useState<string[]>([]);
@@ -398,6 +399,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       <div className="flex justify-between items-center mb-6 border-b pb-4">
         <h2 className="text-lg font-black text-gray-800 tracking-tight">NICTian Teacher Portal</h2>
         <div className="flex items-center gap-4">
+          <button onClick={() => setShowMemos(true)}
+            className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
+          >
+            <Mail size={14} /> My Memos
+          </button>
           <button onClick={() => setShowProfileModal(true)}
             className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
           >
@@ -1062,6 +1068,66 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
           </div>
         </div>
       )}
+      {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role="TRAINEE" />}
+    </div>
+  );
+};
+
+// ── Teacher Memo Management Modal ─────────────────────────────────────────────
+const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: string }) => {
+  const [memos, setMemos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchReceivedMemos();
+  }, []);
+
+  const fetchReceivedMemos = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/admin/memos/received`, { headers: { Authorization: `Bearer ${token}` } });
+      setMemos(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl p-6 relative max-h-[90vh] flex flex-col">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-purple-700 flex items-center gap-2 border-b pb-3">
+          <Mail size={20} /> My Official Memos
+        </h2>
+
+        <div className="flex-1 overflow-y-auto min-h-[300px]">
+          {loading ? (
+            <p className="text-center py-10 text-gray-400">Loading memos...</p>
+          ) : (
+            <div className="space-y-3 text-left">
+              {memos.length === 0 ? (
+                <p className="text-center py-10 text-gray-400 italic text-sm">No official memos received from Admin yet.</p>
+              ) : (
+                memos.map((m) => (
+                  <div key={m.id} className="p-4 rounded-lg bg-purple-50/50 border border-purple-100 flex flex-col gap-1 text-xs">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-black text-purple-800 uppercase">FROM: {m.sender?.fullName || 'ADMIN'}</span>
+                      <span className="text-[10px] text-gray-400">{new Date(m.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed bg-white p-2.5 rounded border border-purple-50 whitespace-pre-wrap">{m.content}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
