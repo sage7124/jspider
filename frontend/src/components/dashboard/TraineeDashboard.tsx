@@ -57,6 +57,15 @@ const ChipInput = ({
     }
   };
 
+  const handleBlur = () => {
+    const cleanVal = inputValue.trim().replace(/,/g, '');
+    if (cleanVal && !items.includes(cleanVal)) {
+      const newItems = [...items, cleanVal];
+      onChange(newItems.join(', '));
+    }
+    setInputValue('');
+  };
+
   const removeItem = (index: number) => {
     const newItems = items.filter((_, i) => i !== index);
     onChange(newItems.join(', '));
@@ -90,6 +99,7 @@ const ChipInput = ({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
           placeholder={placeholder}
           className="w-full mt-1 px-3 py-1.5 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
         />
@@ -671,6 +681,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       <th className="px-2 py-3 font-semibold whitespace-nowrap text-center bg-[#1565C0]">S3 Early</th>
                     </>
                   )}
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center bg-indigo-700">Info</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -699,15 +710,16 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                         <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s3In}</td>
                         <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s3Out}</td>
                         <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s3Late}</td>
-                        <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30">{r.s3Early}</td>
+                        <td className="px-2 py-2 text-center text-gray-600 whitespace-nowrap bg-blue-50/30 border-r">{r.s3Early}</td>
                       </>
                     )}
+                    <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap border-r font-medium">{r.infoText || '--'}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
                 <tr>
-                  <td colSpan={2 + 4 * [reportData.hasSlot1, reportData.hasSlot2, reportData.hasSlot3].filter(Boolean).length} className="px-4 py-4 text-center">
+                  <td colSpan={3 + 4 * [reportData.hasSlot1, reportData.hasSlot2, reportData.hasSlot3].filter(Boolean).length} className="px-4 py-4 text-center">
                     <span className="text-red-600 text-lg mr-8">Total Late: {reportData.totals.late}</span>
                     <span className="text-orange-600 text-lg">Total Early Leave: {reportData.totals.earlyDeparture}</span>
                   </td>

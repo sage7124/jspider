@@ -278,6 +278,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     rowData.earlyDeparture = dayEarlyMins > 0 ? `${Math.floor(dayEarlyMins / 60)}h ${dayEarlyMins % 60}m` : '0m';
     rowData.extraWork = dayExtraMins > 0 ? `${Math.floor(dayExtraMins / 60)}h ${dayExtraMins % 60}m` : '0m';
 
+    const allInfos = att ? [att.info, att.info1, att.info2, att.info3, att.info4, att.info5].filter(Boolean) as string[] : [];
+    rowData.infoText = allInfos.length > 0 ? Array.from(new Set(allInfos)).join('; ') : '--';
+
     rows.push(rowData);
   }
 
@@ -323,6 +326,7 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   }
 
   const endColumns = [
+    { header: 'Info', key: 'infoText', width: 25 },
     { header: 'Total Late', key: 'late', width: 15 },
     { header: 'Total Early', key: 'earlyDeparture', width: 15 },
   ];

@@ -316,6 +316,9 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
         if (leave) status = 'LEAVE';
         else status = hasSlot ? 'ABSENT' : '--';
       }
+      if (status === 'ABSENT' && !hasSlot) {
+        status = '--';
+      }
 
       return {
         id: user.id,
@@ -635,6 +638,9 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
       const hasSlot = daySlots.length > 0;
 
       let status = att ? att.status : (hasSlot ? 'ABSENT' : '--');
+      if (status === 'ABSENT' && !hasSlot) {
+        status = '--';
+      }
       if (!att && leave) {
         status = 'LEAVE';
       }
@@ -1797,6 +1803,89 @@ router.post('/sync-sister-permanent', async (req: AuthRequest, res) => {
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ error: error.message || 'Failed to perform permanent sister synchronization' });
+  }
+});
+
+// ── Teacher Memos Management ──────────────────────────────────────────────────
+router.post('/memos', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Only admins can issue memos.' });
+    }
+    const { recipientId, content } = req.body;
+    if (!recipientId || !content || content.trim() === '') {
+      return res.status(400).json({ error: 'Recipient and Content are required.' });
+    }
+
+    const memo = await prisma.memo.create({
+      data: {
+        content: content.trim(),
+        recipientId: Number(recipientId),
+        senderId: req.user!.id,
+      },
+      include: {
+        recipient: { select: { fullName: true } }
+      }
+    });
+
+    res.status(201).json({ message: 'Memo sent successfully', memo });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/memos/sent', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const memos = await prisma.memo.findMany({
+      where: { senderId: req.user!.id },
+      include: {
+        recipient: { select: { fullName: true, identifier: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(memos);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/memos/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user!.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    const { id } = req.params;
+
+    await prisma.memo.delete({
+      where: { id: Number(id) }
+    });
+
+    res.json({ message: 'Memo deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/memos/received', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const memos = await prisma.memo.findMany({
+      where: { recipientId: userId },
+      include: {
+        sender: { select: { fullName: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(memos);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

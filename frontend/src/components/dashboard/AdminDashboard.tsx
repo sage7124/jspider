@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -58,6 +58,15 @@ const ChipInput = ({
     }
   };
 
+  const handleBlur = () => {
+    const cleanVal = inputValue.trim().replace(/,/g, '');
+    if (cleanVal && !items.includes(cleanVal)) {
+      const newItems = [...items, cleanVal];
+      onChange(newItems.join(', '));
+    }
+    setInputValue('');
+  };
+
   const removeItem = (index: number) => {
     const newItems = items.filter((_, i) => i !== index);
     onChange(newItems.join(', '));
@@ -91,6 +100,7 @@ const ChipInput = ({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
           placeholder={placeholder}
           className="w-full mt-1 px-3 py-1.5 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs"
         />
@@ -944,6 +954,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [showNotices, setShowNotices] = useState(false);
   const [showDropdownOptions, setShowDropdownOptions] = useState(false);
   const [viewOnboardingUser, setViewOnboardingUser] = useState<Trainee | null>(null);
+  const [showMemos, setShowMemos] = useState(false);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -1077,6 +1088,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
               <Download size={18} /> Download
             </button>
           )}
+          {role === 'SUPERVISOR' && (
+            <button onClick={() => setShowMemos(true)}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <Mail size={18} /> My Memos
+            </button>
+          )}
+          {role === 'ADMIN' && (
+            <button onClick={() => setShowMemos(true)}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <Mail size={18} /> Memos
+            </button>
+          )}
         </div>
       </div>
 
@@ -1190,6 +1213,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showNotices && <NoticesModal onClose={() => setShowNotices(false)} canManage={hasPermission('NOTICES')} />}
       {showDropdownOptions && <DropdownOptionsModal onClose={() => setShowDropdownOptions(false)} />}
       {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => { setViewOnboardingUser(null); fetchTrainees(); }} />}
+      {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role={role} />}
     </div>
   );
 };
@@ -3114,6 +3138,198 @@ const NoticesModal = ({ onClose, canManage }: { onClose: () => void; canManage: 
               )}
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Teacher Memo Management Modal ─────────────────────────────────────────────
+const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: string }) => {
+  const [memos, setMemos] = useState<any[]>([]);
+  const [supervisors, setSupervisors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [content, setContent] = useState('');
+  const [recipientId, setRecipientId] = useState('');
+  const [memoTab, setMemoTab] = useState<'received' | 'send' | 'sent'>('received');
+
+  useEffect(() => {
+    if (role === 'ADMIN') {
+      setMemoTab('send');
+      fetchSupervisors();
+      fetchSentMemos();
+    } else {
+      setMemoTab('received');
+      fetchReceivedMemos();
+    }
+  }, [role]);
+
+  const fetchSupervisors = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/supervisors`, { headers: { Authorization: `Bearer ${token}` } });
+      setSupervisors(res.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchSentMemos = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/memos/sent`, { headers: { Authorization: `Bearer ${token}` } });
+      setMemos(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchReceivedMemos = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/memos/received`, { headers: { Authorization: `Bearer ${token}` } });
+      setMemos(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendMemo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recipientId || !content.trim()) return alert('Recipient and Content are required');
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/memos`, {
+        recipientId: Number(recipientId),
+        content: content.trim()
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Memo sent successfully!');
+      setContent('');
+      setRecipientId('');
+      fetchSentMemos();
+      setMemoTab('sent');
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to send memo');
+    }
+  };
+
+  const handleDeleteMemo = async (id: number) => {
+    if (!confirm('Are you sure you want to revoke this memo?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/memos/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchSentMemos();
+    } catch (e) {
+      alert('Failed to delete memo');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl p-6 relative max-h-[90vh] flex flex-col">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-purple-700 flex items-center gap-2">
+          <Mail size={20} /> {role === 'ADMIN' ? 'Delegated Teacher Memos' : 'My Official Memos'}
+        </h2>
+
+        {/* Tab Headers */}
+        {role === 'ADMIN' && (
+          <div className="flex border-b mb-4">
+            <button onClick={() => setMemoTab('send')}
+              className={`flex-1 py-2 font-bold text-xs uppercase tracking-wider ${memoTab === 'send' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-400'}`}>
+              Send Memo
+            </button>
+            <button onClick={() => setMemoTab('sent')}
+              className={`flex-1 py-2 font-bold text-xs uppercase tracking-wider ${memoTab === 'sent' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-400'}`}>
+              Sent History ({memos.length})
+            </button>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto min-h-[300px]">
+          {loading ? (
+            <p className="text-center py-10 text-gray-400">Loading memos...</p>
+          ) : (
+            <>
+              {/* Send Tab (Admin only) */}
+              {memoTab === 'send' && role === 'ADMIN' && (
+                <form onSubmit={handleSendMemo} className="space-y-4 text-left">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Select Teacher</label>
+                    <select value={recipientId} onChange={e => setRecipientId(e.target.value)} required
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-purple-500">
+                      <option value="">-- Choose Supervisor --</option>
+                      {supervisors.map(s => (
+                        <option key={s.id} value={s.id}>{s.fullName} ({s.identifier})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Memo Message</label>
+                    <textarea value={content} onChange={e => setContent(e.target.value)} placeholder="Type memo details..." required rows={6}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-purple-500 resize-none" />
+                  </div>
+                  <button type="submit"
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded text-xs uppercase tracking-wider shadow transition-all active:scale-95">
+                    🚀 Dispatch Official Memo
+                  </button>
+                </form>
+              )}
+
+              {/* Sent Tab (Admin only) */}
+              {memoTab === 'sent' && role === 'ADMIN' && (
+                <div className="space-y-3 text-left">
+                  {memos.length === 0 ? (
+                    <p className="text-center py-10 text-gray-400 italic text-sm">No official memos dispatched yet.</p>
+                  ) : (
+                    memos.map((m) => (
+                      <div key={m.id} className="p-4 rounded-lg bg-gray-50 border border-gray-150 flex flex-col gap-1 text-xs relative">
+                        <button onClick={() => handleDeleteMemo(m.id)} className="absolute right-3 top-3 text-red-500 hover:text-red-700" title="Delete Memo">
+                          <Trash2 size={16} />
+                        </button>
+                        <div className="flex justify-between items-center pr-8 mb-1">
+                          <span className="font-black text-purple-700 uppercase">To: {m.recipient?.fullName}</span>
+                          <span className="text-[10px] text-gray-400">{new Date(m.createdAt).toLocaleString()}</span>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed bg-white p-2.5 rounded border border-gray-100 whitespace-pre-wrap">{m.content}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Received Tab (Teacher only) */}
+              {memoTab === 'received' && (
+                <div className="space-y-3 text-left">
+                  {memos.length === 0 ? (
+                    <p className="text-center py-10 text-gray-400 italic text-sm">No official memos received from Admin yet.</p>
+                  ) : (
+                    memos.map((m) => (
+                      <div key={m.id} className="p-4 rounded-lg bg-purple-50/50 border border-purple-100 flex flex-col gap-1 text-xs">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-black text-purple-800 uppercase">FROM: {m.sender?.fullName || 'ADMIN'}</span>
+                          <span className="text-[10px] text-gray-400">{new Date(m.createdAt).toLocaleString()}</span>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed bg-white p-2.5 rounded border border-purple-50 whitespace-pre-wrap">{m.content}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

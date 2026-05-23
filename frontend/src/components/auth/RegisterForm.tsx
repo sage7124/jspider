@@ -33,6 +33,15 @@ const ChipInput = ({
     }
   };
 
+  const handleBlur = () => {
+    const cleanVal = inputValue.trim().replace(/,/g, '');
+    if (cleanVal && !items.includes(cleanVal)) {
+      const newItems = [...items, cleanVal];
+      onChange(newItems.join(', '));
+    }
+    setInputValue('');
+  };
+
   const removeItem = (index: number) => {
     const newItems = items.filter((_, i) => i !== index);
     onChange(newItems.join(', '));
@@ -66,6 +75,7 @@ const ChipInput = ({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
           placeholder={placeholder}
           className="w-full mt-1 px-3 py-1.5 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
         />
