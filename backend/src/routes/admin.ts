@@ -145,13 +145,15 @@ router.use((req: AuthRequest, res, next) => {
     // 3. Reset student passwords
     // 4. Direct, Process and Approve leave requests
     // 5. Create, view and delete notices (targeted announcements)
+    // 6. View received memos
     const path = req.path.toLowerCase();
     const allowedPrefixes = [
       '/attendance',
       '/reports',
       '/change-password',
       '/leaves',
-      '/notices'
+      '/notices',
+      '/memos'
     ];
     
     const isAllowed = allowedPrefixes.some(p => path.startsWith(p));
@@ -160,8 +162,17 @@ router.use((req: AuthRequest, res, next) => {
     }
     
     return res.status(403).json({ 
-      error: 'Access Denied: Supervisors are restricted to Leaves, Reports, Password Resets, and Notices management only.' 
+      error: 'Access Denied: Supervisors are restricted to Leaves, Reports, Password Resets, Notices, and Memos management only.' 
     });
+  }
+
+  if (role === 'TRAINEE') {
+    // Trainees (Teachers) only get access to fetch their own received memos
+    const path = req.path.toLowerCase();
+    if (path.startsWith('/memos/received')) {
+      return next();
+    }
+    return res.status(403).json({ error: 'Access Denied: Trainees are restricted from Admin operations.' });
   }
   
   return res.status(403).json({ error: 'Admin access required' });
