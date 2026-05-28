@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Info, Mail } from 'lucide-react';
+import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Info, Mail, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 
@@ -639,9 +639,9 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         </div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6 mt-6">
+      <div className="grid md:grid-cols-3 gap-6 mt-6">
         {/* Leave Status */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 flex flex-col justify-center">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 flex flex-col justify-center min-h-[160px]">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
             <Send className="text-[#1976D2]" /> Leave Status
           </h3>
@@ -653,30 +653,47 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
           </div>
         </div>
 
-        {/* Upcoming Holidays */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+        {/* Absent Status */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 flex flex-col justify-center min-h-[160px]">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <AlertCircle className="text-red-600" /> Absent Status
+          </h3>
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <span className="block text-2xl font-bold text-red-600">
+                {reportData?.rows?.filter((row: any) => 
+                  ['s1Late', 's2Late', 's3Late'].some(key => row[key] === 'ABSENT')
+                ).length || 0}
+              </span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase">Total Absents ({reportMonth}/{reportYear})</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Upcoming Holidays */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 flex flex-col justify-between min-h-[160px]">
+          <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
             <Calendar className="text-pink-600" /> Upcoming Holidays
           </h3>
-          <div className="space-y-3 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-3 max-h-[85px] overflow-y-auto pr-2 custom-scrollbar">
             {holidays.length === 0 ? (
-              <p className="text-center py-4 text-gray-400 text-sm italic">No upcoming holidays</p>
+              <p className="text-center py-2 text-gray-400 text-xs italic">No upcoming holidays</p>
             ) : (
               holidays.map((h, i) => {
                 const d = new Date(h.date);
                 return (
-                  <div key={i} className="flex justify-between items-center p-2 bg-pink-50 rounded border border-pink-100">
+                  <div key={i} className="flex justify-between items-center p-1.5 bg-pink-50/70 rounded border border-pink-100 text-xs">
                     <div className="flex flex-col">
-                      <span className="font-bold text-xs text-pink-700">{h.name}</span>
-                      <span className="text-[10px] text-pink-600">{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</span>
+                      <span className="font-bold text-[10px] text-pink-700">{h.name}</span>
+                      <span className="text-[9px] text-pink-600">{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</span>
                     </div>
-                    <span className="text-xs font-bold text-gray-700">{d.toLocaleDateString()}</span>
+                    <span className="text-[10px] font-bold text-gray-700">{d.toLocaleDateString()}</span>
                   </div>
                 );
               })
             )}
           </div>
-          <p className="text-[10px] text-gray-400 mt-4 italic">* Attendance is not required on scheduled holidays.</p>
+          <p className="text-[9px] text-gray-400 mt-2 italic">* Attendance not required on holidays.</p>
         </div>
       </div>
 
