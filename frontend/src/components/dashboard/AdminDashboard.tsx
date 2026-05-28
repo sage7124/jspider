@@ -1748,10 +1748,15 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
   const [supForm, setSupForm] = useState({ fullName: '', mobile: '', password: '', email: '' });
   const [selectedPerms, setSelectedPerms] = useState<string[]>(["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
   const [editSupervisorId, setEditSupervisorId] = useState<number | null>(null);
+  const [allTrainees, setAllTrainees] = useState<any[]>([]);
+  const [selectedTraineeIds, setSelectedTraineeIds] = useState<number[]>([]);
+  const [traineeSearch, setTraineeSearch] = useState('');
 
   const resetSupForm = () => {
     setSupForm({ fullName: '', mobile: '', password: '', email: '' });
     setSelectedPerms(["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
+    setSelectedTraineeIds([]);
+    setTraineeSearch('');
     setEditSupervisorId(null);
   };
 
@@ -1774,7 +1779,16 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
   useEffect(() => {
     fetchBranches();
     fetchSupervisors();
+    fetchAllTrainees();
   }, []);
+
+  const fetchAllTrainees = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/attendance`, { headers: { Authorization: `Bearer ${token}` } });
+      setAllTrainees(res.data || []);
+    } catch (err) { console.error(err); }
+  };
 
   const fetchSupervisors = async () => {
     try {
@@ -1793,12 +1807,12 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
     try {
       const token = localStorage.getItem('token');
       if (editSupervisorId) {
-        await axios.put(`${API}/supervisors/${editSupervisorId}`, { ...supForm, permissions: selectedPerms }, {
+        await axios.put(`${API}/supervisors/${editSupervisorId}`, { ...supForm, permissions: selectedPerms, traineeIds: selectedTraineeIds }, {
           headers: { Authorization: `Bearer ${token}` }
         });
         alert('✅ Supervisor credentials and privileges updated successfully!');
       } else {
-        await axios.post(`${API}/supervisors`, { ...supForm, permissions: selectedPerms }, {
+        await axios.post(`${API}/supervisors`, { ...supForm, permissions: selectedPerms, traineeIds: selectedTraineeIds }, {
           headers: { Authorization: `Bearer ${token}` }
         });
         alert('🎉 Supervisor identity created and activated successfully!');
@@ -2068,12 +2082,24 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                 ) : (
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                     {supervisors.map(s => (
-                      <div key={s.id} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-lg group hover:bg-slate-100 transition-colors">
-                        <div>
+                      <div key={s.id} className="flex justify-between items-start p-3 bg-slate-50 border border-slate-100 rounded-lg group hover:bg-slate-100 transition-colors">
+                        <div className="flex-1">
                           <p className="font-black text-slate-800 text-xs">{s.fullName}</p>
                           <p className="text-[10px] text-slate-500 font-mono">📲 {s.identifier} {s.email ? `| 📧 ${s.email}` : ''}</p>
+                          {/* Trainees Assigned Badge List */}
+                          {s.trainees && s.trainees.length > 0 ? (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {s.trainees.map((t: any) => (
+                                <span key={t.id} className="bg-slate-200 text-slate-700 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                  👤 {t.fullName}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[8px] text-gray-400 italic mt-1 font-bold">No trainees assigned</p>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
                           <button 
                             onClick={() => {
                               setEditSupervisorId(s.id);
@@ -2084,6 +2110,7 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                                 password: '' // Change only if provided
                               });
                               setSelectedPerms(s.permissions ? s.permissions.split(',') : ["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
+                              setSelectedTraineeIds(s.trainees ? s.trainees.map((t: any) => t.id) : []);
                             }}
                             className="text-blue-400 hover:text-blue-600 p-1.5 bg-white/80 border hover:border-blue-100 hover:bg-blue-50 rounded transition-all"
                             title="Edit Account Credentials & Access">
@@ -2157,9 +2184,53 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                     </div>
                   </div>
 
+                  {/* Assign Trainees Selector */}
+                  <div className="py-1">
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="block text-[9px] font-black text-blue-600 uppercase tracking-wider">Assign Trainees Under Supervisor</label>
+                      <span className="bg-blue-100 text-blue-700 text-[8px] px-1.5 py-0.5 rounded font-black uppercase">
+                        Selected: {selectedTraineeIds.length}
+                      </span>
+                    </div>
+                    <div className="bg-white p-3 rounded border border-blue-100 shadow-inner space-y-2">
+                      <input
+                        type="text"
+                        placeholder="🔍 Search teachers by name..."
+                        value={traineeSearch}
+                        onChange={e => setTraineeSearch(e.target.value)}
+                        className="w-full border border-gray-200 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 bg-gray-50/50"
+                      />
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2 max-h-32 overflow-y-auto pr-1">
+                        {allTrainees
+                          .filter(t => t.name.toLowerCase().includes(traineeSearch.toLowerCase()) || t.empCode.includes(traineeSearch))
+                          .map(t => {
+                            const isChecked = selectedTraineeIds.includes(t.id);
+                            return (
+                              <label key={t.id} className="flex items-center gap-2 cursor-pointer text-[10px] font-bold select-none text-gray-700 hover:text-blue-700">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setSelectedTraineeIds(prev =>
+                                      isChecked ? prev.filter(id => id !== t.id) : [...prev, t.id]
+                                    );
+                                  }}
+                                  className="accent-blue-600 w-3 h-3 rounded"
+                                />
+                                <span className="truncate">{t.name} <span className="text-[8px] font-mono text-gray-400">({t.empCode})</span></span>
+                              </label>
+                            );
+                          })}
+                        {allTrainees.length === 0 && (
+                          <div className="col-span-2 text-center text-[10px] text-gray-400 italic py-2">No trainees registered yet.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="py-1">
                     <label className="block text-[9px] font-black text-blue-600 mb-2 uppercase tracking-wider">Configure Dynamic Clearance Access</label>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-white p-3 rounded border border-blue-100 max-h-48 overflow-y-auto shadow-inner">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-white p-3 rounded border border-blue-100 max-h-36 overflow-y-auto shadow-inner">
                       {[
                         { id: 'RESET_PASSWORD', label: '🔑 Reset Password', core: true },
                         { id: 'DIRECT_LEAVE', label: '📅 Direct Leave', core: true },

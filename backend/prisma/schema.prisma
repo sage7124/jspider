@@ -65,6 +65,9 @@ model User {
   memosReceived  Memo[]       @relation("RecipientMemos")
   memosSent      Memo[]       @relation("SenderMemos")
   breakLogs      BreakLog[]
+  supervisorId   Int?
+  supervisor     User?        @relation("SupervisorTrainees", fields: [supervisorId], references: [id], onDelete: SetNull)
+  trainees       User[]       @relation("SupervisorTrainees")
 }
 
 model LeaveRequest {

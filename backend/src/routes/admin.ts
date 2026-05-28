@@ -1396,7 +1396,7 @@ router.post('/supervisors', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Unauthorised: Only a Super Admin can provision new Supervisor privileges.' });
     }
 
-    const { fullName, mobile, password, email, permissions } = req.body;
+    const { fullName, mobile, password, email, permissions, traineeIds } = req.body;
     if (!fullName || !mobile || !password) {
       return res.status(400).json({ error: 'Full Name, Mobile Number, and Password are required placeholders.' });
     }
@@ -1435,6 +1435,14 @@ router.post('/supervisors', async (req: AuthRequest, res) => {
       }
     });
 
+    // Handle initial trainees assignment
+    if (Array.isArray(traineeIds) && traineeIds.length > 0) {
+      await prisma.user.updateMany({
+        where: { id: { in: traineeIds.map(Number) }, role: 'TRAINEE' },
+        data: { supervisorId: supervisorUser.id }
+      });
+    }
+
     res.json({
       success: true,
       message: 'Supervisor provisions established successfully.',
@@ -1457,7 +1465,17 @@ router.get('/supervisors', async (req: AuthRequest, res) => {
     }
     const listing = await prisma.user.findMany({
       where: { role: 'SUPERVISOR' },
-      select: { id: true, fullName: true, identifier: true, email: true, createdAt: true, permissions: true },
+      select: {
+        id: true,
+        fullName: true,
+        identifier: true,
+        email: true,
+        createdAt: true,
+        permissions: true,
+        trainees: {
+          select: { id: true, fullName: true, identifier: true }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
     res.json(listing);
@@ -1472,7 +1490,7 @@ router.put('/supervisors/:id', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Unauthorized: Admin privileges required.' });
     }
     const { id } = req.params;
-    const { fullName, mobile, password, email, permissions } = req.body;
+    const { fullName, mobile, password, email, permissions, traineeIds } = req.body;
 
     const existing = await prisma.user.findUnique({ where: { id: Number(id) } });
     if (!existing || existing.role !== 'SUPERVISOR') {
@@ -1503,6 +1521,23 @@ router.put('/supervisors/:id', async (req: AuthRequest, res) => {
       data: updateData,
       select: { id: true, fullName: true, identifier: true, email: true, permissions: true }
     });
+
+    // Handle updating trainees assignment under this supervisor
+    if (traineeIds !== undefined) {
+      // First, set supervisorId to null for all trainees currently assigned to this supervisor
+      await prisma.user.updateMany({
+        where: { supervisorId: Number(id) },
+        data: { supervisorId: null }
+      });
+
+      // Next, assign the new supervisorId to the given traineeIds
+      if (Array.isArray(traineeIds) && traineeIds.length > 0) {
+        await prisma.user.updateMany({
+          where: { id: { in: traineeIds.map(Number) }, role: 'TRAINEE' },
+          data: { supervisorId: Number(id) }
+        });
+      }
+    }
 
     res.json({ success: true, user: updated, message: 'Supervisor profile and permissions updated successfully.' });
   } catch (err) {
