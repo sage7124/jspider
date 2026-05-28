@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -3425,6 +3425,7 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [exportMonth, setExportMonth] = useState(new Date().toISOString().substring(0, 7));
   const [exporting, setExporting] = useState(false);
+  const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLogs();
@@ -3554,9 +3555,9 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
                 <tr>
                   <th className="px-4 py-3">Teacher</th>
                   <th className="px-4 py-3">Mobile/ID</th>
-                  <th className="px-4 py-3">Total Breaks</th>
-                  <th className="px-4 py-3 w-[45%]">Outings Details (Dropdown List)</th>
-                  <th className="px-4 py-3 text-center w-[12%]">Export</th>
+                  <th className="px-4 py-3 text-center">Total Breaks</th>
+                  <th className="px-4 py-3 text-center w-[15%]">Export</th>
+                  <th className="px-4 py-3 text-center w-[15%]">Details</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -3566,33 +3567,73 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
                   </tr>
                 ) : (
                   groupedLogs.map((group) => (
-                    <tr key={group.identifier} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
-                      <td className="px-4 py-3 font-mono">{group.identifier}</td>
-                      <td className="px-4 py-3">
-                        <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100">
-                          {group.breaks.length} {group.breaks.length === 1 ? 'break' : 'breaks'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <select className="w-full max-w-md bg-white border border-gray-300 rounded px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-amber-500 text-gray-700 font-medium cursor-pointer shadow-sm transition-all hover:border-gray-400">
-                          {group.breaks.map((b: any, idx: number) => (
-                            <option key={b.id} className="py-1">
-                              {`Break ${idx + 1}: Out: ${b.breakOut} | In: ${b.breakIn} | Dur: ${b.duration} | Reason: ${b.reason}`}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => handleIndividualExport(group.name)}
-                          className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
-                          title={`Export monthly report for ${group.name}`}
-                        >
-                          <Download size={14} />
-                        </button>
-                      </td>
-                    </tr>
+                    <React.Fragment key={group.identifier}>
+                      <tr className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
+                        <td className="px-4 py-3 font-mono">{group.identifier}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100">
+                            {group.breaks.length} {group.breaks.length === 1 ? 'break' : 'breaks'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleIndividualExport(group.name)}
+                            className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer animate-fade-in"
+                            title={`Export monthly report for ${group.name}`}
+                          >
+                            <Download size={14} />
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => setExpandedTeacher(expandedTeacher === group.identifier ? null : group.identifier)}
+                            className="bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-800 border border-gray-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer font-bold animate-fade-in"
+                          >
+                            {expandedTeacher === group.identifier ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedTeacher === group.identifier && (
+                        <tr className="bg-amber-50/10">
+                          <td colSpan={5} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
+                            <div className="text-[10px] font-bold text-amber-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
+                              <Clock size={12} /> Outings for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </div>
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                              <table className="w-full text-xs text-left">
+                                <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
+                                  <tr>
+                                    <th className="px-4 py-2 w-[8%] text-center">#</th>
+                                    <th className="px-4 py-2">Break Out</th>
+                                    <th className="px-2 py-2 text-center w-[5%]">-</th>
+                                    <th className="px-4 py-2">Break In</th>
+                                    <th className="px-4 py-2 text-center">Duration</th>
+                                    <th className="px-4 py-2">Reason</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-150">
+                                  {group.breaks.map((b: any, idx: number) => (
+                                    <tr key={b.id} className="hover:bg-gray-50/50">
+                                      <td className="px-4 py-2.5 text-center font-bold text-gray-400">{idx + 1}</td>
+                                      <td className="px-4 py-2.5 text-purple-700 font-semibold">{b.breakOut}</td>
+                                      <td className="px-2 py-2.5 text-center text-gray-400 font-bold">➔</td>
+                                      <td className="px-4 py-2.5 text-green-700 font-semibold">{b.breakIn}</td>
+                                      <td className="px-4 py-2.5 text-center">
+                                        <span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                                          {b.duration}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-2.5 text-gray-600 italic font-medium">{b.reason || '--'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </tbody>
