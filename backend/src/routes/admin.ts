@@ -288,9 +288,12 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
     endOfToday.setHours(23, 59, 59, 999);
 
     const { search } = _req.query;
+    const supervisorFilter = _req.user?.role === 'SUPERVISOR' ? { supervisorId: _req.user.id } : {};
+
     const users = await prisma.user.findMany({
       where: { 
         role: 'TRAINEE',
+        ...supervisorFilter,
         OR: search ? [
           { fullName: { contains: search as string, mode: 'insensitive' } },
           { identifier: { contains: search as string, mode: 'insensitive' } },
@@ -616,8 +619,13 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
     const endOfTarget = new Date(targetDate);
     endOfTarget.setHours(23, 59, 59, 999);
 
+    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { supervisorId: req.user.id } : {};
+
     const trainees = await prisma.user.findMany({
-      where: { role: 'TRAINEE' },
+      where: { 
+        role: 'TRAINEE',
+        ...supervisorFilter
+      },
       orderBy: { fullName: 'asc' },
       include: { 
         attendances: { where: { date: targetDate } },

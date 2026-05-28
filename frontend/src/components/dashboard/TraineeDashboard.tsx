@@ -144,6 +144,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [notices, setNotices] = useState<any[]>([]);
   const [startingBreak, setStartingBreak] = useState(false);
   const [endingBreak, setEndingBreak] = useState(false);
+  const [showBreakReasonModal, setShowBreakReasonModal] = useState(false);
+  const [breakReason, setBreakReason] = useState('');
 
   useEffect(() => {
     fetchStatus();
@@ -396,10 +398,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     );
   };
 
-  const handleBreakOut = async () => {
-    const reason = window.prompt('Please enter the reason for taking a break:');
-    if (reason === null) return;
-    const cleanReason = reason.trim();
+  const handleBreakOut = async (reasonText: string) => {
+    const cleanReason = reasonText.trim();
     if (!cleanReason) {
       alert('Reason is required to request a break.');
       return;
@@ -414,6 +414,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       });
       alert('Break started successfully! Safe travels.');
       fetchStatus();
+      setShowBreakReasonModal(false);
+      setBreakReason('');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to start break');
     } finally {
@@ -618,7 +620,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
               {status?.todayBreaksCount < 4 ? (
                 <button
-                  onClick={() => handleBreakOut()}
+                  onClick={() => setShowBreakReasonModal(true)}
                   disabled={startingBreak}
                   className="w-full bg-purple-100 hover:bg-purple-200 text-purple-800 border border-purple-200 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
@@ -1228,6 +1230,59 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         </div>
       )}
       {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role="TRAINEE" />}
+      {showBreakReasonModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => {
+                setShowBreakReasonModal(false);
+                setBreakReason('');
+              }}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-lg font-black text-purple-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+              <Clock size={20} className="animate-pulse" /> Request Break Out
+            </h3>
+            <div className="space-y-4 text-left">
+              <div>
+                <label className="block text-xs font-black text-purple-700 mb-2 uppercase tracking-wide">
+                  Reason for Break
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={breakReason}
+                  onChange={(e) => setBreakReason(e.target.value)}
+                  className="w-full border border-purple-100 rounded-lg p-3 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                  placeholder="Enter the reason for taking a break (e.g., Lunch, Personal Work)..."
+                />
+              </div>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBreakReasonModal(false);
+                    setBreakReason('');
+                  }}
+                  className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={startingBreak || !breakReason.trim()}
+                  onClick={() => handleBreakOut(breakReason)}
+                  className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  {startingBreak ? 'Starting...' : '🚀 Start Break'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
