@@ -1997,7 +1997,8 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
         breakIn: b.breakIn 
           ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
           : 'On Break',
-        duration: duration !== null ? `${duration} mins` : 'On Break'
+        duration: duration !== null ? `${duration} mins` : 'On Break',
+        reason: b.reason || '--'
       };
     });
 
@@ -2043,7 +2044,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
       { header: 'Department', key: 'department', width: 20 },
       { header: 'Break Out Time', key: 'breakOut', width: 20 },
       { header: 'Break In Time', key: 'breakIn', width: 20 },
-      { header: 'Duration', key: 'duration', width: 18 }
+      { header: 'Duration', key: 'duration', width: 18 },
+      { header: 'Reason for Break', key: 'reason', width: 25 }
     ];
 
     // Style header row
@@ -2076,7 +2078,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         department: b.user.department || '--',
         breakOut: outStr,
         breakIn: inStr,
-        duration: durStr
+        duration: durStr,
+        reason: b.reason || '--'
       });
     });
 

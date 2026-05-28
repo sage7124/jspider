@@ -3522,12 +3522,13 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
                   <th className="px-4 py-3">Break Out</th>
                   <th className="px-4 py-3">Break In</th>
                   <th className="px-4 py-3">Duration</th>
+                  <th className="px-4 py-3">Reason</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {logs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
+                    <td colSpan={7} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
                   </tr>
                 ) : (
                   logs.map((log) => (
@@ -3538,6 +3539,7 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
                       <td className="px-4 py-3 text-purple-700 font-semibold">{log.breakOut}</td>
                       <td className="px-4 py-3 text-green-700 font-semibold">{log.breakIn}</td>
                       <td className="px-4 py-3"><span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">{log.duration}</span></td>
+                      <td className="px-4 py-3 text-gray-600 italic font-medium">{log.reason || '--'}</td>
                     </tr>
                   ))
                 )}

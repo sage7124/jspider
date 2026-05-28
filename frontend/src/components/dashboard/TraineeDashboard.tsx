@@ -397,12 +397,19 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   };
 
   const handleBreakOut = async () => {
-    if (!window.confirm('Are you sure you want to request a Break Out?')) return;
+    const reason = window.prompt('Please enter the reason for taking a break:');
+    if (reason === null) return;
+    const cleanReason = reason.trim();
+    if (!cleanReason) {
+      alert('Reason is required to request a break.');
+      return;
+    }
+
     try {
       setStartingBreak(true);
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.post(`${API_URL}/api/attendance/break/out`, {}, {
+      await axios.post(`${API_URL}/api/attendance/break/out`, { reason: cleanReason }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert('Break started successfully! Safe travels.');
@@ -590,10 +597,18 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       const dur = b.breakIn ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60)) : null;
 
                       return (
-                        <div key={b.id} className="p-3 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-                          <span className="font-semibold text-gray-600">Break {index + 1}</span>
-                          <span className="text-gray-800 font-mono">{outTime} - {inTime}</span>
-                          <span className="font-extrabold text-purple-700">{dur !== null ? `${dur} mins` : 'On Break'}</span>
+                        <div key={b.id} className="p-3 flex flex-col gap-1 hover:bg-gray-50/50 transition-colors">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-semibold text-gray-600">Break {index + 1}</span>
+                            <span className="text-gray-800 font-mono">{outTime} - {inTime}</span>
+                            <span className="font-extrabold text-purple-700">{dur !== null ? `${dur} mins` : 'On Break'}</span>
+                          </div>
+                          {b.reason && (
+                            <p className="text-[10px] text-gray-500 italic bg-gray-50 px-2 py-0.5 rounded border border-gray-100 mt-0.5">
+                              <span className="font-bold text-gray-600 not-italic mr-1">Reason:</span>
+                              {b.reason}
+                            </p>
+                          )}
                         </div>
                       );
                     })}

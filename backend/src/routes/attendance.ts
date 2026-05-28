@@ -66,7 +66,8 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
       completedBreaks: todayBreaks.map(b => ({
         id: b.id,
         breakOut: b.breakOut,
-        breakIn: b.breakIn
+        breakIn: b.breakIn,
+        reason: b.reason
       }))
     });
   } catch (error) {
@@ -599,11 +600,14 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
     }
 
+    const { reason } = req.body;
+
     const newBreak = await prisma.breakLog.create({
       data: {
         userId,
         date: today,
-        breakOut: new Date()
+        breakOut: new Date(),
+        reason: reason || null
       }
     });
 
