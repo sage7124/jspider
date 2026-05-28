@@ -2019,7 +2019,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
 
 router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { month } = req.query; // e.g., "2026-05"
+    const { month, search } = req.query; // e.g., "2026-05", with optional search
     if (!month || typeof month !== 'string') {
       return res.status(400).json({ error: 'Month is required' });
     }
@@ -2028,9 +2028,17 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
     const startOfMonth = new Date(year, mon - 1, 1);
     const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
 
+    const searchStr = search as string;
+
     const breakLogs = await prisma.breakLog.findMany({
       where: {
-        date: { gte: startOfMonth, lte: endOfMonth }
+        date: { gte: startOfMonth, lte: endOfMonth },
+        user: {
+          OR: searchStr ? [
+            { fullName: { contains: searchStr, mode: 'insensitive' } },
+            { identifier: { contains: searchStr, mode: 'insensitive' } }
+          ] : undefined
+        }
       },
       include: {
         user: { select: { fullName: true, identifier: true, department: true } }
@@ -2050,10 +2058,10 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
       { header: 'Teacher Name', key: 'name', width: 25 },
       { header: 'Mobile/ID', key: 'identifier', width: 20 },
       { header: 'Department', key: 'department', width: 20 },
-      { header: 'Break Out Time', key: 'breakOut', width: 20 },
-      { header: 'Break In Time', key: 'breakIn', width: 20 },
-      { header: 'Duration', key: 'duration', width: 18 },
-      { header: 'Reason for Break', key: 'reason', width: 25 }
+      { header: 'Break Out Time', key: 'breakOut', width: 25 },
+      { header: 'Break In Time', key: 'breakIn', width: 25 },
+      { header: 'Duration', key: 'duration', width: 22 },
+      { header: 'Reason for Break', key: 'reason', width: 35 }
     ];
 
     // Style header row
@@ -2067,27 +2075,60 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
     ws.views = [{ state: 'frozen', ySplit: 1 }];
 
+    // Group break logs by date (midnight string) and userId to combine entries per teacher per day
+    const groupedMap = new Map<string, any>();
     breakLogs.forEach(b => {
-      const duration = b.breakIn 
-        ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
-        : null;
+      const dateKey = b.date.toISOString().split('T')[0];
+      const key = `${dateKey}_${b.userId}`;
+      if (!groupedMap.has(key)) {
+        groupedMap.set(key, {
+          date: b.date,
+          user: b.user,
+          breaks: []
+        });
+      }
+      groupedMap.get(key).breaks.push(b);
+    });
 
-      const dateStr = b.date.toLocaleDateString('en-IN');
-      const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const inStr = b.breakIn 
-        ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : 'On Break';
-      const durStr = duration !== null ? `${duration} mins` : 'On Break';
+    groupedMap.forEach(group => {
+      const dateStr = group.date.toLocaleDateString('en-IN');
+      
+      const outTimesList: string[] = [];
+      const inTimesList: string[] = [];
+      const durationsList: string[] = [];
+      const reasonsList: string[] = [];
 
-      ws.addRow({
+      group.breaks.forEach((b: any, idx: number) => {
+        const duration = b.breakIn 
+          ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
+          : null;
+        
+        const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const inStr = b.breakIn 
+          ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'On Break';
+        const durStr = duration !== null ? `${duration} mins` : 'On Break';
+
+        outTimesList.push(`Break ${idx + 1}: ${outStr}`);
+        inTimesList.push(`Break ${idx + 1}: ${inStr}`);
+        durationsList.push(`Break ${idx + 1}: ${durStr}`);
+        reasonsList.push(`Break ${idx + 1}: ${b.reason || '--'}`);
+      });
+
+      const newRow = ws.addRow({
         date: dateStr,
-        name: b.user.fullName,
-        identifier: b.user.identifier,
-        department: b.user.department || '--',
-        breakOut: outStr,
-        breakIn: inStr,
-        duration: durStr,
-        reason: b.reason || '--'
+        name: group.user.fullName,
+        identifier: group.user.identifier,
+        department: group.user.department || '--',
+        breakOut: outTimesList.join('\n'),
+        breakIn: inTimesList.join('\n'),
+        duration: durationsList.join('\n'),
+        reason: reasonsList.join('\n')
+      });
+
+      // Align cells to top and enable wrapText for multi-line support
+      newRow.eachCell(cell => {
+        cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
       });
     });
 

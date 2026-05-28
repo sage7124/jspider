@@ -3454,7 +3454,7 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
     try {
       setExporting(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}`, {
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -3472,6 +3472,22 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
       setExporting(false);
     }
   };
+
+  // Group logs by teacher identifier to combine entries per teacher in a day
+  const groupedLogsMap = new Map<string, any>();
+  logs.forEach((log) => {
+    const key = log.identifier;
+    if (!groupedLogsMap.has(key)) {
+      groupedLogsMap.set(key, {
+        name: log.name,
+        identifier: log.identifier,
+        department: log.department,
+        breaks: []
+      });
+    }
+    groupedLogsMap.get(key).breaks.push(log);
+  });
+  const groupedLogs = Array.from(groupedLogsMap.values());
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -3519,27 +3535,35 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
                   <th className="px-4 py-3">Teacher</th>
                   <th className="px-4 py-3">Mobile/ID</th>
                   <th className="px-4 py-3">Department</th>
-                  <th className="px-4 py-3">Break Out</th>
-                  <th className="px-4 py-3">Break In</th>
-                  <th className="px-4 py-3">Duration</th>
-                  <th className="px-4 py-3">Reason</th>
+                  <th className="px-4 py-3">Total Breaks</th>
+                  <th className="px-4 py-3 w-[45%]">Outings Details (Dropdown List)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {logs.length === 0 ? (
+                {groupedLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
+                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
                   </tr>
                 ) : (
-                  logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3 font-semibold text-gray-800">{log.name}</td>
-                      <td className="px-4 py-3 font-mono">{log.identifier}</td>
-                      <td className="px-4 py-3 text-gray-500">{log.department}</td>
-                      <td className="px-4 py-3 text-purple-700 font-semibold">{log.breakOut}</td>
-                      <td className="px-4 py-3 text-green-700 font-semibold">{log.breakIn}</td>
-                      <td className="px-4 py-3"><span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">{log.duration}</span></td>
-                      <td className="px-4 py-3 text-gray-600 italic font-medium">{log.reason || '--'}</td>
+                  groupedLogs.map((group) => (
+                    <tr key={group.identifier} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
+                      <td className="px-4 py-3 font-mono">{group.identifier}</td>
+                      <td className="px-4 py-3 text-gray-500">{group.department}</td>
+                      <td className="px-4 py-3">
+                        <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100">
+                          {group.breaks.length} {group.breaks.length === 1 ? 'break' : 'breaks'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <select className="w-full max-w-md bg-white border border-gray-300 rounded px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-amber-500 text-gray-700 font-medium cursor-pointer shadow-sm transition-all hover:border-gray-400">
+                          {group.breaks.map((b: any, idx: number) => (
+                            <option key={b.id} className="py-1">
+                              {`Break ${idx + 1}: Out: ${b.breakOut} | In: ${b.breakIn} | Dur: ${b.duration} | Reason: ${b.reason}`}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
                     </tr>
                   ))
                 )}
