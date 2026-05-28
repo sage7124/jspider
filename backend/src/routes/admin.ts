@@ -1923,5 +1923,149 @@ router.get('/memos/received', authenticateToken, async (req: AuthRequest, res) =
   }
 });
 
+// ── Teacher Break System Reports Endpoints ─────────────────────────────────────
+router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { date, search } = req.query;
+    const targetDate = date ? new Date(date as string) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+
+    const searchStr = search as string;
+
+    const breakLogs = await prisma.breakLog.findMany({
+      where: {
+        date: targetDate,
+        user: {
+          OR: searchStr ? [
+            { fullName: { contains: searchStr, mode: 'insensitive' } },
+            { identifier: { contains: searchStr, mode: 'insensitive' } }
+          ] : undefined
+        }
+      },
+      include: {
+        user: { select: { fullName: true, identifier: true, department: true } }
+      },
+      orderBy: { breakOut: 'desc' }
+    });
+
+    const result = breakLogs.map(b => {
+      const duration = b.breakIn 
+        ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
+        : null;
+      return {
+        id: b.id,
+        date: b.date.toLocaleDateString('en-IN'),
+        name: b.user.fullName,
+        identifier: b.user.identifier,
+        department: b.user.department || '--',
+        breakOut: new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        breakIn: b.breakIn 
+          ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : 'On Break',
+        duration: duration !== null ? `${duration} mins` : 'On Break'
+      };
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { month } = req.query; // e.g., "2026-05"
+    if (!month || typeof month !== 'string') {
+      return res.status(400).json({ error: 'Month is required' });
+    }
+
+    const [year, mon] = month.split('-').map(Number);
+    const startOfMonth = new Date(year, mon - 1, 1);
+    const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
+
+    const breakLogs = await prisma.breakLog.findMany({
+      where: {
+        date: { gte: startOfMonth, lte: endOfMonth }
+      },
+      include: {
+        user: { select: { fullName: true, identifier: true, department: true } }
+      },
+      orderBy: [
+        { date: 'asc' },
+        { breakOut: 'asc' }
+      ]
+    });
+
+    const workbook = new exceljs.Workbook();
+    workbook.creator = 'Attendance System';
+    const ws = workbook.addWorksheet(`${month} Break Report`);
+
+    ws.columns = [
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Teacher Name', key: 'name', width: 25 },
+      { header: 'Mobile/ID', key: 'identifier', width: 20 },
+      { header: 'Department', key: 'department', width: 20 },
+      { header: 'Break Out Time', key: 'breakOut', width: 20 },
+      { header: 'Break In Time', key: 'breakIn', width: 20 },
+      { header: 'Duration', key: 'duration', width: 18 }
+    ];
+
+    // Style header row
+    const headerRow = ws.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11 };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: '5E35B1' } // Beautiful Purple theme matching our memo system
+    };
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+    breakLogs.forEach(b => {
+      const duration = b.breakIn 
+        ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
+        : null;
+
+      const dateStr = b.date.toLocaleDateString('en-IN');
+      const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const inStr = b.breakIn 
+        ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'On Break';
+      const durStr = duration !== null ? `${duration} mins` : 'On Break';
+
+      ws.addRow({
+        date: dateStr,
+        name: b.user.fullName,
+        identifier: b.user.identifier,
+        department: b.user.department || '--',
+        breakOut: outStr,
+        breakIn: inStr,
+        duration: durStr
+      });
+    });
+
+    // Auto-fit column widths (with safety padding)
+    ws.columns.forEach(col => {
+      let maxLen = col.header ? col.header.length : 10;
+      col.values?.forEach(val => {
+        if (val) {
+          const len = val.toString().length;
+          if (len > maxLen) maxLen = len;
+        }
+      });
+      col.width = Math.min(Math.max(maxLen + 4, 12), 40);
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Break_Report_${month}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

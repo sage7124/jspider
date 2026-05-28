@@ -47,12 +47,27 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
       }
     }
 
+    const todayBreaks = await prisma.breakLog.findMany({
+      where: { userId, date: today },
+      orderBy: { breakOut: 'asc' }
+    });
+    const activeBreak = todayBreaks.find(b => b.breakIn === null) || null;
+    const currentlyOnBreak = activeBreak !== null;
+
     res.json({
       status: attendance?.status || 'OUT',
       inTime: attendance?.inTime,
       outTime: attendance?.outTime,
       forgotPunchOut,
-      slots: slots.map(s => `${s.startTime} - ${s.endTime}`)
+      slots: slots.map(s => `${s.startTime} - ${s.endTime}`),
+      currentlyOnBreak,
+      todayBreaksCount: todayBreaks.length,
+      activeBreak,
+      completedBreaks: todayBreaks.map(b => ({
+        id: b.id,
+        breakOut: b.breakOut,
+        breakIn: b.breakIn
+      }))
     });
   } catch (error) {
     console.error(error);
@@ -552,6 +567,100 @@ router.get('/holidays', authenticateToken, async (req: AuthRequest, res) => {
     });
     res.json(holidays);
   } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Teacher Break System Endpoints ──────────────────────────────────────────
+router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendance = await prisma.attendance.findUnique({
+      where: { userId_date: { userId, date: today } }
+    });
+
+    if (!attendance || attendance.status !== 'IN') {
+      return res.status(400).json({ error: 'You must be Punched In to request a break.' });
+    }
+
+    const todayBreaks = await prisma.breakLog.findMany({
+      where: { userId, date: today }
+    });
+
+    const activeBreak = todayBreaks.find(b => b.breakIn === null);
+    if (activeBreak) {
+      return res.status(400).json({ error: 'You are already on an active break.' });
+    }
+
+    if (todayBreaks.length >= 4) {
+      return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
+    }
+
+    const newBreak = await prisma.breakLog.create({
+      data: {
+        userId,
+        date: today,
+        breakOut: new Date()
+      }
+    });
+
+    res.status(201).json({ message: 'Break started successfully', breakLog: newBreak });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/break/in', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { lat, lng } = req.body;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!lat || !lng) {
+      return res.status(400).json({ error: 'Location coordinates required to end break.' });
+    }
+
+    // 1. Verify Geofence (Confirm arrival back inside premises)
+    const branches = await prisma.branchLocation.findMany();
+    if (branches.length === 0) {
+      return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Contact Admin.' });
+    }
+
+    const validBranch = branches.find(branch => {
+      const distance = getDistance(
+        { latitude: lat, longitude: lng },
+        { latitude: branch.lat, longitude: branch.lng }
+      );
+      return distance <= branch.radius;
+    });
+
+    if (!validBranch) {
+      return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
+    }
+
+    // 2. Find active break
+    const activeBreak = await prisma.breakLog.findFirst({
+      where: { userId, date: today, breakIn: null }
+    });
+
+    if (!activeBreak) {
+      return res.status(400).json({ error: 'No active break session found.' });
+    }
+
+    // 3. Complete break
+    const updatedBreak = await prisma.breakLog.update({
+      where: { id: activeBreak.id },
+      data: { breakIn: new Date() }
+    });
+
+    res.json({ message: 'Welcome back! Break completed successfully.', breakLog: updatedBreak });
+  } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

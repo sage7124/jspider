@@ -955,6 +955,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [showDropdownOptions, setShowDropdownOptions] = useState(false);
   const [viewOnboardingUser, setViewOnboardingUser] = useState<Trainee | null>(null);
   const [showMemos, setShowMemos] = useState(false);
+  const [showBreaks, setShowBreaks] = useState(false);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -1100,6 +1101,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
               <Mail size={18} /> Memos
             </button>
           )}
+          {hasPermission('DOWNLOAD_REPORT') && (
+            <button onClick={() => setShowBreaks(true)}
+              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <Clock size={18} /> Breaks
+            </button>
+          )}
         </div>
       </div>
 
@@ -1214,6 +1221,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showDropdownOptions && <DropdownOptionsModal onClose={() => setShowDropdownOptions(false)} />}
       {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => { setViewOnboardingUser(null); fetchTrainees(); }} />}
       {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role={role} />}
+      {showBreaks && <BreakLogsModal onClose={() => setShowBreaks(false)} />}
     </div>
   );
 };
@@ -3331,6 +3339,139 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
                 </div>
               )}
             </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Teacher Break Logs Modal ────────────────────────────────────────────────
+const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [exportMonth, setExportMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [date]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchLogs(), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/breaks?date=${date}&search=${search}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLogs(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Break_Report_${exportMonth}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert('Failed to export breaks report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl p-6 relative max-h-[90vh] flex flex-col">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-amber-700 flex items-center gap-2 border-b pb-3">
+          <Clock size={20} /> Teacher Break Logs
+        </h2>
+
+        {/* Filter Controls */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
+              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+          </div>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+            </div>
+            <button onClick={handleExport} disabled={exporting}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+            </button>
+          </div>
+        </div>
+
+        {/* Logs Table */}
+        <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+          {loading ? (
+            <p className="text-center py-10 text-gray-400">Loading break logs...</p>
+          ) : (
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
+                <tr>
+                  <th className="px-4 py-3">Teacher</th>
+                  <th className="px-4 py-3">Mobile/ID</th>
+                  <th className="px-4 py-3">Department</th>
+                  <th className="px-4 py-3">Break Out</th>
+                  <th className="px-4 py-3">Break In</th>
+                  <th className="px-4 py-3">Duration</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {logs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
+                  </tr>
+                ) : (
+                  logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-gray-800">{log.name}</td>
+                      <td className="px-4 py-3 font-mono">{log.identifier}</td>
+                      <td className="px-4 py-3 text-gray-500">{log.department}</td>
+                      <td className="px-4 py-3 text-purple-700 font-semibold">{log.breakOut}</td>
+                      <td className="px-4 py-3 text-green-700 font-semibold">{log.breakIn}</td>
+                      <td className="px-4 py-3"><span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded">{log.duration}</span></td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           )}
         </div>
       </div>

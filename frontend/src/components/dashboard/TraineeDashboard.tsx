@@ -142,6 +142,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [loadingReport, setLoadingReport] = useState(false);
   const [holidays, setHolidays] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
+  const [startingBreak, setStartingBreak] = useState(false);
+  const [endingBreak, setEndingBreak] = useState(false);
 
   useEffect(() => {
     fetchStatus();
@@ -394,6 +396,57 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     );
   };
 
+  const handleBreakOut = async () => {
+    if (!window.confirm('Are you sure you want to request a Break Out?')) return;
+    try {
+      setStartingBreak(true);
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.post(`${API_URL}/api/attendance/break/out`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Break started successfully! Safe travels.');
+      fetchStatus();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to start break');
+    } finally {
+      setStartingBreak(false);
+    }
+  };
+
+  const handleBreakIn = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+    setEndingBreak(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const token = localStorage.getItem('token');
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          await axios.post(`${API_URL}/api/attendance/break/in`, {
+            lat: latitude,
+            lng: longitude
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          alert('Welcome back! Break ended successfully.');
+          fetchStatus();
+        } catch (err: any) {
+          alert(err.response?.data?.error || 'Failed to complete break');
+        } finally {
+          setEndingBreak(false);
+        }
+      },
+      (err) => {
+        alert('Unable to retrieve your location. Location permission is required to check-in from break.');
+        setEndingBreak(false);
+      }
+    );
+  };
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 relative">
       <div className="flex justify-between items-center mb-6 border-b pb-4">
@@ -491,6 +544,80 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {status?.status === 'IN' && (
+        <div className="bg-white rounded-lg shadow-md p-6 border border-purple-100 mt-6 transition-all hover:shadow-lg">
+          <h3 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
+            <Clock className="text-purple-600 animate-pulse" size={22} />
+            Teacher Break Controls
+          </h3>
+
+          {status?.currentlyOnBreak ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                  <p className="font-extrabold text-purple-900 text-sm">⚠️ YOU ARE CURRENTLY ON BREAK</p>
+                  <p className="text-xs text-purple-700 mt-1">
+                    Departed at: <span className="font-semibold">{status.activeBreak?.breakOut ? new Date(status.activeBreak.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleBreakIn()}
+                  disabled={endingBreak}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-black px-6 py-3 rounded-lg text-xs uppercase tracking-wider shadow-lg hover:shadow-purple-200 transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {endingBreak ? 'Verifying Coordinates...' : '👋 Arrived Inside Premises (Break In)'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-150 text-xs">
+                <span className="text-gray-500 font-semibold uppercase tracking-wider">Breaks Taken Today:</span>
+                <span className={`font-black px-2.5 py-1 rounded-full ${status?.todayBreaksCount >= 4 ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'}`}>
+                  {status?.todayBreaksCount || 0} / 4
+                </span>
+              </div>
+
+              {/* Completed Breaks List */}
+              {status?.completedBreaks && status.completedBreaks.length > 0 && (
+                <div className="border border-gray-100 rounded overflow-hidden text-xs bg-white">
+                  <div className="bg-gray-50/50 px-3 py-1.5 font-bold text-gray-500 uppercase border-b text-[10px] tracking-wider">Today's Breaks Log</div>
+                  <div className="divide-y divide-gray-100">
+                    {status.completedBreaks.map((b: any, index: number) => {
+                      const outTime = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const inTime = b.breakIn ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
+                      const dur = b.breakIn ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60)) : null;
+
+                      return (
+                        <div key={b.id} className="p-3 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
+                          <span className="font-semibold text-gray-600">Break {index + 1}</span>
+                          <span className="text-gray-800 font-mono">{outTime} - {inTime}</span>
+                          <span className="font-extrabold text-purple-700">{dur !== null ? `${dur} mins` : 'On Break'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {status?.todayBreaksCount < 4 ? (
+                <button
+                  onClick={() => handleBreakOut()}
+                  disabled={startingBreak}
+                  className="w-full bg-purple-100 hover:bg-purple-200 text-purple-800 border border-purple-200 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                >
+                  {startingBreak ? 'Starting Break...' : '🚀 Request Break Out'}
+                </button>
+              ) : (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center text-xs font-bold text-red-700">
+                  🚫 Maximum 4 breaks reached for today. No further breaks are allowed.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {notices.length > 0 && (
         <div className="mt-6">

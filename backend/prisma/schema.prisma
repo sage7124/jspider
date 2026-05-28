@@ -64,6 +64,7 @@ model User {
   notices        Notice[]
   memosReceived  Memo[]       @relation("RecipientMemos")
   memosSent      Memo[]       @relation("SenderMemos")
+  breakLogs      BreakLog[]
 }
 
 model LeaveRequest {
@@ -194,4 +195,14 @@ model Memo {
   senderId       Int
   sender         User     @relation("SenderMemos", fields: [senderId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
+}
+
+model BreakLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime
+  breakOut    DateTime
+  breakIn     DateTime?
+  createdAt   DateTime @default(now())
 }
