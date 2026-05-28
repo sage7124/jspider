@@ -3473,6 +3473,26 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const handleIndividualExport = async (teacherName: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherName)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Break_Report_${teacherName.replace(/\s+/g, '_')}_${exportMonth}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert(`Failed to export break report for ${teacherName}`);
+    }
+  };
+
   // Group logs by teacher identifier to combine entries per teacher in a day
   const groupedLogsMap = new Map<string, any>();
   logs.forEach((log) => {
@@ -3536,12 +3556,13 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
                   <th className="px-4 py-3">Mobile/ID</th>
                   <th className="px-4 py-3">Total Breaks</th>
                   <th className="px-4 py-3 w-[45%]">Outings Details (Dropdown List)</th>
+                  <th className="px-4 py-3 text-center w-[12%]">Export</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {groupedLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
+                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
                   </tr>
                 ) : (
                   groupedLogs.map((group) => (
@@ -3561,6 +3582,15 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
                             </option>
                           ))}
                         </select>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleIndividualExport(group.name)}
+                          className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                          title={`Export monthly report for ${group.name}`}
+                        >
+                          <Download size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))
