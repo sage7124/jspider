@@ -3534,7 +3534,6 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
                 <tr>
                   <th className="px-4 py-3">Teacher</th>
                   <th className="px-4 py-3">Mobile/ID</th>
-                  <th className="px-4 py-3">Department</th>
                   <th className="px-4 py-3">Total Breaks</th>
                   <th className="px-4 py-3 w-[45%]">Outings Details (Dropdown List)</th>
                 </tr>
@@ -3542,14 +3541,13 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
               <tbody className="divide-y divide-gray-100">
                 {groupedLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
+                    <td colSpan={4} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
                   </tr>
                 ) : (
                   groupedLogs.map((group) => (
                     <tr key={group.identifier} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
                       <td className="px-4 py-3 font-mono">{group.identifier}</td>
-                      <td className="px-4 py-3 text-gray-500">{group.department}</td>
                       <td className="px-4 py-3">
                         <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100">
                           {group.breaks.length} {group.breaks.length === 1 ? 'break' : 'breaks'}
