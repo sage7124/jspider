@@ -2027,6 +2027,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
     const [year, mon] = month.split('-').map(Number);
     const startOfMonth = new Date(year, mon - 1, 1);
     const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
+    const daysInMonth = new Date(year, mon, 0).getDate();
 
     const searchStr = search as string;
 
@@ -2041,7 +2042,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         }
       },
       include: {
-        user: { select: { fullName: true, identifier: true, department: true } }
+        user: { select: { id: true, fullName: true, identifier: true, department: true } }
       },
       orderBy: [
         { date: 'asc' },
@@ -2049,101 +2050,208 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
       ]
     });
 
-    const workbook = new exceljs.Workbook();
-    workbook.creator = 'Attendance System';
-    const ws = workbook.addWorksheet(`${month} Break Report`);
-
-    ws.columns = [
-      { header: 'Date', key: 'date', width: 15 },
-      { header: 'Teacher Name', key: 'name', width: 25 },
-      { header: 'Mobile/ID', key: 'identifier', width: 20 },
-      { header: 'Break Out Time', key: 'breakOut', width: 25 },
-      { header: 'Break In Time', key: 'breakIn', width: 25 },
-      { header: 'Duration', key: 'duration', width: 22 },
-      { header: 'Reason for Break', key: 'reason', width: 35 }
-    ];
-
-    // Style header row
-    const headerRow = ws.getRow(1);
-    headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11 };
-    headerRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: '5E35B1' } // Beautiful Purple theme matching our memo system
-    };
-    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
-    ws.views = [{ state: 'frozen', ySplit: 1 }];
-
-    // Group break logs by date (midnight string) and userId to combine entries per teacher per day
-    const groupedMap = new Map<string, any>();
-    breakLogs.forEach(b => {
-      const dateKey = b.date.toISOString().split('T')[0];
-      const key = `${dateKey}_${b.userId}`;
-      if (!groupedMap.has(key)) {
-        groupedMap.set(key, {
-          date: b.date,
-          user: b.user,
-          breaks: []
-        });
+    // 1. Identify target teachers/users to build pages (tabs) for
+    let targetUsersList: any[] = [];
+    if (searchStr) {
+      const targetUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { fullName: { contains: searchStr, mode: 'insensitive' } },
+            { identifier: { contains: searchStr, mode: 'insensitive' } }
+          ]
+        },
+        select: { id: true, fullName: true, identifier: true, department: true }
+      });
+      if (targetUser) {
+        targetUsersList.push(targetUser);
       }
-      groupedMap.get(key).breaks.push(b);
-    });
-
-    groupedMap.forEach(group => {
-      const dateStr = group.date.toLocaleDateString('en-IN');
-      
-      const outTimesList: string[] = [];
-      const inTimesList: string[] = [];
-      const durationsList: string[] = [];
-      const reasonsList: string[] = [];
-
-      group.breaks.forEach((b: any, idx: number) => {
-        const duration = b.breakIn 
-          ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
-          : null;
-        
-        const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const inStr = b.breakIn 
-          ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : 'On Break';
-        const durStr = duration !== null ? `${duration} mins` : 'On Break';
-
-        outTimesList.push(`Break ${idx + 1}: ${outStr}`);
-        inTimesList.push(`Break ${idx + 1}: ${inStr}`);
-        durationsList.push(`Break ${idx + 1}: ${durStr}`);
-        reasonsList.push(`Break ${idx + 1}: ${b.reason || '--'}`);
-      });
-
-      const newRow = ws.addRow({
-        date: dateStr,
-        name: group.user.fullName,
-        identifier: group.user.identifier,
-        breakOut: outTimesList.join('\n'),
-        breakIn: inTimesList.join('\n'),
-        duration: durationsList.join('\n'),
-        reason: reasonsList.join('\n')
-      });
-
-      // Align cells to top and enable wrapText for multi-line support
-      newRow.eachCell(cell => {
-        cell.alignment = { wrapText: true, vertical: 'top', horizontal: 'left' };
-      });
-    });
-
-    // Auto-fit column widths (with safety padding)
-    ws.columns.forEach(col => {
-      let maxLen = col.header ? col.header.length : 10;
-      col.values?.forEach(val => {
-        if (val) {
-          const len = val.toString().length;
-          if (len > maxLen) maxLen = len;
+    } else {
+      const uniqueUsersMap = new Map<number, any>();
+      breakLogs.forEach(b => {
+        if (!uniqueUsersMap.has(b.userId)) {
+          uniqueUsersMap.set(b.userId, b.user);
         }
       });
-      col.width = Math.min(Math.max(maxLen + 4, 12), 40);
-    });
+      targetUsersList = Array.from(uniqueUsersMap.values());
+    }
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=Break_Report_${month}.xlsx`);
+    const workbook = new exceljs.Workbook();
+    workbook.creator = 'Attendance System';
+
+    if (targetUsersList.length === 0) {
+      const ws = workbook.addWorksheet('No Data');
+      ws.getCell('A1').value = 'No break logs found for this month.';
+    } else {
+      const usedNames = new Set<string>();
+
+      for (const user of targetUsersList) {
+        // Excel sheet names are limited to 31 chars and must be unique
+        let sheetName = user.fullName.substring(0, 30);
+        let counter = 1;
+        while (usedNames.has(sheetName)) {
+          const suffix = `_${counter}`;
+          sheetName = `${user.fullName.substring(0, 30 - suffix.length)}${suffix}`;
+          counter++;
+        }
+        usedNames.add(sheetName);
+
+        const ws = workbook.addWorksheet(sheetName);
+
+        // Define columns
+        ws.columns = [
+          { key: 'day', width: 15 },
+          { key: 'date', width: 15 },
+          { key: 'breakOut', width: 25 },
+          { key: 'breakIn', width: 25 },
+          { key: 'duration', width: 20 },
+          { key: 'reason', width: 35 }
+        ];
+
+        // Title Block (Row 1)
+        ws.mergeCells('A1:F1');
+        const titleCell = ws.getCell('A1');
+        titleCell.value = `BREAK REPORT: ${user.fullName.toUpperCase()} | PHONE: ${user.identifier}`;
+        titleCell.font = { bold: true, size: 14, name: 'Calibri' };
+        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        titleCell.border = {
+          top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+          left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+          right: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+          bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } }
+        };
+
+        ws.getRow(1).height = 40;
+        ws.getRow(2).height = 15;
+        ws.getRow(3).height = 25;
+
+        // Header Row (Row 3)
+        const headerRow = ws.getRow(3);
+        headerRow.values = ['Day', 'Date', 'Break Out Time', 'Break In Time', 'Duration', 'Reason for Break'];
+        headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
+        
+        headerRow.eachCell((cell, colNumber) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '1F4E79' } // Dark blue theme matching attendance report
+          };
+          cell.alignment = { 
+            horizontal: colNumber <= 2 ? 'left' : 'center', 
+            vertical: 'middle' 
+          };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFFFFF' } },
+            left: { style: 'thin', color: { argb: 'FFFFFF' } },
+            right: { style: 'thin', color: { argb: 'FFFFFF' } },
+            bottom: { style: 'thin', color: { argb: 'FFFFFF' } }
+          };
+        });
+
+        // Filter logs for this specific user
+        const userBreaks = breakLogs.filter(b => b.userId === user.id);
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        // Populate days
+        for (let day = 1; day <= daysInMonth; day++) {
+          const d = new Date(year, mon - 1, day, 12, 0, 0);
+          const dayStr = daysOfWeek[d.getDay()];
+          const dateStr = `${day}/${mon}/${year}`;
+
+          // Format stable local timezone-immune date keys for comparison
+          const localDateKey = `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          
+          const dayBreaks = userBreaks.filter(b => {
+            const bYear = b.date.getFullYear();
+            const bMonth = String(b.date.getMonth() + 1).padStart(2, '0');
+            const bDay = String(b.date.getDate()).padStart(2, '0');
+            const bLocalDateKey = `${bYear}-${bMonth}-${bDay}`;
+            return bLocalDateKey === localDateKey;
+          });
+
+          let breakOutVal = '--';
+          let breakInVal = '--';
+          let durationVal = '--';
+          let reasonVal = '--';
+
+          if (dayBreaks.length > 0) {
+            const outTimesList: string[] = [];
+            const inTimesList: string[] = [];
+            const durationsList: string[] = [];
+            const reasonsList: string[] = [];
+
+            dayBreaks.forEach((b: any, idx: number) => {
+              const duration = b.breakIn 
+                ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
+                : null;
+              
+              const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const inStr = b.breakIn 
+                ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : 'On Break';
+              const durStr = duration !== null ? `${duration} mins` : 'On Break';
+
+              if (dayBreaks.length > 1) {
+                outTimesList.push(`Break ${idx + 1}: ${outStr}`);
+                inTimesList.push(`Break ${idx + 1}: ${inStr}`);
+                durationsList.push(`Break ${idx + 1}: ${durStr}`);
+                reasonsList.push(`Break ${idx + 1}: ${b.reason || '--'}`);
+              } else {
+                outTimesList.push(outStr);
+                inTimesList.push(inStr);
+                durationsList.push(durStr);
+                reasonsList.push(b.reason || '--');
+              }
+            });
+
+            breakOutVal = outTimesList.join('\n');
+            breakInVal = inTimesList.join('\n');
+            durationVal = durationsList.join('\n');
+            reasonVal = reasonsList.join('\n');
+          }
+
+          const row = ws.addRow([dayStr, dateStr, breakOutVal, breakInVal, durationVal, reasonVal]);
+          
+          row.eachCell((cell, colNumber) => {
+            cell.alignment = { 
+              wrapText: true, 
+              vertical: 'top', 
+              horizontal: colNumber <= 2 || colNumber === 6 ? 'left' : 'center' 
+            };
+            cell.font = { name: 'Calibri', size: 10 };
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+              left: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+              right: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+              bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } }
+            };
+          });
+        }
+
+        // Auto-fit column widths (safety margins)
+        ws.columns.forEach(col => {
+          let maxLen = 12;
+          col.values?.forEach(val => {
+            if (val) {
+              const lines = val.toString().split('\n');
+              lines.forEach((line: string) => {
+                if (line.length > maxLen) maxLen = line.length;
+              });
+            }
+          });
+          col.width = Math.min(Math.max(maxLen + 4, 12), 40);
+        });
+      }
+    }
+
+    if (searchStr && targetUsersList.length > 0) {
+      const teacherName = targetUsersList[0].fullName.replace(/\s+/g, '_');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=${teacherName}.xlsx`);
+    } else {
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=Break_Report_${month}.xlsx`);
+    }
+
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {

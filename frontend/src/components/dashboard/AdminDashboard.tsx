@@ -3463,7 +3463,11 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Break_Report_${exportMonth}.xlsx`);
+      if (search) {
+        link.setAttribute('download', `${search.replace(/\s+/g, '_')}.xlsx`);
+      } else {
+        link.setAttribute('download', `Break_Report_${exportMonth}.xlsx`);
+      }
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -3485,7 +3489,7 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Break_Report_${teacherName.replace(/\s+/g, '_')}_${exportMonth}.xlsx`);
+      link.setAttribute('download', `${teacherName.replace(/\s+/g, '_')}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
