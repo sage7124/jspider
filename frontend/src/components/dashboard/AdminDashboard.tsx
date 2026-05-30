@@ -1571,6 +1571,7 @@ const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: ()
   const [loading, setLoading] = useState(true);
   const [editedEndDates, setEditedEndDates] = useState<Record<number, string>>({});
   const [adminReasons, setAdminReasons] = useState<Record<number, string>>({});
+  const [search, setSearch] = useState('');
 
   useEffect(() => { fetchRequests(); }, []);
 
@@ -1611,12 +1612,38 @@ const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: ()
     }
   };
 
+  // Filter requests based on search term
+  const filteredRequests = requests.filter((r) => {
+    const term = search.toLowerCase().trim();
+    if (!term) return true;
+    const nameMatch = r.user?.fullName?.toLowerCase().includes(term);
+    const identifierMatch = r.user?.identifier?.toLowerCase().includes(term);
+    const departmentMatch = r.user?.department?.toLowerCase().includes(term);
+    const reasonMatch = r.reason?.toLowerCase().includes(term);
+    const statusMatch = r.status?.toLowerCase().includes(term);
+    return nameMatch || identifierMatch || departmentMatch || reasonMatch || statusMatch;
+  });
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Leave Requests Management</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b pb-4">
+          <div>
+            <h2 className="text-xl font-bold">Leave Requests Management</h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative w-64 text-xs">
+              <input
+                type="text"
+                placeholder="Search teacher by name or ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full border border-gray-300 rounded-md pl-3 pr-8 py-1.5 outline-none focus:ring-2 focus:ring-purple-500 font-medium text-gray-700 placeholder-gray-400"
+              />
+              <span className="absolute right-2.5 top-2 text-gray-400">🔍</span>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={24} /></button>
+          </div>
         </div>
 
         {loading ? <p className="text-center py-10">Loading requests...</p> : (
@@ -1632,9 +1659,9 @@ const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: ()
                 </tr>
               </thead>
               <tbody>
-                {requests.length === 0 ? (
+                {filteredRequests.length === 0 ? (
                   <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">No leave requests found</td></tr>
-                ) : requests.map((r) => {
+                ) : filteredRequests.map((r) => {
                   // Calculate dynamic days based on edited date or original date
                   const currentEndDateStr = editedEndDates[r.id] || r.endDate.split('T')[0];
                   const currentEndDate = new Date(currentEndDateStr);
