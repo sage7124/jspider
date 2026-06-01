@@ -1438,6 +1438,7 @@ router.post('/supervisors', async (req: AuthRequest, res) => {
         identifier: mobile,
         email: email || null,
         password: hashedPassword,
+        plainPassword: password,
         isApproved: true, // Supervisor accounts bypass manual onboarding approval pipelines!
         permissions: permsStr
       }
@@ -1478,6 +1479,7 @@ router.get('/supervisors', async (req: AuthRequest, res) => {
         fullName: true,
         identifier: true,
         email: true,
+        plainPassword: true,
         createdAt: true,
         permissions: true,
         trainees: {
@@ -1522,12 +1524,13 @@ router.put('/supervisors/:id', async (req: AuthRequest, res) => {
     }
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
+      updateData.plainPassword = password;
     }
 
     const updated = await prisma.user.update({
       where: { id: Number(id) },
       data: updateData,
-      select: { id: true, fullName: true, identifier: true, email: true, permissions: true }
+      select: { id: true, fullName: true, identifier: true, email: true, plainPassword: true, permissions: true }
     });
 
     // Handle updating trainees assignment under this supervisor

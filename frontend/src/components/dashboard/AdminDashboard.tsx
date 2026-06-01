@@ -1778,6 +1778,8 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
   const [allTrainees, setAllTrainees] = useState<any[]>([]);
   const [selectedTraineeIds, setSelectedTraineeIds] = useState<number[]>([]);
   const [traineeSearch, setTraineeSearch] = useState('');
+  const [shownPasswords, setShownPasswords] = useState<Record<number, boolean>>({});
+  const [showFormPassword, setShowFormPassword] = useState(false);
 
   const resetSupForm = () => {
     setSupForm({ fullName: '', mobile: '', password: '', email: '' });
@@ -2112,7 +2114,24 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                       <div key={s.id} className="flex justify-between items-start p-3 bg-slate-50 border border-slate-100 rounded-lg group hover:bg-slate-100 transition-colors">
                         <div className="flex-1">
                           <p className="font-black text-slate-800 text-xs">{s.fullName}</p>
-                          <p className="text-[10px] text-slate-500 font-mono">📲 {s.identifier} {s.email ? `| 📧 ${s.email}` : ''}</p>
+                          <p className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span>📲 {s.identifier}</span>
+                            {s.email && <span>| 📧 {s.email}</span>}
+                            {s.plainPassword ? (
+                              <span className="inline-flex items-center gap-1 bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-600 shadow-sm ml-1 select-all">
+                                🔑 {shownPasswords[s.id] ? s.plainPassword : '••••••••'}
+                                <button 
+                                  type="button" 
+                                  onClick={() => setShownPasswords(prev => ({ ...prev, [s.id]: !prev[s.id] }))} 
+                                  className="text-slate-400 hover:text-slate-600 focus:outline-none ml-0.5 shrink-0"
+                                >
+                                  <Eye size={10} />
+                                </button>
+                              </span>
+                            ) : (
+                              <span className="text-[9px] text-gray-400 italic font-medium ml-1">🔑 No saved password info</span>
+                            )}
+                          </p>
                           {/* Trainees Assigned Badge List */}
                           {s.trainees && s.trainees.length > 0 ? (
                             <div className="mt-1.5 flex flex-wrap gap-1">
@@ -2192,13 +2211,23 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                       <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">
                         {editSupervisorId ? 'Change Password' : 'Temp Password'}
                       </label>
-                      <input 
-                        required={!editSupervisorId} 
-                        type="password" 
-                        value={supForm.password} 
-                        onChange={e => setSupForm({...supForm, password: e.target.value})} 
-                        className="w-full border border-blue-100 rounded px-2.5 py-2 bg-white text-xs outline-none focus:border-blue-400" 
-                        placeholder={editSupervisorId ? 'Leave blank to keep current' : '🔑 Strong Pass'} />
+                      <div className="relative">
+                        <input 
+                          required={!editSupervisorId} 
+                          type={showFormPassword ? "text" : "password"} 
+                          value={supForm.password} 
+                          onChange={e => setSupForm({...supForm, password: e.target.value})} 
+                          className="w-full border border-blue-100 rounded px-2.5 py-2 pr-8 bg-white text-xs outline-none focus:border-blue-400 font-bold" 
+                          placeholder={editSupervisorId ? 'Leave blank to keep current' : '🔑 Strong Pass'} 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowFormPassword(!showFormPassword)}
+                          className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600"
+                        >
+                          <Eye size={13} />
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[9px] font-black text-blue-600 mb-1 uppercase">Email (Optional)</label>
