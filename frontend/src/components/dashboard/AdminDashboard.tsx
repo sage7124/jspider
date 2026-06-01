@@ -3476,6 +3476,8 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
 // ── Teacher Break Logs Modal ────────────────────────────────────────────────
 const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
   const [logs, setLogs] = useState<any[]>([]);
+  const [pendingLogs, setPendingLogs] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'daily' | 'pending'>('daily');
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -3484,11 +3486,22 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchLogs();
-  }, [date]);
+    if (activeTab === 'daily') {
+      fetchLogs();
+    } else {
+      fetchPendingLogs();
+    }
+    // Eagerly fetch pending count for the badge even on daily tab
+    if (activeTab === 'daily') {
+      fetchPendingCount();
+    }
+  }, [date, activeTab]);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchLogs(), 300);
+    const timer = setTimeout(() => {
+      if (activeTab === 'daily') fetchLogs();
+      else fetchPendingLogs();
+    }, 300);
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -3504,6 +3517,55 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPendingLogs = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/breaks/pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const filtered = (res.data || []).filter((l: any) => 
+        !search || 
+        l.name.toLowerCase().includes(search.toLowerCase()) || 
+        l.identifier.toLowerCase().includes(search.toLowerCase())
+      );
+      setPendingLogs(filtered);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPendingCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/breaks/pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingLogs(res.data || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleProcessBreak = async (breakLogId: number, status: 'APPROVED' | 'REJECTED') => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/reports/breaks/process`, { breakLogId, status }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert(`Break request ${status === 'APPROVED' ? 'approved' : 'rejected'} successfully.`);
+      if (activeTab === 'daily') {
+        fetchLogs();
+      } else {
+        fetchPendingLogs();
+      }
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to process break request.');
     }
   };
 
@@ -3580,35 +3642,120 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
           <Clock size={20} /> Teacher Break Logs
         </h2>
 
+        {/* Tab Switcher */}
+        <div className="flex border-b border-gray-200 mb-4 bg-gray-50/50 rounded-t-lg">
+          <button
+            onClick={() => { setActiveTab('daily'); setSearch(''); }}
+            className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 flex items-center gap-1.5 ${
+              activeTab === 'daily'
+                ? 'border-amber-600 text-amber-700 bg-white font-black'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            📅 Daily Outing Logs
+          </button>
+          <button
+            onClick={() => { setActiveTab('pending'); setSearch(''); }}
+            className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 relative flex items-center gap-1.5 ${
+              activeTab === 'pending'
+                ? 'border-amber-600 text-amber-700 bg-white font-black'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            ⏳ Pending Requests
+            {pendingLogs.length > 0 && (
+              <span className="bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-pulse ml-1 px-1">
+                {pendingLogs.length}
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Filter Controls */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
-              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
-          </div>
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+          {activeTab === 'daily' ? (
+            <>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                  className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
+                  className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                    className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+                </div>
+                <button onClick={handleExport} disabled={exporting}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="col-span-3">
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Pending Requests</label>
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by teacher name or phone..."
                 className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
             </div>
-            <button onClick={handleExport} disabled={exporting}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-            </button>
-          </div>
+          )}
         </div>
 
         {/* Logs Table */}
         <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
           {loading ? (
             <p className="text-center py-10 text-gray-400">Loading break logs...</p>
+          ) : activeTab === 'pending' ? (
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
+                <tr>
+                  <th className="px-4 py-3">Teacher</th>
+                  <th className="px-4 py-3">Mobile/ID</th>
+                  <th className="px-4 py-3">Department</th>
+                  <th className="px-4 py-3 text-center">Requested Out</th>
+                  <th className="px-4 py-3">Reason</th>
+                  <th className="px-4 py-3 text-center w-[20%]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {pendingLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No pending break requests found.</td>
+                  </tr>
+                ) : (
+                  pendingLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-gray-800">{log.name}</td>
+                      <td className="px-4 py-3 font-mono">{log.identifier}</td>
+                      <td className="px-4 py-3">{log.department}</td>
+                      <td className="px-4 py-3 text-center text-purple-700 font-bold">{log.breakOut}</td>
+                      <td className="px-4 py-3 text-gray-600 italic font-medium">{log.reason || '--'}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="inline-flex gap-2">
+                          <button
+                            onClick={() => handleProcessBreak(log.id, 'APPROVED')}
+                            className="bg-green-600 hover:bg-green-700 text-white font-black px-3 py-1.5 rounded shadow-sm text-[10px] uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleProcessBreak(log.id, 'REJECTED')}
+                            className="bg-red-600 hover:bg-red-700 text-white font-black px-3 py-1.5 rounded shadow-sm text-[10px] uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           ) : (
             <table className="w-full text-xs text-left">
               <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">

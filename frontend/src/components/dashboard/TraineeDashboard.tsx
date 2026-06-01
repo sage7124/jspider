@@ -561,7 +561,20 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
             Teacher Break Controls
           </h3>
 
-          {status?.currentlyOnBreak ? (
+          {status?.breakPending ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex flex-col items-center justify-center gap-3 text-center">
+                <Clock className="text-yellow-600 animate-pulse text-yellow-500" size={24} />
+                <div>
+                  <p className="font-extrabold text-yellow-900 text-sm">⏳ BREAK REQUEST PENDING</p>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    Your request to go on break (Reason: <span className="italic">"{status.pendingBreak?.reason || '--'}"</span>) is pending supervisor approval.
+                  </p>
+                </div>
+                <p className="text-[10px] text-yellow-600 font-semibold">Please wait until a supervisor or admin approves your request.</p>
+              </div>
+            </div>
+          ) : status?.currentlyOnBreak ? (
             <div className="space-y-4">
               <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>

@@ -51,8 +51,11 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
       where: { userId, date: today },
       orderBy: { breakOut: 'asc' }
     });
-    const activeBreak = todayBreaks.find(b => b.breakIn === null) || null;
+    const activeBreak = todayBreaks.find(b => b.status === 'APPROVED' && b.breakIn === null) || null;
+    const pendingBreak = todayBreaks.find(b => b.status === 'PENDING') || null;
     const currentlyOnBreak = activeBreak !== null;
+    const breakPending = pendingBreak !== null;
+    const approvedBreaks = todayBreaks.filter(b => b.status === 'APPROVED');
 
     res.json({
       status: attendance?.status || 'OUT',
@@ -61,9 +64,11 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
       forgotPunchOut,
       slots: slots.map(s => `${s.startTime} - ${s.endTime}`),
       currentlyOnBreak,
-      todayBreaksCount: todayBreaks.length,
+      breakPending,
+      todayBreaksCount: approvedBreaks.length,
       activeBreak,
-      completedBreaks: todayBreaks.map(b => ({
+      pendingBreak,
+      completedBreaks: approvedBreaks.filter(b => b.breakIn !== null).map(b => ({
         id: b.id,
         breakOut: b.breakOut,
         breakIn: b.breakIn,
@@ -591,12 +596,18 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       where: { userId, date: today }
     });
 
-    const activeBreak = todayBreaks.find(b => b.breakIn === null);
+    const pendingBreak = todayBreaks.find(b => b.status === 'PENDING');
+    if (pendingBreak) {
+      return res.status(400).json({ error: 'You already have a pending break request.' });
+    }
+
+    const approvedBreaks = todayBreaks.filter(b => b.status === 'APPROVED');
+    const activeBreak = approvedBreaks.find(b => b.breakIn === null);
     if (activeBreak) {
       return res.status(400).json({ error: 'You are already on an active break.' });
     }
 
-    if (todayBreaks.length >= 4) {
+    if (approvedBreaks.length >= 4) {
       return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
     }
 
@@ -607,11 +618,12 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
         userId,
         date: today,
         breakOut: new Date(),
-        reason: reason || null
+        reason: reason || null,
+        status: 'PENDING'
       }
     });
 
-    res.status(201).json({ message: 'Break started successfully', breakLog: newBreak });
+    res.status(201).json({ message: 'Break request submitted successfully. Pending supervisor approval.', breakLog: newBreak });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
@@ -649,7 +661,7 @@ router.post('/break/in', authenticateToken, async (req: AuthRequest, res) => {
 
     // 2. Find active break
     const activeBreak = await prisma.breakLog.findFirst({
-      where: { userId, date: today, breakIn: null }
+      where: { userId, date: today, breakIn: null, status: 'APPROVED' }
     });
 
     if (!activeBreak) {

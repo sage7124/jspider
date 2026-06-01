@@ -209,5 +209,6 @@ model BreakLog {
   breakOut    DateTime
   breakIn     DateTime?
   reason      String?
+  status      String   @default("APPROVED") // APPROVED, PENDING, REJECTED
   createdAt   DateTime @default(now())
 }

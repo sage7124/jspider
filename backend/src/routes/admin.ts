@@ -1977,10 +1977,13 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
     targetDate.setHours(0, 0, 0, 0);
 
     const searchStr = search as string;
+    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
 
     const breakLogs = await prisma.breakLog.findMany({
       where: {
         date: targetDate,
+        status: 'APPROVED',
+        ...supervisorFilter,
         user: {
           OR: searchStr ? [
             { fullName: { contains: searchStr, mode: 'insensitive' } },
@@ -2034,9 +2037,12 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
     const searchStr = search as string;
 
+    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
     const breakLogs = await prisma.breakLog.findMany({
       where: {
         date: { gte: startOfMonth, lte: endOfMonth },
+        status: 'APPROVED',
+        ...supervisorFilter,
         user: {
           OR: searchStr ? [
             { fullName: { contains: searchStr, mode: 'insensitive' } },
@@ -2058,6 +2064,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
     if (searchStr) {
       const targetUser = await prisma.user.findFirst({
         where: {
+          ...supervisorFilter,
           OR: [
             { fullName: { contains: searchStr, mode: 'insensitive' } },
             { identifier: { contains: searchStr, mode: 'insensitive' } }
@@ -2154,8 +2161,9 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         const userBreaks = breakLogs.filter(b => b.userId === user.id);
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-        // Populate days
-        for (let day = 1; day <= daysInMonth; day++) {
+        // Populate days (conditional May 2026 truncation)
+        const startDay = (mon === 5 && year === 2026) ? 17 : 1;
+        for (let day = startDay; day <= daysInMonth; day++) {
           const d = new Date(year, mon - 1, day, 12, 0, 0);
           const dayStr = daysOfWeek[d.getDay()];
           const dateStr = `${day}/${mon}/${year}`;
@@ -2173,46 +2181,60 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
           let breakOutVal = '--';
           let breakInVal = '--';
-          let durationVal = '--';
           let reasonVal = '--';
 
           if (dayBreaks.length > 0) {
             const outTimesList: string[] = [];
             const inTimesList: string[] = [];
-            const durationsList: string[] = [];
             const reasonsList: string[] = [];
 
             dayBreaks.forEach((b: any, idx: number) => {
-              const duration = b.breakIn 
-                ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
-                : null;
-              
               const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
               const inStr = b.breakIn 
                 ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : 'On Break';
-              const durStr = duration !== null ? `${duration} mins` : 'On Break';
 
               if (dayBreaks.length > 1) {
                 outTimesList.push(`Break ${idx + 1}: ${outStr}`);
                 inTimesList.push(`Break ${idx + 1}: ${inStr}`);
-                durationsList.push(`Break ${idx + 1}: ${durStr}`);
                 reasonsList.push(`Break ${idx + 1}: ${b.reason || '--'}`);
               } else {
                 outTimesList.push(outStr);
                 inTimesList.push(inStr);
-                durationsList.push(durStr);
                 reasonsList.push(b.reason || '--');
               }
             });
 
             breakOutVal = outTimesList.join('\n');
             breakInVal = inTimesList.join('\n');
-            durationVal = durationsList.join('\n');
             reasonVal = reasonsList.join('\n');
           }
 
-          const row = ws.addRow([dayStr, dateStr, breakOutVal, breakInVal, durationVal, reasonVal]);
+          const row = ws.addRow([dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal]);
+
+          // Calculate cell-level dynamic Excel formulas for Durations
+          if (dayBreaks.length === 1) {
+            const b = dayBreaks[0];
+            if (b.breakIn) {
+              row.getCell(5).value = { formula: `IF(C${row.number}="--", "--", IF(OR(D${row.number}="--", D${row.number}="On Break"), "On Break", ROUND((TIMEVALUE(D${row.number})-TIMEVALUE(C${row.number}))*1440,0)))` };
+            } else {
+              row.getCell(5).value = 'On Break';
+            }
+          } else if (dayBreaks.length > 1) {
+            const completedParts = dayBreaks.filter(b => b.breakIn).map(b => {
+              const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const inStr = new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              return `ROUND((TIMEVALUE("${inStr}")-TIMEVALUE("${outStr}"))*1440,0)`;
+            });
+            if (completedParts.length > 0) {
+              row.getCell(5).value = { formula: completedParts.join(' + ') };
+            } else {
+              row.getCell(5).value = 'On Break';
+            }
+          } else {
+            row.getCell(5).value = '--';
+          }
+          row.getCell(5).numFmt = '0" mins"';
           
           row.eachCell((cell, colNumber) => {
             cell.alignment = { 
@@ -2257,6 +2279,84 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
     await workbook.xlsx.write(res);
     res.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Pending Break Requests Approval pipeline (Sandboxed) ───────────────────────────
+router.get('/reports/breaks/pending', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
+
+    const pendingLogs = await prisma.breakLog.findMany({
+      where: {
+        status: 'PENDING',
+        ...supervisorFilter
+      },
+      include: {
+        user: { select: { fullName: true, identifier: true, department: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const result = pendingLogs.map(b => ({
+      id: b.id,
+      date: b.date.toLocaleDateString('en-IN'),
+      name: b.user.fullName,
+      identifier: b.user.identifier,
+      department: b.user.department || '--',
+      breakOut: new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      reason: b.reason || '--'
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/reports/breaks/process', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { breakLogId, status } = req.body;
+    if (!breakLogId || !['APPROVED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid payload parameters' });
+    }
+
+    const breakLog = await prisma.breakLog.findUnique({
+      where: { id: Number(breakLogId) },
+      include: { user: true }
+    });
+
+    if (!breakLog) {
+      return res.status(404).json({ error: 'Break request not found.' });
+    }
+
+    // Strict Supervisor Authorization Sandbox Check
+    if (req.user?.role === 'SUPERVISOR' && breakLog.user.supervisorId !== req.user.id) {
+      return res.status(403).json({ error: 'Access Denied: You can only process break requests for trainees assigned to you.' });
+    }
+
+    if (breakLog.status !== 'PENDING') {
+      return res.status(400).json({ error: 'This break request has already been processed.' });
+    }
+
+    const updated = await prisma.breakLog.update({
+      where: { id: breakLog.id },
+      data: {
+        status,
+        // If approved, reset breakOut to now so they get their full break starting from the moment of approval
+        breakOut: status === 'APPROVED' ? new Date() : breakLog.breakOut
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `Break request ${status.toLowerCase()} successfully.`,
+      breakLog: updated
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });

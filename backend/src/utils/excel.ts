@@ -15,7 +15,8 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   const assignedSlotNos: number[] = (user.slots || []).map((s: any) => Number(s.slotNo)).filter((v: number, i: number, a: number[]) => a.indexOf(v) === i).sort((a: number, b: number) => a - b);
   const hasExtraSlots = assignedSlotNos.some(n => n > 3);
 
-  for (let day = 1; day <= daysInMonth; day++) {
+  const startDay = (mon === 5 && year === 2026) ? 17 : 1;
+  for (let day = startDay; day <= daysInMonth; day++) {
     const currentDate = new Date(year, mon - 1, day);
     const dayStr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
     const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
