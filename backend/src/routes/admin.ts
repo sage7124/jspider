@@ -2161,6 +2161,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         const userBreaks = breakLogs.filter(b => b.userId === user.id);
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+        let monthlyTotalMins = 0;
+
         // Populate days
         for (let day = 1; day <= daysInMonth; day++) {
           const d = new Date(year, mon - 1, day, 12, 0, 0);
@@ -2229,6 +2231,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
               row.getCell(5).value = 'On Break';
             } else if (totalMins > 0) {
               row.getCell(5).value = totalMins;
+              monthlyTotalMins += totalMins;
             } else {
               row.getCell(5).value = '--';
             }
@@ -2252,6 +2255,42 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             };
           });
         }
+
+        // Add Spacer Row
+        ws.addRow([]);
+
+        // Add Grand Total Row
+        const totalRow = ws.addRow(['', 'TOTAL DURATION', '', '', monthlyTotalMins, '']);
+        totalRow.height = 24;
+        
+        ws.mergeCells(`B${totalRow.number}:D${totalRow.number}`);
+        
+        totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          if (colNumber >= 1 && colNumber <= 6) {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: '1F4E79' } // Dark blue theme matching header
+            };
+            cell.font = { 
+              bold: true, 
+              name: 'Calibri', 
+              size: colNumber === 5 ? 11 : 10, 
+              color: { argb: 'FFFFFFFF' } 
+            };
+            cell.alignment = { 
+              vertical: 'middle', 
+              horizontal: colNumber === 5 ? 'center' : (colNumber === 2 ? 'left' : 'center') 
+            };
+            cell.border = {
+              top: { style: 'medium', color: { argb: 'FF1F4E79' } },
+              left: { style: 'thin', color: { argb: 'FFFFFF' } },
+              right: { style: 'thin', color: { argb: 'FFFFFF' } },
+              bottom: { style: 'medium', color: { argb: 'FF1F4E79' } }
+            };
+          }
+        });
+        totalRow.getCell(5).numFmt = '0" mins"';
 
         // Auto-fit column widths (safety margins)
         ws.columns.forEach(col => {
