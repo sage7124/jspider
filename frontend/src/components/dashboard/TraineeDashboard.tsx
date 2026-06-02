@@ -1308,9 +1308,10 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               {breakType === 'NORMAL' ? (
                 <div>
                   <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
-                    Reason for Break (Optional)
+                    Reason for Break
                   </label>
                   <textarea
+                    required
                     rows={3}
                     value={breakReason}
                     onChange={(e) => setBreakReason(e.target.value)}
@@ -1365,7 +1366,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 </button>
                 <button
                   type="button"
-                  disabled={startingBreak || (breakType === 'COLLEGE_VISIT' && (!collegeName.trim() || !subject.trim()))}
+                  disabled={startingBreak || (breakType === 'NORMAL' && !breakReason.trim()) || (breakType === 'COLLEGE_VISIT' && (!collegeName.trim() || !subject.trim()))}
                   onClick={() => handleBreakOut()}
                   className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >

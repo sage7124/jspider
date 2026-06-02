@@ -617,7 +617,12 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
     let finalStatus = 'APPROVED';
     let finalReason = reason || null;
 
-    if (breakType === 'COLLEGE_VISIT') {
+    if (breakType === 'NORMAL') {
+      if (!reason || !reason.trim()) {
+        return res.status(400).json({ error: 'Reason for break is required.' });
+      }
+      finalReason = reason.trim();
+    } else if (breakType === 'COLLEGE_VISIT') {
       if (!collegeName || !subject) {
         return res.status(400).json({ error: 'College Name and Subject are required for a College Visit.' });
       }
