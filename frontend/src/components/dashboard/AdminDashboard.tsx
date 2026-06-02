@@ -1101,7 +1101,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
               <Mail size={18} /> Memos
             </button>
           )}
-          {hasPermission('DOWNLOAD_REPORT') && (
+          {hasPermission('MANAGE_BREAKS') && (
             <button onClick={() => setShowBreaks(true)}
               className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded font-medium transition-colors">
               <Clock size={18} /> Breaks
@@ -1221,7 +1221,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showDropdownOptions && <DropdownOptionsModal onClose={() => setShowDropdownOptions(false)} />}
       {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => { setViewOnboardingUser(null); fetchTrainees(); }} />}
       {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role={role} />}
-      {showBreaks && <BreakLogsModal onClose={() => setShowBreaks(false)} />}
+      {showBreaks && <BreakLogsModal onClose={() => setShowBreaks(false)} allTrainees={trainees} />}
     </div>
   );
 };
@@ -2302,6 +2302,7 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                         { id: 'HOLIDAYS', label: '🌴 Manage Holidays', core: false },
                         { id: 'NOTICES', label: '📢 Manage Notices', core: false },
                         { id: 'GPS_LOCATION', label: '📡 Branch GPS Config', core: false },
+                        { id: 'MANAGE_BREAKS', label: '🕒 Manage Breaks', core: false },
                       ].map(p => (
                         <label key={p.id} className="flex items-center gap-2 cursor-pointer text-[10px] font-bold select-none text-gray-700 hover:text-blue-700">
                           <input 
@@ -3474,7 +3475,7 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
 };
 
 // ── Teacher Break Logs Modal ────────────────────────────────────────────────
-const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
+const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees: any[] }) => {
   const [logs, setLogs] = useState<any[]>([]);
   const [pendingLogs, setPendingLogs] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'daily' | 'pending'>('daily');
@@ -3484,6 +3485,44 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
   const [exportMonth, setExportMonth] = useState(new Date().toISOString().substring(0, 7));
   const [exporting, setExporting] = useState(false);
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
+
+  // Direct College Visit Breakout States
+  const [showDirectOutModal, setShowDirectOutModal] = useState(false);
+  const [directTraineeId, setDirectTraineeId] = useState('');
+  const [directCollegeName, setDirectCollegeName] = useState('');
+  const [directSubject, setDirectSubject] = useState('');
+  const [directing, setDirecting] = useState(false);
+
+  const handleDirectOutSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!directTraineeId || !directCollegeName.trim() || !directSubject.trim()) {
+      alert('All fields are required.');
+      return;
+    }
+
+    try {
+      setDirecting(true);
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/reports/breaks/direct-out`, {
+        traineeId: Number(directTraineeId),
+        collegeName: directCollegeName.trim(),
+        subject: directSubject.trim()
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Direct College Visit breakout registered successfully!');
+      setShowDirectOutModal(false);
+      setDirectTraineeId('');
+      setDirectCollegeName('');
+      setDirectSubject('');
+      if (activeTab === 'daily') fetchLogs();
+      else fetchPendingLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to trigger direct breakout.');
+    } finally {
+      setDirecting(false);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'daily') {
@@ -3643,31 +3682,39 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
         </h2>
 
         {/* Tab Switcher */}
-        <div className="flex border-b border-gray-200 mb-4 bg-gray-50/50 rounded-t-lg">
+        <div className="flex justify-between items-center border-b border-gray-200 mb-4 bg-gray-50/50 rounded-t-lg">
+          <div className="flex">
+            <button
+              onClick={() => { setActiveTab('daily'); setSearch(''); }}
+              className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 flex items-center gap-1.5 ${
+                activeTab === 'daily'
+                  ? 'border-amber-600 text-amber-700 bg-white font-black'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              📅 Daily Outing Logs
+            </button>
+            <button
+              onClick={() => { setActiveTab('pending'); setSearch(''); }}
+              className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 relative flex items-center gap-1.5 ${
+                activeTab === 'pending'
+                  ? 'border-amber-600 text-amber-700 bg-white font-black'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              ⏳ Pending Requests
+              {pendingLogs.length > 0 && (
+                <span className="bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-pulse ml-1 px-1">
+                  {pendingLogs.length}
+                </span>
+              )}
+            </button>
+          </div>
           <button
-            onClick={() => { setActiveTab('daily'); setSearch(''); }}
-            className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 flex items-center gap-1.5 ${
-              activeTab === 'daily'
-                ? 'border-amber-600 text-amber-700 bg-white font-black'
-                : 'border-transparent text-gray-400 hover:text-gray-600'
-            }`}
+            onClick={() => setShowDirectOutModal(true)}
+            className="mr-4 bg-purple-600 hover:bg-purple-700 text-white font-black text-[10px] uppercase tracking-wider px-3.5 py-1.5 rounded-lg shadow active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
           >
-            📅 Daily Outing Logs
-          </button>
-          <button
-            onClick={() => { setActiveTab('pending'); setSearch(''); }}
-            className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 relative flex items-center gap-1.5 ${
-              activeTab === 'pending'
-                ? 'border-amber-600 text-amber-700 bg-white font-black'
-                : 'border-transparent text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            ⏳ Pending Requests
-            {pendingLogs.length > 0 && (
-              <span className="bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-pulse ml-1 px-1">
-                {pendingLogs.length}
-              </span>
-            )}
+            <Clock size={12} /> ➕ Direct College Visit
           </button>
         </div>
 
@@ -3848,6 +3895,94 @@ const BreakLogsModal = ({ onClose }: { onClose: () => void }) => {
           )}
         </div>
       </div>
+
+      {showDirectOutModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200 text-xs">
+            <button
+              onClick={() => {
+                setShowDirectOutModal(false);
+                setDirectTraineeId('');
+                setDirectCollegeName('');
+                setDirectSubject('');
+              }}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-lg font-black text-purple-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+              <Clock size={20} className="animate-pulse" /> Direct College Visit Out
+            </h3>
+            <form onSubmit={handleDirectOutSubmit} className="space-y-4 text-left">
+              <div>
+                <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
+                  Select Teacher
+                </label>
+                <select
+                  required
+                  value={directTraineeId}
+                  onChange={(e) => setDirectTraineeId(e.target.value)}
+                  className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner"
+                >
+                  <option value="">-- Choose Teacher --</option>
+                  {allTrainees.map((t: any) => (
+                    <option key={t.id} value={t.id}>
+                      {t.fullName} ({t.identifier})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
+                  College Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={directCollegeName}
+                  onChange={(e) => setDirectCollegeName(e.target.value)}
+                  className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner"
+                  placeholder="e.g. RV College of Engineering"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
+                  Subject / Purpose
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={directSubject}
+                  onChange={(e) => setDirectSubject(e.target.value)}
+                  className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner"
+                  placeholder="e.g. Guest Lecture, Placement Seminar"
+                />
+              </div>
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDirectOutModal(false);
+                    setDirectTraineeId('');
+                    setDirectCollegeName('');
+                    setDirectSubject('');
+                  }}
+                  className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={directing}
+                  className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  {directing ? 'Directing...' : '🚀 Direct Break Out'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

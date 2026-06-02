@@ -2161,9 +2161,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         const userBreaks = breakLogs.filter(b => b.userId === user.id);
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-        // Populate days (conditional May 2026 truncation)
-        const startDay = (mon === 5 && year === 2026) ? 17 : 1;
-        for (let day = startDay; day <= daysInMonth; day++) {
+        // Populate days
+        for (let day = 1; day <= daysInMonth; day++) {
           const d = new Date(year, mon - 1, day, 12, 0, 0);
           const dayStr = daysOfWeek[d.getDay()];
           const dateStr = `${day}/${mon}/${year}`;
@@ -2290,6 +2289,18 @@ router.get('/reports/breaks/pending', authenticateToken, async (req: AuthRequest
   try {
     const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
 
+    // Dynamic Database-backed clearance check for Supervisors
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_BREAKS')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
+      }
+    }
+
     const pendingLogs = await prisma.breakLog.findMany({
       where: {
         status: 'PENDING',
@@ -2334,9 +2345,20 @@ router.post('/reports/breaks/process', authenticateToken, async (req: AuthReques
       return res.status(404).json({ error: 'Break request not found.' });
     }
 
-    // Strict Supervisor Authorization Sandbox Check
-    if (req.user?.role === 'SUPERVISOR' && breakLog.user.supervisorId !== req.user.id) {
-      return res.status(403).json({ error: 'Access Denied: You can only process break requests for trainees assigned to you.' });
+    // Strict Supervisor Authorization Sandbox & Clearance Checks
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_BREAKS')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
+      }
+
+      if (breakLog.user.supervisorId !== req.user.id) {
+        return res.status(403).json({ error: 'Access Denied: You can only process break requests for trainees assigned to you.' });
+      }
     }
 
     if (breakLog.status !== 'PENDING') {
@@ -2356,6 +2378,83 @@ router.post('/reports/breaks/process', authenticateToken, async (req: AuthReques
       success: true,
       message: `Break request ${status.toLowerCase()} successfully.`,
       breakLog: updated
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/reports/breaks/direct-out', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { traineeId, collegeName, subject } = req.body;
+    if (!traineeId || !collegeName || !subject) {
+      return res.status(400).json({ error: 'Required fields missing: traineeId, collegeName, and subject.' });
+    }
+
+    const trainee = await prisma.user.findUnique({
+      where: { id: Number(traineeId) }
+    });
+
+    if (!trainee || trainee.role !== 'TRAINEE') {
+      return res.status(404).json({ error: 'Trainee not found.' });
+    }
+
+    // Strict Supervisor Sandbox & Clearance Access Checks
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_BREAKS')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
+      }
+
+      if (trainee.supervisorId !== req.user.id) {
+        return res.status(403).json({ error: 'Access Denied: You can only direct breakout trainees assigned under you.' });
+      }
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const attendance = await prisma.attendance.findUnique({
+      where: { userId_date: { userId: trainee.id, date: today } }
+    });
+
+    if (!attendance || attendance.status !== 'IN') {
+      return res.status(400).json({ error: 'Trainee must be Punched In to go on break.' });
+    }
+
+    const todayBreaks = await prisma.breakLog.findMany({
+      where: { userId: trainee.id, date: today }
+    });
+
+    const activeBreak = todayBreaks.find(b => b.breakIn === null);
+    if (activeBreak) {
+      return res.status(400).json({ error: 'Trainee is already on an active break.' });
+    }
+
+    const approvedBreaks = todayBreaks.filter(b => b.status === 'APPROVED');
+    if (approvedBreaks.length >= 4) {
+      return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
+    }
+
+    const newBreak = await prisma.breakLog.create({
+      data: {
+        userId: trainee.id,
+        date: today,
+        breakOut: new Date(),
+        reason: `College Visit: ${collegeName.trim()} (Subject: ${subject.trim()})`,
+        status: 'APPROVED'
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Direct college visit breakout started successfully for ${trainee.fullName}.`,
+      breakLog: newBreak
     });
   } catch (error) {
     console.error(error);

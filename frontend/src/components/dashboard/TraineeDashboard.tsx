@@ -146,6 +146,9 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [endingBreak, setEndingBreak] = useState(false);
   const [showBreakReasonModal, setShowBreakReasonModal] = useState(false);
   const [breakReason, setBreakReason] = useState('');
+  const [breakType, setBreakType] = useState<'NORMAL' | 'COLLEGE_VISIT'>('NORMAL');
+  const [collegeName, setCollegeName] = useState('');
+  const [subject, setSubject] = useState('');
 
   useEffect(() => {
     fetchStatus();
@@ -398,24 +401,33 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     );
   };
 
-  const handleBreakOut = async (reasonText: string) => {
-    const cleanReason = reasonText.trim();
-    if (!cleanReason) {
-      alert('Reason is required to request a break.');
-      return;
+  const handleBreakOut = async () => {
+    if (breakType === 'COLLEGE_VISIT') {
+      if (!collegeName.trim() || !subject.trim()) {
+        alert('College Name and Subject are required for a College Visit.');
+        return;
+      }
     }
 
     try {
       setStartingBreak(true);
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      await axios.post(`${API_URL}/api/attendance/break/out`, { reason: cleanReason }, {
+      const res = await axios.post(`${API_URL}/api/attendance/break/out`, {
+        type: breakType,
+        collegeName: breakType === 'COLLEGE_VISIT' ? collegeName.trim() : undefined,
+        subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : undefined,
+        reason: breakType === 'NORMAL' ? breakReason.trim() : undefined
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert('Break started successfully! Safe travels.');
+      alert(res.data?.message || 'Request processed successfully!');
       fetchStatus();
       setShowBreakReasonModal(false);
       setBreakReason('');
+      setCollegeName('');
+      setSubject('');
+      setBreakType('NORMAL');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to start break');
     } finally {
@@ -1250,6 +1262,9 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               onClick={() => {
                 setShowBreakReasonModal(false);
                 setBreakReason('');
+                setCollegeName('');
+                setSubject('');
+                setBreakType('NORMAL');
               }}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
             >
@@ -1259,25 +1274,90 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               <Clock size={20} className="animate-pulse" /> Request Break Out
             </h3>
             <div className="space-y-4 text-left">
+              {/* Break Type Selector */}
               <div>
-                <label className="block text-xs font-black text-purple-700 mb-2 uppercase tracking-wide">
-                  Reason for Break
+                <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
+                  Break Type
                 </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={breakReason}
-                  onChange={(e) => setBreakReason(e.target.value)}
-                  className="w-full border border-purple-100 rounded-lg p-3 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
-                  placeholder="Enter the reason for taking a break (e.g., Lunch, Personal Work)..."
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBreakType('NORMAL')}
+                    className={`py-2 px-3 rounded-lg border font-bold text-xs uppercase transition-all duration-200 cursor-pointer ${
+                      breakType === 'NORMAL'
+                        ? 'bg-purple-100 border-purple-300 text-purple-800'
+                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+                    }`}
+                  >
+                    ☕ Normal Break
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBreakType('COLLEGE_VISIT')}
+                    className={`py-2 px-3 rounded-lg border font-bold text-xs uppercase transition-all duration-200 cursor-pointer ${
+                      breakType === 'COLLEGE_VISIT'
+                        ? 'bg-purple-100 border-purple-300 text-purple-800'
+                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
+                    }`}
+                  >
+                    🎓 College Visit
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2.5">
+
+              {breakType === 'NORMAL' ? (
+                <div>
+                  <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
+                    Reason for Break (Optional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={breakReason}
+                    onChange={(e) => setBreakReason(e.target.value)}
+                    className="w-full border border-purple-100 rounded-lg p-3 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                    placeholder="Enter the reason for taking a break (e.g., Lunch, Tea Break)..."
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
+                      College Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={collegeName}
+                      onChange={(e) => setCollegeName(e.target.value)}
+                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 font-bold focus:bg-white transition-all"
+                      placeholder="e.g. RV College of Engineering"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
+                      Subject / Purpose
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 font-bold focus:bg-white transition-all"
+                      placeholder="e.g. Guest Lecture, On-campus Seminars"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowBreakReasonModal(false);
                     setBreakReason('');
+                    setCollegeName('');
+                    setSubject('');
+                    setBreakType('NORMAL');
                   }}
                   className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
                 >
@@ -1285,11 +1365,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 </button>
                 <button
                   type="button"
-                  disabled={startingBreak || !breakReason.trim()}
-                  onClick={() => handleBreakOut(breakReason)}
+                  disabled={startingBreak || (breakType === 'COLLEGE_VISIT' && (!collegeName.trim() || !subject.trim()))}
+                  onClick={() => handleBreakOut()}
                   className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                  {startingBreak ? 'Starting...' : '🚀 Start Break'}
+                  {startingBreak ? 'Processing...' : breakType === 'COLLEGE_VISIT' ? '🚀 Request Approval' : '🚀 Start Break'}
                 </button>
               </div>
             </div>

@@ -611,19 +611,35 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
     }
 
-    const { reason } = req.body;
+    const { type, collegeName, subject, reason } = req.body;
+    const breakType = type || 'NORMAL';
+
+    let finalStatus = 'APPROVED';
+    let finalReason = reason || null;
+
+    if (breakType === 'COLLEGE_VISIT') {
+      if (!collegeName || !subject) {
+        return res.status(400).json({ error: 'College Name and Subject are required for a College Visit.' });
+      }
+      finalStatus = 'PENDING';
+      finalReason = `College Visit: ${collegeName.trim()} (Subject: ${subject.trim()})`;
+    }
 
     const newBreak = await prisma.breakLog.create({
       data: {
         userId,
         date: today,
         breakOut: new Date(),
-        reason: reason || null,
-        status: 'PENDING'
+        reason: finalReason,
+        status: finalStatus
       }
     });
 
-    res.status(201).json({ message: 'Break request submitted successfully. Pending supervisor approval.', breakLog: newBreak });
+    const responseMsg = breakType === 'COLLEGE_VISIT'
+      ? 'College visit request submitted successfully. Pending supervisor approval.'
+      : 'Break started successfully! Safe travels.';
+
+    res.status(201).json({ message: responseMsg, breakLog: newBreak });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
