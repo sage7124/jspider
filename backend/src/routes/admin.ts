@@ -1972,7 +1972,7 @@ router.get('/memos/received', authenticateToken, async (req: AuthRequest, res) =
 // ── Teacher Break System Reports Endpoints ─────────────────────────────────────
 router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { date, search } = req.query;
+    const { date, search, type } = req.query;
     const targetDate = date ? new Date(date as string) : new Date();
     targetDate.setHours(0, 0, 0, 0);
 
@@ -1997,7 +1997,14 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
       orderBy: { breakOut: 'desc' }
     });
 
-    const result = breakLogs.map(b => {
+    let filteredLogs = breakLogs;
+    if (type === 'COLLEGE_VISIT') {
+      filteredLogs = breakLogs.filter(b => b.reason && b.reason.startsWith('College Visit:'));
+    } else if (type === 'NORMAL') {
+      filteredLogs = breakLogs.filter(b => !b.reason || !b.reason.startsWith('College Visit:'));
+    }
+
+    const result = filteredLogs.map(b => {
       const duration = b.breakIn 
         ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
         : null;
@@ -2025,7 +2032,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
 
 router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { month, search } = req.query; // e.g., "2026-05", with optional search
+    const { month, search, type } = req.query; // e.g., "2026-05", with optional search & type
     if (!month || typeof month !== 'string') {
       return res.status(400).json({ error: 'Month is required' });
     }
@@ -2059,6 +2066,13 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
       ]
     });
 
+    let filteredBreakLogs = breakLogs;
+    if (type === 'COLLEGE_VISIT') {
+      filteredBreakLogs = breakLogs.filter(b => b.reason && b.reason.startsWith('College Visit:'));
+    } else if (type === 'NORMAL') {
+      filteredBreakLogs = breakLogs.filter(b => !b.reason || !b.reason.startsWith('College Visit:'));
+    }
+
     // 1. Identify target teachers/users to build pages (tabs) for
     let targetUsersList: any[] = [];
     if (searchStr) {
@@ -2073,11 +2087,14 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         select: { id: true, fullName: true, identifier: true, department: true }
       });
       if (targetUser) {
-        targetUsersList.push(targetUser);
+        const hasLogs = filteredBreakLogs.some(b => b.userId === targetUser.id);
+        if (hasLogs) {
+          targetUsersList.push(targetUser);
+        }
       }
     } else {
       const uniqueUsersMap = new Map<number, any>();
-      breakLogs.forEach(b => {
+      filteredBreakLogs.forEach(b => {
         if (!uniqueUsersMap.has(b.userId)) {
           uniqueUsersMap.set(b.userId, b.user);
         }
@@ -2120,7 +2137,13 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         // Title Block (Row 1)
         ws.mergeCells('A1:F1');
         const titleCell = ws.getCell('A1');
-        titleCell.value = `BREAK REPORT: ${user.fullName.toUpperCase()} | PHONE: ${user.identifier}`;
+        let reportTitle = 'BREAK REPORT';
+        if (type === 'COLLEGE_VISIT') {
+          reportTitle = 'COLLEGE VISIT REPORT';
+        } else if (type === 'NORMAL') {
+          reportTitle = 'DAILY OUTING REPORT';
+        }
+        titleCell.value = `${reportTitle}: ${user.fullName.toUpperCase()} | PHONE: ${user.identifier}`;
         titleCell.font = { bold: true, size: 14, name: 'Calibri' };
         titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
         titleCell.border = {
@@ -2158,7 +2181,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         });
 
         // Filter logs for this specific user
-        const userBreaks = breakLogs.filter(b => b.userId === user.id);
+        const userBreaks = filteredBreakLogs.filter(b => b.userId === user.id);
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
         let monthlyTotalMins = 0;
@@ -2308,14 +2331,25 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
       }
     }
 
+    let filename = `Break_Report_${month}.xlsx`;
     if (searchStr && targetUsersList.length > 0) {
       const teacherName = targetUsersList[0].fullName.replace(/\s+/g, '_');
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=${teacherName}.xlsx`);
+      if (type === 'COLLEGE_VISIT') {
+        filename = `${teacherName}_College_Visits_${month}.xlsx`;
+      } else if (type === 'NORMAL') {
+        filename = `${teacherName}_Daily_Outings_${month}.xlsx`;
+      } else {
+        filename = `${teacherName}_Breaks_${month}.xlsx`;
+      }
     } else {
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename=Break_Report_${month}.xlsx`);
+      if (type === 'COLLEGE_VISIT') {
+        filename = `College_Visits_Report_${month}.xlsx`;
+      } else if (type === 'NORMAL') {
+        filename = `Daily_Outings_Report_${month}.xlsx`;
+      }
     }
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
 
     await workbook.xlsx.write(res);
     res.end();

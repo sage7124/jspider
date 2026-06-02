@@ -6,6 +6,7 @@ export interface AuthRequest extends Request {
         fullName: string;
     };
 }
-export declare const authenticateToken: (req: AuthRequest, res: Response, next: NextFunction) => Response<any, Record<string, any>>;
+export declare const authenticateToken: (req: AuthRequest, res: Response, next: NextFunction) => Promise<Response<any, Record<string, any>>>;
 export declare const requireAdmin: (req: AuthRequest, res: Response, next: NextFunction) => Response<any, Record<string, any>>;
+export declare const requireAdminOrSupervisor: (req: AuthRequest, res: Response, next: NextFunction) => Response<any, Record<string, any>>;
 //# sourceMappingURL=authMiddleware.d.ts.map

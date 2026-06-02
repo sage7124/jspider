@@ -3475,10 +3475,9 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
 };
 
 // ── Teacher Break Logs Modal ────────────────────────────────────────────────
-const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees: any[] }) => {
+const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
   const [logs, setLogs] = useState<any[]>([]);
-  const [pendingLogs, setPendingLogs] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'daily' | 'pending'>('daily');
+  const [activeTab, setActiveTab] = useState<'daily' | 'college'>('daily');
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -3486,60 +3485,13 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
   const [exporting, setExporting] = useState(false);
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
 
-  // Direct College Visit Breakout States
-  const [showDirectOutModal, setShowDirectOutModal] = useState(false);
-  const [directTraineeId, setDirectTraineeId] = useState('');
-  const [directCollegeName, setDirectCollegeName] = useState('');
-  const [directSubject, setDirectSubject] = useState('');
-  const [directing, setDirecting] = useState(false);
-
-  const handleDirectOutSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!directTraineeId || !directCollegeName.trim() || !directSubject.trim()) {
-      alert('All fields are required.');
-      return;
-    }
-
-    try {
-      setDirecting(true);
-      const token = localStorage.getItem('token');
-      await axios.post(`${API}/reports/breaks/direct-out`, {
-        traineeId: Number(directTraineeId),
-        collegeName: directCollegeName.trim(),
-        subject: directSubject.trim()
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      alert('Direct College Visit breakout registered successfully!');
-      setShowDirectOutModal(false);
-      setDirectTraineeId('');
-      setDirectCollegeName('');
-      setDirectSubject('');
-      if (activeTab === 'daily') fetchLogs();
-      else fetchPendingLogs();
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to trigger direct breakout.');
-    } finally {
-      setDirecting(false);
-    }
-  };
-
   useEffect(() => {
-    if (activeTab === 'daily') {
-      fetchLogs();
-    } else {
-      fetchPendingLogs();
-    }
-    // Eagerly fetch pending count for the badge even on daily tab
-    if (activeTab === 'daily') {
-      fetchPendingCount();
-    }
+    fetchLogs();
   }, [date, activeTab]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (activeTab === 'daily') fetchLogs();
-      else fetchPendingLogs();
+      fetchLogs();
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
@@ -3548,7 +3500,8 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks?date=${date}&search=${search}`, {
+      const typeParam = activeTab === 'daily' ? 'NORMAL' : 'COLLEGE_VISIT';
+      const res = await axios.get(`${API}/reports/breaks?date=${date}&search=${search}&type=${typeParam}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setLogs(res.data || []);
@@ -3559,60 +3512,12 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
     }
   };
 
-  const fetchPendingLogs = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/pending`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const filtered = (res.data || []).filter((l: any) => 
-        !search || 
-        l.name.toLowerCase().includes(search.toLowerCase()) || 
-        l.identifier.toLowerCase().includes(search.toLowerCase())
-      );
-      setPendingLogs(filtered);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchPendingCount = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/pending`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPendingLogs(res.data || []);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleProcessBreak = async (breakLogId: number, status: 'APPROVED' | 'REJECTED') => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(`${API}/reports/breaks/process`, { breakLogId, status }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      alert(`Break request ${status === 'APPROVED' ? 'approved' : 'rejected'} successfully.`);
-      if (activeTab === 'daily') {
-        fetchLogs();
-      } else {
-        fetchPendingLogs();
-      }
-    } catch (e: any) {
-      alert(e.response?.data?.error || 'Failed to process break request.');
-    }
-  };
-
   const handleExport = async () => {
     try {
       setExporting(true);
+      const type = activeTab === 'daily' ? 'NORMAL' : 'COLLEGE_VISIT';
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}`, {
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}&type=${type}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -3621,9 +3526,11 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
       const link = document.createElement('a');
       link.href = url;
       if (search) {
-        link.setAttribute('download', `${search.replace(/\s+/g, '_')}.xlsx`);
+        const suffix = type === 'COLLEGE_VISIT' ? '_College_Visits' : '_Daily_Outings';
+        link.setAttribute('download', `${search.replace(/\s+/g, '_')}${suffix}.xlsx`);
       } else {
-        link.setAttribute('download', `Break_Report_${exportMonth}.xlsx`);
+        const prefix = type === 'COLLEGE_VISIT' ? 'College_Visits_Report_' : 'Daily_Outings_Report_';
+        link.setAttribute('download', `${prefix}${exportMonth}.xlsx`);
       }
       document.body.appendChild(link);
       link.click();
@@ -3637,8 +3544,9 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
 
   const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
     try {
+      const type = activeTab === 'daily' ? 'NORMAL' : 'COLLEGE_VISIT';
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}`, {
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}&type=${type}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -3646,7 +3554,8 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `${teacherName.replace(/\s+/g, '_')}.xlsx`);
+      const suffix = type === 'COLLEGE_VISIT' ? '_College_Visits' : '_Daily_Outings';
+      link.setAttribute('download', `${teacherName.replace(/\s+/g, '_')}${suffix}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -3680,7 +3589,6 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
         <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-amber-700 flex items-center gap-2 border-b pb-3">
           <Clock size={20} /> Teacher Break Logs
         </h2>
-
         {/* Tab Switcher */}
         <div className="flex justify-between items-center border-b border-gray-200 mb-4 bg-gray-50/50 rounded-t-lg">
           <div className="flex">
@@ -3695,114 +3603,47 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
               📅 Daily Outing Logs
             </button>
             <button
-              onClick={() => { setActiveTab('pending'); setSearch(''); }}
-              className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 relative flex items-center gap-1.5 ${
-                activeTab === 'pending'
+              onClick={() => { setActiveTab('college'); setSearch(''); }}
+              className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 flex items-center gap-1.5 ${
+                activeTab === 'college'
                   ? 'border-amber-600 text-amber-700 bg-white font-black'
                   : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}
             >
-              ⏳ Pending Requests
-              {pendingLogs.length > 0 && (
-                <span className="bg-red-500 text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center animate-pulse ml-1 px-1">
-                  {pendingLogs.length}
-                </span>
-              )}
+              🎓 College Visit Logs
             </button>
           </div>
-          <button
-            onClick={() => setShowDirectOutModal(true)}
-            className="mr-4 bg-purple-600 hover:bg-purple-700 text-white font-black text-[10px] uppercase tracking-wider px-3.5 py-1.5 rounded-lg shadow active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
-          >
-            <Clock size={12} /> ➕ Direct College Visit
-          </button>
         </div>
 
         {/* Filter Controls */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-          {activeTab === 'daily' ? (
-            <>
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                  className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
-                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
-                  className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
-              </div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                    className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
-                </div>
-                <button onClick={handleExport} disabled={exporting}
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="col-span-3">
-              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Pending Requests</label>
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by teacher name or phone..."
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
+              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+          </div>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
                 className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
             </div>
-          )}
+            <button onClick={handleExport} disabled={exporting}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+            </button>
+          </div>
         </div>
 
         {/* Logs Table */}
         <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
           {loading ? (
             <p className="text-center py-10 text-gray-400">Loading break logs...</p>
-          ) : activeTab === 'pending' ? (
-            <table className="w-full text-xs text-left">
-              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
-                <tr>
-                  <th className="px-4 py-3">Teacher</th>
-                  <th className="px-4 py-3">Mobile/ID</th>
-                  <th className="px-4 py-3">Department</th>
-                  <th className="px-4 py-3 text-center">Requested Out</th>
-                  <th className="px-4 py-3">Reason</th>
-                  <th className="px-4 py-3 text-center w-[20%]">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {pendingLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No pending break requests found.</td>
-                  </tr>
-                ) : (
-                  pendingLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3 font-semibold text-gray-800">{log.name}</td>
-                      <td className="px-4 py-3 font-mono">{log.identifier}</td>
-                      <td className="px-4 py-3">{log.department}</td>
-                      <td className="px-4 py-3 text-center text-purple-700 font-bold">{log.breakOut}</td>
-                      <td className="px-4 py-3 text-gray-600 italic font-medium">{log.reason || '--'}</td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="inline-flex gap-2">
-                          <button
-                            onClick={() => handleProcessBreak(log.id, 'APPROVED')}
-                            className="bg-green-600 hover:bg-green-700 text-white font-black px-3 py-1.5 rounded shadow-sm text-[10px] uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleProcessBreak(log.id, 'REJECTED')}
-                            className="bg-red-600 hover:bg-red-700 text-white font-black px-3 py-1.5 rounded shadow-sm text-[10px] uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
           ) : (
             <table className="w-full text-xs text-left">
               <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
@@ -3895,97 +3736,11 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
           )}
         </div>
       </div>
-
-      {showDirectOutModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200 text-xs">
-            <button
-              onClick={() => {
-                setShowDirectOutModal(false);
-                setDirectTraineeId('');
-                setDirectCollegeName('');
-                setDirectSubject('');
-              }}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 cursor-pointer"
-            >
-              <X size={20} />
-            </button>
-            <h3 className="text-lg font-black text-purple-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
-              <Clock size={20} className="animate-pulse" /> Direct College Visit Out
-            </h3>
-            <form onSubmit={handleDirectOutSubmit} className="space-y-4 text-left">
-              <div>
-                <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
-                  Select Teacher
-                </label>
-                <select
-                  required
-                  value={directTraineeId}
-                  onChange={(e) => setDirectTraineeId(e.target.value)}
-                  className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner"
-                >
-                  <option value="">-- Choose Teacher --</option>
-                  {allTrainees.map((t: any) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name || t.fullName} ({t.empCode || t.identifier})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
-                  College Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={directCollegeName}
-                  onChange={(e) => setDirectCollegeName(e.target.value)}
-                  className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner"
-                  placeholder="e.g. RV College of Engineering"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
-                  Subject / Purpose
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={directSubject}
-                  onChange={(e) => setDirectSubject(e.target.value)}
-                  className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner"
-                  placeholder="e.g. Guest Lecture, Placement Seminar"
-                />
-              </div>
-              <div className="flex gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDirectOutModal(false);
-                    setDirectTraineeId('');
-                    setDirectCollegeName('');
-                    setDirectSubject('');
-                  }}
-                  className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={directing}
-                  className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                >
-                  {directing ? 'Directing...' : '🚀 Direct Break Out'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 export default AdminDashboard;
+
+
 

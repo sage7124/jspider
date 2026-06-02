@@ -626,7 +626,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       if (!collegeName || !subject) {
         return res.status(400).json({ error: 'College Name and Subject are required for a College Visit.' });
       }
-      finalStatus = 'PENDING';
+      finalStatus = 'APPROVED';
       finalReason = `College Visit: ${collegeName.trim()} (Subject: ${subject.trim()})`;
     }
 
@@ -641,7 +641,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
     });
 
     const responseMsg = breakType === 'COLLEGE_VISIT'
-      ? 'College visit request submitted successfully. Pending supervisor approval.'
+      ? 'College visit breakout started successfully!'
       : 'Break started successfully! Safe travels.';
 
     res.status(201).json({ message: responseMsg, breakLog: newBreak });
