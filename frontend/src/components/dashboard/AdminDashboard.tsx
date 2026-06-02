@@ -3635,10 +3635,10 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
     }
   };
 
-  const handleIndividualExport = async (teacherName: string) => {
+  const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherName)}`, {
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -3832,7 +3832,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                         </td>
                         <td className="px-4 py-3 text-center">
                           <button
-                            onClick={() => handleIndividualExport(group.name)}
+                            onClick={() => handleIndividualExport(group.name, group.identifier)}
                             className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer animate-fade-in"
                             title={`Export monthly report for ${group.name}`}
                           >
