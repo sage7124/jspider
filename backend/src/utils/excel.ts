@@ -214,9 +214,24 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       
       let rawIn = att ? att[`inTime${si}`] : null;
       let rawOut = att ? att[`outTime${si}`] : null;
-      let inBranch = att ? att[`inBranch${si}`] : null;
-      let outBranch = att ? att[`outBranch${si}`] : null;
-      const infoText = att ? (att[`info${si}`] || (si === 1 ? att.info : null)) : null;
+      
+      // Clean legacy branch names starting with LEGACY_
+      const cleanBranch = (bName: string | null) => {
+        if (!bName) return undefined;
+        const trimmed = bName.trim();
+        if (trimmed.toUpperCase().startsWith('LEGACY_')) return undefined;
+        return trimmed;
+      };
+
+      const cleanInfo = (iText: string | null) => {
+        if (!iText) return undefined;
+        if (iText.includes('Legacy DB A Import') || iText.includes('Legacy DB B Import')) return undefined;
+        return iText;
+      };
+
+      let inBranch = att ? cleanBranch(att[`inBranch${si}`]) : undefined;
+      let outBranch = att ? cleanBranch(att[`outBranch${si}`]) : undefined;
+      const infoText = att ? cleanInfo(att[`info${si}`] || (si === 1 ? att.info : null)) : undefined;
 
       // Legacy fallback injection removed so overall punches no longer pollute Column D if Slot 1 is cleared.
 
@@ -278,7 +293,10 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     rowData.earlyDeparture = dayEarlyMins > 0 ? `${Math.floor(dayEarlyMins / 60)}h ${dayEarlyMins % 60}m` : '0m';
     rowData.extraWork = dayExtraMins > 0 ? `${Math.floor(dayExtraMins / 60)}h ${dayExtraMins % 60}m` : '0m';
 
-    const allInfos = att ? [att.info, att.info1, att.info2, att.info3, att.info4, att.info5].filter(Boolean) as string[] : [];
+    const allInfos = att ? [att.info, att.info1, att.info2, att.info3, att.info4, att.info5]
+      .filter(Boolean)
+      .map(i => i as string)
+      .filter(i => !i.includes('Legacy DB A Import') && !i.includes('Legacy DB B Import')) : [];
     rowData.infoText = allInfos.length > 0 ? Array.from(new Set(allInfos)).join('; ') : '--';
 
     rows.push(rowData);
