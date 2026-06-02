@@ -24,22 +24,27 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     const isToday = currentDate.getTime() === today.getTime();
 
     const daySlots = user.slots?.filter((s: any) => s.dayOfWeek === dayStr).sort((a: any, b: any) => a.slotNo - b.slotNo) || [];
-    const att = attendances.find((a: any) => new Date(a.date).getDate() === day && new Date(a.date).getMonth() === (mon - 1));
+    const att = attendances.find((a: any) => {
+      const aDate = new Date(new Date(a.date).getTime() + (5.5 * 60 * 60 * 1000));
+      return aDate.getUTCDate() === day && (aDate.getUTCMonth() + 1) === mon;
+    });
 
     // Check for Holiday
     const holiday = holidays.find(h => {
-      const hDate = new Date(h.date);
-      return hDate.getDate() === day && hDate.getMonth() === (mon - 1) && hDate.getFullYear() === year;
+      const hDate = new Date(new Date(h.date).getTime() + (5.5 * 60 * 60 * 1000));
+      return hDate.getUTCDate() === day && (hDate.getUTCMonth() + 1) === mon && hDate.getUTCFullYear() === year;
     });
 
     // Check for Approved Leave
     const leave = leaves.find(l => {
-      const d = new Date(year, mon - 1, day);
-      const start = new Date(l.startDate);
-      start.setHours(0,0,0,0);
-      const end = new Date(l.endDate);
-      end.setHours(23,59,59,999);
-      return d >= start && d <= end && l.status === 'APPROVED';
+      const d = new Date(Date.UTC(year, mon - 1, day, 12, 0, 0));
+      const start = new Date(new Date(l.startDate).getTime() + (5.5 * 60 * 60 * 1000));
+      start.setUTCHours(0,0,0,0);
+      const end = new Date(new Date(l.endDate).getTime() + (5.5 * 60 * 60 * 1000));
+      end.setUTCHours(23,59,59,999);
+      
+      const dTime = d.getTime();
+      return dTime >= start.getTime() && dTime <= end.getTime() && l.status === 'APPROVED';
     });
 
     // Check if before Date of Joining

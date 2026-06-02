@@ -742,9 +742,9 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
     if (!month || typeof month !== 'string') return res.status(400).json({ error: 'Month is required' });
 
     const [year, mon] = (month as string).split('-').map(Number);
-    const startOfMonth = new Date(year, mon - 1, 1);
-    const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
-    const daysInMonth = endOfMonth.getDate();
+    const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+    const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+    const daysInMonth = new Date(year, mon, 0).getDate();
 
     const trainees = await prisma.user.findMany({ 
       where: { role: 'TRAINEE' }, 
@@ -816,9 +816,9 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const [year, mon] = (month as string).split('-').map(Number);
-    const startOfMonth = new Date(year, mon - 1, 1);
-    const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
-    const daysInMonth = endOfMonth.getDate();
+    const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+    const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+    const daysInMonth = new Date(year, mon, 0).getDate();
 
     const attendances = await prisma.attendance.findMany({
       where: { userId, date: { gte: startOfMonth, lte: endOfMonth } },
@@ -2031,8 +2031,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
     }
 
     const [year, mon] = month.split('-').map(Number);
-    const startOfMonth = new Date(year, mon - 1, 1);
-    const endOfMonth = new Date(year, mon, 0, 23, 59, 59);
+    const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+    const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
     const daysInMonth = new Date(year, mon, 0).getDate();
 
     const searchStr = search as string;
@@ -2171,9 +2171,10 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           const localDateKey = `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           
           const dayBreaks = userBreaks.filter(b => {
-            const bYear = b.date.getFullYear();
-            const bMonth = String(b.date.getMonth() + 1).padStart(2, '0');
-            const bDay = String(b.date.getDate()).padStart(2, '0');
+            const bDate = new Date(b.date.getTime() + (5.5 * 60 * 60 * 1000));
+            const bYear = bDate.getUTCFullYear();
+            const bMonth = String(bDate.getUTCMonth() + 1).padStart(2, '0');
+            const bDay = String(bDate.getUTCDate()).padStart(2, '0');
             const bLocalDateKey = `${bYear}-${bMonth}-${bDay}`;
             return bLocalDateKey === localDateKey;
           });
