@@ -1271,7 +1271,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               <X size={20} />
             </button>
             <h3 className="text-lg font-black text-purple-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
-              <Clock size={20} className="animate-pulse" /> Request Break Out
+              <Clock size={20} className="animate-pulse" /> Start Break Out
             </h3>
             <div className="space-y-4 text-left">
               {/* Break Type Selector */}
@@ -1370,7 +1370,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   onClick={() => handleBreakOut()}
                   className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
-                  {startingBreak ? 'Processing...' : breakType === 'COLLEGE_VISIT' ? '🚀 Request Approval' : '🚀 Start Break'}
+                  {startingBreak ? 'Processing...' : '🚀 Start Break'}
                 </button>
               </div>
             </div>
