@@ -202,13 +202,21 @@ model Memo {
 }
 
 model BreakLog {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date        DateTime
-  breakOut    DateTime
-  breakIn     DateTime?
-  reason      String?
-  status      String   @default("APPROVED") // APPROVED, PENDING, REJECTED
-  createdAt   DateTime @default(now())
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime
+  breakOut      DateTime
+  breakIn       DateTime?
+  reason        String?
+  status        String    @default("APPROVED") // APPROVED, PENDING, REJECTED
+  
+  // College Visit structured fields
+  bookletNo     String?
+  collegeName   String?
+  subject       String?
+  topicsCovered String?
+  conveyance    String?
+  
+  createdAt     DateTime  @default(now())
 }

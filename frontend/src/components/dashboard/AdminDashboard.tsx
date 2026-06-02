@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -956,6 +956,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [viewOnboardingUser, setViewOnboardingUser] = useState<Trainee | null>(null);
   const [showMemos, setShowMemos] = useState(false);
   const [showBreaks, setShowBreaks] = useState(false);
+  const [showCollegeVisits, setShowCollegeVisits] = useState(false);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -1102,10 +1103,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
             </button>
           )}
           {hasPermission('MANAGE_BREAKS') && (
-            <button onClick={() => setShowBreaks(true)}
-              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded font-medium transition-colors">
-              <Clock size={18} /> Breaks
-            </button>
+            <>
+              <button onClick={() => setShowBreaks(true)}
+                className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded font-medium transition-colors">
+                <Clock size={18} /> Breaks
+              </button>
+              <button onClick={() => setShowCollegeVisits(true)}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
+                <GraduationCap size={18} /> College Visits
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -1222,6 +1229,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => { setViewOnboardingUser(null); fetchTrainees(); }} />}
       {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role={role} />}
       {showBreaks && <BreakLogsModal onClose={() => setShowBreaks(false)} allTrainees={trainees} />}
+      {showCollegeVisits && <CollegeVisitLogsModal onClose={() => setShowCollegeVisits(false)} allTrainees={trainees} />}
     </div>
   );
 };
@@ -3477,7 +3485,6 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
 // ── Teacher Break Logs Modal ────────────────────────────────────────────────
 const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
   const [logs, setLogs] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'daily' | 'college'>('daily');
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -3487,7 +3494,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
 
   useEffect(() => {
     fetchLogs();
-  }, [date, activeTab]);
+  }, [date]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -3500,8 +3507,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const typeParam = activeTab === 'daily' ? 'NORMAL' : 'COLLEGE_VISIT';
-      const res = await axios.get(`${API}/reports/breaks?date=${date}&search=${search}&type=${typeParam}`, {
+      const res = await axios.get(`${API}/reports/breaks?date=${date}&search=${search}&type=NORMAL`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setLogs(res.data || []);
@@ -3515,9 +3521,8 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
   const handleExport = async () => {
     try {
       setExporting(true);
-      const type = activeTab === 'daily' ? 'NORMAL' : 'COLLEGE_VISIT';
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}&type=${type}`, {
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}&type=NORMAL`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -3526,11 +3531,9 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
       const link = document.createElement('a');
       link.href = url;
       if (search) {
-        const suffix = type === 'COLLEGE_VISIT' ? '_College_Visits' : '_Daily_Outings';
-        link.setAttribute('download', `${search.replace(/\s+/g, '_')}${suffix}.xlsx`);
+        link.setAttribute('download', `${search.replace(/\s+/g, '_')}_Daily_Outings.xlsx`);
       } else {
-        const prefix = type === 'COLLEGE_VISIT' ? 'College_Visits_Report_' : 'Daily_Outings_Report_';
-        link.setAttribute('download', `${prefix}${exportMonth}.xlsx`);
+        link.setAttribute('download', `Daily_Outings_Report_${exportMonth}.xlsx`);
       }
       document.body.appendChild(link);
       link.click();
@@ -3544,9 +3547,8 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
 
   const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
     try {
-      const type = activeTab === 'daily' ? 'NORMAL' : 'COLLEGE_VISIT';
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}&type=${type}`, {
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}&type=NORMAL`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -3554,8 +3556,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      const suffix = type === 'COLLEGE_VISIT' ? '_College_Visits' : '_Daily_Outings';
-      link.setAttribute('download', `${teacherName.replace(/\s+/g, '_')}${suffix}.xlsx`);
+      link.setAttribute('download', `${teacherName.replace(/\s+/g, '_')}_Daily_Outings.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -3587,33 +3588,8 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
           <X size={20} />
         </button>
         <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-amber-700 flex items-center gap-2 border-b pb-3">
-          <Clock size={20} /> Teacher Break Logs
+          <Clock size={20} /> Teacher Daily Outing Logs
         </h2>
-        {/* Tab Switcher */}
-        <div className="flex justify-between items-center border-b border-gray-200 mb-4 bg-gray-50/50 rounded-t-lg">
-          <div className="flex">
-            <button
-              onClick={() => { setActiveTab('daily'); setSearch(''); }}
-              className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 flex items-center gap-1.5 ${
-                activeTab === 'daily'
-                  ? 'border-amber-600 text-amber-700 bg-white font-black'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              📅 Daily Outing Logs
-            </button>
-            <button
-              onClick={() => { setActiveTab('college'); setSearch(''); }}
-              className={`px-6 py-3 font-black text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer border-b-2 flex items-center gap-1.5 ${
-                activeTab === 'college'
-                  ? 'border-amber-600 text-amber-700 bg-white font-black'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              🎓 College Visit Logs
-            </button>
-          </div>
-        </div>
 
         {/* Filter Controls */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
@@ -3650,7 +3626,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                 <tr>
                   <th className="px-4 py-3">Teacher</th>
                   <th className="px-4 py-3">Mobile/ID</th>
-                  <th className="px-4 py-3 text-center">Total Breaks</th>
+                  <th className="px-4 py-3 text-center">Total Outings</th>
                   <th className="px-4 py-3 text-center w-[15%]">Export</th>
                   <th className="px-4 py-3 text-center w-[15%]">Details</th>
                 </tr>
@@ -3658,7 +3634,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
               <tbody className="divide-y divide-gray-100">
                 {groupedLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No break logs found for this date.</td>
+                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No daily outing logs found for this date.</td>
                   </tr>
                 ) : (
                   groupedLogs.map((group) => (
@@ -3668,7 +3644,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                         <td className="px-4 py-3 font-mono">{group.identifier}</td>
                         <td className="px-4 py-3 text-center">
                           <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100">
-                            {group.breaks.length} {group.breaks.length === 1 ? 'break' : 'breaks'}
+                            {group.breaks.length} {group.breaks.length === 1 ? 'outing' : 'outings'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -3700,9 +3676,9 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                                 <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
                                   <tr>
                                     <th className="px-4 py-2 w-[8%] text-center">#</th>
-                                    <th className="px-4 py-2">Break Out</th>
+                                    <th className="px-4 py-2">Out Time</th>
                                     <th className="px-2 py-2 text-center w-[5%]">-</th>
-                                    <th className="px-4 py-2">Break In</th>
+                                    <th className="px-4 py-2">In Time</th>
                                     <th className="px-4 py-2 text-center">Duration</th>
                                     <th className="px-4 py-2">Reason</th>
                                   </tr>
@@ -3720,6 +3696,246 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                                         </span>
                                       </td>
                                       <td className="px-4 py-2.5 text-gray-600 italic font-medium">{b.reason || '--'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Teacher College Visit Logs Modal ─────────────────────────────────────────
+const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [exportMonth, setExportMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [exporting, setExporting] = useState(false);
+  const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [date]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchLogs();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchLogs = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/breaks?date=${date}&search=${search}&type=COLLEGE_VISIT`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLogs(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}&type=COLLEGE_VISIT`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      if (search) {
+        link.setAttribute('download', `${search.replace(/\s+/g, '_')}_College_Visits.xlsx`);
+      } else {
+        link.setAttribute('download', `College_Visits_Report_${exportMonth}.xlsx`);
+      }
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert('Failed to export College Visit report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}&type=COLLEGE_VISIT`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${teacherName.replace(/\s+/g, '_')}_College_Visits.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert(`Failed to export College Visit report for ${teacherName}`);
+    }
+  };
+
+  // Group logs by teacher identifier to combine entries per teacher in a day
+  const groupedLogsMap = new Map<string, any>();
+  logs.forEach((log) => {
+    const key = log.identifier;
+    if (!groupedLogsMap.has(key)) {
+      groupedLogsMap.set(key, {
+        name: log.name,
+        identifier: log.identifier,
+        department: log.department,
+        breaks: []
+      });
+    }
+    groupedLogsMap.get(key).breaks.push(log);
+  });
+  const groupedLogs = Array.from(groupedLogsMap.values());
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl p-6 relative max-h-[90vh] flex flex-col">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-blue-700 flex items-center gap-2 border-b pb-3">
+          <GraduationCap size={20} /> Teacher College Visit Logs
+        </h2>
+
+        {/* Filter Controls */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
+              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <button onClick={handleExport} disabled={exporting}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+            </button>
+          </div>
+        </div>
+
+        {/* Logs Table */}
+        <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+          {loading ? (
+            <p className="text-center py-10 text-gray-400">Loading College Visit logs...</p>
+          ) : (
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
+                <tr>
+                  <th className="px-4 py-3">Teacher</th>
+                  <th className="px-4 py-3">Mobile/ID</th>
+                  <th className="px-4 py-3 text-center">Total Visits</th>
+                  <th className="px-4 py-3 text-center w-[15%]">Export</th>
+                  <th className="px-4 py-3 text-center w-[15%]">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {groupedLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No College Visit logs found for this date.</td>
+                  </tr>
+                ) : (
+                  groupedLogs.map((group) => (
+                    <React.Fragment key={group.identifier}>
+                      <tr className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
+                        <td className="px-4 py-3 font-mono">{group.identifier}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
+                            {group.breaks.length} {group.breaks.length === 1 ? 'visit' : 'visits'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleIndividualExport(group.name, group.identifier)}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border border-blue-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer animate-fade-in"
+                            title={`Export monthly report for ${group.name}`}
+                          >
+                            <Download size={14} />
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => setExpandedTeacher(expandedTeacher === group.identifier ? null : group.identifier)}
+                            className="bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-800 border border-gray-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer font-bold animate-fade-in"
+                          >
+                            {expandedTeacher === group.identifier ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedTeacher === group.identifier && (
+                        <tr className="bg-blue-50/10">
+                          <td colSpan={5} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
+                            <div className="text-[10px] font-bold text-blue-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
+                              <GraduationCap size={12} /> Visits for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </div>
+                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                              <table className="w-full text-xs text-left">
+                                <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
+                                  <tr>
+                                    <th className="px-3 py-2 w-[4%] text-center">#</th>
+                                    <th className="px-3 py-2">Booklet No</th>
+                                    <th className="px-3 py-2">College Name</th>
+                                    <th className="px-3 py-2">Subject / Purpose</th>
+                                    <th className="px-3 py-2">Topics Covered</th>
+                                    <th className="px-3 py-2">Conveyance</th>
+                                    <th className="px-3 py-2 text-center">Out Time</th>
+                                    <th className="px-3 py-2 text-center">In Time</th>
+                                    <th className="px-3 py-2 text-center">Duration</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-150">
+                                  {group.breaks.map((b: any, idx: number) => (
+                                    <tr key={b.id} className="hover:bg-gray-50/50">
+                                      <td className="px-3 py-2.5 text-center font-bold text-gray-400">{idx + 1}</td>
+                                      <td className="px-3 py-2.5 font-semibold text-gray-700">{b.bookletNo || '--'}</td>
+                                      <td className="px-3 py-2.5 text-gray-800 font-medium">{b.collegeName || '--'}</td>
+                                      <td className="px-3 py-2.5 text-gray-800 font-medium">{b.subject || b.reason || '--'}</td>
+                                      <td className="px-3 py-2.5 text-gray-600">{b.topicsCovered || '--'}</td>
+                                      <td className="px-3 py-2.5 text-gray-600">{b.conveyance || '--'}</td>
+                                      <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{b.breakOut}</td>
+                                      <td className="px-3 py-2.5 text-center text-green-700 font-semibold">{b.breakIn}</td>
+                                      <td className="px-3 py-2.5 text-center">
+                                        <span className="font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                                          {b.duration}
+                                        </span>
+                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>

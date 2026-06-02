@@ -1969,6 +1969,47 @@ router.get('/memos/received', authenticateToken, async (req: AuthRequest, res) =
   }
 });
 
+function parseCollegeVisit(b: any) {
+  const bookletNo = b.bookletNo || '--';
+  let collegeName = b.collegeName || '';
+  let subject = b.subject || '';
+  const topicsCovered = b.topicsCovered || '--';
+  const conveyance = b.conveyance || '--';
+
+  if (!collegeName && b.reason && b.reason.startsWith('College Visit:')) {
+    if (b.reason.includes('Booklet No:')) {
+      const parts = b.reason.split('|').map((p: string) => p.trim());
+      const bookletPart = parts.find((p: string) => p.startsWith('Booklet No:'));
+      const collegePart = parts.find((p: string) => p.startsWith('College:'));
+      const subjectPart = parts.find((p: string) => p.startsWith('Subject:'));
+      
+      return {
+        bookletNo: bookletPart ? bookletPart.replace('Booklet No:', '').trim() : '--',
+        collegeName: collegePart ? collegePart.replace('College:', '').trim() : '--',
+        subject: subjectPart ? subjectPart.replace('Subject:', '').trim() : '--',
+        topicsCovered: '--',
+        conveyance: '--'
+      };
+    } else {
+      const match = b.reason.match(/College Visit:\s*(.*?)\s*\(Subject:\s*(.*?)\)/);
+      if (match) {
+        collegeName = match[1];
+        subject = match[2];
+      } else {
+        collegeName = b.reason.replace('College Visit:', '').trim();
+      }
+    }
+  }
+
+  return {
+    bookletNo,
+    collegeName: collegeName || '--',
+    subject: subject || '--',
+    topicsCovered,
+    conveyance
+  };
+}
+
 // ── Teacher Break System Reports Endpoints ─────────────────────────────────────
 router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -2008,6 +2049,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
       const duration = b.breakIn 
         ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
         : null;
+      const parsed = parseCollegeVisit(b);
       return {
         id: b.id,
         date: b.date.toLocaleDateString('en-IN'),
@@ -2019,7 +2061,14 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
           ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
           : 'On Break',
         duration: duration !== null ? `${duration} mins` : 'On Break',
-        reason: b.reason || '--'
+        reason: b.reason || '--',
+        
+        // Structured fields for college visits
+        bookletNo: parsed.bookletNo,
+        collegeName: parsed.collegeName,
+        subject: parsed.subject,
+        topicsCovered: parsed.topicsCovered,
+        conveyance: parsed.conveyance
       };
     });
 
@@ -2125,17 +2174,36 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         const ws = workbook.addWorksheet(sheetName);
 
         // Define columns
-        ws.columns = [
-          { key: 'day', width: 15 },
-          { key: 'date', width: 15 },
-          { key: 'breakOut', width: 25 },
-          { key: 'breakIn', width: 25 },
-          { key: 'duration', width: 20 },
-          { key: 'reason', width: 35 }
-        ];
+        if (type === 'COLLEGE_VISIT') {
+          ws.columns = [
+            { key: 'day', width: 15 },
+            { key: 'date', width: 15 },
+            { key: 'bookletNo', width: 15 },
+            { key: 'collegeName', width: 25 },
+            { key: 'subject', width: 25 },
+            { key: 'topicsCovered', width: 30 },
+            { key: 'conveyance', width: 25 },
+            { key: 'breakOut', width: 20 },
+            { key: 'breakIn', width: 20 },
+            { key: 'duration', width: 15 }
+          ];
+        } else {
+          ws.columns = [
+            { key: 'day', width: 15 },
+            { key: 'date', width: 15 },
+            { key: 'breakOut', width: 25 },
+            { key: 'breakIn', width: 25 },
+            { key: 'duration', width: 20 },
+            { key: 'reason', width: 35 }
+          ];
+        }
 
         // Title Block (Row 1)
-        ws.mergeCells('A1:F1');
+        if (type === 'COLLEGE_VISIT') {
+          ws.mergeCells('A1:J1');
+        } else {
+          ws.mergeCells('A1:F1');
+        }
         const titleCell = ws.getCell('A1');
         let reportTitle = 'BREAK REPORT';
         if (type === 'COLLEGE_VISIT') {
@@ -2159,14 +2227,29 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Header Row (Row 3)
         const headerRow = ws.getRow(3);
-        headerRow.values = ['Day', 'Date', 'Break Out Time', 'Break In Time', 'Duration', 'Reason for Break'];
+        if (type === 'COLLEGE_VISIT') {
+          headerRow.values = [
+            'Day', 
+            'Date', 
+            'Booklet No', 
+            'College Name', 
+            'Subject / Purpose', 
+            'Topics Covered', 
+            'Conveyance Details', 
+            'Break Out Time', 
+            'Break In Time', 
+            'Duration'
+          ];
+        } else {
+          headerRow.values = ['Day', 'Date', 'Break Out Time', 'Break In Time', 'Duration', 'Reason for Break'];
+        }
         headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
         
         headerRow.eachCell((cell, colNumber) => {
           cell.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: '1F4E79' } // Dark blue theme matching attendance report
+            fgColor: { argb: '1F4E79' }
           };
           cell.alignment = { 
             horizontal: colNumber <= 2 ? 'left' : 'center', 
@@ -2204,11 +2287,21 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             return bLocalDateKey === localDateKey;
           });
 
+          let bookletNoVal = '--';
+          let collegeNameVal = '--';
+          let subjectVal = '--';
+          let topicsCoveredVal = '--';
+          let conveyanceVal = '--';
           let breakOutVal = '--';
           let breakInVal = '--';
           let reasonVal = '--';
 
           if (dayBreaks.length > 0) {
+            const bookletNoList: string[] = [];
+            const collegeNameList: string[] = [];
+            const subjectList: string[] = [];
+            const topicsCoveredList: string[] = [];
+            const conveyanceList: string[] = [];
             const outTimesList: string[] = [];
             const inTimesList: string[] = [];
             const reasonsList: string[] = [];
@@ -2219,23 +2312,60 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                 ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : 'On Break';
 
-              if (dayBreaks.length > 1) {
-                outTimesList.push(`Break ${idx + 1}: ${outStr}`);
-                inTimesList.push(`Break ${idx + 1}: ${inStr}`);
-                reasonsList.push(`Break ${idx + 1}: ${b.reason || '--'}`);
+              if (type === 'COLLEGE_VISIT') {
+                const parsed = parseCollegeVisit(b);
+                if (dayBreaks.length > 1) {
+                  bookletNoList.push(`Break ${idx + 1}: ${parsed.bookletNo}`);
+                  collegeNameList.push(`Break ${idx + 1}: ${parsed.collegeName}`);
+                  subjectList.push(`Break ${idx + 1}: ${parsed.subject}`);
+                  topicsCoveredList.push(`Break ${idx + 1}: ${parsed.topicsCovered}`);
+                  conveyanceList.push(`Break ${idx + 1}: ${parsed.conveyance}`);
+                  outTimesList.push(`Break ${idx + 1}: ${outStr}`);
+                  inTimesList.push(`Break ${idx + 1}: ${inStr}`);
+                } else {
+                  bookletNoList.push(parsed.bookletNo);
+                  collegeNameList.push(parsed.collegeName);
+                  subjectList.push(parsed.subject);
+                  topicsCoveredList.push(parsed.topicsCovered);
+                  conveyanceList.push(parsed.conveyance);
+                  outTimesList.push(outStr);
+                  inTimesList.push(inStr);
+                }
               } else {
-                outTimesList.push(outStr);
-                inTimesList.push(inStr);
-                reasonsList.push(b.reason || '--');
+                if (dayBreaks.length > 1) {
+                  outTimesList.push(`Break ${idx + 1}: ${outStr}`);
+                  inTimesList.push(`Break ${idx + 1}: ${inStr}`);
+                  reasonsList.push(`Break ${idx + 1}: ${b.reason || '--'}`);
+                } else {
+                  outTimesList.push(outStr);
+                  inTimesList.push(inStr);
+                  reasonsList.push(b.reason || '--');
+                }
               }
             });
 
-            breakOutVal = outTimesList.join('\n');
-            breakInVal = inTimesList.join('\n');
-            reasonVal = reasonsList.join('\n');
+            if (type === 'COLLEGE_VISIT') {
+              bookletNoVal = bookletNoList.join('\n');
+              collegeNameVal = collegeNameList.join('\n');
+              subjectVal = subjectList.join('\n');
+              topicsCoveredVal = topicsCoveredList.join('\n');
+              conveyanceVal = conveyanceList.join('\n');
+              breakOutVal = outTimesList.join('\n');
+              breakInVal = inTimesList.join('\n');
+            } else {
+              breakOutVal = outTimesList.join('\n');
+              breakInVal = inTimesList.join('\n');
+              reasonVal = reasonsList.join('\n');
+            }
           }
 
-          const row = ws.addRow([dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal]);
+          const rowData = type === 'COLLEGE_VISIT'
+            ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, breakOutVal, breakInVal, '']
+            : [dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal];
+
+          const row = ws.addRow(rowData);
+
+          const durationColIndex = type === 'COLLEGE_VISIT' ? 10 : 5;
 
           if (dayBreaks.length > 0) {
             let totalMins = 0;
@@ -2251,23 +2381,23 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             });
 
             if (isOnBreak) {
-              row.getCell(5).value = 'On Break';
+              row.getCell(durationColIndex).value = 'On Break';
             } else if (totalMins > 0) {
-              row.getCell(5).value = totalMins;
+              row.getCell(durationColIndex).value = totalMins;
               monthlyTotalMins += totalMins;
             } else {
-              row.getCell(5).value = '--';
+              row.getCell(durationColIndex).value = '--';
             }
           } else {
-            row.getCell(5).value = '--';
+            row.getCell(durationColIndex).value = '--';
           }
-          row.getCell(5).numFmt = '0" mins"';
+          row.getCell(durationColIndex).numFmt = '0" mins"';
           
           row.eachCell((cell, colNumber) => {
             cell.alignment = { 
               wrapText: true, 
               vertical: 'top', 
-              horizontal: colNumber <= 2 || colNumber === 6 ? 'left' : 'center' 
+              horizontal: colNumber <= 2 || (type !== 'COLLEGE_VISIT' && colNumber === 6) || (type === 'COLLEGE_VISIT' && [3, 4, 5, 6, 7].includes(colNumber)) ? 'left' : 'center' 
             };
             cell.font = { name: 'Calibri', size: 10 };
             cell.border = {
@@ -2283,27 +2413,38 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         ws.addRow([]);
 
         // Add Grand Total Row
-        const totalRow = ws.addRow(['', 'TOTAL DURATION', '', '', monthlyTotalMins, '']);
+        const totalRowData = type === 'COLLEGE_VISIT'
+          ? ['', 'TOTAL DURATION', '', '', '', '', '', '', '', monthlyTotalMins]
+          : ['', 'TOTAL DURATION', '', '', monthlyTotalMins, ''];
+
+        const totalRow = ws.addRow(totalRowData);
         totalRow.height = 24;
         
-        ws.mergeCells(`B${totalRow.number}:D${totalRow.number}`);
+        if (type === 'COLLEGE_VISIT') {
+          ws.mergeCells(`B${totalRow.number}:I${totalRow.number}`);
+        } else {
+          ws.mergeCells(`B${totalRow.number}:D${totalRow.number}`);
+        }
         
+        const totalDurationColIndex = type === 'COLLEGE_VISIT' ? 10 : 5;
+        const totalColsCount = type === 'COLLEGE_VISIT' ? 10 : 6;
+
         totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-          if (colNumber >= 1 && colNumber <= 6) {
+          if (colNumber >= 1 && colNumber <= totalColsCount) {
             cell.fill = {
               type: 'pattern',
               pattern: 'solid',
-              fgColor: { argb: '1F4E79' } // Dark blue theme matching header
+              fgColor: { argb: '1F4E79' }
             };
             cell.font = { 
               bold: true, 
               name: 'Calibri', 
-              size: colNumber === 5 ? 11 : 10, 
+              size: colNumber === totalDurationColIndex ? 11 : 10, 
               color: { argb: 'FFFFFFFF' } 
             };
             cell.alignment = { 
               vertical: 'middle', 
-              horizontal: colNumber === 5 ? 'center' : (colNumber === 2 ? 'left' : 'center') 
+              horizontal: colNumber === totalDurationColIndex ? 'center' : (colNumber === 2 ? 'left' : 'center') 
             };
             cell.border = {
               top: { style: 'medium', color: { argb: 'FF1F4E79' } },
@@ -2313,7 +2454,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             };
           }
         });
-        totalRow.getCell(5).numFmt = '0" mins"';
+        totalRow.getCell(totalDurationColIndex).numFmt = '0" mins"';
 
         // Auto-fit column widths (safety margins)
         ws.columns.forEach(col => {

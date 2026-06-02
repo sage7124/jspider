@@ -611,7 +611,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
     }
 
-    const { type, collegeName, subject, reason } = req.body;
+    const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, reason } = req.body;
     const breakType = type || 'NORMAL';
 
     let finalStatus = 'APPROVED';
@@ -623,11 +623,10 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       }
       finalReason = reason.trim();
     } else if (breakType === 'COLLEGE_VISIT') {
-      if (!collegeName || !subject) {
-        return res.status(400).json({ error: 'College Name and Subject are required for a College Visit.' });
+      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance) {
+        return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details) are required for a College Visit.' });
       }
-      finalStatus = 'APPROVED';
-      finalReason = `College Visit: ${collegeName.trim()} (Subject: ${subject.trim()})`;
+      finalReason = `College Visit: Booklet No: ${bookletNo.trim()} | College: ${collegeName.trim()} | Subject: ${subject.trim()}`;
     }
 
     const newBreak = await prisma.breakLog.create({
@@ -636,7 +635,12 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
         date: today,
         breakOut: new Date(),
         reason: finalReason,
-        status: finalStatus
+        status: finalStatus,
+        bookletNo: breakType === 'COLLEGE_VISIT' ? bookletNo.trim() : null,
+        collegeName: breakType === 'COLLEGE_VISIT' ? collegeName.trim() : null,
+        subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : null,
+        topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : null,
+        conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : null
       }
     });
 

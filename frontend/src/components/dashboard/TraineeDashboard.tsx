@@ -149,6 +149,9 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [breakType, setBreakType] = useState<'NORMAL' | 'COLLEGE_VISIT'>('NORMAL');
   const [collegeName, setCollegeName] = useState('');
   const [subject, setSubject] = useState('');
+  const [bookletNo, setBookletNo] = useState('');
+  const [topicsCovered, setTopicsCovered] = useState('');
+  const [conveyance, setConveyance] = useState('');
 
   useEffect(() => {
     fetchStatus();
@@ -403,8 +406,13 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
   const handleBreakOut = async () => {
     if (breakType === 'COLLEGE_VISIT') {
-      if (!collegeName.trim() || !subject.trim()) {
-        alert('College Name and Subject are required for a College Visit.');
+      if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim()) {
+        alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details) are required for a College Visit.');
+        return;
+      }
+    } else {
+      if (!breakReason.trim()) {
+        alert('Reason for break is required.');
         return;
       }
     }
@@ -415,18 +423,24 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await axios.post(`${API_URL}/api/attendance/break/out`, {
         type: breakType,
+        bookletNo: breakType === 'COLLEGE_VISIT' ? bookletNo.trim() : undefined,
         collegeName: breakType === 'COLLEGE_VISIT' ? collegeName.trim() : undefined,
         subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : undefined,
+        topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : undefined,
+        conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : undefined,
         reason: breakType === 'NORMAL' ? breakReason.trim() : undefined
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert(res.data?.message || 'Request processed successfully!');
+      alert(res.data?.message || 'Break started successfully!');
       fetchStatus();
       setShowBreakReasonModal(false);
       setBreakReason('');
+      setBookletNo('');
       setCollegeName('');
       setSubject('');
+      setTopicsCovered('');
+      setConveyance('');
       setBreakType('NORMAL');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to start break');
@@ -644,13 +658,28 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               )}
 
               {status?.todayBreaksCount < 4 ? (
-                <button
-                  onClick={() => setShowBreakReasonModal(true)}
-                  disabled={startingBreak}
-                  className="w-full bg-purple-100 hover:bg-purple-200 text-purple-800 border border-purple-200 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                >
-                  {startingBreak ? 'Starting Break...' : '🚀 Request Break Out'}
-                </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+                  <button
+                    onClick={() => {
+                      setBreakType('NORMAL');
+                      setShowBreakReasonModal(true);
+                    }}
+                    disabled={startingBreak}
+                    className="w-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    {startingBreak ? 'Processing...' : '☕ Start Normal Break'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBreakType('COLLEGE_VISIT');
+                      setShowBreakReasonModal(true);
+                    }}
+                    disabled={startingBreak}
+                    className="w-full bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    {startingBreak ? 'Processing...' : '🎓 Start College Visit'}
+                  </button>
+                </div>
               ) : (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center text-xs font-bold text-red-700">
                   🚫 Maximum 4 breaks reached for today. No further breaks are allowed.
@@ -1262,8 +1291,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               onClick={() => {
                 setShowBreakReasonModal(false);
                 setBreakReason('');
+                setBookletNo('');
                 setCollegeName('');
                 setSubject('');
+                setTopicsCovered('');
+                setConveyance('');
                 setBreakType('NORMAL');
               }}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
@@ -1271,40 +1303,13 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               <X size={20} />
             </button>
             <h3 className="text-lg font-black text-purple-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
-              <Clock size={20} className="animate-pulse" /> Start Break Out
+              {breakType === 'COLLEGE_VISIT' ? (
+                <><Clock size={20} className="animate-pulse" /> Start College Visit</>
+              ) : (
+                <><Clock size={20} className="animate-pulse" /> Start Normal Break</>
+              )}
             </h3>
             <div className="space-y-4 text-left">
-              {/* Break Type Selector */}
-              <div>
-                <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
-                  Break Type
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setBreakType('NORMAL')}
-                    className={`py-2 px-3 rounded-lg border font-bold text-xs uppercase transition-all duration-200 cursor-pointer ${
-                      breakType === 'NORMAL'
-                        ? 'bg-purple-100 border-purple-300 text-purple-800'
-                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
-                    }`}
-                  >
-                    ☕ Normal Break
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBreakType('COLLEGE_VISIT')}
-                    className={`py-2 px-3 rounded-lg border font-bold text-xs uppercase transition-all duration-200 cursor-pointer ${
-                      breakType === 'COLLEGE_VISIT'
-                        ? 'bg-purple-100 border-purple-300 text-purple-800'
-                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:bg-gray-100'
-                    }`}
-                  >
-                    🎓 College Visit
-                  </button>
-                </div>
-              </div>
-
               {breakType === 'NORMAL' ? (
                 <div>
                   <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
@@ -1323,6 +1328,19 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
+                      Booklet No
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bookletNo}
+                      onChange={(e) => setBookletNo(e.target.value)}
+                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                      placeholder="e.g. B-9988"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
                       College Name
                     </label>
                     <input
@@ -1330,21 +1348,47 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       required
                       value={collegeName}
                       onChange={(e) => setCollegeName(e.target.value)}
-                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 font-bold focus:bg-white transition-all"
+                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
                       placeholder="e.g. RV College of Engineering"
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
-                      Subject / Purpose
+                      Subject
                     </label>
                     <input
                       type="text"
                       required
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
-                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 font-bold focus:bg-white transition-all"
-                      placeholder="e.g. Guest Lecture, On-campus Seminars"
+                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                      placeholder="e.g. Placement Drive, Guest Lecture"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
+                      Topics Covered
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={topicsCovered}
+                      onChange={(e) => setTopicsCovered(e.target.value)}
+                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                      placeholder="e.g. SQL Optimization, Java OOPs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
+                      Conveyance Details
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={conveyance}
+                      onChange={(e) => setConveyance(e.target.value)}
+                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                      placeholder="e.g. Cab / Auto / Two Wheeler (KM: 24)"
                     />
                   </div>
                 </div>
@@ -1356,8 +1400,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   onClick={() => {
                     setShowBreakReasonModal(false);
                     setBreakReason('');
+                    setBookletNo('');
                     setCollegeName('');
                     setSubject('');
+                    setTopicsCovered('');
+                    setConveyance('');
                     setBreakType('NORMAL');
                   }}
                   className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
@@ -1366,7 +1413,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 </button>
                 <button
                   type="button"
-                  disabled={startingBreak || (breakType === 'NORMAL' && !breakReason.trim()) || (breakType === 'COLLEGE_VISIT' && (!collegeName.trim() || !subject.trim()))}
+                  disabled={
+                    startingBreak || 
+                    (breakType === 'NORMAL' && !breakReason.trim()) || 
+                    (breakType === 'COLLEGE_VISIT' && (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim()))
+                  }
                   onClick={() => handleBreakOut()}
                   className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                 >
