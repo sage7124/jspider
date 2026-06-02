@@ -3927,7 +3927,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                   <option value="">-- Choose Teacher --</option>
                   {allTrainees.map((t: any) => (
                     <option key={t.id} value={t.id}>
-                      {t.fullName} ({t.identifier})
+                      {t.name || t.fullName} ({t.empCode || t.identifier})
                     </option>
                   ))}
                 </select>
