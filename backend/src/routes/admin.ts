@@ -2212,24 +2212,25 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
           const row = ws.addRow([dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal]);
 
-          // Calculate cell-level dynamic Excel formulas for Durations
-          if (dayBreaks.length === 1) {
-            const b = dayBreaks[0];
-            if (b.breakIn) {
-              row.getCell(5).value = { formula: `IF(C${row.number}="--", "--", IF(OR(D${row.number}="--", D${row.number}="On Break"), "On Break", ROUND((TIMEVALUE(D${row.number})-TIMEVALUE(C${row.number}))*1440,0)))` };
-            } else {
-              row.getCell(5).value = 'On Break';
-            }
-          } else if (dayBreaks.length > 1) {
-            const completedParts = dayBreaks.filter(b => b.breakIn).map(b => {
-              const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              const inStr = new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              return `ROUND((TIMEVALUE("${inStr}")-TIMEVALUE("${outStr}"))*1440,0)`;
+          if (dayBreaks.length > 0) {
+            let totalMins = 0;
+            let isOnBreak = false;
+            dayBreaks.forEach((b: any) => {
+              if (b.breakIn) {
+                const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
+                const mins = Math.round(diffMs / 60000);
+                if (mins > 0) totalMins += mins;
+              } else {
+                isOnBreak = true;
+              }
             });
-            if (completedParts.length > 0) {
-              row.getCell(5).value = { formula: completedParts.join(' + ') };
-            } else {
+
+            if (isOnBreak) {
               row.getCell(5).value = 'On Break';
+            } else if (totalMins > 0) {
+              row.getCell(5).value = totalMins;
+            } else {
+              row.getCell(5).value = '--';
             }
           } else {
             row.getCell(5).value = '--';
