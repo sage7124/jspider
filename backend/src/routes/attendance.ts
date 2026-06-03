@@ -584,12 +584,17 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, reason, numberOfHours } = req.body;
+    const breakType = type || 'NORMAL';
+
     const attendance = await prisma.attendance.findUnique({
       where: { userId_date: { userId, date: today } }
     });
 
-    if (!attendance || attendance.status !== 'IN') {
-      return res.status(400).json({ error: 'You must be Punched In to request a break.' });
+    if (breakType !== 'COLLEGE_VISIT') {
+      if (!attendance || attendance.status !== 'IN') {
+        return res.status(400).json({ error: 'You must be Punched In to request a break.' });
+      }
     }
 
     const todayBreaks = await prisma.breakLog.findMany({
@@ -611,9 +616,6 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
     }
 
-    const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, reason } = req.body;
-    const breakType = type || 'NORMAL';
-
     let finalStatus = 'APPROVED';
     let finalReason = reason || null;
 
@@ -623,8 +625,8 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       }
       finalReason = reason.trim();
     } else if (breakType === 'COLLEGE_VISIT') {
-      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance) {
-        return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details) are required for a College Visit.' });
+      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !numberOfHours) {
+        return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, No of Hours) are required for a College Visit.' });
       }
       finalReason = `College Visit: Booklet No: ${bookletNo.trim()} | College: ${collegeName.trim()} | Subject: ${subject.trim()}`;
     }
@@ -640,7 +642,8 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
         collegeName: breakType === 'COLLEGE_VISIT' ? collegeName.trim() : null,
         subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : null,
         topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : null,
-        conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : null
+        conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : null,
+        numberOfHours: breakType === 'COLLEGE_VISIT' ? String(numberOfHours).trim() : null
       }
     });
 
@@ -662,29 +665,7 @@ router.post('/break/in', authenticateToken, async (req: AuthRequest, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (!lat || !lng) {
-      return res.status(400).json({ error: 'Location coordinates required to end break.' });
-    }
-
-    // 1. Verify Geofence (Confirm arrival back inside premises)
-    const branches = await prisma.branchLocation.findMany();
-    if (branches.length === 0) {
-      return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Contact Admin.' });
-    }
-
-    const validBranch = branches.find(branch => {
-      const distance = getDistance(
-        { latitude: lat, longitude: lng },
-        { latitude: branch.lat, longitude: branch.lng }
-      );
-      return distance <= branch.radius;
-    });
-
-    if (!validBranch) {
-      return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
-    }
-
-    // 2. Find active break
+    // 1. Find active break first to determine type
     const activeBreak = await prisma.breakLog.findFirst({
       where: { userId, date: today, breakIn: null, status: 'APPROVED' }
     });
@@ -693,7 +674,33 @@ router.post('/break/in', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'No active break session found.' });
     }
 
-    // 3. Complete break
+    const isCollegeVisit = activeBreak.bookletNo !== null || (activeBreak.reason && activeBreak.reason.startsWith('College Visit:'));
+
+    if (!isCollegeVisit) {
+      if (!lat || !lng) {
+        return res.status(400).json({ error: 'Location coordinates required to end break.' });
+      }
+
+      // Verify Geofence (Confirm arrival back inside premises)
+      const branches = await prisma.branchLocation.findMany();
+      if (branches.length === 0) {
+        return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Contact Admin.' });
+      }
+
+      const validBranch = branches.find(branch => {
+        const distance = getDistance(
+          { latitude: lat, longitude: lng },
+          { latitude: branch.lat, longitude: branch.lng }
+        );
+        return distance <= branch.radius;
+      });
+
+      if (!validBranch) {
+        return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
+      }
+    }
+
+    // Complete break
     const updatedBreak = await prisma.breakLog.update({
       where: { id: activeBreak.id },
       data: { breakIn: new Date() }

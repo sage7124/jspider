@@ -1975,6 +1975,7 @@ function parseCollegeVisit(b: any) {
   let subject = b.subject || '';
   const topicsCovered = b.topicsCovered || '--';
   const conveyance = b.conveyance || '--';
+  const numberOfHours = b.numberOfHours || '--';
 
   if (!collegeName && b.reason && b.reason.startsWith('College Visit:')) {
     if (b.reason.includes('Booklet No:')) {
@@ -1988,7 +1989,8 @@ function parseCollegeVisit(b: any) {
         collegeName: collegePart ? collegePart.replace('College:', '').trim() : '--',
         subject: subjectPart ? subjectPart.replace('Subject:', '').trim() : '--',
         topicsCovered: '--',
-        conveyance: '--'
+        conveyance: '--',
+        numberOfHours: '--'
       };
     } else {
       const match = b.reason.match(/College Visit:\s*(.*?)\s*\(Subject:\s*(.*?)\)/);
@@ -2006,7 +2008,8 @@ function parseCollegeVisit(b: any) {
     collegeName: collegeName || '--',
     subject: subject || '--',
     topicsCovered,
-    conveyance
+    conveyance,
+    numberOfHours
   };
 }
 
@@ -2068,7 +2071,8 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
         collegeName: parsed.collegeName,
         subject: parsed.subject,
         topicsCovered: parsed.topicsCovered,
-        conveyance: parsed.conveyance
+        conveyance: parsed.conveyance,
+        numberOfHours: parsed.numberOfHours
       };
     });
 
@@ -2183,6 +2187,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             { key: 'subject', width: 25 },
             { key: 'topicsCovered', width: 30 },
             { key: 'conveyance', width: 25 },
+            { key: 'numberOfHours', width: 15 },
             { key: 'breakOut', width: 20 },
             { key: 'breakIn', width: 20 },
             { key: 'duration', width: 15 }
@@ -2200,7 +2205,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Title Block (Row 1)
         if (type === 'COLLEGE_VISIT') {
-          ws.mergeCells('A1:J1');
+          ws.mergeCells('A1:K1');
         } else {
           ws.mergeCells('A1:F1');
         }
@@ -2236,6 +2241,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             'Subject / Purpose', 
             'Topics Covered', 
             'Conveyance Details', 
+            'No of hours', 
             'Break Out Time', 
             'Break In Time', 
             'Duration'
@@ -2268,6 +2274,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
         let monthlyTotalMins = 0;
+        let monthlyTotalHours = 0;
 
         // Populate days
         for (let day = 1; day <= daysInMonth; day++) {
@@ -2292,6 +2299,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           let subjectVal = '--';
           let topicsCoveredVal = '--';
           let conveyanceVal = '--';
+          let numberOfHoursVal = '--';
           let breakOutVal = '--';
           let breakInVal = '--';
           let reasonVal = '--';
@@ -2302,6 +2310,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             const subjectList: string[] = [];
             const topicsCoveredList: string[] = [];
             const conveyanceList: string[] = [];
+            const numberOfHoursList: string[] = [];
             const outTimesList: string[] = [];
             const inTimesList: string[] = [];
             const reasonsList: string[] = [];
@@ -2314,12 +2323,18 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
               if (type === 'COLLEGE_VISIT') {
                 const parsed = parseCollegeVisit(b);
+                const hrs = parseFloat(parsed.numberOfHours);
+                if (!isNaN(hrs)) {
+                  monthlyTotalHours += hrs;
+                }
+                
                 if (dayBreaks.length > 1) {
                   bookletNoList.push(`Break ${idx + 1}: ${parsed.bookletNo}`);
                   collegeNameList.push(`Break ${idx + 1}: ${parsed.collegeName}`);
                   subjectList.push(`Break ${idx + 1}: ${parsed.subject}`);
                   topicsCoveredList.push(`Break ${idx + 1}: ${parsed.topicsCovered}`);
                   conveyanceList.push(`Break ${idx + 1}: ${parsed.conveyance}`);
+                  numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
                   outTimesList.push(`Break ${idx + 1}: ${outStr}`);
                   inTimesList.push(`Break ${idx + 1}: ${inStr}`);
                 } else {
@@ -2328,6 +2343,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   subjectList.push(parsed.subject);
                   topicsCoveredList.push(parsed.topicsCovered);
                   conveyanceList.push(parsed.conveyance);
+                  numberOfHoursList.push(parsed.numberOfHours);
                   outTimesList.push(outStr);
                   inTimesList.push(inStr);
                 }
@@ -2350,6 +2366,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
               subjectVal = subjectList.join('\n');
               topicsCoveredVal = topicsCoveredList.join('\n');
               conveyanceVal = conveyanceList.join('\n');
+              numberOfHoursVal = numberOfHoursList.join('\n');
               breakOutVal = outTimesList.join('\n');
               breakInVal = inTimesList.join('\n');
             } else {
@@ -2360,12 +2377,12 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           }
 
           const rowData = type === 'COLLEGE_VISIT'
-            ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, breakOutVal, breakInVal, '']
+            ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, numberOfHoursVal, breakOutVal, breakInVal, '']
             : [dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal];
 
           const row = ws.addRow(rowData);
 
-          const durationColIndex = type === 'COLLEGE_VISIT' ? 10 : 5;
+          const durationColIndex = type === 'COLLEGE_VISIT' ? 11 : 5;
 
           if (dayBreaks.length > 0) {
             let totalMins = 0;
@@ -2414,20 +2431,20 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Add Grand Total Row
         const totalRowData = type === 'COLLEGE_VISIT'
-          ? ['', 'TOTAL DURATION', '', '', '', '', '', '', '', monthlyTotalMins]
+          ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', monthlyTotalHours, '', '', monthlyTotalMins]
           : ['', 'TOTAL DURATION', '', '', monthlyTotalMins, ''];
 
         const totalRow = ws.addRow(totalRowData);
         totalRow.height = 24;
         
         if (type === 'COLLEGE_VISIT') {
-          ws.mergeCells(`B${totalRow.number}:I${totalRow.number}`);
+          ws.mergeCells(`B${totalRow.number}:G${totalRow.number}`);
         } else {
           ws.mergeCells(`B${totalRow.number}:D${totalRow.number}`);
         }
         
-        const totalDurationColIndex = type === 'COLLEGE_VISIT' ? 10 : 5;
-        const totalColsCount = type === 'COLLEGE_VISIT' ? 10 : 6;
+        const totalDurationColIndex = type === 'COLLEGE_VISIT' ? 11 : 5;
+        const totalColsCount = type === 'COLLEGE_VISIT' ? 11 : 6;
 
         totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           if (colNumber >= 1 && colNumber <= totalColsCount) {
@@ -2439,12 +2456,12 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             cell.font = { 
               bold: true, 
               name: 'Calibri', 
-              size: colNumber === totalDurationColIndex ? 11 : 10, 
+              size: (colNumber === totalDurationColIndex || (type === 'COLLEGE_VISIT' && colNumber === 8)) ? 11 : 10, 
               color: { argb: 'FFFFFFFF' } 
             };
             cell.alignment = { 
               vertical: 'middle', 
-              horizontal: colNumber === totalDurationColIndex ? 'center' : (colNumber === 2 ? 'left' : 'center') 
+              horizontal: (colNumber === totalDurationColIndex || (type === 'COLLEGE_VISIT' && colNumber === 8)) ? 'center' : (colNumber === 2 ? 'left' : 'center') 
             };
             cell.border = {
               top: { style: 'medium', color: { argb: 'FF1F4E79' } },
@@ -2454,6 +2471,9 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             };
           }
         });
+        if (type === 'COLLEGE_VISIT') {
+          totalRow.getCell(8).numFmt = '0.0" hrs"';
+        }
         totalRow.getCell(totalDurationColIndex).numFmt = '0" mins"';
 
         // Auto-fit column widths (safety margins)
