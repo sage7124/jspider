@@ -152,7 +152,6 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [bookletNo, setBookletNo] = useState('');
   const [topicsCovered, setTopicsCovered] = useState('');
   const [conveyance, setConveyance] = useState('');
-  const [numberOfHours, setNumberOfHours] = useState('');
 
   useEffect(() => {
     fetchStatus();
@@ -407,8 +406,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
   const handleBreakOut = async () => {
     if (breakType === 'COLLEGE_VISIT') {
-      if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim() || !numberOfHours.trim()) {
-        alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, No of Hours) are required for a College Visit.');
+      if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim()) {
+        alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details) are required for a College Visit.');
         return;
       }
     } else {
@@ -429,7 +428,6 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : undefined,
         topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : undefined,
         conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : undefined,
-        numberOfHours: breakType === 'COLLEGE_VISIT' ? numberOfHours.trim() : undefined,
         reason: breakType === 'NORMAL' ? breakReason.trim() : undefined
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -443,7 +441,6 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       setSubject('');
       setTopicsCovered('');
       setConveyance('');
-      setNumberOfHours('');
       setBreakType('NORMAL');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to start break');
@@ -1315,7 +1312,6 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 setSubject('');
                 setTopicsCovered('');
                 setConveyance('');
-                setNumberOfHours('');
                 setBreakType('NORMAL');
               }}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
@@ -1411,19 +1407,6 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       placeholder="e.g. Cab / Auto / Two Wheeler (KM: 24)"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
-                      No of hours
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={numberOfHours}
-                      onChange={(e) => setNumberOfHours(e.target.value)}
-                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
-                      placeholder="e.g. 4.5"
-                    />
-                  </div>
                 </div>
               )}
 
@@ -1438,7 +1421,6 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                     setSubject('');
                     setTopicsCovered('');
                     setConveyance('');
-                    setNumberOfHours('');
                     setBreakType('NORMAL');
                   }}
                   className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
@@ -1450,7 +1432,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   disabled={
                     startingBreak || 
                     (breakType === 'NORMAL' && !breakReason.trim()) || 
-                    (breakType === 'COLLEGE_VISIT' && (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim() || !numberOfHours.trim()))
+                    (breakType === 'COLLEGE_VISIT' && (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim()))
                   }
                   onClick={() => handleBreakOut()}
                   className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"

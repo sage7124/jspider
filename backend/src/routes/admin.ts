@@ -2052,6 +2052,9 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
       const duration = b.breakIn 
         ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
         : null;
+      const durationHrs = b.breakIn 
+        ? Number(((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / 3600000).toFixed(2))
+        : null;
       const parsed = parseCollegeVisit(b);
       return {
         id: b.id,
@@ -2072,7 +2075,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
         subject: parsed.subject,
         topicsCovered: parsed.topicsCovered,
         conveyance: parsed.conveyance,
-        numberOfHours: parsed.numberOfHours
+        numberOfHours: durationHrs !== null ? durationHrs.toString() : '--'
       };
     });
 
@@ -2323,10 +2326,13 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
               if (type === 'COLLEGE_VISIT') {
                 const parsed = parseCollegeVisit(b);
-                const hrs = parseFloat(parsed.numberOfHours);
-                if (!isNaN(hrs)) {
-                  monthlyTotalHours += hrs;
+                let hrsVal = 0;
+                if (b.breakIn) {
+                  const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
+                  hrsVal = Number((diffMs / 3600000).toFixed(2));
+                  monthlyTotalHours += hrsVal;
                 }
+                const hrsStr = b.breakIn ? hrsVal.toFixed(2) : 'On Break';
                 
                 if (dayBreaks.length > 1) {
                   bookletNoList.push(`Break ${idx + 1}: ${parsed.bookletNo}`);
@@ -2334,7 +2340,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   subjectList.push(`Break ${idx + 1}: ${parsed.subject}`);
                   topicsCoveredList.push(`Break ${idx + 1}: ${parsed.topicsCovered}`);
                   conveyanceList.push(`Break ${idx + 1}: ${parsed.conveyance}`);
-                  numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
+                  numberOfHoursList.push(`Break ${idx + 1}: ${hrsStr}`);
                   outTimesList.push(`Break ${idx + 1}: ${outStr}`);
                   inTimesList.push(`Break ${idx + 1}: ${inStr}`);
                 } else {
@@ -2343,7 +2349,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   subjectList.push(parsed.subject);
                   topicsCoveredList.push(parsed.topicsCovered);
                   conveyanceList.push(parsed.conveyance);
-                  numberOfHoursList.push(parsed.numberOfHours);
+                  numberOfHoursList.push(hrsStr);
                   outTimesList.push(outStr);
                   inTimesList.push(inStr);
                 }
@@ -2405,8 +2411,29 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             } else {
               row.getCell(durationColIndex).value = '--';
             }
+
+            if (type === 'COLLEGE_VISIT') {
+              if (dayBreaks.length > 1) {
+                row.getCell(8).value = numberOfHoursVal;
+              } else if (dayBreaks.length === 1) {
+                const b = dayBreaks[0];
+                if (b.breakIn) {
+                  const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
+                  const hrsVal = Number((diffMs / 3600000).toFixed(2));
+                  row.getCell(8).value = hrsVal;
+                  row.getCell(8).numFmt = '0.0" hrs"';
+                } else {
+                  row.getCell(8).value = 'On Break';
+                }
+              } else {
+                row.getCell(8).value = '--';
+              }
+            }
           } else {
             row.getCell(durationColIndex).value = '--';
+            if (type === 'COLLEGE_VISIT') {
+              row.getCell(8).value = '--';
+            }
           }
           row.getCell(durationColIndex).numFmt = '0" mins"';
           
