@@ -1946,7 +1946,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Subject (Mandatory)</label>
+                <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Subject</label>
                 <input
                   type="text"
                   required
@@ -1958,7 +1958,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Batch No (Mandatory)</label>
+                <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Batch No</label>
                 <input
                   type="text"
                   required
@@ -1972,7 +1972,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               <div className="grid grid-cols-2 gap-3">
                 {/* Clock Picker: From Time */}
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Start Time (Mandatory)</label>
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Start Time</label>
                   <div className="w-full border border-emerald-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-emerald-400 focus-within:bg-white transition-all shadow-inner">
                     <div className="flex items-center gap-1">
                       <Clock size={14} className="text-emerald-400 mr-1.5" />
@@ -2009,7 +2009,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
                 {/* Clock Picker: To Time */}
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">End Time (Mandatory)</label>
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">End Time</label>
                   <div className="w-full border border-emerald-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-emerald-400 focus-within:bg-white transition-all shadow-inner">
                     <div className="flex items-center gap-1">
                       <Clock size={14} className="text-emerald-400 mr-1.5" />
@@ -2047,7 +2047,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">No of Students (Mandatory)</label>
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">No of Students</label>
                   <input
                     type="number"
                     required
@@ -2059,7 +2059,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">NICT Center Name (Mandatory)</label>
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">NICT Center Name</label>
                   <input
                     type="text"
                     required
@@ -2160,7 +2160,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Subject (Mandatory)</label>
+                <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Subject</label>
                 <input
                   type="text"
                   required
@@ -2173,7 +2173,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Batch No (Mandatory)</label>
+                  <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Batch No</label>
                   <input
                     type="text"
                     required
@@ -2184,7 +2184,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">NICT Center Name (Mandatory)</label>
+                  <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">NICT Center Name</label>
                   <input
                     type="text"
                     required

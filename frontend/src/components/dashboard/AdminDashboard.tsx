@@ -4053,6 +4053,25 @@ const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/extra-classes/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${teacherName.replace(/\s+/g, '_')}_Extra_Classes_${exportMonth}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert(`Failed to export Extra Classes report for ${teacherName}`);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl p-6 relative max-h-[90vh] flex flex-col">
@@ -4159,15 +4178,16 @@ const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
                             </div>
                           )}
                           
-                          {log.status === 'PENDING' ? (
-                            <div className="flex flex-col gap-1.5 w-full items-end">
-                              <input 
-                                type="text"
-                                placeholder="Supervisor remark..."
-                                value={adminRemarks[log.id] || ''}
-                                onChange={(e) => setAdminRemarks(prev => ({ ...prev, [log.id]: e.target.value }))}
-                                className="border border-gray-300 rounded px-2 py-1 text-[11px] w-full max-w-[200px] outline-none focus:ring-1 focus:ring-emerald-500"
-                              />
+                          <div className="flex gap-2 items-center w-full justify-between max-w-[200px]">
+                            <button
+                              onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
+                              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1"
+                              title={`Export monthly report for ${log.user?.fullName}`}
+                            >
+                              <Download size={12} /> Excel
+                            </button>
+                            
+                            {log.status === 'PENDING' && (
                               <div className="flex gap-2">
                                 <button 
                                   onClick={() => handleProcess(log.id, 'APPROVED')} 
@@ -4184,7 +4204,17 @@ const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
                                   Reject
                                 </button>
                               </div>
-                            </div>
+                            )}
+                          </div>
+                          
+                          {log.status === 'PENDING' ? (
+                            <input 
+                              type="text"
+                              placeholder="Supervisor remark..."
+                              value={adminRemarks[log.id] || ''}
+                              onChange={(e) => setAdminRemarks(prev => ({ ...prev, [log.id]: e.target.value }))}
+                              className="border border-gray-300 rounded px-2 py-1 text-[11px] w-full max-w-[200px] outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
                           ) : (
                             <div className="text-[10px] text-gray-500 font-medium text-left bg-gray-50 p-1.5 rounded border w-full max-w-[200px]">
                               <span className="font-bold text-gray-600 block">Supervisor Remark:</span>
@@ -4255,6 +4285,25 @@ const CancelledClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/classes-cancelled/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${teacherName.replace(/\s+/g, '_')}_Cancelled_Classes_${exportMonth}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert(`Failed to export Cancelled Classes report for ${teacherName}`);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl p-6 relative max-h-[90vh] flex flex-col">
@@ -4303,12 +4352,13 @@ const CancelledClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
                   <th className="px-4 py-3">Subject & Batch</th>
                   <th className="px-4 py-3">Center</th>
                   <th className="px-4 py-3">Cancellation Reasons / Remarks</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
                 {logs.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No class cancellation logs found.</td>
+                    <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No class cancellation logs found.</td>
                   </tr>
                 ) : (
                   logs.map((log) => (
@@ -4328,6 +4378,15 @@ const CancelledClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
                       <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
                       <td className="px-4 py-3 text-gray-700 italic">
                         "{log.remarks || 'No remarks provided'}"
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
+                          className="bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1 animate-fade-in"
+                          title={`Export monthly report for ${log.user?.fullName}`}
+                        >
+                          <Download size={12} /> Excel
+                        </button>
                       </td>
                     </tr>
                   ))

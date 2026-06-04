@@ -2198,6 +2198,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             { key: 'subject', width: 25 },
             { key: 'topicsCovered', width: 30 },
             { key: 'conveyance', width: 25 },
+            { key: 'fromTime', width: 15 },
+            { key: 'toTime', width: 15 },
             { key: 'numberOfHours', width: 15 },
             { key: 'breakOut', width: 20 },
             { key: 'breakIn', width: 20 },
@@ -2216,7 +2218,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Title Block (Row 1)
         if (type === 'COLLEGE_VISIT') {
-          ws.mergeCells('A1:K1');
+          ws.mergeCells('A1:M1');
         } else {
           ws.mergeCells('A1:F1');
         }
@@ -2252,6 +2254,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             'Subject / Purpose', 
             'Topics Covered', 
             'Conveyance Details', 
+            'From Time',
+            'To Time',
             'No of hours', 
             'Break Out Time', 
             'Break In Time', 
@@ -2310,6 +2314,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           let subjectVal = '--';
           let topicsCoveredVal = '--';
           let conveyanceVal = '--';
+          let fromTimeVal = '--';
+          let toTimeVal = '--';
           let numberOfHoursVal = '--';
           let breakOutVal = '--';
           let breakInVal = '--';
@@ -2321,6 +2327,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             const subjectList: string[] = [];
             const topicsCoveredList: string[] = [];
             const conveyanceList: string[] = [];
+            const fromTimeList: string[] = [];
+            const toTimeList: string[] = [];
             const numberOfHoursList: string[] = [];
             const outTimesList: string[] = [];
             const inTimesList: string[] = [];
@@ -2342,18 +2350,22 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                 if (dayBreaks.length > 1) {
                   bookletNoList.push(`Break ${idx + 1}: ${parsed.bookletNo}`);
                   collegeNameList.push(`Break ${idx + 1}: ${parsed.collegeName}`);
-                  subjectList.push(`Break ${idx + 1}: ${parsed.subject} (${parsed.fromTime} - ${parsed.toTime})`);
+                  subjectList.push(`Break ${idx + 1}: ${parsed.subject}`);
                   topicsCoveredList.push(`Break ${idx + 1}: ${parsed.topicsCovered}`);
                   conveyanceList.push(`Break ${idx + 1}: ${parsed.conveyance}`);
+                  fromTimeList.push(`Break ${idx + 1}: ${parsed.fromTime}`);
+                  toTimeList.push(`Break ${idx + 1}: ${parsed.toTime}`);
                   numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
                   outTimesList.push(`Break ${idx + 1}: ${outStr}`);
                   inTimesList.push(`Break ${idx + 1}: ${inStr}`);
                 } else {
                   bookletNoList.push(parsed.bookletNo);
                   collegeNameList.push(parsed.collegeName);
-                  subjectList.push(`${parsed.subject} (${parsed.fromTime} - ${parsed.toTime})`);
+                  subjectList.push(parsed.subject);
                   topicsCoveredList.push(parsed.topicsCovered);
                   conveyanceList.push(parsed.conveyance);
+                  fromTimeList.push(parsed.fromTime);
+                  toTimeList.push(parsed.toTime);
                   numberOfHoursList.push(parsed.numberOfHours);
                   outTimesList.push(outStr);
                   inTimesList.push(inStr);
@@ -2377,6 +2389,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
               subjectVal = subjectList.join('\n');
               topicsCoveredVal = topicsCoveredList.join('\n');
               conveyanceVal = conveyanceList.join('\n');
+              fromTimeVal = fromTimeList.join('\n');
+              toTimeVal = toTimeList.join('\n');
               numberOfHoursVal = numberOfHoursList.join('\n');
               breakOutVal = outTimesList.join('\n');
               breakInVal = inTimesList.join('\n');
@@ -2388,12 +2402,12 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           }
 
           const rowData = type === 'COLLEGE_VISIT'
-            ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, numberOfHoursVal, breakOutVal, breakInVal, '']
+            ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, breakOutVal, breakInVal, '']
             : [dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal];
 
           const row = ws.addRow(rowData);
 
-          const durationColIndex = type === 'COLLEGE_VISIT' ? 11 : 5;
+          const durationColIndex = type === 'COLLEGE_VISIT' ? 13 : 5;
 
           if (dayBreaks.length > 0) {
             let totalMins = 0;
@@ -2420,24 +2434,24 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
             if (type === 'COLLEGE_VISIT') {
               if (dayBreaks.length > 1) {
-                row.getCell(8).value = numberOfHoursVal;
+                row.getCell(10).value = numberOfHoursVal;
               } else if (dayBreaks.length === 1) {
                 const parsed = parseCollegeVisit(dayBreaks[0]);
                 const hrs = parseFloat(parsed.numberOfHours);
                 if (!isNaN(hrs)) {
-                  row.getCell(8).value = hrs;
-                  row.getCell(8).numFmt = '0.0" hrs"';
+                  row.getCell(10).value = hrs;
+                  row.getCell(10).numFmt = '0.0" hrs"';
                 } else {
-                  row.getCell(8).value = parsed.numberOfHours;
+                  row.getCell(10).value = parsed.numberOfHours;
                 }
               } else {
-                row.getCell(8).value = '--';
+                row.getCell(10).value = '--';
               }
             }
           } else {
             row.getCell(durationColIndex).value = '--';
             if (type === 'COLLEGE_VISIT') {
-              row.getCell(8).value = '--';
+              row.getCell(10).value = '--';
             }
           }
           if (type !== 'COLLEGE_VISIT') {
@@ -2465,20 +2479,20 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Add Grand Total Row
         const totalRowData = type === 'COLLEGE_VISIT'
-          ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', monthlyTotalHours, '', '', `${monthlyTotalMins} mins (${(monthlyTotalMins / 60).toFixed(2)} hrs)`]
+          ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', '', '', monthlyTotalHours, '', '', `${monthlyTotalMins} mins (${(monthlyTotalMins / 60).toFixed(2)} hrs)`]
           : ['', 'TOTAL DURATION', '', '', monthlyTotalMins, ''];
 
         const totalRow = ws.addRow(totalRowData);
         totalRow.height = 24;
         
         if (type === 'COLLEGE_VISIT') {
-          ws.mergeCells(`B${totalRow.number}:G${totalRow.number}`);
+          ws.mergeCells(`B${totalRow.number}:I${totalRow.number}`);
         } else {
           ws.mergeCells(`B${totalRow.number}:D${totalRow.number}`);
         }
         
-        const totalDurationColIndex = type === 'COLLEGE_VISIT' ? 11 : 5;
-        const totalColsCount = type === 'COLLEGE_VISIT' ? 11 : 6;
+        const totalDurationColIndex = type === 'COLLEGE_VISIT' ? 13 : 5;
+        const totalColsCount = type === 'COLLEGE_VISIT' ? 13 : 6;
 
         totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           if (colNumber >= 1 && colNumber <= totalColsCount) {
@@ -2490,12 +2504,12 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             cell.font = { 
               bold: true, 
               name: 'Calibri', 
-              size: (colNumber === totalDurationColIndex || (type === 'COLLEGE_VISIT' && colNumber === 8)) ? 11 : 10, 
+              size: (colNumber === totalDurationColIndex || (type === 'COLLEGE_VISIT' && colNumber === 10)) ? 11 : 10, 
               color: { argb: 'FFFFFFFF' } 
             };
             cell.alignment = { 
               vertical: 'middle', 
-              horizontal: (colNumber === totalDurationColIndex || (type === 'COLLEGE_VISIT' && colNumber === 8)) ? 'center' : (colNumber === 2 ? 'left' : 'center') 
+              horizontal: (colNumber === totalDurationColIndex || (type === 'COLLEGE_VISIT' && colNumber === 10)) ? 'center' : (colNumber === 2 ? 'left' : 'center') 
             };
             cell.border = {
               top: { style: 'medium', color: { argb: 'FF1F4E79' } },
@@ -2506,7 +2520,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           }
         });
         if (type === 'COLLEGE_VISIT') {
-          totalRow.getCell(8).numFmt = '0.0" hrs"';
+          totalRow.getCell(10).numFmt = '0.0" hrs"';
         } else {
           totalRow.getCell(totalDurationColIndex).numFmt = '0" mins"';
         }
@@ -2737,7 +2751,7 @@ router.post('/reports/breaks/direct-out', authenticateToken, async (req: AuthReq
 router.get('/extra-classes', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { status, search, month } = req.query;
-    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
+    const supervisorFilter = {};
 
     // Dynamic Database-backed clearance check for Supervisors
     if (req.user?.role === 'SUPERVISOR') {
@@ -2816,14 +2830,6 @@ router.post('/extra-classes/process', authenticateToken, async (req: AuthRequest
       if (!perms.includes('MANAGE_EXTRA_CLASSES')) {
         return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage extra classes.' });
       }
-
-      // Check if trainee belongs to supervisor
-      const trainee = await prisma.user.findUnique({
-        where: { id: log.userId }
-      });
-      if (!trainee || trainee.supervisorId !== req.user.id) {
-        return res.status(403).json({ error: 'Access Denied: You can only process extra class requests for trainees assigned to you.' });
-      }
     }
 
     if (log.status !== 'PENDING') {
@@ -2869,7 +2875,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
     const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
 
     const searchStr = search as string;
-    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
+    const supervisorFilter = {};
 
     const logs = await prisma.extraClassLog.findMany({
       where: {
@@ -3011,7 +3017,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
 router.get('/classes-cancelled', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { search, month } = req.query;
-    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
+    const supervisorFilter = {};
 
     // Dynamic Database-backed clearance check for Supervisors
     if (req.user?.role === 'SUPERVISOR') {
@@ -3083,7 +3089,7 @@ router.get('/reports/classes-cancelled/export', authenticateToken, async (req: A
     const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
 
     const searchStr = search as string;
-    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
+    const supervisorFilter = {};
 
     const logs = await prisma.classCancelledLog.findMany({
       where: {
