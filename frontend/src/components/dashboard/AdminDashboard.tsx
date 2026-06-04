@@ -4036,10 +4036,14 @@ const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
   };
 
   const handleProcess = async (logId: number, newStatus: 'APPROVED' | 'REJECTED') => {
+    const remark = adminRemarks[logId] || '';
+    if (!remark.trim()) {
+      alert(`Please enter a remark before clicking ${newStatus === 'APPROVED' ? 'Approve' : 'Reject'}.`);
+      return;
+    }
     setProcessing(prev => ({ ...prev, [logId]: true }));
     try {
       const token = localStorage.getItem('token');
-      const remark = adminRemarks[logId] || '';
       await axios.post(`${API}/extra-classes/process`, {
         logId,
         status: newStatus,

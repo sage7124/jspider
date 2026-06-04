@@ -2823,6 +2823,10 @@ router.post('/extra-classes/process', authenticateToken, async (req: AuthRequest
       return res.status(400).json({ error: 'Status must be APPROVED or REJECTED.' });
     }
 
+    if (!adminReason || !adminReason.trim()) {
+      return res.status(400).json({ error: 'A remark is required to approve or reject the request.' });
+    }
+
     const log = await prisma.extraClassLog.findUnique({
       where: { id: Number(logId) }
     });
