@@ -411,6 +411,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, No of Hours) are required for a College Visit.');
         return;
       }
+      const hrs = parseFloat(numberOfHours);
+      if (isNaN(hrs) || hrs <= 0) {
+        alert('Please enter a valid positive number for No of Hours.');
+        return;
+      }
     } else {
       if (!breakReason.trim()) {
         alert('Reason for break is required.');
@@ -1507,7 +1512,9 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       No of hours
                     </label>
                     <input
-                      type="text"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
                       required
                       value={numberOfHours}
                       onChange={(e) => setNumberOfHours(e.target.value)}

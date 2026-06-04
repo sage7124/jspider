@@ -634,6 +634,10 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !numberOfHours) {
         return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, No of Hours) are required for a College Visit.' });
       }
+      const hrs = parseFloat(numberOfHours);
+      if (isNaN(hrs) || hrs <= 0) {
+        return res.status(400).json({ error: 'Please enter a valid positive number for No of Hours.' });
+      }
       finalReason = `College Visit: Booklet No: ${bookletNo.trim()} | College: ${collegeName.trim()} | Subject: ${subject.trim()}`;
     }
 
