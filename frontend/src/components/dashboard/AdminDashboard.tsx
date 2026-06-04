@@ -924,6 +924,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
         console.error('Failed to parse user permissions', e);
       }
     }
+
+    const syncPermissions = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        const authApi = API.replace('/admin', '/auth');
+        const res = await axios.get(`${authApi}/profile`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data?.user?.permissions) {
+          const latestPerms = res.data.user.permissions.split(',');
+          setMyPermissions(latestPerms);
+          
+          const localUser = localStorage.getItem('user');
+          if (localUser) {
+            const parsed = JSON.parse(localUser);
+            parsed.permissions = res.data.user.permissions;
+            localStorage.setItem('user', JSON.stringify(parsed));
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync permissions dynamically', err);
+      }
+    };
+    syncPermissions();
   }, []);
 
   const hasPermission = (perm: string) => {

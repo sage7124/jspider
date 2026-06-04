@@ -208,6 +208,7 @@ router.get('/profile', authenticateToken, async (req: AuthRequest, res) => {
         permanentAddress: true,
         educationCompleted: true,
         subClassification: true,
+        permissions: true,
       }
     });
 

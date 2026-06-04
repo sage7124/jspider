@@ -45,6 +45,28 @@ const exceljs = __importStar(require("exceljs"));
 const excel_1 = require("../utils/excel");
 const router = express_1.default.Router();
 const prisma = new client_1.PrismaClient();
+// Helper functions for parsing and calculating duration of 12-hour formatted times
+function parse12HourTimeToMinutes(timeStr) {
+    const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match)
+        return 0;
+    let hours = parseInt(match[1]);
+    const minutes = parseInt(match[2]);
+    const ampm = match[3].toUpperCase();
+    if (ampm === 'PM' && hours < 12) {
+        hours += 12;
+    }
+    if (ampm === 'AM' && hours === 12) {
+        hours = 0;
+    }
+    return hours * 60 + minutes;
+}
+function calculateDifferenceInHours(fromTime, toTime) {
+    const fromMins = parse12HourTimeToMinutes(fromTime);
+    const toMins = parse12HourTimeToMinutes(toTime);
+    const diff = toMins >= fromMins ? toMins - fromMins : (toMins + 1440) - fromMins;
+    return (diff / 60).toFixed(2);
+}
 // Institute coordinates (mocking these for now, can be stored in DB later)
 const INSTITUTE_LAT = 12.9716;
 const INSTITUTE_LNG = 77.5946;
@@ -102,7 +124,15 @@ router.get('/status', authMiddleware_1.authenticateToken, async (req, res) => {
                 id: b.id,
                 breakOut: b.breakOut,
                 breakIn: b.breakIn,
-                reason: b.reason
+                reason: b.reason,
+                bookletNo: b.bookletNo,
+                collegeName: b.collegeName,
+                subject: b.subject,
+                topicsCovered: b.topicsCovered,
+                conveyance: b.conveyance,
+                numberOfHours: b.numberOfHours,
+                fromTime: b.fromTime,
+                toTime: b.toTime
             }))
         });
     }
@@ -613,11 +643,15 @@ router.post('/break/out', authMiddleware_1.authenticateToken, async (req, res) =
         const userId = req.user.id;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, fromTime, toTime, reason } = req.body;
+        const breakType = type || 'NORMAL';
         const attendance = await prisma.attendance.findUnique({
             where: { userId_date: { userId, date: today } }
         });
-        if (!attendance || attendance.status !== 'IN') {
-            return res.status(400).json({ error: 'You must be Punched In to request a break.' });
+        if (breakType !== 'COLLEGE_VISIT') {
+            if (!attendance || attendance.status !== 'IN') {
+                return res.status(400).json({ error: 'You must be Punched In to request a break.' });
+            }
         }
         const todayBreaks = await prisma.breakLog.findMany({
             where: { userId, date: today }
@@ -634,10 +668,9 @@ router.post('/break/out', authMiddleware_1.authenticateToken, async (req, res) =
         if (approvedBreaks.length >= 4) {
             return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
         }
-        const { type, collegeName, subject, reason } = req.body;
-        const breakType = type || 'NORMAL';
         let finalStatus = 'APPROVED';
         let finalReason = reason || null;
+        let computedHours = null;
         if (breakType === 'NORMAL') {
             if (!reason || !reason.trim()) {
                 return res.status(400).json({ error: 'Reason for break is required.' });
@@ -645,11 +678,16 @@ router.post('/break/out', authMiddleware_1.authenticateToken, async (req, res) =
             finalReason = reason.trim();
         }
         else if (breakType === 'COLLEGE_VISIT') {
-            if (!collegeName || !subject) {
-                return res.status(400).json({ error: 'College Name and Subject are required for a College Visit.' });
+            if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !fromTime || !toTime) {
+                return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, From Time, To Time) are required for a College Visit.' });
             }
-            finalStatus = 'APPROVED';
-            finalReason = `College Visit: ${collegeName.trim()} (Subject: ${subject.trim()})`;
+            // 12-hour format validation (regex matches hh:mm AM/PM, spaces optional)
+            const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i;
+            if (!timeRegex.test(fromTime.trim()) || !timeRegex.test(toTime.trim())) {
+                return res.status(400).json({ error: 'Starting and Ending times must be in valid 12-hour format (e.g., 10:00 AM, 02:30 PM).' });
+            }
+            computedHours = calculateDifferenceInHours(fromTime, toTime);
+            finalReason = `College Visit: Booklet No: ${bookletNo.trim()} | College: ${collegeName.trim()} | Subject: ${subject.trim()}`;
         }
         const newBreak = await prisma.breakLog.create({
             data: {
@@ -657,7 +695,15 @@ router.post('/break/out', authMiddleware_1.authenticateToken, async (req, res) =
                 date: today,
                 breakOut: new Date(),
                 reason: finalReason,
-                status: finalStatus
+                status: finalStatus,
+                bookletNo: breakType === 'COLLEGE_VISIT' ? bookletNo.trim() : null,
+                collegeName: breakType === 'COLLEGE_VISIT' ? collegeName.trim() : null,
+                subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : null,
+                topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : null,
+                conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : null,
+                fromTime: breakType === 'COLLEGE_VISIT' ? fromTime.trim() : null,
+                toTime: breakType === 'COLLEGE_VISIT' ? toTime.trim() : null,
+                numberOfHours: computedHours
             }
         });
         const responseMsg = breakType === 'COLLEGE_VISIT'
@@ -676,34 +722,136 @@ router.post('/break/in', authMiddleware_1.authenticateToken, async (req, res) =>
         const { lat, lng } = req.body;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        if (!lat || !lng) {
-            return res.status(400).json({ error: 'Location coordinates required to end break.' });
-        }
-        // 1. Verify Geofence (Confirm arrival back inside premises)
-        const branches = await prisma.branchLocation.findMany();
-        if (branches.length === 0) {
-            return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Contact Admin.' });
-        }
-        const validBranch = branches.find(branch => {
-            const distance = (0, geolib_1.getDistance)({ latitude: lat, longitude: lng }, { latitude: branch.lat, longitude: branch.lng });
-            return distance <= branch.radius;
-        });
-        if (!validBranch) {
-            return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
-        }
-        // 2. Find active break
+        // 1. Find active break first to determine type
         const activeBreak = await prisma.breakLog.findFirst({
             where: { userId, date: today, breakIn: null, status: 'APPROVED' }
         });
         if (!activeBreak) {
             return res.status(400).json({ error: 'No active break session found.' });
         }
-        // 3. Complete break
+        const isCollegeVisit = activeBreak.bookletNo !== null || (activeBreak.reason && activeBreak.reason.startsWith('College Visit:'));
+        if (!isCollegeVisit) {
+            if (!lat || !lng) {
+                return res.status(400).json({ error: 'Location coordinates required to end break.' });
+            }
+            // Verify Geofence (Confirm arrival back inside premises)
+            const branches = await prisma.branchLocation.findMany();
+            if (branches.length === 0) {
+                return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Contact Admin.' });
+            }
+            const validBranch = branches.find(branch => {
+                const distance = (0, geolib_1.getDistance)({ latitude: lat, longitude: lng }, { latitude: branch.lat, longitude: branch.lng });
+                return distance <= branch.radius;
+            });
+            if (!validBranch) {
+                return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
+            }
+        }
+        // Complete break
         const updatedBreak = await prisma.breakLog.update({
             where: { id: activeBreak.id },
             data: { breakIn: new Date() }
         });
         res.json({ message: 'Welcome back! Break completed successfully.', breakLog: updatedBreak });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// ── Extra Classes Taken ───────────────────────────────────────────────────────
+router.post('/extra-class/apply', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks } = req.body;
+        if (!subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName) {
+            return res.status(400).json({ error: 'All fields (Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name) are required.' });
+        }
+        const durationVal = parseFloat(duration);
+        if (isNaN(durationVal) || durationVal <= 0) {
+            return res.status(400).json({ error: 'Duration must be a positive number.' });
+        }
+        const studentsVal = parseInt(noOfStudents);
+        if (isNaN(studentsVal) || studentsVal < 0) {
+            return res.status(400).json({ error: 'Number of students must be a valid positive integer.' });
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date().getDay()];
+        const extraClass = await prisma.extraClassLog.create({
+            data: {
+                userId,
+                date: today,
+                day: dayOfWeek,
+                subject: subject.trim(),
+                batchNo: batchNo.trim(),
+                duration: durationVal,
+                startTime: startTime.trim(),
+                endTime: endTime.trim(),
+                noOfStudents: studentsVal,
+                centerName: centerName.trim(),
+                remarks: remarks ? remarks.trim() : null,
+                status: 'PENDING'
+            }
+        });
+        res.status(201).json({ message: 'Extra class details submitted and pending approval.', extraClass });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.get('/extra-class/status', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const extraClassLogs = await prisma.extraClassLog.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ extraClassLogs });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// ── Classes Cancelled ──────────────────────────────────────────────────────────
+router.post('/class-cancelled/apply', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { subject, batchNo, centerName, remarks } = req.body;
+        if (!subject || !batchNo || !centerName) {
+            return res.status(400).json({ error: 'All fields (Subject, Batch No, Center Name) are required.' });
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date().getDay()];
+        const classCancelled = await prisma.classCancelledLog.create({
+            data: {
+                userId,
+                date: today,
+                day: dayOfWeek,
+                subject: subject.trim(),
+                batchNo: batchNo.trim(),
+                centerName: centerName.trim(),
+                remarks: remarks ? remarks.trim() : null
+            }
+        });
+        res.status(201).json({ message: 'Class cancellation details logged successfully.', classCancelled });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.get('/class-cancelled/status', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const classCancelledLogs = await prisma.classCancelledLog.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ classCancelledLogs });
     }
     catch (error) {
         console.error(error);

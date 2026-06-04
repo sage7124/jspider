@@ -153,7 +153,9 @@ router.use((req: AuthRequest, res, next) => {
       '/change-password',
       '/leaves',
       '/notices',
-      '/memos'
+      '/memos',
+      '/extra-classes',
+      '/classes-cancelled'
     ];
     
     const isAllowed = allowedPrefixes.some(p => path.startsWith(p));
@@ -2751,7 +2753,6 @@ router.post('/reports/breaks/direct-out', authenticateToken, async (req: AuthReq
 router.get('/extra-classes', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { status, search, month } = req.query;
-    const supervisorFilter = {};
 
     // Dynamic Database-backed clearance check for Supervisors
     if (req.user?.role === 'SUPERVISOR') {
@@ -2774,19 +2775,29 @@ router.get('/extra-classes', authenticateToken, async (req: AuthRequest, res) =>
     }
 
     const searchStr = search as string;
+    const whereClause: any = {
+      ...dateFilter,
+    };
+    if (status) {
+      whereClause.status = status as string;
+    }
+
+    const userConditions: any = {};
+    if (req.user?.role === 'SUPERVISOR') {
+      userConditions.supervisorId = req.user.id;
+    }
+    if (searchStr) {
+      userConditions.OR = [
+        { fullName: { contains: searchStr, mode: 'insensitive' } },
+        { identifier: { contains: searchStr, mode: 'insensitive' } }
+      ];
+    }
+    if (Object.keys(userConditions).length > 0) {
+      whereClause.user = userConditions;
+    }
 
     const extraClasses = await prisma.extraClassLog.findMany({
-      where: {
-        status: status ? (status as string) : undefined,
-        ...dateFilter,
-        ...supervisorFilter,
-        user: {
-          OR: searchStr ? [
-            { fullName: { contains: searchStr, mode: 'insensitive' } },
-            { identifier: { contains: searchStr, mode: 'insensitive' } }
-          ] : undefined
-        }
-      },
+      where: whereClause,
       include: {
         user: { select: { fullName: true, identifier: true, department: true } }
       },
@@ -2829,6 +2840,14 @@ router.post('/extra-classes/process', authenticateToken, async (req: AuthRequest
       const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
       if (!perms.includes('MANAGE_EXTRA_CLASSES')) {
         return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage extra classes.' });
+      }
+
+      // Check if trainee belongs to supervisor
+      const trainee = await prisma.user.findUnique({
+        where: { id: log.userId }
+      });
+      if (!trainee || trainee.supervisorId !== req.user.id) {
+        return res.status(403).json({ error: 'Access Denied: You can only process extra class requests for trainees assigned to you.' });
       }
     }
 
@@ -2875,19 +2894,26 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
     const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
 
     const searchStr = search as string;
-    const supervisorFilter = {};
+    const whereClause: any = {
+      date: { gte: startOfMonth, lte: endOfMonth }
+    };
+
+    const userConditions: any = {};
+    if (req.user?.role === 'SUPERVISOR') {
+      userConditions.supervisorId = req.user.id;
+    }
+    if (searchStr) {
+      userConditions.OR = [
+        { fullName: { contains: searchStr, mode: 'insensitive' } },
+        { identifier: { contains: searchStr, mode: 'insensitive' } }
+      ];
+    }
+    if (Object.keys(userConditions).length > 0) {
+      whereClause.user = userConditions;
+    }
 
     const logs = await prisma.extraClassLog.findMany({
-      where: {
-        date: { gte: startOfMonth, lte: endOfMonth },
-        ...supervisorFilter,
-        user: {
-          OR: searchStr ? [
-            { fullName: { contains: searchStr, mode: 'insensitive' } },
-            { identifier: { contains: searchStr, mode: 'insensitive' } }
-          ] : undefined
-        }
-      },
+      where: whereClause,
       include: {
         user: { select: { fullName: true, identifier: true, department: true } }
       },
@@ -3017,7 +3043,6 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
 router.get('/classes-cancelled', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { search, month } = req.query;
-    const supervisorFilter = {};
 
     // Dynamic Database-backed clearance check for Supervisors
     if (req.user?.role === 'SUPERVISOR') {
@@ -3040,18 +3065,26 @@ router.get('/classes-cancelled', authenticateToken, async (req: AuthRequest, res
     }
 
     const searchStr = search as string;
+    const whereClause: any = {
+      ...dateFilter
+    };
+
+    const userConditions: any = {};
+    if (req.user?.role === 'SUPERVISOR') {
+      userConditions.supervisorId = req.user.id;
+    }
+    if (searchStr) {
+      userConditions.OR = [
+        { fullName: { contains: searchStr, mode: 'insensitive' } },
+        { identifier: { contains: searchStr, mode: 'insensitive' } }
+      ];
+    }
+    if (Object.keys(userConditions).length > 0) {
+      whereClause.user = userConditions;
+    }
 
     const classesCancelled = await prisma.classCancelledLog.findMany({
-      where: {
-        ...dateFilter,
-        ...supervisorFilter,
-        user: {
-          OR: searchStr ? [
-            { fullName: { contains: searchStr, mode: 'insensitive' } },
-            { identifier: { contains: searchStr, mode: 'insensitive' } }
-          ] : undefined
-        }
-      },
+      where: whereClause,
       include: {
         user: { select: { fullName: true, identifier: true, department: true } }
       },
@@ -3089,19 +3122,26 @@ router.get('/reports/classes-cancelled/export', authenticateToken, async (req: A
     const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
 
     const searchStr = search as string;
-    const supervisorFilter = {};
+    const whereClause: any = {
+      date: { gte: startOfMonth, lte: endOfMonth }
+    };
+
+    const userConditions: any = {};
+    if (req.user?.role === 'SUPERVISOR') {
+      userConditions.supervisorId = req.user.id;
+    }
+    if (searchStr) {
+      userConditions.OR = [
+        { fullName: { contains: searchStr, mode: 'insensitive' } },
+        { identifier: { contains: searchStr, mode: 'insensitive' } }
+      ];
+    }
+    if (Object.keys(userConditions).length > 0) {
+      whereClause.user = userConditions;
+    }
 
     const logs = await prisma.classCancelledLog.findMany({
-      where: {
-        date: { gte: startOfMonth, lte: endOfMonth },
-        ...supervisorFilter,
-        user: {
-          OR: searchStr ? [
-            { fullName: { contains: searchStr, mode: 'insensitive' } },
-            { identifier: { contains: searchStr, mode: 'insensitive' } }
-          ] : undefined
-        }
-      },
+      where: whereClause,
       include: {
         user: { select: { fullName: true, identifier: true, department: true } }
       },

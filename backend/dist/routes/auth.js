@@ -184,6 +184,7 @@ router.get('/profile', authMiddleware_1.authenticateToken, async (req, res) => {
                 permanentAddress: true,
                 educationCompleted: true,
                 subClassification: true,
+                permissions: true,
             }
         });
         if (!user)

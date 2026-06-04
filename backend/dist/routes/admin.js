@@ -186,7 +186,9 @@ router.use((req, res, next) => {
             '/change-password',
             '/leaves',
             '/notices',
-            '/memos'
+            '/memos',
+            '/extra-classes',
+            '/classes-cancelled'
         ];
         const isAllowed = allowedPrefixes.some(p => path.startsWith(p));
         if (isAllowed) {
@@ -1934,6 +1936,54 @@ router.get('/memos/received', authMiddleware_1.authenticateToken, async (req, re
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+function parseCollegeVisit(b) {
+    const bookletNo = b.bookletNo || '--';
+    let collegeName = b.collegeName || '';
+    let subject = b.subject || '';
+    const topicsCovered = b.topicsCovered || '--';
+    const conveyance = b.conveyance || '--';
+    const numberOfHours = b.numberOfHours || '--';
+    const fromTime = b.fromTime || '--';
+    const toTime = b.toTime || '--';
+    if (!collegeName && b.reason && b.reason.startsWith('College Visit:')) {
+        if (b.reason.includes('Booklet No:')) {
+            const parts = b.reason.split('|').map((p) => p.trim());
+            const bookletPart = parts.find((p) => p.startsWith('Booklet No:'));
+            const collegePart = parts.find((p) => p.startsWith('College:'));
+            const subjectPart = parts.find((p) => p.startsWith('Subject:'));
+            return {
+                bookletNo: bookletPart ? bookletPart.replace('Booklet No:', '').trim() : '--',
+                collegeName: collegePart ? collegePart.replace('College:', '').trim() : '--',
+                subject: subjectPart ? subjectPart.replace('Subject:', '').trim() : '--',
+                topicsCovered: '--',
+                conveyance: '--',
+                numberOfHours: '--',
+                fromTime: '--',
+                toTime: '--'
+            };
+        }
+        else {
+            const match = b.reason.match(/College Visit:\s*(.*?)\s*\(Subject:\s*(.*?)\)/);
+            if (match) {
+                collegeName = match[1];
+                subject = match[2];
+            }
+            else {
+                collegeName = b.reason.replace('College Visit:', '').trim();
+            }
+        }
+    }
+    return {
+        bookletNo,
+        collegeName: collegeName || '--',
+        subject: subject || '--',
+        topicsCovered,
+        conveyance,
+        numberOfHours,
+        fromTime,
+        toTime
+    };
+}
 // ── Teacher Break System Reports Endpoints ─────────────────────────────────────
 router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, res) => {
     try {
@@ -1970,6 +2020,10 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
             const duration = b.breakIn
                 ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
                 : null;
+            const durationHrs = b.breakIn
+                ? Number(((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / 3600000).toFixed(2))
+                : null;
+            const parsed = parseCollegeVisit(b);
             return {
                 id: b.id,
                 date: b.date.toLocaleDateString('en-IN'),
@@ -1980,8 +2034,17 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
                 breakIn: b.breakIn
                     ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : 'On Break',
-                duration: duration !== null ? `${duration} mins` : 'On Break',
-                reason: b.reason || '--'
+                duration: duration !== null ? `${duration} mins (${durationHrs} hrs)` : 'On Break',
+                reason: b.reason || '--',
+                // Structured fields for college visits
+                bookletNo: parsed.bookletNo,
+                collegeName: parsed.collegeName,
+                subject: parsed.subject,
+                topicsCovered: parsed.topicsCovered,
+                conveyance: parsed.conveyance,
+                numberOfHours: parsed.numberOfHours,
+                fromTime: parsed.fromTime,
+                toTime: parsed.toTime
             };
         });
         res.json(result);
@@ -2079,16 +2142,40 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                 usedNames.add(sheetName);
                 const ws = workbook.addWorksheet(sheetName);
                 // Define columns
-                ws.columns = [
-                    { key: 'day', width: 15 },
-                    { key: 'date', width: 15 },
-                    { key: 'breakOut', width: 25 },
-                    { key: 'breakIn', width: 25 },
-                    { key: 'duration', width: 20 },
-                    { key: 'reason', width: 35 }
-                ];
+                if (type === 'COLLEGE_VISIT') {
+                    ws.columns = [
+                        { key: 'day', width: 15 },
+                        { key: 'date', width: 15 },
+                        { key: 'bookletNo', width: 15 },
+                        { key: 'collegeName', width: 25 },
+                        { key: 'subject', width: 25 },
+                        { key: 'topicsCovered', width: 30 },
+                        { key: 'conveyance', width: 25 },
+                        { key: 'fromTime', width: 15 },
+                        { key: 'toTime', width: 15 },
+                        { key: 'numberOfHours', width: 15 },
+                        { key: 'breakOut', width: 20 },
+                        { key: 'breakIn', width: 20 },
+                        { key: 'duration', width: 15 }
+                    ];
+                }
+                else {
+                    ws.columns = [
+                        { key: 'day', width: 15 },
+                        { key: 'date', width: 15 },
+                        { key: 'breakOut', width: 25 },
+                        { key: 'breakIn', width: 25 },
+                        { key: 'duration', width: 20 },
+                        { key: 'reason', width: 35 }
+                    ];
+                }
                 // Title Block (Row 1)
-                ws.mergeCells('A1:F1');
+                if (type === 'COLLEGE_VISIT') {
+                    ws.mergeCells('A1:M1');
+                }
+                else {
+                    ws.mergeCells('A1:F1');
+                }
                 const titleCell = ws.getCell('A1');
                 let reportTitle = 'BREAK REPORT';
                 if (type === 'COLLEGE_VISIT') {
@@ -2111,13 +2198,32 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                 ws.getRow(3).height = 25;
                 // Header Row (Row 3)
                 const headerRow = ws.getRow(3);
-                headerRow.values = ['Day', 'Date', 'Break Out Time', 'Break In Time', 'Duration', 'Reason for Break'];
+                if (type === 'COLLEGE_VISIT') {
+                    headerRow.values = [
+                        'Day',
+                        'Date',
+                        'Booklet No',
+                        'College Name',
+                        'Subject / Purpose',
+                        'Topics Covered',
+                        'Conveyance Details',
+                        'From Time',
+                        'To Time',
+                        'No of hours',
+                        'Break Out Time',
+                        'Break In Time',
+                        'Duration'
+                    ];
+                }
+                else {
+                    headerRow.values = ['Day', 'Date', 'Break Out Time', 'Break In Time', 'Duration', 'Reason for Break'];
+                }
                 headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
                 headerRow.eachCell((cell, colNumber) => {
                     cell.fill = {
                         type: 'pattern',
                         pattern: 'solid',
-                        fgColor: { argb: '1F4E79' } // Dark blue theme matching attendance report
+                        fgColor: { argb: '1F4E79' }
                     };
                     cell.alignment = {
                         horizontal: colNumber <= 2 ? 'left' : 'center',
@@ -2134,6 +2240,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                 const userBreaks = filteredBreakLogs.filter(b => b.userId === user.id);
                 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 let monthlyTotalMins = 0;
+                let monthlyTotalHours = 0;
                 // Populate days
                 for (let day = 1; day <= daysInMonth; day++) {
                     const d = new Date(year, mon - 1, day, 12, 0, 0);
@@ -2149,10 +2256,26 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         const bLocalDateKey = `${bYear}-${bMonth}-${bDay}`;
                         return bLocalDateKey === localDateKey;
                     });
+                    let bookletNoVal = '--';
+                    let collegeNameVal = '--';
+                    let subjectVal = '--';
+                    let topicsCoveredVal = '--';
+                    let conveyanceVal = '--';
+                    let fromTimeVal = '--';
+                    let toTimeVal = '--';
+                    let numberOfHoursVal = '--';
                     let breakOutVal = '--';
                     let breakInVal = '--';
                     let reasonVal = '--';
                     if (dayBreaks.length > 0) {
+                        const bookletNoList = [];
+                        const collegeNameList = [];
+                        const subjectList = [];
+                        const topicsCoveredList = [];
+                        const conveyanceList = [];
+                        const fromTimeList = [];
+                        const toTimeList = [];
+                        const numberOfHoursList = [];
                         const outTimesList = [];
                         const inTimesList = [];
                         const reasonsList = [];
@@ -2161,22 +2284,73 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                             const inStr = b.breakIn
                                 ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                 : 'On Break';
-                            if (dayBreaks.length > 1) {
-                                outTimesList.push(`Break ${idx + 1}: ${outStr}`);
-                                inTimesList.push(`Break ${idx + 1}: ${inStr}`);
-                                reasonsList.push(`Break ${idx + 1}: ${b.reason || '--'}`);
+                            if (type === 'COLLEGE_VISIT') {
+                                const parsed = parseCollegeVisit(b);
+                                const hrs = parseFloat(parsed.numberOfHours);
+                                if (!isNaN(hrs)) {
+                                    monthlyTotalHours += hrs;
+                                }
+                                if (dayBreaks.length > 1) {
+                                    bookletNoList.push(`Break ${idx + 1}: ${parsed.bookletNo}`);
+                                    collegeNameList.push(`Break ${idx + 1}: ${parsed.collegeName}`);
+                                    subjectList.push(`Break ${idx + 1}: ${parsed.subject}`);
+                                    topicsCoveredList.push(`Break ${idx + 1}: ${parsed.topicsCovered}`);
+                                    conveyanceList.push(`Break ${idx + 1}: ${parsed.conveyance}`);
+                                    fromTimeList.push(`Break ${idx + 1}: ${parsed.fromTime}`);
+                                    toTimeList.push(`Break ${idx + 1}: ${parsed.toTime}`);
+                                    numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
+                                    outTimesList.push(`Break ${idx + 1}: ${outStr}`);
+                                    inTimesList.push(`Break ${idx + 1}: ${inStr}`);
+                                }
+                                else {
+                                    bookletNoList.push(parsed.bookletNo);
+                                    collegeNameList.push(parsed.collegeName);
+                                    subjectList.push(parsed.subject);
+                                    topicsCoveredList.push(parsed.topicsCovered);
+                                    conveyanceList.push(parsed.conveyance);
+                                    fromTimeList.push(parsed.fromTime);
+                                    toTimeList.push(parsed.toTime);
+                                    numberOfHoursList.push(parsed.numberOfHours);
+                                    outTimesList.push(outStr);
+                                    inTimesList.push(inStr);
+                                }
                             }
                             else {
-                                outTimesList.push(outStr);
-                                inTimesList.push(inStr);
-                                reasonsList.push(b.reason || '--');
+                                if (dayBreaks.length > 1) {
+                                    outTimesList.push(`Break ${idx + 1}: ${outStr}`);
+                                    inTimesList.push(`Break ${idx + 1}: ${inStr}`);
+                                    reasonsList.push(`Break ${idx + 1}: ${b.reason || '--'}`);
+                                }
+                                else {
+                                    outTimesList.push(outStr);
+                                    inTimesList.push(inStr);
+                                    reasonsList.push(b.reason || '--');
+                                }
                             }
                         });
-                        breakOutVal = outTimesList.join('\n');
-                        breakInVal = inTimesList.join('\n');
-                        reasonVal = reasonsList.join('\n');
+                        if (type === 'COLLEGE_VISIT') {
+                            bookletNoVal = bookletNoList.join('\n');
+                            collegeNameVal = collegeNameList.join('\n');
+                            subjectVal = subjectList.join('\n');
+                            topicsCoveredVal = topicsCoveredList.join('\n');
+                            conveyanceVal = conveyanceList.join('\n');
+                            fromTimeVal = fromTimeList.join('\n');
+                            toTimeVal = toTimeList.join('\n');
+                            numberOfHoursVal = numberOfHoursList.join('\n');
+                            breakOutVal = outTimesList.join('\n');
+                            breakInVal = inTimesList.join('\n');
+                        }
+                        else {
+                            breakOutVal = outTimesList.join('\n');
+                            breakInVal = inTimesList.join('\n');
+                            reasonVal = reasonsList.join('\n');
+                        }
                     }
-                    const row = ws.addRow([dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal]);
+                    const rowData = type === 'COLLEGE_VISIT'
+                        ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, breakOutVal, breakInVal, '']
+                        : [dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal];
+                    const row = ws.addRow(rowData);
+                    const durationColIndex = type === 'COLLEGE_VISIT' ? 13 : 5;
                     if (dayBreaks.length > 0) {
                         let totalMins = 0;
                         let isOnBreak = false;
@@ -2192,25 +2366,50 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                             }
                         });
                         if (isOnBreak) {
-                            row.getCell(5).value = 'On Break';
+                            row.getCell(durationColIndex).value = 'On Break';
                         }
                         else if (totalMins > 0) {
-                            row.getCell(5).value = totalMins;
+                            const actualHrs = (totalMins / 60).toFixed(2);
+                            row.getCell(durationColIndex).value = `${totalMins} mins (${actualHrs} hrs)`;
                             monthlyTotalMins += totalMins;
                         }
                         else {
-                            row.getCell(5).value = '--';
+                            row.getCell(durationColIndex).value = '--';
+                        }
+                        if (type === 'COLLEGE_VISIT') {
+                            if (dayBreaks.length > 1) {
+                                row.getCell(10).value = numberOfHoursVal;
+                            }
+                            else if (dayBreaks.length === 1) {
+                                const parsed = parseCollegeVisit(dayBreaks[0]);
+                                const hrs = parseFloat(parsed.numberOfHours);
+                                if (!isNaN(hrs)) {
+                                    row.getCell(10).value = hrs;
+                                    row.getCell(10).numFmt = '0.0" hrs"';
+                                }
+                                else {
+                                    row.getCell(10).value = parsed.numberOfHours;
+                                }
+                            }
+                            else {
+                                row.getCell(10).value = '--';
+                            }
                         }
                     }
                     else {
-                        row.getCell(5).value = '--';
+                        row.getCell(durationColIndex).value = '--';
+                        if (type === 'COLLEGE_VISIT') {
+                            row.getCell(10).value = '--';
+                        }
                     }
-                    row.getCell(5).numFmt = '0" mins"';
+                    if (type !== 'COLLEGE_VISIT') {
+                        row.getCell(durationColIndex).numFmt = '0" mins"';
+                    }
                     row.eachCell((cell, colNumber) => {
                         cell.alignment = {
                             wrapText: true,
                             vertical: 'top',
-                            horizontal: colNumber <= 2 || colNumber === 6 ? 'left' : 'center'
+                            horizontal: colNumber <= 2 || (type !== 'COLLEGE_VISIT' && colNumber === 6) || (type === 'COLLEGE_VISIT' && [3, 4, 5, 6, 7].includes(colNumber)) ? 'left' : 'center'
                         };
                         cell.font = { name: 'Calibri', size: 10 };
                         cell.border = {
@@ -2224,25 +2423,35 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                 // Add Spacer Row
                 ws.addRow([]);
                 // Add Grand Total Row
-                const totalRow = ws.addRow(['', 'TOTAL DURATION', '', '', monthlyTotalMins, '']);
+                const totalRowData = type === 'COLLEGE_VISIT'
+                    ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', '', '', monthlyTotalHours, '', '', `${monthlyTotalMins} mins (${(monthlyTotalMins / 60).toFixed(2)} hrs)`]
+                    : ['', 'TOTAL DURATION', '', '', monthlyTotalMins, ''];
+                const totalRow = ws.addRow(totalRowData);
                 totalRow.height = 24;
-                ws.mergeCells(`B${totalRow.number}:D${totalRow.number}`);
+                if (type === 'COLLEGE_VISIT') {
+                    ws.mergeCells(`B${totalRow.number}:I${totalRow.number}`);
+                }
+                else {
+                    ws.mergeCells(`B${totalRow.number}:D${totalRow.number}`);
+                }
+                const totalDurationColIndex = type === 'COLLEGE_VISIT' ? 13 : 5;
+                const totalColsCount = type === 'COLLEGE_VISIT' ? 13 : 6;
                 totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    if (colNumber >= 1 && colNumber <= 6) {
+                    if (colNumber >= 1 && colNumber <= totalColsCount) {
                         cell.fill = {
                             type: 'pattern',
                             pattern: 'solid',
-                            fgColor: { argb: '1F4E79' } // Dark blue theme matching header
+                            fgColor: { argb: '1F4E79' }
                         };
                         cell.font = {
                             bold: true,
                             name: 'Calibri',
-                            size: colNumber === 5 ? 11 : 10,
+                            size: (colNumber === totalDurationColIndex || (type === 'COLLEGE_VISIT' && colNumber === 10)) ? 11 : 10,
                             color: { argb: 'FFFFFFFF' }
                         };
                         cell.alignment = {
                             vertical: 'middle',
-                            horizontal: colNumber === 5 ? 'center' : (colNumber === 2 ? 'left' : 'center')
+                            horizontal: (colNumber === totalDurationColIndex || (type === 'COLLEGE_VISIT' && colNumber === 10)) ? 'center' : (colNumber === 2 ? 'left' : 'center')
                         };
                         cell.border = {
                             top: { style: 'medium', color: { argb: 'FF1F4E79' } },
@@ -2252,7 +2461,12 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         };
                     }
                 });
-                totalRow.getCell(5).numFmt = '0" mins"';
+                if (type === 'COLLEGE_VISIT') {
+                    totalRow.getCell(10).numFmt = '0.0" hrs"';
+                }
+                else {
+                    totalRow.getCell(totalDurationColIndex).numFmt = '0" mins"';
+                }
                 // Auto-fit column widths (safety margins)
                 ws.columns.forEach(col => {
                     let maxLen = 12;
@@ -2449,6 +2663,459 @@ router.post('/reports/breaks/direct-out', authMiddleware_1.authenticateToken, as
             message: `Direct college visit breakout started successfully for ${trainee.fullName}.`,
             breakLog: newBreak
         });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// ── Extra Classes Admin Endpoints ─────────────────────────────────────────────
+router.get('/extra-classes', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const { status, search, month } = req.query;
+        // Dynamic Database-backed clearance check for Supervisors
+        if (req.user?.role === 'SUPERVISOR') {
+            const supervisor = await prisma.user.findUnique({
+                where: { id: req.user.id },
+                select: { permissions: true }
+            });
+            const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+            if (!perms.includes('MANAGE_EXTRA_CLASSES')) {
+                return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage extra classes.' });
+            }
+        }
+        let dateFilter = {};
+        if (month && typeof month === 'string') {
+            const [year, mon] = month.split('-').map(Number);
+            const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+            const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+            dateFilter = { date: { gte: startOfMonth, lte: endOfMonth } };
+        }
+        const searchStr = search;
+        const whereClause = {
+            ...dateFilter,
+        };
+        if (status) {
+            whereClause.status = status;
+        }
+        const userConditions = {};
+        if (req.user?.role === 'SUPERVISOR') {
+            userConditions.supervisorId = req.user.id;
+        }
+        if (searchStr) {
+            userConditions.OR = [
+                { fullName: { contains: searchStr, mode: 'insensitive' } },
+                { identifier: { contains: searchStr, mode: 'insensitive' } }
+            ];
+        }
+        if (Object.keys(userConditions).length > 0) {
+            whereClause.user = userConditions;
+        }
+        const extraClasses = await prisma.extraClassLog.findMany({
+            where: whereClause,
+            include: {
+                user: { select: { fullName: true, identifier: true, department: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(extraClasses);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.post('/extra-classes/process', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const { logId, status, adminReason } = req.body; // status: APPROVED or REJECTED
+        if (!logId || !status) {
+            return res.status(400).json({ error: 'logId and status are required.' });
+        }
+        if (status !== 'APPROVED' && status !== 'REJECTED') {
+            return res.status(400).json({ error: 'Status must be APPROVED or REJECTED.' });
+        }
+        const log = await prisma.extraClassLog.findUnique({
+            where: { id: Number(logId) }
+        });
+        if (!log) {
+            return res.status(404).json({ error: 'Extra class log not found.' });
+        }
+        // Strict Supervisor Authorization Sandbox & Clearance Checks
+        if (req.user?.role === 'SUPERVISOR') {
+            const supervisor = await prisma.user.findUnique({
+                where: { id: req.user.id },
+                select: { permissions: true }
+            });
+            const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+            if (!perms.includes('MANAGE_EXTRA_CLASSES')) {
+                return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage extra classes.' });
+            }
+            // Check if trainee belongs to supervisor
+            const trainee = await prisma.user.findUnique({
+                where: { id: log.userId }
+            });
+            if (!trainee || trainee.supervisorId !== req.user.id) {
+                return res.status(403).json({ error: 'Access Denied: You can only process extra class requests for trainees assigned to you.' });
+            }
+        }
+        if (log.status !== 'PENDING') {
+            return res.status(400).json({ error: 'Request has already been processed.' });
+        }
+        const updatedLog = await prisma.extraClassLog.update({
+            where: { id: Number(logId) },
+            data: {
+                status,
+                adminReason: adminReason ? adminReason.trim() : null
+            }
+        });
+        res.json({ message: `Extra class request ${status.toLowerCase()} successfully.`, extraClass: updatedLog });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.get('/reports/extra-classes/export', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const { month, search } = req.query;
+        if (!month || typeof month !== 'string') {
+            return res.status(400).json({ error: 'Month is required' });
+        }
+        // Dynamic Database-backed clearance check for Supervisors
+        if (req.user?.role === 'SUPERVISOR') {
+            const supervisor = await prisma.user.findUnique({
+                where: { id: req.user.id },
+                select: { permissions: true }
+            });
+            const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+            if (!perms.includes('MANAGE_EXTRA_CLASSES')) {
+                return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage extra classes.' });
+            }
+        }
+        const [year, mon] = month.split('-').map(Number);
+        const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+        const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+        const searchStr = search;
+        const whereClause = {
+            date: { gte: startOfMonth, lte: endOfMonth }
+        };
+        const userConditions = {};
+        if (req.user?.role === 'SUPERVISOR') {
+            userConditions.supervisorId = req.user.id;
+        }
+        if (searchStr) {
+            userConditions.OR = [
+                { fullName: { contains: searchStr, mode: 'insensitive' } },
+                { identifier: { contains: searchStr, mode: 'insensitive' } }
+            ];
+        }
+        if (Object.keys(userConditions).length > 0) {
+            whereClause.user = userConditions;
+        }
+        const logs = await prisma.extraClassLog.findMany({
+            where: whereClause,
+            include: {
+                user: { select: { fullName: true, identifier: true, department: true } }
+            },
+            orderBy: [
+                { date: 'asc' },
+                { createdAt: 'asc' }
+            ]
+        });
+        const workbook = new exceljs.Workbook();
+        workbook.creator = 'Attendance System';
+        // Group logs by teacher/user
+        const userMap = new Map();
+        logs.forEach(l => {
+            const uLogs = userMap.get(l.userId) || [];
+            uLogs.push(l);
+            userMap.set(l.userId, uLogs);
+        });
+        if (userMap.size === 0) {
+            const ws = workbook.addWorksheet('No Data');
+            ws.getCell('A1').value = 'No extra classes found for this month.';
+        }
+        else {
+            const usedNames = new Set();
+            for (const [userId, uLogs] of userMap.entries()) {
+                const user = uLogs[0].user;
+                let sheetName = user.fullName.substring(0, 30);
+                let counter = 1;
+                while (usedNames.has(sheetName)) {
+                    const suffix = `_${counter}`;
+                    sheetName = `${user.fullName.substring(0, 30 - suffix.length)}${suffix}`;
+                    counter++;
+                }
+                usedNames.add(sheetName);
+                const ws = workbook.addWorksheet(sheetName);
+                ws.columns = [
+                    { key: 'index', width: 6 },
+                    { key: 'date', width: 15 },
+                    { key: 'day', width: 12 },
+                    { key: 'subject', width: 25 },
+                    { key: 'batchNo', width: 15 },
+                    { key: 'duration', width: 15 },
+                    { key: 'startTime', width: 15 },
+                    { key: 'endTime', width: 15 },
+                    { key: 'noOfStudents', width: 15 },
+                    { key: 'centerName', width: 20 },
+                    { key: 'status', width: 15 },
+                    { key: 'adminReason', width: 25 },
+                    { key: 'remarks', width: 25 }
+                ];
+                // Title Block (Row 1)
+                ws.mergeCells('A1:M1');
+                const titleCell = ws.getCell('A1');
+                titleCell.value = `EXTRA CLASSES REPORT: ${user.fullName.toUpperCase()} | PHONE: ${user.identifier}`;
+                titleCell.font = { bold: true, size: 14, name: 'Calibri' };
+                titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                ws.getRow(1).height = 40;
+                ws.getRow(2).height = 15;
+                // Header Row (Row 3)
+                const headerRow = ws.getRow(3);
+                headerRow.values = [
+                    '#',
+                    'Date',
+                    'Day',
+                    'Subject',
+                    'Batch No',
+                    'Duration (hrs)',
+                    'Start Time',
+                    'End Time',
+                    'No of Students',
+                    'Center Name',
+                    'Status',
+                    'Supervisor Remarks',
+                    'Remarks'
+                ];
+                headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
+                headerRow.eachCell((cell) => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: '2E7D32' } // Dark Green
+                    };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                });
+                ws.getRow(3).height = 25;
+                // Populate
+                uLogs.forEach((l, idx) => {
+                    const row = ws.addRow([
+                        idx + 1,
+                        l.date.toLocaleDateString('en-IN'),
+                        l.day,
+                        l.subject,
+                        l.batchNo,
+                        l.duration,
+                        l.startTime,
+                        l.endTime,
+                        l.noOfStudents,
+                        l.centerName,
+                        l.status,
+                        l.adminReason || '--',
+                        l.remarks || '--'
+                    ]);
+                    row.eachCell((cell) => {
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    });
+                });
+            }
+        }
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=Extra_Classes_Report_${month}.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// ── Classes Cancelled Admin Endpoints ──────────────────────────────────────────
+router.get('/classes-cancelled', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const { search, month } = req.query;
+        // Dynamic Database-backed clearance check for Supervisors
+        if (req.user?.role === 'SUPERVISOR') {
+            const supervisor = await prisma.user.findUnique({
+                where: { id: req.user.id },
+                select: { permissions: true }
+            });
+            const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+            if (!perms.includes('MANAGE_CANCELLED_CLASSES')) {
+                return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage cancelled classes.' });
+            }
+        }
+        let dateFilter = {};
+        if (month && typeof month === 'string') {
+            const [year, mon] = month.split('-').map(Number);
+            const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+            const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+            dateFilter = { date: { gte: startOfMonth, lte: endOfMonth } };
+        }
+        const searchStr = search;
+        const whereClause = {
+            ...dateFilter
+        };
+        const userConditions = {};
+        if (req.user?.role === 'SUPERVISOR') {
+            userConditions.supervisorId = req.user.id;
+        }
+        if (searchStr) {
+            userConditions.OR = [
+                { fullName: { contains: searchStr, mode: 'insensitive' } },
+                { identifier: { contains: searchStr, mode: 'insensitive' } }
+            ];
+        }
+        if (Object.keys(userConditions).length > 0) {
+            whereClause.user = userConditions;
+        }
+        const classesCancelled = await prisma.classCancelledLog.findMany({
+            where: whereClause,
+            include: {
+                user: { select: { fullName: true, identifier: true, department: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(classesCancelled);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.get('/reports/classes-cancelled/export', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const { month, search } = req.query;
+        if (!month || typeof month !== 'string') {
+            return res.status(400).json({ error: 'Month is required' });
+        }
+        // Dynamic Database-backed clearance check for Supervisors
+        if (req.user?.role === 'SUPERVISOR') {
+            const supervisor = await prisma.user.findUnique({
+                where: { id: req.user.id },
+                select: { permissions: true }
+            });
+            const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+            if (!perms.includes('MANAGE_CANCELLED_CLASSES')) {
+                return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage cancelled classes.' });
+            }
+        }
+        const [year, mon] = month.split('-').map(Number);
+        const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+        const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+        const searchStr = search;
+        const whereClause = {
+            date: { gte: startOfMonth, lte: endOfMonth }
+        };
+        const userConditions = {};
+        if (req.user?.role === 'SUPERVISOR') {
+            userConditions.supervisorId = req.user.id;
+        }
+        if (searchStr) {
+            userConditions.OR = [
+                { fullName: { contains: searchStr, mode: 'insensitive' } },
+                { identifier: { contains: searchStr, mode: 'insensitive' } }
+            ];
+        }
+        if (Object.keys(userConditions).length > 0) {
+            whereClause.user = userConditions;
+        }
+        const logs = await prisma.classCancelledLog.findMany({
+            where: whereClause,
+            include: {
+                user: { select: { fullName: true, identifier: true, department: true } }
+            },
+            orderBy: [
+                { date: 'asc' },
+                { createdAt: 'asc' }
+            ]
+        });
+        const workbook = new exceljs.Workbook();
+        workbook.creator = 'Attendance System';
+        // Group logs by teacher/user
+        const userMap = new Map();
+        logs.forEach(l => {
+            const uLogs = userMap.get(l.userId) || [];
+            uLogs.push(l);
+            userMap.set(l.userId, uLogs);
+        });
+        if (userMap.size === 0) {
+            const ws = workbook.addWorksheet('No Data');
+            ws.getCell('A1').value = 'No cancelled classes found for this month.';
+        }
+        else {
+            const usedNames = new Set();
+            for (const [userId, uLogs] of userMap.entries()) {
+                const user = uLogs[0].user;
+                let sheetName = user.fullName.substring(0, 30);
+                let counter = 1;
+                while (usedNames.has(sheetName)) {
+                    const suffix = `_${counter}`;
+                    sheetName = `${user.fullName.substring(0, 30 - suffix.length)}${suffix}`;
+                    counter++;
+                }
+                usedNames.add(sheetName);
+                const ws = workbook.addWorksheet(sheetName);
+                ws.columns = [
+                    { key: 'index', width: 6 },
+                    { key: 'date', width: 15 },
+                    { key: 'day', width: 12 },
+                    { key: 'subject', width: 25 },
+                    { key: 'batchNo', width: 15 },
+                    { key: 'centerName', width: 20 },
+                    { key: 'remarks', width: 35 }
+                ];
+                // Title Block (Row 1)
+                ws.mergeCells('A1:G1');
+                const titleCell = ws.getCell('A1');
+                titleCell.value = `CANCELLED CLASSES REPORT: ${user.fullName.toUpperCase()} | PHONE: ${user.identifier}`;
+                titleCell.font = { bold: true, size: 14, name: 'Calibri' };
+                titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                ws.getRow(1).height = 40;
+                ws.getRow(2).height = 15;
+                // Header Row (Row 3)
+                const headerRow = ws.getRow(3);
+                headerRow.values = [
+                    '#',
+                    'Date',
+                    'Day',
+                    'Subject',
+                    'Batch No',
+                    'Center Name',
+                    'Remarks'
+                ];
+                headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
+                headerRow.eachCell((cell) => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'C62828' } // Red
+                    };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                });
+                ws.getRow(3).height = 25;
+                // Populate
+                uLogs.forEach((l, idx) => {
+                    const row = ws.addRow([
+                        idx + 1,
+                        l.date.toLocaleDateString('en-IN'),
+                        l.day,
+                        l.subject,
+                        l.batchNo,
+                        l.centerName,
+                        l.remarks || '--'
+                    ]);
+                    row.eachCell((cell) => {
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    });
+                });
+            }
+        }
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=Cancelled_Classes_Report_${month}.xlsx`);
+        await workbook.xlsx.write(res);
+        res.end();
     }
     catch (error) {
         console.error(error);
