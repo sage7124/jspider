@@ -39,6 +39,32 @@ const calculateDuration = (fromStr: string, toStr: string): number => {
   return parseFloat(hours.toFixed(2));
 };
 
+const calculateDuration12h = (
+  hFrom: string, mFrom: string, pFrom: string,
+  hTo: string, mTo: string, pTo: string
+): number => {
+  let hourFrom = parseInt(hFrom);
+  let minFrom = parseInt(mFrom);
+  let hourTo = parseInt(hTo);
+  let minTo = parseInt(mTo);
+  
+  if (pFrom === 'PM' && hourFrom !== 12) hourFrom += 12;
+  if (pFrom === 'AM' && hourFrom === 12) hourFrom = 0;
+  
+  if (pTo === 'PM' && hourTo !== 12) hourTo += 12;
+  if (pTo === 'AM' && hourTo === 12) hourTo = 0;
+  
+  let fromMinutes = hourFrom * 60 + minFrom;
+  let toMinutes = hourTo * 60 + minTo;
+  
+  if (toMinutes < fromMinutes) {
+    toMinutes += 24 * 60; // assume it crosses midnight
+  }
+  
+  const diffMinutes = toMinutes - fromMinutes;
+  return parseFloat((diffMinutes / 60).toFixed(2));
+};
+
 const FilePreview = ({ url, label }: { url: string; label: string }) => {
   if (!url) return <span className="text-gray-400 italic mt-1 block">No {label} uploaded</span>;
 
@@ -190,8 +216,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   // Extra Classes States
   const [extraSubject, setExtraSubject] = useState('');
   const [extraBatchNo, setExtraBatchNo] = useState('');
-  const [extraFromTime, setExtraFromTime] = useState('');
-  const [extraToTime, setExtraToTime] = useState('');
+  const [extraHourFrom, setExtraHourFrom] = useState('10');
+  const [extraMinFrom, setExtraMinFrom] = useState('00');
+  const [extraPeriodFrom, setExtraPeriodFrom] = useState('AM');
+  const [extraHourTo, setExtraHourTo] = useState('11');
+  const [extraMinTo, setExtraMinTo] = useState('30');
+  const [extraPeriodTo, setExtraPeriodTo] = useState('AM');
   const [extraNoOfStudents, setExtraNoOfStudents] = useState('');
   const [extraCenterName, setExtraCenterName] = useState('');
   const [extraRemarks, setExtraRemarks] = useState('');
@@ -295,12 +325,15 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   };
 
   const handleLogExtraClass = async () => {
-    if (!extraSubject.trim() || !extraBatchNo.trim() || !extraFromTime.trim() || !extraToTime.trim() || !extraNoOfStudents.trim() || !extraCenterName.trim()) {
+    if (!extraSubject.trim() || !extraBatchNo.trim() || !extraHourFrom || !extraMinFrom || !extraHourTo || !extraMinTo || !extraNoOfStudents.trim() || !extraCenterName.trim()) {
       alert('Please fill out all mandatory fields for Extra Class.');
       return;
     }
 
-    const durationVal = calculateDuration(extraFromTime, extraToTime);
+    const durationVal = calculateDuration12h(
+      extraHourFrom, extraMinFrom, extraPeriodFrom,
+      extraHourTo, extraMinTo, extraPeriodTo
+    );
     if (durationVal <= 0) {
       alert('End Time must be after Start Time.');
       return;
@@ -312,8 +345,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       return;
     }
 
-    const startTimeFormatted = convert24to12(extraFromTime);
-    const endTimeFormatted = convert24to12(extraToTime);
+    const startTimeFormatted = `${extraHourFrom}:${extraMinFrom} ${extraPeriodFrom}`;
+    const endTimeFormatted = `${extraHourTo}:${extraMinTo} ${extraPeriodTo}`;
 
     try {
       setSubmittingExtraClass(true);
@@ -339,8 +372,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       // Reset form
       setExtraSubject('');
       setExtraBatchNo('');
-      setExtraFromTime('');
-      setExtraToTime('');
+      setExtraHourFrom('10');
+      setExtraMinFrom('00');
+      setExtraPeriodFrom('AM');
+      setExtraHourTo('11');
+      setExtraMinTo('30');
+      setExtraPeriodTo('AM');
       setExtraNoOfStudents('');
       setExtraCenterName('');
       setExtraRemarks('');
@@ -1877,8 +1914,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 setShowExtraClassModal(false);
                 setExtraSubject('');
                 setExtraBatchNo('');
-                setExtraFromTime('');
-                setExtraToTime('');
+                setExtraHourFrom('10');
+                setExtraMinFrom('00');
+                setExtraPeriodFrom('AM');
+                setExtraHourTo('11');
+                setExtraMinTo('30');
+                setExtraPeriodTo('AM');
                 setExtraNoOfStudents('');
                 setExtraCenterName('');
                 setExtraRemarks('');
@@ -1931,35 +1972,75 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               <div className="grid grid-cols-2 gap-3">
                 {/* Clock Picker: From Time */}
                 <div>
-                  <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">FROM TIME</label>
-                  <div className="relative">
-                    <input
-                      type="time"
-                      required
-                      value={extraFromTime}
-                      onChange={(e) => setExtraFromTime(e.target.value)}
-                      className="w-full border border-purple-100 rounded-lg p-2.5 pl-9 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner text-gray-800"
-                    />
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
-                      <Clock size={14} />
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Start Time (Mandatory)</label>
+                  <div className="w-full border border-emerald-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-emerald-400 focus-within:bg-white transition-all shadow-inner">
+                    <div className="flex items-center gap-1">
+                      <Clock size={14} className="text-emerald-400 mr-1.5" />
+                      <select 
+                        value={extraHourFrom} 
+                        onChange={(e) => setExtraHourFrom(e.target.value)}
+                        className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-850 font-bold"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-400">:</span>
+                      <select 
+                        value={extraMinFrom} 
+                        onChange={(e) => setExtraMinFrom(e.target.value)}
+                        className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-855 font-bold"
+                      >
+                        {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
                     </div>
+                    <select 
+                      value={extraPeriodFrom} 
+                      onChange={(e) => setExtraPeriodFrom(e.target.value)}
+                      className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200 outline-none cursor-pointer font-black text-[10px]"
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
                   </div>
                 </div>
 
                 {/* Clock Picker: To Time */}
                 <div>
-                  <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">TO TIME</label>
-                  <div className="relative">
-                    <input
-                      type="time"
-                      required
-                      value={extraToTime}
-                      onChange={(e) => setExtraToTime(e.target.value)}
-                      className="w-full border border-purple-100 rounded-lg p-2.5 pl-9 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner text-gray-800"
-                    />
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
-                      <Clock size={14} />
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">End Time (Mandatory)</label>
+                  <div className="w-full border border-emerald-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-emerald-400 focus-within:bg-white transition-all shadow-inner">
+                    <div className="flex items-center gap-1">
+                      <Clock size={14} className="text-emerald-400 mr-1.5" />
+                      <select 
+                        value={extraHourTo} 
+                        onChange={(e) => setExtraHourTo(e.target.value)}
+                        className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-850 font-bold"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-400">:</span>
+                      <select 
+                        value={extraMinTo} 
+                        onChange={(e) => setExtraMinTo(e.target.value)}
+                        className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-855 font-bold"
+                      >
+                        {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
                     </div>
+                    <select 
+                      value={extraPeriodTo} 
+                      onChange={(e) => setExtraPeriodTo(e.target.value)}
+                      className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200 outline-none cursor-pointer font-black text-[10px]"
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -2008,8 +2089,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   setShowExtraClassModal(false);
                   setExtraSubject('');
                   setExtraBatchNo('');
-                  setExtraFromTime('');
-                  setExtraToTime('');
+                  setExtraHourFrom('10');
+                  setExtraMinFrom('00');
+                  setExtraPeriodFrom('AM');
+                  setExtraHourTo('11');
+                  setExtraMinTo('30');
+                  setExtraPeriodTo('AM');
                   setExtraNoOfStudents('');
                   setExtraCenterName('');
                   setExtraRemarks('');
@@ -2024,8 +2109,10 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   submittingExtraClass ||
                   !extraSubject.trim() ||
                   !extraBatchNo.trim() ||
-                  !extraFromTime.trim() ||
-                  !extraToTime.trim() ||
+                  !extraHourFrom ||
+                  !extraMinFrom ||
+                  !extraHourTo ||
+                  !extraMinTo ||
                   !extraNoOfStudents.trim() ||
                   !extraCenterName.trim()
                 }
