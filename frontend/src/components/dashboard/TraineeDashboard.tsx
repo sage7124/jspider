@@ -1422,7 +1422,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 setSubject('');
                 setTopicsCovered('');
                 setConveyance('');
-                setNumberOfHours('');
+                setFromTime('');
+                setToTime('');
                 setBreakType('NORMAL');
               }}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
