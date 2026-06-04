@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -957,6 +957,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [showMemos, setShowMemos] = useState(false);
   const [showBreaks, setShowBreaks] = useState(false);
   const [showCollegeVisits, setShowCollegeVisits] = useState(false);
+  const [showExtraClasses, setShowExtraClasses] = useState(false);
+  const [showCancelledClasses, setShowCancelledClasses] = useState(false);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -1112,6 +1114,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
                 <GraduationCap size={18} /> College Visits
               </button>
+              <button onClick={() => setShowExtraClasses(true)}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded font-medium transition-colors">
+                <BookOpen size={18} /> Extra Classes
+              </button>
+              <button onClick={() => setShowCancelledClasses(true)}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium transition-colors">
+                <CalendarX size={18} /> Cancelled Classes
+              </button>
             </>
           )}
         </div>
@@ -1230,6 +1240,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role={role} />}
       {showBreaks && <BreakLogsModal onClose={() => setShowBreaks(false)} allTrainees={trainees} />}
       {showCollegeVisits && <CollegeVisitLogsModal onClose={() => setShowCollegeVisits(false)} allTrainees={trainees} />}
+      {showExtraClasses && <ExtraClassesLogsModal onClose={() => setShowExtraClasses(false)} />}
+      {showCancelledClasses && <CancelledClassesLogsModal onClose={() => setShowCancelledClasses(false)} />}
     </div>
   );
 };
@@ -3949,6 +3961,369 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                         </tr>
                       )}
                     </React.Fragment>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Extra Classes Logs Modal ──────────────────────────────────────────────────
+const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [status, setStatus] = useState('ALL'); // ALL, PENDING, APPROVED, REJECTED
+  const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [exporting, setExporting] = useState(false);
+  const [adminRemarks, setAdminRemarks] = useState<Record<number, string>>({});
+  const [processing, setProcessing] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    fetchLogs();
+  }, [search, month, status]);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const statusParam = status === 'ALL' ? '' : status;
+      const res = await axios.get(`${API}/extra-classes?status=${statusParam}&search=${search}&month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLogs(res.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProcess = async (logId: number, newStatus: 'APPROVED' | 'REJECTED') => {
+    setProcessing(prev => ({ ...prev, [logId]: true }));
+    try {
+      const token = localStorage.getItem('token');
+      const remark = adminRemarks[logId] || '';
+      await axios.post(`${API}/extra-classes/process`, {
+        logId,
+        status: newStatus,
+        adminReason: remark
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert(`Log ${newStatus.toLowerCase()} successfully.`);
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to process request');
+    } finally {
+      setProcessing(prev => ({ ...prev, [logId]: false }));
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/extra-classes/export?month=${exportMonth}&search=${search}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Extra_Classes_${exportMonth}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert('Failed to export Extra Classes report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl p-6 relative max-h-[90vh] flex flex-col">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-emerald-700 flex items-center gap-2 border-b pb-3">
+          <BookOpen size={20} /> Teacher Extra Classes Logs
+        </h2>
+
+        {/* Filter Controls */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
+            <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or ID..."
+              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Status</label>
+            <select value={status} onChange={e => setStatus(e.target.value)}
+              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+              <option value="ALL">All Statuses</option>
+              <option value="PENDING">Pending Only</option>
+              <option value="APPROVED">Approved Only</option>
+              <option value="REJECTED">Rejected Only</option>
+            </select>
+          </div>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <button onClick={handleExport} disabled={exporting}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+            </button>
+          </div>
+        </div>
+
+        {/* Logs Table */}
+        <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+          {loading ? (
+            <p className="text-center py-10 text-gray-400">Loading logs...</p>
+          ) : (
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3">Teacher</th>
+                  <th className="px-4 py-3">Date & Day</th>
+                  <th className="px-4 py-3">Subject & Batch</th>
+                  <th className="px-4 py-3">Center</th>
+                  <th className="px-4 py-3 text-center">Timing & Duration</th>
+                  <th className="px-4 py-3 text-center">Students</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-right">Remarks / Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {logs.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-10 text-center text-gray-400 italic">No extra class logs found.</td>
+                  </tr>
+                ) : (
+                  logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-gray-800">{log.user?.fullName}</div>
+                        <div className="text-[10px] text-gray-500">{log.user?.identifier} • {log.user?.department}</div>
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-gray-700">
+                        <div>{new Date(log.date).toLocaleDateString('en-IN')}</div>
+                        <div className="text-[10px] text-gray-400">{log.day}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-emerald-800">{log.subject}</div>
+                        <div className="text-[10px] font-mono text-gray-500">Batch: {log.batchNo}</div>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="font-mono text-purple-700 font-semibold">{log.startTime} - {log.endTime}</div>
+                        <div className="text-[10px] font-bold text-gray-500">{log.duration} hrs</div>
+                      </td>
+                      <td className="px-4 py-3 text-center font-bold text-gray-700">{log.noOfStudents}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
+                          log.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                          log.status === 'APPROVED' ? 'bg-green-100 text-green-800 border border-green-200' :
+                          'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right max-w-xs">
+                        <div className="flex flex-col gap-2 items-end">
+                          {log.remarks && (
+                            <div className="text-[10px] text-gray-500 italic mb-1 text-left w-full max-w-[200px] line-clamp-2" title={log.remarks}>
+                              Teacher: "{log.remarks}"
+                            </div>
+                          )}
+                          
+                          {log.status === 'PENDING' ? (
+                            <div className="flex flex-col gap-1.5 w-full items-end">
+                              <input 
+                                type="text"
+                                placeholder="Supervisor remark..."
+                                value={adminRemarks[log.id] || ''}
+                                onChange={(e) => setAdminRemarks(prev => ({ ...prev, [log.id]: e.target.value }))}
+                                className="border border-gray-300 rounded px-2 py-1 text-[11px] w-full max-w-[200px] outline-none focus:ring-1 focus:ring-emerald-500"
+                              />
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => handleProcess(log.id, 'APPROVED')} 
+                                  disabled={processing[log.id]}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-2.5 py-1 rounded text-[10px] transition-all cursor-pointer shadow-sm active:scale-95"
+                                >
+                                  Approve
+                                </button>
+                                <button 
+                                  onClick={() => handleProcess(log.id, 'REJECTED')} 
+                                  disabled={processing[log.id]}
+                                  className="bg-red-600 hover:bg-red-700 text-white font-extrabold px-2.5 py-1 rounded text-[10px] transition-all cursor-pointer shadow-sm active:scale-95"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-[10px] text-gray-500 font-medium text-left bg-gray-50 p-1.5 rounded border w-full max-w-[200px]">
+                              <span className="font-bold text-gray-600 block">Supervisor Remark:</span>
+                              {log.adminReason || '--'}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Cancelled Classes Logs Modal ──────────────────────────────────────────────
+const CancelledClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [search, month]);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/classes-cancelled?search=${search}&month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLogs(res.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/classes-cancelled/export?month=${exportMonth}&search=${search}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Cancelled_Classes_${exportMonth}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert('Failed to export Cancelled Classes report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl p-6 relative max-h-[90vh] flex flex-col">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-red-700 flex items-center gap-2 border-b pb-3">
+          <CalendarX size={20} /> Teacher Cancelled Classes Logs
+        </h2>
+
+        {/* Filter Controls */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
+            <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or ID..."
+              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
+            </div>
+            <button onClick={handleExport} disabled={exporting}
+              className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+            </button>
+          </div>
+        </div>
+
+        {/* Logs Table */}
+        <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+          {loading ? (
+            <p className="text-center py-10 text-gray-400">Loading logs...</p>
+          ) : (
+            <table className="w-full text-xs text-left">
+              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3">Teacher</th>
+                  <th className="px-4 py-3">Date & Day</th>
+                  <th className="px-4 py-3">Subject & Batch</th>
+                  <th className="px-4 py-3">Center</th>
+                  <th className="px-4 py-3">Cancellation Reasons / Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {logs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No class cancellation logs found.</td>
+                  </tr>
+                ) : (
+                  logs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-gray-800">{log.user?.fullName}</div>
+                        <div className="text-[10px] text-gray-500">{log.user?.identifier} • {log.user?.department}</div>
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-gray-700">
+                        <div>{new Date(log.date).toLocaleDateString('en-IN')}</div>
+                        <div className="text-[10px] text-gray-400">{log.day}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-red-800">{log.subject}</div>
+                        <div className="text-[10px] font-mono text-gray-500">Batch: {log.batchNo}</div>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
+                      <td className="px-4 py-3 text-gray-700 italic">
+                        "{log.remarks || 'No remarks provided'}"
+                      </td>
+                    </tr>
                   ))
                 )}
               </tbody>

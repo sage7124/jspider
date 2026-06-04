@@ -756,4 +756,115 @@ router.post('/break/in', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+// ── Extra Classes Taken ───────────────────────────────────────────────────────
+router.post('/extra-class/apply', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks } = req.body;
+
+    if (!subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName) {
+      return res.status(400).json({ error: 'All fields (Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name) are required.' });
+    }
+
+    const durationVal = parseFloat(duration);
+    if (isNaN(durationVal) || durationVal <= 0) {
+      return res.status(400).json({ error: 'Duration must be a positive number.' });
+    }
+
+    const studentsVal = parseInt(noOfStudents);
+    if (isNaN(studentsVal) || studentsVal < 0) {
+      return res.status(400).json({ error: 'Number of students must be a valid positive integer.' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date().getDay()];
+
+    const extraClass = await prisma.extraClassLog.create({
+      data: {
+        userId,
+        date: today,
+        day: dayOfWeek,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        duration: durationVal,
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+        noOfStudents: studentsVal,
+        centerName: centerName.trim(),
+        remarks: remarks ? remarks.trim() : null,
+        status: 'PENDING'
+      }
+    });
+
+    res.status(201).json({ message: 'Extra class details submitted and pending approval.', extraClass });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/extra-class/status', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const extraClassLogs = await prisma.extraClassLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ extraClassLogs });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Classes Cancelled ──────────────────────────────────────────────────────────
+router.post('/class-cancelled/apply', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { subject, batchNo, centerName, remarks } = req.body;
+
+    if (!subject || !batchNo || !centerName) {
+      return res.status(400).json({ error: 'All fields (Subject, Batch No, Center Name) are required.' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date().getDay()];
+
+    const classCancelled = await prisma.classCancelledLog.create({
+      data: {
+        userId,
+        date: today,
+        day: dayOfWeek,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        centerName: centerName.trim(),
+        remarks: remarks ? remarks.trim() : null
+      }
+    });
+
+    res.status(201).json({ message: 'Class cancellation details logged successfully.', classCancelled });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/class-cancelled/status', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const classCancelledLogs = await prisma.classCancelledLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ classCancelledLogs });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

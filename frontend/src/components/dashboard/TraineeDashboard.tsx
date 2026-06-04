@@ -1,11 +1,43 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Info, Mail, AlertCircle } from 'lucide-react';
+import { MapPin, Calendar, Clock, Send, Lock, X, Settings, Info, Mail, AlertCircle, BookOpen, CalendarX } from 'lucide-react';
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://uzbobbzbbkqzgtjemayu.supabase.co';
 const supabaseAnonKey = 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Helper functions for time conversion and calculation
+const convert24to12 = (time24: string): string => {
+  if (!time24) return '';
+  const [hoursStr, minutesStr] = time24.split(':');
+  let hours = parseInt(hoursStr);
+  const minutes = parseInt(minutesStr);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  const hoursFormatted = hours < 10 ? `0${hours}` : hours;
+  const minutesFormatted = minutes < 10 ? `0${minutes}` : minutes;
+  return `${hoursFormatted}:${minutesFormatted} ${ampm}`;
+};
+
+const calculateDuration = (fromStr: string, toStr: string): number => {
+  if (!fromStr || !toStr) return 0;
+  const [fromH, fromM] = fromStr.split(':').map(Number);
+  const [toH, toM] = toStr.split(':').map(Number);
+  
+  let fromMinutes = fromH * 60 + fromM;
+  let toMinutes = toH * 60 + toM;
+  
+  if (toMinutes < fromMinutes) {
+    // If toTime is less than fromTime, assume it crosses midnight (e.g. 11 PM to 1 AM)
+    toMinutes += 24 * 60;
+  }
+  
+  const diffMinutes = toMinutes - fromMinutes;
+  const hours = diffMinutes / 60;
+  return parseFloat(hours.toFixed(2));
+};
 
 const FilePreview = ({ url, label }: { url: string; label: string }) => {
   if (!url) return <span className="text-gray-400 italic mt-1 block">No {label} uploaded</span>;
@@ -155,6 +187,27 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [fromTime, setFromTime] = useState('');
   const [toTime, setToTime] = useState('');
 
+  // Extra Classes States
+  const [extraSubject, setExtraSubject] = useState('');
+  const [extraBatchNo, setExtraBatchNo] = useState('');
+  const [extraFromTime, setExtraFromTime] = useState('');
+  const [extraToTime, setExtraToTime] = useState('');
+  const [extraNoOfStudents, setExtraNoOfStudents] = useState('');
+  const [extraCenterName, setExtraCenterName] = useState('');
+  const [extraRemarks, setExtraRemarks] = useState('');
+  const [extraClasses, setExtraClasses] = useState<any[]>([]);
+  const [showExtraClassModal, setShowExtraClassModal] = useState(false);
+  const [submittingExtraClass, setSubmittingExtraClass] = useState(false);
+
+  // Class Cancelled States
+  const [cancelSubject, setCancelSubject] = useState('');
+  const [cancelBatchNo, setCancelBatchNo] = useState('');
+  const [cancelCenterName, setCancelCenterName] = useState('');
+  const [cancelRemarks, setCancelRemarks] = useState('');
+  const [cancelledClasses, setCancelledClasses] = useState<any[]>([]);
+  const [showClassCancelledModal, setShowClassCancelledModal] = useState(false);
+  const [submittingClassCancelled, setSubmittingClassCancelled] = useState(false);
+
   useEffect(() => {
     fetchStatus();
     fetchLeaveStatus();
@@ -164,6 +217,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     fetchNotices();
     fetchProfile();
     fetchDropdowns();
+    fetchExtraClassHistory();
+    fetchClassCancelledHistory();
     
     // Global interceptor: auto-logout if session was replaced by another device
     const interceptor = axios.interceptors.response.use(
@@ -215,6 +270,120 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       });
       setLeaves(res.data);
     } catch (err) { console.error(err); }
+  };
+
+  const fetchExtraClassHistory = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/attendance/extra-class/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setExtraClasses(res.data.extraClassLogs || []);
+    } catch (err) { console.error('Failed to fetch extra class history', err); }
+  };
+
+  const fetchClassCancelledHistory = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/attendance/class-cancelled/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCancelledClasses(res.data.classCancelledLogs || []);
+    } catch (err) { console.error('Failed to fetch class cancellation history', err); }
+  };
+
+  const handleLogExtraClass = async () => {
+    if (!extraSubject.trim() || !extraBatchNo.trim() || !extraFromTime.trim() || !extraToTime.trim() || !extraNoOfStudents.trim() || !extraCenterName.trim()) {
+      alert('Please fill out all mandatory fields for Extra Class.');
+      return;
+    }
+
+    const durationVal = calculateDuration(extraFromTime, extraToTime);
+    if (durationVal <= 0) {
+      alert('End Time must be after Start Time.');
+      return;
+    }
+
+    const studentsVal = parseInt(extraNoOfStudents);
+    if (isNaN(studentsVal) || studentsVal < 0) {
+      alert('Number of students must be a valid positive integer.');
+      return;
+    }
+
+    const startTimeFormatted = convert24to12(extraFromTime);
+    const endTimeFormatted = convert24to12(extraToTime);
+
+    try {
+      setSubmittingExtraClass(true);
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.post(`${API_URL}/api/attendance/extra-class/apply`, {
+        subject: extraSubject.trim(),
+        batchNo: extraBatchNo.trim(),
+        duration: durationVal,
+        startTime: startTimeFormatted,
+        endTime: endTimeFormatted,
+        noOfStudents: studentsVal,
+        centerName: extraCenterName.trim(),
+        remarks: extraRemarks.trim() || undefined
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert(res.data?.message || 'Extra class log submitted successfully!');
+      fetchExtraClassHistory();
+      setShowExtraClassModal(false);
+      
+      // Reset form
+      setExtraSubject('');
+      setExtraBatchNo('');
+      setExtraFromTime('');
+      setExtraToTime('');
+      setExtraNoOfStudents('');
+      setExtraCenterName('');
+      setExtraRemarks('');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to submit extra class log');
+    } finally {
+      setSubmittingExtraClass(false);
+    }
+  };
+
+  const handleLogClassCancelled = async () => {
+    if (!cancelSubject.trim() || !cancelBatchNo.trim() || !cancelCenterName.trim()) {
+      alert('Please fill out all mandatory fields for Class Cancellation.');
+      return;
+    }
+
+    try {
+      setSubmittingClassCancelled(true);
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.post(`${API_URL}/api/attendance/class-cancelled/apply`, {
+        subject: cancelSubject.trim(),
+        batchNo: cancelBatchNo.trim(),
+        centerName: cancelCenterName.trim(),
+        remarks: cancelRemarks.trim() || undefined
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert(res.data?.message || 'Class cancellation logged successfully!');
+      fetchClassCancelledHistory();
+      setShowClassCancelledModal(false);
+
+      // Reset form
+      setCancelSubject('');
+      setCancelBatchNo('');
+      setCancelCenterName('');
+      setCancelRemarks('');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to submit class cancellation log');
+    } finally {
+      setSubmittingClassCancelled(false);
+    }
   };
 
   const fetchHistory = async () => {
@@ -418,20 +587,6 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         return;
       }
     }
-
-    // Helper function to convert HH:mm to 12-hour format (hh:mm AM/PM)
-    const convert24to12 = (time24: string): string => {
-      if (!time24) return '';
-      const [hoursStr, minutesStr] = time24.split(':');
-      let hours = parseInt(hoursStr);
-      const minutes = parseInt(minutesStr);
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12; // the hour '0' should be '12'
-      const hoursFormatted = hours < 10 ? `0${hours}` : hours;
-      const minutesFormatted = minutes < 10 ? `0${minutes}` : minutes;
-      return `${hoursFormatted}:${minutesFormatted} ${ampm}`;
-    };
 
     const formattedFromTime = breakType === 'COLLEGE_VISIT' ? convert24to12(fromTime) : undefined;
     const formattedToTime = breakType === 'COLLEGE_VISIT' ? convert24to12(toTime) : undefined;
@@ -824,6 +979,105 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {status && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          {/* Card 3: Extra Classes Taken */}
+          <div className="bg-white rounded-lg shadow-md p-6 border border-emerald-100 hover:shadow-lg transition-all flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-black text-emerald-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+                <BookOpen className="text-emerald-600 animate-pulse" size={22} />
+                Extra Classes Taken
+              </h3>
+              
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                {extraClasses.length === 0 ? (
+                  <p className="text-center py-6 text-gray-400 text-xs">No extra classes logged yet.</p>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {extraClasses.map((ec: any) => (
+                      <div key={ec.id} className="py-2.5 space-y-1">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-gray-700">{ec.subject}</span>
+                          <span className={`px-2 py-0.5 rounded-full font-black text-[9px] uppercase tracking-wider ${
+                            ec.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                            ec.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                            'bg-amber-100 text-amber-700 animate-pulse'
+                          }`}>
+                            {ec.status}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 space-y-0.5 font-medium bg-gray-50/50 p-2 rounded border border-gray-100">
+                          <p><span className="font-bold text-gray-600">Batch:</span> {ec.batchNo} | <span className="font-bold text-gray-600">Students:</span> {ec.noOfStudents}</p>
+                          <p><span className="font-bold text-gray-600">Center:</span> {ec.centerName}</p>
+                          <p><span className="font-bold text-gray-600">Time:</span> {ec.startTime} - {ec.endTime} ({ec.duration} hrs)</p>
+                          <p><span className="font-bold text-gray-600">Date:</span> {new Date(ec.date).toLocaleDateString('en-IN')} ({ec.day})</p>
+                          {ec.remarks && <p><span className="font-bold text-gray-600">Remarks:</span> {ec.remarks}</p>}
+                          {ec.adminReason && (
+                            <p className="mt-1 pt-1 border-t border-gray-200 text-purple-700 font-semibold">
+                              <span className="font-bold text-gray-700">Reason:</span> {ec.adminReason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="pt-4">
+              <button
+                onClick={() => setShowExtraClassModal(true)}
+                className="w-full font-black py-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                ➕ Log Extra Class
+              </button>
+            </div>
+          </div>
+
+          {/* Card 4: Classes Cancelled */}
+          <div className="bg-white rounded-lg shadow-md p-6 border border-red-100 hover:shadow-lg transition-all flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-black text-red-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+                <CalendarX className="text-red-600 animate-pulse" size={22} />
+                Classes Cancelled
+              </h3>
+              
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                {cancelledClasses.length === 0 ? (
+                  <p className="text-center py-6 text-gray-400 text-xs">No cancelled classes logged yet.</p>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {cancelledClasses.map((cc: any) => (
+                      <div key={cc.id} className="py-2.5 space-y-1">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-gray-700">{cc.subject}</span>
+                          <span className="text-[10px] text-gray-400 font-mono">{new Date(cc.date).toLocaleDateString('en-IN')}</span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 space-y-0.5 font-medium bg-gray-50/50 p-2 rounded border border-gray-100">
+                          <p><span className="font-bold text-gray-600">Batch:</span> {cc.batchNo} | <span className="font-bold text-gray-600">Day:</span> {cc.day}</p>
+                          <p><span className="font-bold text-gray-600">Center:</span> {cc.centerName}</p>
+                          {cc.remarks && <p><span className="font-bold text-gray-600">Remarks:</span> {cc.remarks}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="pt-4">
+              <button
+                onClick={() => setShowClassCancelledModal(true)}
+                className="w-full font-black py-4 bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                ➕ Log Class Cancelled
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1610,6 +1864,289 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   {startingBreak ? 'Processing...' : '🚀 Save'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Extra Class Modal */}
+      {showExtraClassModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => {
+                setShowExtraClassModal(false);
+                setExtraSubject('');
+                setExtraBatchNo('');
+                setExtraFromTime('');
+                setExtraToTime('');
+                setExtraNoOfStudents('');
+                setExtraCenterName('');
+                setExtraRemarks('');
+              }}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
+            >
+              <X size={20} />
+            </button>
+            
+            <h3 className="text-lg font-black text-emerald-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+              <BookOpen size={20} className="animate-pulse" /> Log Extra Class Taken
+            </h3>
+
+            <div className="space-y-3 text-left overflow-y-auto max-h-[70vh] pr-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Date</label>
+                  <input type="text" readOnly value={new Date().toLocaleDateString('en-IN')} className="w-full border border-emerald-100 rounded-lg p-2.5 text-xs bg-gray-100 font-bold text-gray-500 shadow-inner" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Day</label>
+                  <input type="text" readOnly value={['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()]} className="w-full border border-emerald-100 rounded-lg p-2.5 text-xs bg-gray-100 font-bold text-gray-500 shadow-inner" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Subject (Mandatory)</label>
+                <input
+                  type="text"
+                  required
+                  value={extraSubject}
+                  onChange={(e) => setExtraSubject(e.target.value)}
+                  className="w-full border border-emerald-100 rounded-lg p-2.5 text-xs outline-none focus:border-emerald-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                  placeholder="e.g. Placement Drive, Guest Lecture"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Batch No (Mandatory)</label>
+                <input
+                  type="text"
+                  required
+                  value={extraBatchNo}
+                  onChange={(e) => setExtraBatchNo(e.target.value)}
+                  className="w-full border border-emerald-100 rounded-lg p-2.5 text-xs outline-none focus:border-emerald-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                  placeholder="e.g. B-125"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Clock Picker: From Time */}
+                <div>
+                  <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">FROM TIME</label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      required
+                      value={extraFromTime}
+                      onChange={(e) => setExtraFromTime(e.target.value)}
+                      className="w-full border border-purple-100 rounded-lg p-2.5 pl-9 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner text-gray-800"
+                    />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
+                      <Clock size={14} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clock Picker: To Time */}
+                <div>
+                  <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">TO TIME</label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      required
+                      value={extraToTime}
+                      onChange={(e) => setExtraToTime(e.target.value)}
+                      className="w-full border border-purple-100 rounded-lg p-2.5 pl-9 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner text-gray-800"
+                    />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
+                      <Clock size={14} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">No of Students (Mandatory)</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={extraNoOfStudents}
+                    onChange={(e) => setExtraNoOfStudents(e.target.value)}
+                    className="w-full border border-emerald-100 rounded-lg p-2.5 text-xs outline-none focus:border-emerald-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                    placeholder="e.g. 45"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">NICT Center Name (Mandatory)</label>
+                  <input
+                    type="text"
+                    required
+                    value={extraCenterName}
+                    onChange={(e) => setExtraCenterName(e.target.value)}
+                    className="w-full border border-emerald-100 rounded-lg p-2.5 text-xs outline-none focus:border-emerald-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                    placeholder="e.g. Rajajinagar Center"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Remarks if any (Optional)</label>
+                <textarea
+                  value={extraRemarks}
+                  onChange={(e) => setExtraRemarks(e.target.value)}
+                  className="w-full border border-emerald-100 rounded-lg p-2.5 text-xs outline-none focus:border-emerald-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 resize-none h-16"
+                  placeholder="Enter details..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-4 border-t mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowExtraClassModal(false);
+                  setExtraSubject('');
+                  setExtraBatchNo('');
+                  setExtraFromTime('');
+                  setExtraToTime('');
+                  setExtraNoOfStudents('');
+                  setExtraCenterName('');
+                  setExtraRemarks('');
+                }}
+                className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={
+                  submittingExtraClass ||
+                  !extraSubject.trim() ||
+                  !extraBatchNo.trim() ||
+                  !extraFromTime.trim() ||
+                  !extraToTime.trim() ||
+                  !extraNoOfStudents.trim() ||
+                  !extraCenterName.trim()
+                }
+                onClick={handleLogExtraClass}
+                className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-emerald-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {submittingExtraClass ? 'Saving...' : '🚀 Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Class Cancelled Modal */}
+      {showClassCancelledModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => {
+                setShowClassCancelledModal(false);
+                setCancelSubject('');
+                setCancelBatchNo('');
+                setCancelCenterName('');
+                setCancelRemarks('');
+              }}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
+            >
+              <X size={20} />
+            </button>
+            
+            <h3 className="text-lg font-black text-red-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+              <CalendarX size={20} className="animate-pulse" /> Log Class Cancelled
+            </h3>
+
+            <div className="space-y-3 text-left overflow-y-auto max-h-[70vh] pr-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Date</label>
+                  <input type="text" readOnly value={new Date().toLocaleDateString('en-IN')} className="w-full border border-red-100 rounded-lg p-2.5 text-xs bg-gray-100 font-bold text-gray-500 shadow-inner" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Day</label>
+                  <input type="text" readOnly value={['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()]} className="w-full border border-red-100 rounded-lg p-2.5 text-xs bg-gray-100 font-bold text-gray-500 shadow-inner" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Subject (Mandatory)</label>
+                <input
+                  type="text"
+                  required
+                  value={cancelSubject}
+                  onChange={(e) => setCancelSubject(e.target.value)}
+                  className="w-full border border-red-100 rounded-lg p-2.5 text-xs outline-none focus:border-red-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                  placeholder="e.g. Java Programming"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Batch No (Mandatory)</label>
+                  <input
+                    type="text"
+                    required
+                    value={cancelBatchNo}
+                    onChange={(e) => setCancelBatchNo(e.target.value)}
+                    className="w-full border border-red-100 rounded-lg p-2.5 text-xs outline-none focus:border-red-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                    placeholder="e.g. B-125"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">NICT Center Name (Mandatory)</label>
+                  <input
+                    type="text"
+                    required
+                    value={cancelCenterName}
+                    onChange={(e) => setCancelCenterName(e.target.value)}
+                    className="w-full border border-red-100 rounded-lg p-2.5 text-xs outline-none focus:border-red-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                    placeholder="e.g. Rajajinagar Center"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Remarks if any (Optional)</label>
+                <textarea
+                  value={cancelRemarks}
+                  onChange={(e) => setCancelRemarks(e.target.value)}
+                  className="w-full border border-red-100 rounded-lg p-2.5 text-xs outline-none focus:border-red-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 resize-none h-20"
+                  placeholder="Enter details..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-4 border-t mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowClassCancelledModal(false);
+                  setCancelSubject('');
+                  setCancelBatchNo('');
+                  setCancelCenterName('');
+                  setCancelRemarks('');
+                }}
+                className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={
+                  submittingClassCancelled ||
+                  !cancelSubject.trim() ||
+                  !cancelBatchNo.trim() ||
+                  !cancelCenterName.trim()
+                }
+                onClick={handleLogClassCancelled}
+                className="flex-[2] bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-red-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {submittingClassCancelled ? 'Saving...' : '🚀 Save'}
+              </button>
             </div>
           </div>
         </div>
