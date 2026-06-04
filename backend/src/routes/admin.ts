@@ -2066,7 +2066,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
         breakIn: b.breakIn 
           ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
           : 'On Break',
-        duration: duration !== null ? `${duration} mins` : 'On Break',
+        duration: duration !== null ? `${duration} mins (${durationHrs} hrs)` : 'On Break',
         reason: b.reason || '--',
         
         // Structured fields for college visits
@@ -2075,7 +2075,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
         subject: parsed.subject,
         topicsCovered: parsed.topicsCovered,
         conveyance: parsed.conveyance,
-        numberOfHours: durationHrs !== null ? durationHrs.toString() : '--'
+        numberOfHours: parsed.numberOfHours
       };
     });
 
@@ -2326,13 +2326,10 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
               if (type === 'COLLEGE_VISIT') {
                 const parsed = parseCollegeVisit(b);
-                let hrsVal = 0;
-                if (b.breakIn) {
-                  const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
-                  hrsVal = Number((diffMs / 3600000).toFixed(2));
-                  monthlyTotalHours += hrsVal;
+                const hrs = parseFloat(parsed.numberOfHours);
+                if (!isNaN(hrs)) {
+                  monthlyTotalHours += hrs;
                 }
-                const hrsStr = b.breakIn ? hrsVal.toFixed(2) : 'On Break';
                 
                 if (dayBreaks.length > 1) {
                   bookletNoList.push(`Break ${idx + 1}: ${parsed.bookletNo}`);
@@ -2340,7 +2337,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   subjectList.push(`Break ${idx + 1}: ${parsed.subject}`);
                   topicsCoveredList.push(`Break ${idx + 1}: ${parsed.topicsCovered}`);
                   conveyanceList.push(`Break ${idx + 1}: ${parsed.conveyance}`);
-                  numberOfHoursList.push(`Break ${idx + 1}: ${hrsStr}`);
+                  numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
                   outTimesList.push(`Break ${idx + 1}: ${outStr}`);
                   inTimesList.push(`Break ${idx + 1}: ${inStr}`);
                 } else {
@@ -2349,7 +2346,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   subjectList.push(parsed.subject);
                   topicsCoveredList.push(parsed.topicsCovered);
                   conveyanceList.push(parsed.conveyance);
-                  numberOfHoursList.push(hrsStr);
+                  numberOfHoursList.push(parsed.numberOfHours);
                   outTimesList.push(outStr);
                   inTimesList.push(inStr);
                 }
@@ -2406,7 +2403,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             if (isOnBreak) {
               row.getCell(durationColIndex).value = 'On Break';
             } else if (totalMins > 0) {
-              row.getCell(durationColIndex).value = totalMins;
+              const actualHrs = (totalMins / 60).toFixed(2);
+              row.getCell(durationColIndex).value = `${totalMins} mins (${actualHrs} hrs)`;
               monthlyTotalMins += totalMins;
             } else {
               row.getCell(durationColIndex).value = '--';
@@ -2416,14 +2414,13 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
               if (dayBreaks.length > 1) {
                 row.getCell(8).value = numberOfHoursVal;
               } else if (dayBreaks.length === 1) {
-                const b = dayBreaks[0];
-                if (b.breakIn) {
-                  const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
-                  const hrsVal = Number((diffMs / 3600000).toFixed(2));
-                  row.getCell(8).value = hrsVal;
+                const parsed = parseCollegeVisit(dayBreaks[0]);
+                const hrs = parseFloat(parsed.numberOfHours);
+                if (!isNaN(hrs)) {
+                  row.getCell(8).value = hrs;
                   row.getCell(8).numFmt = '0.0" hrs"';
                 } else {
-                  row.getCell(8).value = 'On Break';
+                  row.getCell(8).value = parsed.numberOfHours;
                 }
               } else {
                 row.getCell(8).value = '--';
@@ -2435,7 +2432,9 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
               row.getCell(8).value = '--';
             }
           }
-          row.getCell(durationColIndex).numFmt = '0" mins"';
+          if (type !== 'COLLEGE_VISIT') {
+            row.getCell(durationColIndex).numFmt = '0" mins"';
+          }
           
           row.eachCell((cell, colNumber) => {
             cell.alignment = { 
@@ -2458,7 +2457,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Add Grand Total Row
         const totalRowData = type === 'COLLEGE_VISIT'
-          ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', monthlyTotalHours, '', '', monthlyTotalMins]
+          ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', monthlyTotalHours, '', '', `${monthlyTotalMins} mins (${(monthlyTotalMins / 60).toFixed(2)} hrs)`]
           : ['', 'TOTAL DURATION', '', '', monthlyTotalMins, ''];
 
         const totalRow = ws.addRow(totalRowData);
@@ -2500,8 +2499,9 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         });
         if (type === 'COLLEGE_VISIT') {
           totalRow.getCell(8).numFmt = '0.0" hrs"';
+        } else {
+          totalRow.getCell(totalDurationColIndex).numFmt = '0" mins"';
         }
-        totalRow.getCell(totalDurationColIndex).numFmt = '0" mins"';
 
         // Auto-fit column widths (safety margins)
         ws.columns.forEach(col => {

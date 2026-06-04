@@ -152,6 +152,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [bookletNo, setBookletNo] = useState('');
   const [topicsCovered, setTopicsCovered] = useState('');
   const [conveyance, setConveyance] = useState('');
+  const [numberOfHours, setNumberOfHours] = useState('');
 
   useEffect(() => {
     fetchStatus();
@@ -406,8 +407,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
   const handleBreakOut = async () => {
     if (breakType === 'COLLEGE_VISIT') {
-      if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim()) {
-        alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details) are required for a College Visit.');
+      if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim() || !numberOfHours.trim()) {
+        alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, No of Hours) are required for a College Visit.');
         return;
       }
     } else {
@@ -428,6 +429,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : undefined,
         topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : undefined,
         conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : undefined,
+        numberOfHours: breakType === 'COLLEGE_VISIT' ? numberOfHours.trim() : undefined,
         reason: breakType === 'NORMAL' ? breakReason.trim() : undefined
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -441,6 +443,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       setSubject('');
       setTopicsCovered('');
       setConveyance('');
+      setNumberOfHours('');
       setBreakType('NORMAL');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to start break');
@@ -581,128 +584,219 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       </div>
 
       {status && (
-        <div className="bg-white rounded-lg shadow-md p-6 border border-purple-100 mt-6 transition-all hover:shadow-lg">
-          <h3 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
-            <Clock className="text-purple-600 animate-pulse" size={22} />
-            Break Details
-          </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          {/* Card 1: Normal Break Details */}
+          <div className="bg-white rounded-lg shadow-md p-6 border border-amber-100 hover:shadow-lg transition-all flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-black text-amber-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+                <Clock className="text-amber-600 animate-pulse" size={22} />
+                Break Details
+              </h3>
 
-          {status?.breakPending ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex flex-col items-center justify-center gap-3 text-center">
-                <Clock className="text-yellow-600 animate-pulse text-yellow-500" size={24} />
-                <div>
-                  <p className="font-extrabold text-yellow-900 text-sm">⏳ BREAK REQUEST PENDING</p>
-                  <p className="text-xs text-yellow-700 mt-1">
-                    Your request to go on break (Reason: <span className="italic">"{status.pendingBreak?.reason || '--'}"</span>) is pending supervisor approval.
-                  </p>
+              {status?.breakPending && !(status.pendingBreak?.reason && status.pendingBreak.reason.startsWith('College Visit:')) ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex flex-col items-center justify-center gap-3 text-center">
+                    <Clock className="text-yellow-600 animate-pulse text-yellow-500" size={24} />
+                    <div>
+                      <p className="font-extrabold text-yellow-900 text-sm">⏳ BREAK REQUEST PENDING</p>
+                      <p className="text-xs text-yellow-700 mt-1">
+                        Your request to go on break (Reason: <span className="italic">"{status.pendingBreak?.reason || '--'}"</span>) is pending supervisor approval.
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-yellow-600 font-semibold">Please wait until a supervisor or admin approves your request.</p>
+                  </div>
                 </div>
-                <p className="text-[10px] text-yellow-600 font-semibold">Please wait until a supervisor or admin approves your request.</p>
-              </div>
-            </div>
-          ) : status?.currentlyOnBreak ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div>
-                  <p className="font-extrabold text-purple-900 text-sm">
-                    {status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:'))
-                      ? '🎓 YOU ARE CURRENTLY ON COLLEGE VISIT'
-                      : '⚠️ YOU ARE CURRENTLY ON BREAK'
-                    }
-                  </p>
-                  <p className="text-xs text-purple-700 mt-1">
-                    Departed at: <span className="font-semibold">{status.activeBreak?.breakOut ? new Date(status.activeBreak.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
-                  </p>
+              ) : status?.currentlyOnBreak && !(status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:'))) ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg flex flex-col justify-between gap-3">
+                    <div>
+                      <p className="font-extrabold text-amber-900 text-sm">
+                        ⚠️ YOU ARE CURRENTLY ON BREAK
+                      </p>
+                      <p className="text-xs text-amber-700 mt-1">
+                        Departed at: <span className="font-semibold">{status.activeBreak?.breakOut ? new Date(status.activeBreak.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleBreakIn()}
+                      disabled={endingBreak}
+                      className="bg-amber-600 hover:bg-amber-700 text-white font-black px-6 py-3 rounded-lg text-xs uppercase tracking-wider shadow-lg hover:shadow-amber-200 transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer w-full"
+                    >
+                      {endingBreak ? 'Verifying...' : '👋 Arrived Inside Premises (Break In)'}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleBreakIn()}
-                  disabled={endingBreak}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-black px-6 py-3 rounded-lg text-xs uppercase tracking-wider shadow-lg hover:shadow-purple-200 transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {endingBreak 
-                    ? 'Verifying...' 
-                    : (status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:'))
-                        ? '👋 End College Visit'
-                        : '👋 Arrived Inside Premises (Break In)'
-                      )
-                  }
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-150 text-xs">
-                <span className="text-gray-500 font-semibold uppercase tracking-wider">Breaks Taken Today:</span>
-                <span className={`font-black px-2.5 py-1 rounded-full ${status?.todayBreaksCount >= 4 ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'}`}>
-                  {status?.todayBreaksCount || 0} / 4
-                </span>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Completed Normal Breaks List */}
+                  {status?.completedBreaks && status.completedBreaks.filter((b: any) => !(b.bookletNo !== null || (b.reason && b.reason.startsWith('College Visit:')))).length > 0 && (
+                    <div className="border border-gray-100 rounded overflow-hidden text-xs bg-white">
+                      <div className="bg-gray-50/50 px-3 py-1.5 font-bold text-gray-500 uppercase border-b text-[10px] tracking-wider">Today's Breaks Log</div>
+                      <div className="divide-y divide-gray-100">
+                        {status.completedBreaks
+                          .filter((b: any) => !(b.bookletNo !== null || (b.reason && b.reason.startsWith('College Visit:'))))
+                          .map((b: any, index: number) => {
+                            const outTime = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const inTime = b.breakIn ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
+                            const dur = b.breakIn ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60)) : null;
 
-              {/* Completed Breaks List */}
-              {status?.completedBreaks && status.completedBreaks.length > 0 && (
-                <div className="border border-gray-100 rounded overflow-hidden text-xs bg-white">
-                  <div className="bg-gray-50/50 px-3 py-1.5 font-bold text-gray-500 uppercase border-b text-[10px] tracking-wider">Today's Breaks Log</div>
-                  <div className="divide-y divide-gray-100">
-                    {status.completedBreaks.map((b: any, index: number) => {
-                      const outTime = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                      const inTime = b.breakIn ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
-                      const dur = b.breakIn ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60)) : null;
+                            return (
+                              <div key={b.id} className="p-3 flex flex-col gap-1 hover:bg-gray-50/50 transition-colors">
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="font-semibold text-gray-600">Break {index + 1}</span>
+                                  <span className="text-gray-800 font-mono">{outTime} - {inTime}</span>
+                                  <span className="font-extrabold text-amber-700">{dur !== null ? `${dur} mins` : 'On Break'}</span>
+                                </div>
+                                {b.reason && (
+                                  <p className="text-[10px] text-gray-500 italic bg-gray-50 px-2 py-0.5 rounded border border-gray-100 mt-0.5">
+                                    <span className="font-bold text-gray-600 not-italic mr-1">Reason:</span>
+                                    {b.reason}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
 
-                      return (
-                        <div key={b.id} className="p-3 flex flex-col gap-1 hover:bg-gray-50/50 transition-colors">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-semibold text-gray-600">Break {index + 1}</span>
-                            <span className="text-gray-800 font-mono">{outTime} - {inTime}</span>
-                            <span className="font-extrabold text-purple-700">{dur !== null ? `${dur} mins` : 'On Break'}</span>
-                          </div>
-                          {b.reason && (
-                            <p className="text-[10px] text-gray-500 italic bg-gray-50 px-2 py-0.5 rounded border border-gray-100 mt-0.5">
-                              <span className="font-bold text-gray-600 not-italic mr-1">Reason:</span>
-                              {b.reason}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-150 text-xs">
+                    <span className="text-gray-500 font-semibold uppercase tracking-wider">Normal Breaks Count:</span>
+                    <span className={`font-black px-2.5 py-1 rounded-full ${status.completedBreaks.filter((b: any) => !(b.bookletNo !== null || (b.reason && b.reason.startsWith('College Visit:')))).length >= 4 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {status.completedBreaks.filter((b: any) => !(b.bookletNo !== null || (b.reason && b.reason.startsWith('College Visit:')))).length} / 4
+                    </span>
                   </div>
                 </div>
               )}
+            </div>
 
-              {status?.todayBreaksCount < 4 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+            {!(status?.breakPending && !(status.pendingBreak?.reason && status.pendingBreak.reason.startsWith('College Visit:'))) && 
+             !(status?.currentlyOnBreak && !(status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:')))) && (
+              <div className="pt-4">
+                {status.completedBreaks.filter((b: any) => !(b.bookletNo !== null || (b.reason && b.reason.startsWith('College Visit:')))).length < 4 ? (
                   <button
                     onClick={() => {
                       setBreakType('NORMAL');
                       setShowBreakReasonModal(true);
                     }}
-                    disabled={startingBreak || status?.status !== 'IN'}
+                    disabled={startingBreak || status?.status !== 'IN' || status?.currentlyOnBreak}
                     className={`w-full font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
-                      status?.status !== 'IN'
+                      status?.status !== 'IN' || status?.currentlyOnBreak
                         ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
                         : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
                     }`}
-                    title={status?.status !== 'IN' ? 'You must punch in first to take a normal break' : ''}
+                    title={status?.status !== 'IN' ? 'You must punch in first to take a normal break' : status?.currentlyOnBreak ? 'You are currently on an active break/visit' : ''}
                   >
                     {startingBreak ? 'Processing...' : '☕ Start Normal Break'}
                   </button>
-                  <button
-                    onClick={() => {
-                      setBreakType('COLLEGE_VISIT');
-                      setShowBreakReasonModal(true);
-                    }}
-                    disabled={startingBreak}
-                    className="w-full bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                  >
-                    {startingBreak ? 'Processing...' : '🎓 College visit details'}
-                  </button>
+                ) : (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center text-xs font-bold text-red-700">
+                    🚫 Maximum 4 breaks reached for today. No further breaks are allowed.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Card 2: College Visit Details */}
+          <div className="bg-white rounded-lg shadow-md p-6 border border-purple-100 hover:shadow-lg transition-all flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-black text-purple-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+                <Clock className="text-purple-600 animate-pulse" size={22} />
+                College Visit Details
+              </h3>
+
+              {status?.currentlyOnBreak && (status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:'))) ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg flex flex-col justify-between gap-3">
+                    <div>
+                      <p className="font-extrabold text-purple-900 text-sm">
+                        🎓 YOU ARE CURRENTLY ON COLLEGE VISIT
+                      </p>
+                      <p className="text-xs text-purple-700 mt-1">
+                        Departed at: <span className="font-semibold">{status.activeBreak?.breakOut ? new Date(status.activeBreak.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
+                      </p>
+                      <div className="text-[10px] text-purple-600 bg-white/60 p-2.5 rounded border border-purple-100/50 mt-2 space-y-1">
+                        <p><span className="font-bold">Booklet No:</span> {status.activeBreak?.bookletNo || '--'}</p>
+                        <p><span className="font-bold">College:</span> {status.activeBreak?.collegeName || '--'}</p>
+                        <p><span className="font-bold">Subject:</span> {status.activeBreak?.subject || '--'}</p>
+                        {status.activeBreak?.topicsCovered && <p><span className="font-bold">Topics:</span> {status.activeBreak.topicsCovered}</p>}
+                        {status.activeBreak?.conveyance && <p><span className="font-bold">Conveyance:</span> {status.activeBreak.conveyance}</p>}
+                        {status.activeBreak?.numberOfHours && <p><span className="font-bold">Planned Hours:</span> {status.activeBreak.numberOfHours} hrs</p>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleBreakIn()}
+                      disabled={endingBreak}
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-black px-6 py-3 rounded-lg text-xs uppercase tracking-wider shadow-lg hover:shadow-purple-200 transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer w-full"
+                    >
+                      {endingBreak ? 'Verifying...' : '👋 End College Visit'}
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center text-xs font-bold text-red-700">
-                  🚫 Maximum 4 breaks reached for today. No further breaks are allowed.
+                <div className="space-y-4">
+                  {/* Completed College Visits List */}
+                  {status?.completedBreaks && status.completedBreaks.filter((b: any) => b.bookletNo !== null || (b.reason && b.reason.startsWith('College Visit:'))).length > 0 && (
+                    <div className="border border-gray-100 rounded overflow-hidden text-xs bg-white">
+                      <div className="bg-gray-50/50 px-3 py-1.5 font-bold text-gray-500 uppercase border-b text-[10px] tracking-wider">Today's College Visits Log</div>
+                      <div className="divide-y divide-gray-100">
+                        {status.completedBreaks
+                          .filter((b: any) => b.bookletNo !== null || (b.reason && b.reason.startsWith('College Visit:')))
+                          .map((b: any, index: number) => {
+                            const outTime = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const inTime = b.breakIn ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
+                            const dur = b.breakIn ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60)) : null;
+
+                            return (
+                              <div key={b.id} className="p-3 flex flex-col gap-1 hover:bg-gray-50/50 transition-colors">
+                                <div className="flex justify-between items-center text-xs">
+                                  <span className="font-semibold text-gray-600">Visit {index + 1}</span>
+                                  <span className="text-gray-800 font-mono">{outTime} - {inTime}</span>
+                                  <span className="font-extrabold text-purple-700">{dur !== null ? `${(dur/60).toFixed(2)} hrs (${dur} mins)` : 'On Visit'}</span>
+                                </div>
+                                <div className="text-[10px] text-gray-500 bg-gray-50 p-2 rounded border border-gray-150 mt-1 space-y-0.5">
+                                  <p><span className="font-bold text-gray-600">College:</span> {b.collegeName || '--'} ({b.subject || '--'})</p>
+                                  <p><span className="font-bold text-gray-600">Booklet No:</span> {b.bookletNo || '--'}</p>
+                                  {b.numberOfHours && <p><span className="font-bold text-gray-600">Planned Hours:</span> {b.numberOfHours} hrs</p>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-150 text-xs">
+                    <span className="text-gray-500 font-semibold uppercase tracking-wider">College Visits Count:</span>
+                    <span className="font-black px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">
+                      {status.completedBreaks.filter((b: any) => b.bookletNo !== null || (b.reason && b.reason.startsWith('College Visit:'))).length}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
-          )}
+
+            {!(status?.currentlyOnBreak && (status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:')))) && (
+              <div className="pt-4">
+                <button
+                  onClick={() => {
+                    setBreakType('COLLEGE_VISIT');
+                    setShowBreakReasonModal(true);
+                  }}
+                  disabled={startingBreak || status?.currentlyOnBreak}
+                  className={`w-full font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
+                    status?.currentlyOnBreak
+                      ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200'
+                  }`}
+                  title={status?.currentlyOnBreak ? 'You are currently on an active break/visit' : ''}
+                >
+                  {startingBreak ? 'Processing...' : '🎓 Start College Visit'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1312,6 +1406,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 setSubject('');
                 setTopicsCovered('');
                 setConveyance('');
+                setNumberOfHours('');
                 setBreakType('NORMAL');
               }}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
@@ -1407,6 +1502,19 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       placeholder="e.g. Cab / Auto / Two Wheeler (KM: 24)"
                     />
                   </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
+                      No of hours
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={numberOfHours}
+                      onChange={(e) => setNumberOfHours(e.target.value)}
+                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                      placeholder="e.g. 4.5"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -1421,6 +1529,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                     setSubject('');
                     setTopicsCovered('');
                     setConveyance('');
+                    setNumberOfHours('');
                     setBreakType('NORMAL');
                   }}
                   className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
@@ -1432,7 +1541,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   disabled={
                     startingBreak || 
                     (breakType === 'NORMAL' && !breakReason.trim()) || 
-                    (breakType === 'COLLEGE_VISIT' && (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim()))
+                    (breakType === 'COLLEGE_VISIT' && (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim() || !numberOfHours.trim()))
                   }
                   onClick={() => handleBreakOut()}
                   className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"

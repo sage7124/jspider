@@ -72,7 +72,13 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
         id: b.id,
         breakOut: b.breakOut,
         breakIn: b.breakIn,
-        reason: b.reason
+        reason: b.reason,
+        bookletNo: b.bookletNo,
+        collegeName: b.collegeName,
+        subject: b.subject,
+        topicsCovered: b.topicsCovered,
+        conveyance: b.conveyance,
+        numberOfHours: b.numberOfHours
       }))
     });
   } catch (error) {
@@ -584,7 +590,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, reason } = req.body;
+    const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, numberOfHours, reason } = req.body;
     const breakType = type || 'NORMAL';
 
     const attendance = await prisma.attendance.findUnique({
@@ -625,8 +631,8 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       }
       finalReason = reason.trim();
     } else if (breakType === 'COLLEGE_VISIT') {
-      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance) {
-        return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details) are required for a College Visit.' });
+      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !numberOfHours) {
+        return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, No of Hours) are required for a College Visit.' });
       }
       finalReason = `College Visit: Booklet No: ${bookletNo.trim()} | College: ${collegeName.trim()} | Subject: ${subject.trim()}`;
     }
@@ -642,7 +648,8 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
         collegeName: breakType === 'COLLEGE_VISIT' ? collegeName.trim() : null,
         subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : null,
         topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : null,
-        conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : null
+        conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : null,
+        numberOfHours: breakType === 'COLLEGE_VISIT' ? numberOfHours.trim() : null
       }
     });
 
