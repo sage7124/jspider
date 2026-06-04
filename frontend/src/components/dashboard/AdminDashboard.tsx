@@ -1114,15 +1114,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
                 <GraduationCap size={18} /> College Visits
               </button>
-              <button onClick={() => setShowExtraClasses(true)}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded font-medium transition-colors">
-                <BookOpen size={18} /> Extra Classes
-              </button>
-              <button onClick={() => setShowCancelledClasses(true)}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium transition-colors">
-                <CalendarX size={18} /> Cancelled Classes
-              </button>
             </>
+          )}
+          {hasPermission('MANAGE_EXTRA_CLASSES') && (
+            <button onClick={() => setShowExtraClasses(true)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <BookOpen size={18} /> Extra Classes
+            </button>
+          )}
+          {hasPermission('MANAGE_CANCELLED_CLASSES') && (
+            <button onClick={() => setShowCancelledClasses(true)}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <CalendarX size={18} /> Cancelled Classes
+            </button>
           )}
         </div>
       </div>
@@ -2323,6 +2327,8 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                         { id: 'NOTICES', label: '📢 Manage Notices', core: false },
                         { id: 'GPS_LOCATION', label: '📡 Branch GPS Config', core: false },
                         { id: 'MANAGE_BREAKS', label: '🕒 Manage Breaks', core: false },
+                        { id: 'MANAGE_EXTRA_CLASSES', label: '📚 Manage Extra Classes', core: false },
+                        { id: 'MANAGE_CANCELLED_CLASSES', label: '❌ Manage Cancelled Classes', core: false },
                       ].map(p => (
                         <label key={p.id} className="flex items-center gap-2 cursor-pointer text-[10px] font-bold select-none text-gray-700 hover:text-blue-700">
                           <input 

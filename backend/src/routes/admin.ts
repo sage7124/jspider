@@ -2739,6 +2739,18 @@ router.get('/extra-classes', authenticateToken, async (req: AuthRequest, res) =>
     const { status, search, month } = req.query;
     const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
 
+    // Dynamic Database-backed clearance check for Supervisors
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_EXTRA_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage extra classes.' });
+      }
+    }
+
     let dateFilter = {};
     if (month && typeof month === 'string') {
       const [year, mon] = month.split('-').map(Number);
@@ -2794,6 +2806,26 @@ router.post('/extra-classes/process', authenticateToken, async (req: AuthRequest
       return res.status(404).json({ error: 'Extra class log not found.' });
     }
 
+    // Strict Supervisor Authorization Sandbox & Clearance Checks
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_EXTRA_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage extra classes.' });
+      }
+
+      // Check if trainee belongs to supervisor
+      const trainee = await prisma.user.findUnique({
+        where: { id: log.userId }
+      });
+      if (!trainee || trainee.supervisorId !== req.user.id) {
+        return res.status(403).json({ error: 'Access Denied: You can only process extra class requests for trainees assigned to you.' });
+      }
+    }
+
     if (log.status !== 'PENDING') {
       return res.status(400).json({ error: 'Request has already been processed.' });
     }
@@ -2818,6 +2850,18 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
     const { month, search } = req.query;
     if (!month || typeof month !== 'string') {
       return res.status(400).json({ error: 'Month is required' });
+    }
+
+    // Dynamic Database-backed clearance check for Supervisors
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_EXTRA_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage extra classes.' });
+      }
     }
 
     const [year, mon] = month.split('-').map(Number);
@@ -2969,6 +3013,18 @@ router.get('/classes-cancelled', authenticateToken, async (req: AuthRequest, res
     const { search, month } = req.query;
     const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
 
+    // Dynamic Database-backed clearance check for Supervisors
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_CANCELLED_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage cancelled classes.' });
+      }
+    }
+
     let dateFilter = {};
     if (month && typeof month === 'string') {
       const [year, mon] = month.split('-').map(Number);
@@ -3008,6 +3064,18 @@ router.get('/reports/classes-cancelled/export', authenticateToken, async (req: A
     const { month, search } = req.query;
     if (!month || typeof month !== 'string') {
       return res.status(400).json({ error: 'Month is required' });
+    }
+
+    // Dynamic Database-backed clearance check for Supervisors
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_CANCELLED_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage cancelled classes.' });
+      }
     }
 
     const [year, mon] = month.split('-').map(Number);
