@@ -412,17 +412,29 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, From Time, To Time) are required for a College Visit.');
         return;
       }
-      const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i;
-      if (!timeRegex.test(fromTime.trim()) || !timeRegex.test(toTime.trim())) {
-        alert('Starting and Ending times must be in valid 12-hour format (e.g., 10:00 AM, 02:30 PM).');
-        return;
-      }
     } else {
       if (!breakReason.trim()) {
         alert('Reason for break is required.');
         return;
       }
     }
+
+    // Helper function to convert HH:mm to 12-hour format (hh:mm AM/PM)
+    const convert24to12 = (time24: string): string => {
+      if (!time24) return '';
+      const [hoursStr, minutesStr] = time24.split(':');
+      let hours = parseInt(hoursStr);
+      const minutes = parseInt(minutesStr);
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      const hoursFormatted = hours < 10 ? `0${hours}` : hours;
+      const minutesFormatted = minutes < 10 ? `0${minutes}` : minutes;
+      return `${hoursFormatted}:${minutesFormatted} ${ampm}`;
+    };
+
+    const formattedFromTime = breakType === 'COLLEGE_VISIT' ? convert24to12(fromTime) : undefined;
+    const formattedToTime = breakType === 'COLLEGE_VISIT' ? convert24to12(toTime) : undefined;
 
     try {
       setStartingBreak(true);
@@ -435,8 +447,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : undefined,
         topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : undefined,
         conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : undefined,
-        fromTime: breakType === 'COLLEGE_VISIT' ? fromTime.trim() : undefined,
-        toTime: breakType === 'COLLEGE_VISIT' ? toTime.trim() : undefined,
+        fromTime: formattedFromTime,
+        toTime: formattedToTime,
         reason: breakType === 'NORMAL' ? breakReason.trim() : undefined
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -1524,41 +1536,35 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
                         From Time
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={fromTime}
-                        onChange={(e) => setFromTime(e.target.value)}
-                        className={`w-full border rounded-lg p-2.5 text-xs outline-none bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 ${
-                          fromTime && !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(fromTime.trim())
-                            ? 'border-red-400 focus:border-red-500 text-red-600'
-                            : 'border-purple-100 focus:border-purple-400 text-gray-800'
-                        }`}
-                        placeholder="e.g. 10:00 AM"
-                      />
-                      {fromTime && !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(fromTime.trim()) && (
-                        <p className="text-[9px] text-red-500 mt-0.5 font-bold">Format: 10:00 AM</p>
-                      )}
+                      <div className="relative">
+                        <input
+                          type="time"
+                          required
+                          value={fromTime}
+                          onChange={(e) => setFromTime(e.target.value)}
+                          className="w-full border border-purple-100 rounded-lg p-2.5 pl-9 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner text-gray-800"
+                        />
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
+                          <Clock size={14} />
+                        </div>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
                         To Time
                       </label>
-                      <input
-                        type="text"
-                        required
-                        value={toTime}
-                        onChange={(e) => setToTime(e.target.value)}
-                        className={`w-full border rounded-lg p-2.5 text-xs outline-none bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 ${
-                          toTime && !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(toTime.trim())
-                            ? 'border-red-400 focus:border-red-500 text-red-600'
-                            : 'border-purple-100 focus:border-purple-400 text-gray-800'
-                        }`}
-                        placeholder="e.g. 02:30 PM"
-                      />
-                      {toTime && !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(toTime.trim()) && (
-                        <p className="text-[9px] text-red-500 mt-0.5 font-bold">Format: 02:30 PM</p>
-                      )}
+                      <div className="relative">
+                        <input
+                          type="time"
+                          required
+                          value={toTime}
+                          onChange={(e) => setToTime(e.target.value)}
+                          className="w-full border border-purple-100 rounded-lg p-2.5 pl-9 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner text-gray-800"
+                        />
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
+                          <Clock size={14} />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1595,9 +1601,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       !topicsCovered.trim() || 
                       !conveyance.trim() || 
                       !fromTime.trim() || 
-                      !toTime.trim() ||
-                      !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(fromTime.trim()) ||
-                      !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(toTime.trim())
+                      !toTime.trim()
                     ))
                   }
                   onClick={() => handleBreakOut()}
