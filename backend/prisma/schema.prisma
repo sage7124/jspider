@@ -218,6 +218,8 @@ model BreakLog {
   topicsCovered String?
   conveyance    String?
   numberOfHours String?
+  fromTime      String?
+  toTime        String?
   
   createdAt     DateTime  @default(now())
 }

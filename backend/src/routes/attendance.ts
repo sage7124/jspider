@@ -9,6 +9,30 @@ import { generateTraineeWorksheet, getTraineeReportData } from '../utils/excel';
 const router = express.Router();
 const prisma = new PrismaClient();
 
+// Helper functions for parsing and calculating duration of 12-hour formatted times
+function parse12HourTimeToMinutes(timeStr: string): number {
+  const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1]);
+  const minutes = parseInt(match[2]);
+  const ampm = match[3].toUpperCase();
+  
+  if (ampm === 'PM' && hours < 12) {
+    hours += 12;
+  }
+  if (ampm === 'AM' && hours === 12) {
+    hours = 0;
+  }
+  return hours * 60 + minutes;
+}
+
+function calculateDifferenceInHours(fromTime: string, toTime: string): string {
+  const fromMins = parse12HourTimeToMinutes(fromTime);
+  const toMins = parse12HourTimeToMinutes(toTime);
+  const diff = toMins >= fromMins ? toMins - fromMins : (toMins + 1440) - fromMins;
+  return (diff / 60).toFixed(2);
+}
+
 // Institute coordinates (mocking these for now, can be stored in DB later)
 const INSTITUTE_LAT = 12.9716;
 const INSTITUTE_LNG = 77.5946;
@@ -78,7 +102,9 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
         subject: b.subject,
         topicsCovered: b.topicsCovered,
         conveyance: b.conveyance,
-        numberOfHours: b.numberOfHours
+        numberOfHours: b.numberOfHours,
+        fromTime: b.fromTime,
+        toTime: b.toTime
       }))
     });
   } catch (error) {
@@ -590,7 +616,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, numberOfHours, reason } = req.body;
+    const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, fromTime, toTime, reason } = req.body;
     const breakType = type || 'NORMAL';
 
     const attendance = await prisma.attendance.findUnique({
@@ -624,6 +650,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
 
     let finalStatus = 'APPROVED';
     let finalReason = reason || null;
+    let computedHours = null;
 
     if (breakType === 'NORMAL') {
       if (!reason || !reason.trim()) {
@@ -631,13 +658,17 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       }
       finalReason = reason.trim();
     } else if (breakType === 'COLLEGE_VISIT') {
-      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !numberOfHours) {
-        return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, No of Hours) are required for a College Visit.' });
+      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !fromTime || !toTime) {
+        return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, From Time, To Time) are required for a College Visit.' });
       }
-      const hrs = parseFloat(numberOfHours);
-      if (isNaN(hrs) || hrs <= 0) {
-        return res.status(400).json({ error: 'Please enter a valid positive number for No of Hours.' });
+
+      // 12-hour format validation (regex matches hh:mm AM/PM, spaces optional)
+      const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i;
+      if (!timeRegex.test(fromTime.trim()) || !timeRegex.test(toTime.trim())) {
+        return res.status(400).json({ error: 'Starting and Ending times must be in valid 12-hour format (e.g., 10:00 AM, 02:30 PM).' });
       }
+
+      computedHours = calculateDifferenceInHours(fromTime, toTime);
       finalReason = `College Visit: Booklet No: ${bookletNo.trim()} | College: ${collegeName.trim()} | Subject: ${subject.trim()}`;
     }
 
@@ -653,7 +684,9 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
         subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : null,
         topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : null,
         conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : null,
-        numberOfHours: breakType === 'COLLEGE_VISIT' ? numberOfHours.trim() : null
+        fromTime: breakType === 'COLLEGE_VISIT' ? fromTime.trim() : null,
+        toTime: breakType === 'COLLEGE_VISIT' ? toTime.trim() : null,
+        numberOfHours: computedHours
       }
     });
 

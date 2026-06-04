@@ -1976,6 +1976,8 @@ function parseCollegeVisit(b: any) {
   const topicsCovered = b.topicsCovered || '--';
   const conveyance = b.conveyance || '--';
   const numberOfHours = b.numberOfHours || '--';
+  const fromTime = b.fromTime || '--';
+  const toTime = b.toTime || '--';
 
   if (!collegeName && b.reason && b.reason.startsWith('College Visit:')) {
     if (b.reason.includes('Booklet No:')) {
@@ -1990,7 +1992,9 @@ function parseCollegeVisit(b: any) {
         subject: subjectPart ? subjectPart.replace('Subject:', '').trim() : '--',
         topicsCovered: '--',
         conveyance: '--',
-        numberOfHours: '--'
+        numberOfHours: '--',
+        fromTime: '--',
+        toTime: '--'
       };
     } else {
       const match = b.reason.match(/College Visit:\s*(.*?)\s*\(Subject:\s*(.*?)\)/);
@@ -2009,7 +2013,9 @@ function parseCollegeVisit(b: any) {
     subject: subject || '--',
     topicsCovered,
     conveyance,
-    numberOfHours
+    numberOfHours,
+    fromTime,
+    toTime
   };
 }
 
@@ -2075,7 +2081,9 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
         subject: parsed.subject,
         topicsCovered: parsed.topicsCovered,
         conveyance: parsed.conveyance,
-        numberOfHours: parsed.numberOfHours
+        numberOfHours: parsed.numberOfHours,
+        fromTime: parsed.fromTime,
+        toTime: parsed.toTime
       };
     });
 
@@ -2334,7 +2342,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                 if (dayBreaks.length > 1) {
                   bookletNoList.push(`Break ${idx + 1}: ${parsed.bookletNo}`);
                   collegeNameList.push(`Break ${idx + 1}: ${parsed.collegeName}`);
-                  subjectList.push(`Break ${idx + 1}: ${parsed.subject}`);
+                  subjectList.push(`Break ${idx + 1}: ${parsed.subject} (${parsed.fromTime} - ${parsed.toTime})`);
                   topicsCoveredList.push(`Break ${idx + 1}: ${parsed.topicsCovered}`);
                   conveyanceList.push(`Break ${idx + 1}: ${parsed.conveyance}`);
                   numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
@@ -2343,7 +2351,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                 } else {
                   bookletNoList.push(parsed.bookletNo);
                   collegeNameList.push(parsed.collegeName);
-                  subjectList.push(parsed.subject);
+                  subjectList.push(`${parsed.subject} (${parsed.fromTime} - ${parsed.toTime})`);
                   topicsCoveredList.push(parsed.topicsCovered);
                   conveyanceList.push(parsed.conveyance);
                   numberOfHoursList.push(parsed.numberOfHours);

@@ -152,7 +152,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [bookletNo, setBookletNo] = useState('');
   const [topicsCovered, setTopicsCovered] = useState('');
   const [conveyance, setConveyance] = useState('');
-  const [numberOfHours, setNumberOfHours] = useState('');
+  const [fromTime, setFromTime] = useState('');
+  const [toTime, setToTime] = useState('');
 
   useEffect(() => {
     fetchStatus();
@@ -407,13 +408,13 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
   const handleBreakOut = async () => {
     if (breakType === 'COLLEGE_VISIT') {
-      if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim() || !numberOfHours.trim()) {
-        alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, No of Hours) are required for a College Visit.');
+      if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim() || !fromTime.trim() || !toTime.trim()) {
+        alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, From Time, To Time) are required for a College Visit.');
         return;
       }
-      const hrs = parseFloat(numberOfHours);
-      if (isNaN(hrs) || hrs <= 0) {
-        alert('Please enter a valid positive number for No of Hours.');
+      const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i;
+      if (!timeRegex.test(fromTime.trim()) || !timeRegex.test(toTime.trim())) {
+        alert('Starting and Ending times must be in valid 12-hour format (e.g., 10:00 AM, 02:30 PM).');
         return;
       }
     } else {
@@ -434,7 +435,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : undefined,
         topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : undefined,
         conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : undefined,
-        numberOfHours: breakType === 'COLLEGE_VISIT' ? numberOfHours.trim() : undefined,
+        fromTime: breakType === 'COLLEGE_VISIT' ? fromTime.trim() : undefined,
+        toTime: breakType === 'COLLEGE_VISIT' ? toTime.trim() : undefined,
         reason: breakType === 'NORMAL' ? breakReason.trim() : undefined
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -448,7 +450,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       setSubject('');
       setTopicsCovered('');
       setConveyance('');
-      setNumberOfHours('');
+      setFromTime('');
+      setToTime('');
       setBreakType('NORMAL');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to start break');
@@ -727,7 +730,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                         <p><span className="font-bold">Subject:</span> {status.activeBreak?.subject || '--'}</p>
                         {status.activeBreak?.topicsCovered && <p><span className="font-bold">Topics:</span> {status.activeBreak.topicsCovered}</p>}
                         {status.activeBreak?.conveyance && <p><span className="font-bold">Conveyance:</span> {status.activeBreak.conveyance}</p>}
-                        {status.activeBreak?.numberOfHours && <p><span className="font-bold">Planned Hours:</span> {status.activeBreak.numberOfHours} hrs</p>}
+                        {status.activeBreak?.fromTime && status.activeBreak?.toTime ? (
+                          <p><span className="font-bold">Planned Timings:</span> {status.activeBreak.fromTime} - {status.activeBreak.toTime}</p>
+                        ) : (
+                          status.activeBreak?.numberOfHours && <p><span className="font-bold">Planned Hours:</span> {status.activeBreak.numberOfHours} hrs</p>
+                        )}
                       </div>
                     </div>
                     <button
@@ -763,7 +770,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                                 <div className="text-[10px] text-gray-500 bg-gray-50 p-2 rounded border border-gray-150 mt-1 space-y-0.5">
                                   <p><span className="font-bold text-gray-600">College:</span> {b.collegeName || '--'} ({b.subject || '--'})</p>
                                   <p><span className="font-bold text-gray-600">Booklet No:</span> {b.bookletNo || '--'}</p>
-                                  {b.numberOfHours && <p><span className="font-bold text-gray-600">Planned Hours:</span> {b.numberOfHours} hrs</p>}
+                                  {b.fromTime && b.toTime ? (
+                                    <p><span className="font-bold text-gray-600">Planned Timings:</span> {b.fromTime} - {b.toTime}</p>
+                                  ) : (
+                                    b.numberOfHours && <p><span className="font-bold text-gray-600">Planned Hours:</span> {b.numberOfHours} hrs</p>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -1507,24 +1518,51 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       placeholder="e.g. Cab / Auto / Two Wheeler (KM: 24)"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
-                      No of hours
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      required
-                      value={numberOfHours}
-                      onChange={(e) => setNumberOfHours(e.target.value)}
-                      className="w-full border border-purple-100 rounded-lg p-2.5 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
-                      placeholder="e.g. 4.5"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
+                        From Time
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={fromTime}
+                        onChange={(e) => setFromTime(e.target.value)}
+                        className={`w-full border rounded-lg p-2.5 text-xs outline-none bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 ${
+                          fromTime && !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(fromTime.trim())
+                            ? 'border-red-400 focus:border-red-500 text-red-600'
+                            : 'border-purple-100 focus:border-purple-400 text-gray-800'
+                        }`}
+                        placeholder="e.g. 10:00 AM"
+                      />
+                      {fromTime && !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(fromTime.trim()) && (
+                        <p className="text-[9px] text-red-500 mt-0.5 font-bold">Format: 10:00 AM</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
+                        To Time
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={toTime}
+                        onChange={(e) => setToTime(e.target.value)}
+                        className={`w-full border rounded-lg p-2.5 text-xs outline-none bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 ${
+                          toTime && !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(toTime.trim())
+                            ? 'border-red-400 focus:border-red-500 text-red-600'
+                            : 'border-purple-100 focus:border-purple-400 text-gray-800'
+                        }`}
+                        placeholder="e.g. 02:30 PM"
+                      />
+                      {toTime && !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(toTime.trim()) && (
+                        <p className="text-[9px] text-red-500 mt-0.5 font-bold">Format: 02:30 PM</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
-
+ 
               <div className="flex gap-2.5 pt-2">
                 <button
                   type="button"
@@ -1536,7 +1574,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                     setSubject('');
                     setTopicsCovered('');
                     setConveyance('');
-                    setNumberOfHours('');
+                    setFromTime('');
+                    setToTime('');
                     setBreakType('NORMAL');
                   }}
                   className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
@@ -1548,7 +1587,17 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   disabled={
                     startingBreak || 
                     (breakType === 'NORMAL' && !breakReason.trim()) || 
-                    (breakType === 'COLLEGE_VISIT' && (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim() || !numberOfHours.trim()))
+                    (breakType === 'COLLEGE_VISIT' && (
+                      !bookletNo.trim() || 
+                      !collegeName.trim() || 
+                      !subject.trim() || 
+                      !topicsCovered.trim() || 
+                      !conveyance.trim() || 
+                      !fromTime.trim() || 
+                      !toTime.trim() ||
+                      !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(fromTime.trim()) ||
+                      !/^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i.test(toTime.trim())
+                    ))
                   }
                   onClick={() => handleBreakOut()}
                   className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-purple-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"

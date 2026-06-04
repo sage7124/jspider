@@ -3915,6 +3915,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                     <th className="px-3 py-2">Subject / Purpose</th>
                                     <th className="px-3 py-2">Topics Covered</th>
                                     <th className="px-3 py-2">Conveyance</th>
+                                    <th className="px-3 py-2">Planned Timing</th>
                                     <th className="px-3 py-2 text-center">No of hours</th>
                                     <th className="px-3 py-2 text-center">Out Time</th>
                                     <th className="px-3 py-2 text-center">In Time</th>
@@ -3930,6 +3931,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                       <td className="px-3 py-2.5 text-gray-800 font-medium">{b.subject || b.reason || '--'}</td>
                                       <td className="px-3 py-2.5 text-gray-600">{b.topicsCovered || '--'}</td>
                                       <td className="px-3 py-2.5 text-gray-600">{b.conveyance || '--'}</td>
+                                      <td className="px-3 py-2.5 text-gray-700 font-mono">{b.fromTime && b.toTime ? `${b.fromTime} - ${b.toTime}` : '--'}</td>
                                       <td className="px-3 py-2.5 text-center text-gray-600">{b.numberOfHours || '--'}</td>
                                       <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{b.breakOut}</td>
                                       <td className="px-3 py-2.5 text-center text-green-700 font-semibold">{b.breakIn}</td>
