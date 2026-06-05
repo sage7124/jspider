@@ -3191,11 +3191,12 @@ router.get('/reports/classes-cancelled/export', authenticateToken, async (req: A
           { key: 'subject', width: 25 },
           { key: 'batchNo', width: 15 },
           { key: 'centerName', width: 20 },
+          { key: 'reason', width: 25 },
           { key: 'remarks', width: 35 }
         ];
 
         // Title Block (Row 1)
-        ws.mergeCells('A1:G1');
+        ws.mergeCells('A1:H1');
         const titleCell = ws.getCell('A1');
         titleCell.value = `CANCELLED CLASSES REPORT: ${user.fullName.toUpperCase()} | PHONE: ${user.identifier}`;
         titleCell.font = { bold: true, size: 14, name: 'Calibri' };
@@ -3212,6 +3213,7 @@ router.get('/reports/classes-cancelled/export', authenticateToken, async (req: A
           'Subject',
           'Batch No',
           'Center Name',
+          'Reason',
           'Remarks'
         ];
         headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
@@ -3234,6 +3236,7 @@ router.get('/reports/classes-cancelled/export', authenticateToken, async (req: A
             l.subject,
             l.batchNo,
             l.centerName,
+            l.reason || 'Other reasons',
             l.remarks || '--'
           ]);
           row.eachCell((cell) => {

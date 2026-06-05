@@ -255,6 +255,7 @@ model ClassCancelledLog {
   subject       String
   batchNo       String
   centerName    String    // NICT Center Name
+  reason        String    @default("Other reasons")
   remarks       String?
   createdAt     DateTime  @default(now())
 }

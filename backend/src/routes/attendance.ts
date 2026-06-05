@@ -586,10 +586,51 @@ router.get('/reports/monthly-json', authenticateToken, async (req: AuthRequest, 
     }
 
     const reportData = getTraineeReportData(user, finalAttendances, y, m, daysInMonth, finalHolidays, finalLeaves);
+
+    const collegeVisits = await prisma.breakLog.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate },
+        collegeName: { not: null }
+      },
+      orderBy: { date: 'asc' }
+    });
+
+    const breaks = await prisma.breakLog.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate },
+        collegeName: null
+      },
+      orderBy: { date: 'asc' }
+    });
+
+    const classesCancelled = await prisma.classCancelledLog.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate }
+      },
+      orderBy: { date: 'asc' }
+    });
+
+    const extraClasses = await prisma.extraClassLog.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate }
+      },
+      orderBy: { date: 'asc' }
+    });
+
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    res.json(reportData);
+    res.json({
+      ...reportData,
+      collegeVisits,
+      breaks,
+      classesCancelled,
+      extraClasses
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
@@ -640,11 +681,12 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
 
     const approvedBreaks = todayBreaks.filter(b => b.status === 'APPROVED');
     const activeBreak = approvedBreaks.find(b => b.breakIn === null);
-    if (activeBreak) {
+    if (activeBreak && breakType !== 'COLLEGE_VISIT') {
       return res.status(400).json({ error: 'You are already on an active break.' });
     }
 
-    if (approvedBreaks.length >= 4) {
+    const normalApprovedBreaks = approvedBreaks.filter(b => !b.collegeName);
+    if (breakType === 'NORMAL' && normalApprovedBreaks.length >= 4) {
       return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
     }
 
@@ -677,6 +719,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
         userId,
         date: today,
         breakOut: new Date(),
+        breakIn: breakType === 'COLLEGE_VISIT' ? new Date() : null,
         reason: finalReason,
         status: finalStatus,
         bookletNo: breakType === 'COLLEGE_VISIT' ? bookletNo.trim() : null,
@@ -691,7 +734,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
     });
 
     const responseMsg = breakType === 'COLLEGE_VISIT'
-      ? 'College visit breakout started successfully!'
+      ? 'College visit update successfully'
       : 'Break started successfully! Safe travels.';
 
     res.status(201).json({ message: responseMsg, breakLog: newBreak });
@@ -798,7 +841,7 @@ router.post('/extra-class/apply', authenticateToken, async (req: AuthRequest, re
       }
     });
 
-    res.status(201).json({ message: 'Extra class details submitted and pending approval.', extraClass });
+    res.status(201).json({ message: 'Extra class details submitted and pending approval. Meet the supervisor for approval of the class', extraClass });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
@@ -823,10 +866,15 @@ router.get('/extra-class/status', authenticateToken, async (req: AuthRequest, re
 router.post('/class-cancelled/apply', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
-    const { subject, batchNo, centerName, remarks } = req.body;
+    const { subject, batchNo, centerName, reason, remarks } = req.body;
 
-    if (!subject || !batchNo || !centerName) {
-      return res.status(400).json({ error: 'All fields (Subject, Batch No, Center Name) are required.' });
+    if (!subject || !batchNo || !centerName || !reason) {
+      return res.status(400).json({ error: 'All fields (Subject, Batch No, Center Name, Reason) are required.' });
+    }
+
+    const validReasons = ['Students Absent', 'Faculty Cancelled Class', 'Faculty at College', 'Other reasons'];
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({ error: 'Invalid cancellation reason selected.' });
     }
 
     const today = new Date();
@@ -842,6 +890,7 @@ router.post('/class-cancelled/apply', authenticateToken, async (req: AuthRequest
         subject: subject.trim(),
         batchNo: batchNo.trim(),
         centerName: centerName.trim(),
+        reason: reason.trim(),
         remarks: remarks ? remarks.trim() : null
       }
     });

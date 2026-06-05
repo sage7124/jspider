@@ -4405,8 +4405,9 @@ const CancelledClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
                         <div className="text-[10px] font-mono text-gray-500">Batch: {log.batchNo}</div>
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
-                      <td className="px-4 py-3 text-gray-700 italic">
-                        "{log.remarks || 'No remarks provided'}"
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-red-700 text-xs">{log.reason || 'Other reasons'}</div>
+                        {log.remarks && <div className="text-[10px] text-gray-500 italic mt-0.5">"{log.remarks}"</div>}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <button

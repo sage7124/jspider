@@ -234,6 +234,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [cancelBatchNo, setCancelBatchNo] = useState('');
   const [cancelCenterName, setCancelCenterName] = useState('');
   const [cancelRemarks, setCancelRemarks] = useState('');
+  const [cancelReason, setCancelReason] = useState('Students Absent');
   const [cancelledClasses, setCancelledClasses] = useState<any[]>([]);
   const [showClassCancelledModal, setShowClassCancelledModal] = useState(false);
   const [submittingClassCancelled, setSubmittingClassCancelled] = useState(false);
@@ -402,6 +403,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         subject: cancelSubject.trim(),
         batchNo: cancelBatchNo.trim(),
         centerName: cancelCenterName.trim(),
+        reason: cancelReason,
         remarks: cancelRemarks.trim() || undefined
       }, {
         headers: { Authorization: `Bearer ${token}` }
@@ -416,6 +418,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       setCancelBatchNo('');
       setCancelCenterName('');
       setCancelRemarks('');
+      setCancelReason('Students Absent');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to submit class cancellation log');
     } finally {
@@ -960,25 +963,18 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                         {status.completedBreaks
                           .filter((b: any) => b.bookletNo !== null || (b.reason && b.reason.startsWith('College Visit:')))
                           .map((b: any, index: number) => {
-                            const outTime = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                            const inTime = b.breakIn ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
-                            const dur = b.breakIn ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60)) : null;
-
                             return (
                               <div key={b.id} className="p-3 flex flex-col gap-1 hover:bg-gray-50/50 transition-colors">
                                 <div className="flex justify-between items-center text-xs">
                                   <span className="font-semibold text-gray-600">Visit {index + 1}</span>
-                                  <span className="text-gray-800 font-mono">{outTime} - {inTime}</span>
-                                  <span className="font-extrabold text-purple-700">{dur !== null ? `${(dur/60).toFixed(2)} hrs (${dur} mins)` : 'On Visit'}</span>
+                                  <span className="text-gray-800 font-mono">{b.fromTime || '--'} - {b.toTime || '--'}</span>
+                                  <span className="font-extrabold text-purple-700">{b.numberOfHours ? `${b.numberOfHours} hrs` : '--'}</span>
                                 </div>
                                 <div className="text-[10px] text-gray-500 bg-gray-50 p-2 rounded border border-gray-150 mt-1 space-y-0.5">
                                   <p><span className="font-bold text-gray-600">College:</span> {b.collegeName || '--'} ({b.subject || '--'})</p>
                                   <p><span className="font-bold text-gray-600">Booklet No:</span> {b.bookletNo || '--'}</p>
-                                  {b.fromTime && b.toTime ? (
-                                    <p><span className="font-bold text-gray-600">Planned Timings:</span> {b.fromTime} - {b.toTime}</p>
-                                  ) : (
-                                    b.numberOfHours && <p><span className="font-bold text-gray-600">Planned Hours:</span> {b.numberOfHours} hrs</p>
-                                  )}
+                                  {b.topicsCovered && <p><span className="font-bold text-gray-600">Topics Covered:</span> {b.topicsCovered}</p>}
+                                  {b.conveyance && <p><span className="font-bold text-gray-600">Conveyance:</span> {b.conveyance}</p>}
                                 </div>
                               </div>
                             );
@@ -997,25 +993,18 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               )}
             </div>
 
-            {!(status?.currentlyOnBreak && (status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:')))) && (
-              <div className="pt-4">
-                <button
-                  onClick={() => {
-                    setBreakType('COLLEGE_VISIT');
-                    setShowBreakReasonModal(true);
-                  }}
-                  disabled={startingBreak || status?.currentlyOnBreak}
-                  className={`w-full font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
-                    status?.currentlyOnBreak
-                      ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
-                      : 'bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200'
-                  }`}
-                  title={status?.currentlyOnBreak ? 'You are currently on an active break/visit' : ''}
-                >
-                  {startingBreak ? 'Processing...' : '🎓 Start College Visit'}
-                </button>
-              </div>
-            )}
+            <div className="pt-4">
+              <button
+                onClick={() => {
+                  setBreakType('COLLEGE_VISIT');
+                  setShowBreakReasonModal(true);
+                }}
+                disabled={startingBreak}
+                className="w-full font-black py-4 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                {startingBreak ? 'Processing...' : '🎓 Log College Visit'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1098,6 +1087,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                         <div className="text-[10px] text-gray-500 space-y-0.5 font-medium bg-gray-50/50 p-2 rounded border border-gray-100">
                           <p><span className="font-bold text-gray-600">Batch:</span> {cc.batchNo} | <span className="font-bold text-gray-600">Day:</span> {cc.day}</p>
                           <p><span className="font-bold text-gray-600">Center:</span> {cc.centerName}</p>
+                          <p><span className="font-bold text-gray-600">Reason:</span> {cc.reason || 'Other reasons'}</p>
                           {cc.remarks && <p><span className="font-bold text-gray-600">Remarks:</span> {cc.remarks}</p>}
                         </div>
                       </div>
@@ -1375,6 +1365,236 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   </td>
                 </tr>
               </tfoot>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* College Visit Report */}
+      <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="p-6 border-b flex flex-wrap justify-between items-center gap-4 bg-gray-50">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Calendar className="text-emerald-600" /> College Visit Report
+            <span className="ml-2 text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+              {reportData?.collegeVisits?.length || 0} Logs
+            </span>
+          </h2>
+        </div>
+        
+        <div className="overflow-x-auto w-full">
+          {loadingReport ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium">Loading report data...</div>
+          ) : !reportData || !reportData.collegeVisits || reportData.collegeVisits.length === 0 ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium text-xs">No college visits logged for this month</div>
+          ) : (
+            <table className="w-full text-sm text-left min-w-[1000px]">
+              <thead className="bg-[#00796B] text-white">
+                <tr>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Date</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Day</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Booklet No</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">College Name</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Subject</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Topics Covered</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Conveyance</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Timings</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Duration</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {reportData.collegeVisits.map((log: any, i: number) => {
+                  const dateObj = new Date(log.date);
+                  const dateStr = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const dayStr = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+                  return (
+                    <tr key={log.id || i} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{dateStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{dayStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.bookletNo || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.collegeName || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.subject || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 border-r max-w-xs truncate" title={log.topicsCovered}>{log.topicsCovered || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.conveyance || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.fromTime && log.toTime ? `${log.fromTime} - ${log.toTime}` : '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r font-bold text-emerald-700">{log.numberOfHours ? `${log.numberOfHours} hrs` : '--'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Break Details Report */}
+      <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="p-6 border-b flex flex-wrap justify-between items-center gap-4 bg-gray-50">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Clock className="text-blue-600" /> Break Details Report
+            <span className="ml-2 text-xs font-bold bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full">
+              {reportData?.breaks?.length || 0} Logs
+            </span>
+          </h2>
+        </div>
+        
+        <div className="overflow-x-auto w-full">
+          {loadingReport ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium">Loading report data...</div>
+          ) : !reportData || !reportData.breaks || reportData.breaks.length === 0 ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium text-xs">No breaks logged for this month</div>
+          ) : (
+            <table className="w-full text-sm text-left min-w-[1000px]">
+              <thead className="bg-[#1976D2] text-white">
+                <tr>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Date</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Day</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Out Time</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">In Time</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Duration</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Reason</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {reportData.breaks.map((log: any, i: number) => {
+                  const dateObj = new Date(log.date);
+                  const dateStr = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const dayStr = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+                  
+                  const outTime = new Date(log.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const inTime = log.breakIn ? new Date(log.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--';
+                  const dur = log.breakIn ? Math.round((new Date(log.breakIn).getTime() - new Date(log.breakOut).getTime()) / 60000) : null;
+                  
+                  return (
+                    <tr key={log.id || i} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{dateStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{dayStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{outTime}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{inTime}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r font-bold text-blue-700">{dur !== null ? `${dur} mins` : 'On Break'}</td>
+                      <td className="px-4 py-2 text-gray-600 border-r">{log.reason || '--'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Class Cancelled Report */}
+      <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="p-6 border-b flex flex-wrap justify-between items-center gap-4 bg-gray-50">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <CalendarX className="text-red-600" /> Class Cancelled Report
+            <span className="ml-2 text-xs font-bold bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full">
+              {reportData?.classesCancelled?.length || 0} Logs
+            </span>
+          </h2>
+        </div>
+        
+        <div className="overflow-x-auto w-full">
+          {loadingReport ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium">Loading report data...</div>
+          ) : !reportData || !reportData.classesCancelled || reportData.classesCancelled.length === 0 ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium text-xs">No cancelled classes logged for this month</div>
+          ) : (
+            <table className="w-full text-sm text-left min-w-[1000px]">
+              <thead className="bg-[#D32F2F] text-white">
+                <tr>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Date</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Day</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Subject</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Batch No</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Center Name</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Reason</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {reportData.classesCancelled.map((log: any, i: number) => {
+                  const dateObj = new Date(log.date);
+                  const dateStr = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const dayStr = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+                  return (
+                    <tr key={log.id || i} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{dateStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{dayStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.subject || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.batchNo || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.centerName || '--'}</td>
+                      <td className="px-4 py-2 font-bold text-red-700 whitespace-nowrap border-r">{log.reason || 'Other reasons'}</td>
+                      <td className="px-4 py-2 text-gray-600 border-r italic">{log.remarks ? `"${log.remarks}"` : '--'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Extra Class Taken Report */}
+      <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="p-6 border-b flex flex-wrap justify-between items-center gap-4 bg-gray-50">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <BookOpen className="text-indigo-600" /> Extra Class Taken Report
+            <span className="ml-2 text-xs font-bold bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-full">
+              {reportData?.extraClasses?.length || 0} Logs
+            </span>
+          </h2>
+        </div>
+        
+        <div className="overflow-x-auto w-full">
+          {loadingReport ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium">Loading report data...</div>
+          ) : !reportData || !reportData.extraClasses || reportData.extraClasses.length === 0 ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium text-xs">No extra classes logged for this month</div>
+          ) : (
+            <table className="w-full text-sm text-left min-w-[1100px]">
+              <thead className="bg-[#303F9F] text-white">
+                <tr>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Date</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Day</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Subject</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Batch No</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Timings</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Duration</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Students</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Center</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center">Status</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Supervisor Remark</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {reportData.extraClasses.map((log: any, i: number) => {
+                  const dateObj = new Date(log.date);
+                  const dateStr = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const dayStr = log.day || dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+                  return (
+                    <tr key={log.id || i} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{dateStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{dayStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.subject || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.batchNo || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.startTime && log.endTime ? `${log.startTime} - ${log.endTime}` : '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r font-bold text-indigo-700">{log.duration ? `${log.duration} hrs` : '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r text-center">{log.noOfStudents ?? '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.centerName || '--'}</td>
+                      <td className="px-4 py-2 border-r text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          log.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                          log.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-gray-600 border-r italic">{log.adminReason || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 border-r">{log.remarks || '--'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
             </table>
           )}
         </div>
@@ -2197,6 +2417,20 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               </div>
 
               <div>
+                <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Reason for Cancellation</label>
+                <select
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  className="w-full border border-red-100 rounded-lg p-2.5 text-xs outline-none focus:border-red-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner"
+                >
+                  <option value="Students Absent">Students Absent</option>
+                  <option value="Faculty Cancelled Class">Faculty Cancelled Class</option>
+                  <option value="Faculty at College">Faculty at College</option>
+                  <option value="Other reasons">Other reasons</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-[10px] font-black text-red-700 mb-1 uppercase tracking-wide">Remarks if any (Optional)</label>
                 <textarea
                   value={cancelRemarks}
@@ -2216,6 +2450,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   setCancelBatchNo('');
                   setCancelCenterName('');
                   setCancelRemarks('');
+                  setCancelReason('Students Absent');
                 }}
                 className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
               >
