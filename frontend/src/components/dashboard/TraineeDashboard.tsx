@@ -212,6 +212,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [conveyance, setConveyance] = useState('');
   const [fromTime, setFromTime] = useState('');
   const [toTime, setToTime] = useState('');
+  const [visitHourFrom, setVisitHourFrom] = useState('09');
+  const [visitMinFrom, setVisitMinFrom] = useState('00');
+  const [visitPeriodFrom, setVisitPeriodFrom] = useState('AM');
+  const [visitHourTo, setVisitHourTo] = useState('06');
+  const [visitMinTo, setVisitMinTo] = useState('00');
+  const [visitPeriodTo, setVisitPeriodTo] = useState('PM');
 
   // Extra Classes States
   const [extraSubject, setExtraSubject] = useState('');
@@ -617,8 +623,8 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
 
   const handleBreakOut = async () => {
     if (breakType === 'COLLEGE_VISIT') {
-      if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim() || !fromTime.trim() || !toTime.trim()) {
-        alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, From Time, To Time) are required for a College Visit.');
+      if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim() || !conveyance.trim()) {
+        alert('All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details) are required for a College Visit.');
         return;
       }
     } else {
@@ -628,8 +634,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       }
     }
 
-    const formattedFromTime = breakType === 'COLLEGE_VISIT' ? convert24to12(fromTime) : undefined;
-    const formattedToTime = breakType === 'COLLEGE_VISIT' ? convert24to12(toTime) : undefined;
+    const formattedFromTime = breakType === 'COLLEGE_VISIT'
+      ? `${visitHourFrom}:${visitMinFrom} ${visitPeriodFrom}`
+      : undefined;
+    const formattedToTime = breakType === 'COLLEGE_VISIT'
+      ? `${visitHourTo}:${visitMinTo} ${visitPeriodTo}`
+      : undefined;
 
     try {
       setStartingBreak(true);
@@ -659,6 +669,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       setConveyance('');
       setFromTime('');
       setToTime('');
+      setVisitHourFrom('09');
+      setVisitMinFrom('00');
+      setVisitPeriodFrom('AM');
+      setVisitHourTo('06');
+      setVisitMinTo('00');
+      setVisitPeriodTo('PM');
       setBreakType('NORMAL');
     } catch (err: any) {
       alert(err.response?.data?.error || 'Failed to start break');
@@ -1379,6 +1395,20 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               {reportData?.collegeVisits?.length || 0} Logs
             </span>
           </h2>
+          <div className="flex gap-4">
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">MONTH</label>
+              <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">YEAR</label>
+              <select value={reportYear} onChange={e => setReportYear(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
         
         <div className="overflow-x-auto w-full">
@@ -1421,6 +1451,14 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   );
                 })}
               </tbody>
+              <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                <tr>
+                  <td colSpan={8} className="px-4 py-3 text-right text-gray-700">Total Duration:</td>
+                  <td className="px-4 py-3 font-extrabold text-emerald-700">
+                    {reportData.collegeVisits.reduce((acc: number, log: any) => acc + parseFloat(log.numberOfHours || 0), 0).toFixed(2)} hrs
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           )}
         </div>
@@ -1435,6 +1473,20 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               {reportData?.breaks?.length || 0} Logs
             </span>
           </h2>
+          <div className="flex gap-4">
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">MONTH</label>
+              <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">YEAR</label>
+              <select value={reportYear} onChange={e => setReportYear(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
         
         <div className="overflow-x-auto w-full">
@@ -1476,6 +1528,24 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   );
                 })}
               </tbody>
+              <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                <tr>
+                  <td colSpan={4} className="px-4 py-3 text-right text-gray-700">Total Duration:</td>
+                  <td className="px-4 py-3 font-extrabold text-blue-700">
+                    {(() => {
+                      const totalMin = reportData.breaks.reduce((acc: number, log: any) => {
+                        const dur = log.breakIn ? Math.round((new Date(log.breakIn).getTime() - new Date(log.breakOut).getTime()) / 60000) : 0;
+                        return acc + dur;
+                      }, 0);
+                      if (totalMin >= 60) {
+                        return `${Math.floor(totalMin / 60)} hrs ${totalMin % 60} mins (${totalMin} mins)`;
+                      }
+                      return `${totalMin} mins`;
+                    })()}
+                  </td>
+                  <td className="px-4 py-3"></td>
+                </tr>
+              </tfoot>
             </table>
           )}
         </div>
@@ -1490,6 +1560,20 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               {reportData?.classesCancelled?.length || 0} Logs
             </span>
           </h2>
+          <div className="flex gap-4">
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">MONTH</label>
+              <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">YEAR</label>
+              <select value={reportYear} onChange={e => setReportYear(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
         
         <div className="overflow-x-auto w-full">
@@ -1542,6 +1626,20 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               {reportData?.extraClasses?.length || 0} Logs
             </span>
           </h2>
+          <div className="flex gap-4">
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">MONTH</label>
+              <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">YEAR</label>
+              <select value={reportYear} onChange={e => setReportYear(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
         
         <div className="overflow-x-auto w-full">
@@ -1947,6 +2045,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 setConveyance('');
                 setFromTime('');
                 setToTime('');
+                setVisitHourFrom('09');
+                setVisitMinFrom('00');
+                setVisitPeriodFrom('AM');
+                setVisitHourTo('06');
+                setVisitMinTo('00');
+                setVisitPeriodTo('PM');
                 setBreakType('NORMAL');
               }}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
@@ -2043,38 +2147,77 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
+                    {/* Clock Picker: From Time */}
                     <div>
-                      <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
-                        From Time
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="time"
-                          required
-                          value={fromTime}
-                          onChange={(e) => setFromTime(e.target.value)}
-                          className="w-full border border-purple-100 rounded-lg p-2.5 pl-9 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner text-gray-800"
-                        />
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
-                          <Clock size={14} />
+                      <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">From Time</label>
+                      <div className="w-full border border-purple-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-purple-400 focus-within:bg-white transition-all shadow-inner">
+                        <div className="flex items-center gap-1">
+                          <Clock size={14} className="text-purple-400 mr-1.5" />
+                          <select 
+                            value={visitHourFrom} 
+                            onChange={(e) => setVisitHourFrom(e.target.value)}
+                            className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-850 font-bold"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </select>
+                          <span className="text-gray-400">:</span>
+                          <select 
+                            value={visitMinFrom} 
+                            onChange={(e) => setVisitMinFrom(e.target.value)}
+                            className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-855 font-bold"
+                          >
+                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </select>
                         </div>
+                        <select 
+                          value={visitPeriodFrom} 
+                          onChange={(e) => setVisitPeriodFrom(e.target.value)}
+                          className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 outline-none cursor-pointer font-black text-[10px]"
+                        >
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
                       </div>
                     </div>
+
+                    {/* Clock Picker: To Time */}
                     <div>
-                      <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">
-                        To Time
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="time"
-                          required
-                          value={toTime}
-                          onChange={(e) => setToTime(e.target.value)}
-                          className="w-full border border-purple-100 rounded-lg p-2.5 pl-9 text-xs outline-none focus:border-purple-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner text-gray-800"
-                        />
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-purple-400">
-                          <Clock size={14} />
+                      <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">To Time</label>
+                      <div className="w-full border border-purple-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-purple-400 focus-within:bg-white transition-all shadow-inner">
+                        <div className="flex items-center gap-1">
+                          <Clock size={14} className="text-purple-400 mr-1.5" />
+                          <select 
+                            value={visitHourTo} 
+                            onChange={(e) => setVisitHourTo(e.target.value)}
+                            className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-850 font-bold"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                              <option key={h} value={h}>{h}</option>
+                            ))}
+                          </select>
+                          <span className="text-gray-400">:</span>
+                          <select 
+                            value={visitMinTo} 
+                            onChange={(e) => setVisitMinTo(e.target.value)}
+                            className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-855 font-bold"
+                          >
+                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </select>
                         </div>
+                        <select 
+                          value={visitPeriodTo} 
+                          onChange={(e) => setVisitPeriodTo(e.target.value)}
+                          className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 outline-none cursor-pointer font-black text-[10px]"
+                        >
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -2094,6 +2237,12 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                     setConveyance('');
                     setFromTime('');
                     setToTime('');
+                    setVisitHourFrom('09');
+                    setVisitMinFrom('00');
+                    setVisitPeriodFrom('AM');
+                    setVisitHourTo('06');
+                    setVisitMinTo('00');
+                    setVisitPeriodTo('PM');
                     setBreakType('NORMAL');
                   }}
                   className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
@@ -2110,9 +2259,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       !collegeName.trim() || 
                       !subject.trim() || 
                       !topicsCovered.trim() || 
-                      !conveyance.trim() || 
-                      !fromTime.trim() || 
-                      !toTime.trim()
+                      !conveyance.trim()
                     ))
                   }
                   onClick={() => handleBreakOut()}
