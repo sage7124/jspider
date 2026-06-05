@@ -89,6 +89,201 @@ const FilePreview = ({ url, label }: { url: string; label: string }) => {
   );
 };
 
+const WheelTimePicker = ({
+  hour,
+  minute,
+  period,
+  onChange,
+  onReset,
+  themeColor = 'purple'
+}: {
+  hour: string;
+  minute: string;
+  period: string;
+  onChange: (h: string, m: string, p: string) => void;
+  onReset: () => void;
+  themeColor: 'purple' | 'emerald';
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [tempHour, setTempHour] = useState(hour);
+  const [tempMinute, setTempMinute] = useState(minute);
+  const [tempPeriod, setTempPeriod] = useState(period);
+  
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  // Sync temp state when picker is opened
+  useEffect(() => {
+    if (isOpen) {
+      setTempHour(hour);
+      setTempMinute(minute);
+      setTempPeriod(period);
+    }
+  }, [isOpen, hour, minute, period]);
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        popoverRef.current && !popoverRef.current.contains(event.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Scroll active items into view
+  useEffect(() => {
+    if (isOpen && popoverRef.current) {
+      setTimeout(() => {
+        const activeElements = popoverRef.current?.querySelectorAll('.active-time-item');
+        activeElements?.forEach(el => {
+          el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+        });
+      }, 50);
+    }
+  }, [isOpen, tempHour, tempMinute, tempPeriod]);
+
+  const handleSave = () => {
+    onChange(tempHour, tempMinute, tempPeriod);
+    setIsOpen(false);
+  };
+
+  const handleResetClick = () => {
+    onReset();
+    setIsOpen(false);
+  };
+
+  const hoursList = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+  const minutesList = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  const periodsList = ['AM', 'PM'];
+
+  const themeClasses = {
+    purple: {
+      border: 'border-purple-100 hover:border-purple-300',
+      activeBorder: 'border-purple-400 bg-white',
+      text: 'text-purple-700',
+      bg: 'bg-purple-100',
+      checkBg: 'bg-blue-600 hover:bg-blue-700',
+      iconColor: 'text-purple-400',
+      accentColor: 'text-purple-700 bg-purple-50 font-black scale-110 shadow-sm border border-purple-100'
+    },
+    emerald: {
+      border: 'border-emerald-100 hover:border-emerald-300',
+      activeBorder: 'border-emerald-400 bg-white',
+      text: 'text-emerald-700',
+      bg: 'bg-emerald-100',
+      checkBg: 'bg-blue-600 hover:bg-blue-700',
+      iconColor: 'text-emerald-400',
+      accentColor: 'text-emerald-700 bg-emerald-50 font-black scale-110 shadow-sm border border-emerald-100'
+    }
+  }[themeColor];
+
+  return (
+    <div className="relative w-full">
+      {/* Trigger Button */}
+      <div 
+        ref={triggerRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full border ${isOpen ? themeClasses.activeBorder : themeClasses.border} rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 transition-all shadow-inner cursor-pointer`}
+      >
+        <div className="flex items-center gap-1">
+          <Clock size={14} className={`${themeClasses.iconColor} mr-1.5`} />
+          <span className="font-bold text-gray-800">{`${hour}:${minute} ${period}`}</span>
+        </div>
+        <span className="text-[10px] text-gray-400">▼</span>
+      </div>
+
+      {/* Popover */}
+      {isOpen && (
+        <div 
+          ref={popoverRef}
+          className="absolute left-1/2 -translate-x-1/2 mt-2 p-4 bg-white rounded-2xl shadow-2xl border border-gray-100 z-[60] flex flex-col gap-3 select-none animate-in fade-in slide-in-from-top-2 duration-150 w-[240px]"
+        >
+          {/* Picker columns */}
+          <div className="relative flex justify-around h-40 bg-gray-50/50 rounded-xl overflow-hidden py-1 border border-gray-100">
+            {/* Highlighted middle overlay */}
+            <div className="absolute inset-x-0 top-[62px] h-[36px] bg-gray-200/40 pointer-events-none border-y border-gray-200/50 z-10"></div>
+            
+            {/* Hours Column */}
+            <div className="w-1/3 overflow-y-auto scrollbar-none text-center z-20 flex flex-col gap-1 py-14">
+              {hoursList.map(h => {
+                const isActive = tempHour === h;
+                return (
+                  <div 
+                    key={h}
+                    onClick={() => setTempHour(h)}
+                    className={`py-1 cursor-pointer transition-all text-xs font-bold rounded-md ${isActive ? `${themeClasses.accentColor} active-time-item` : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    {h}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center text-gray-400 font-bold text-xs z-20">:</div>
+
+            {/* Minutes Column */}
+            <div className="w-1/3 overflow-y-auto scrollbar-none text-center z-20 flex flex-col gap-1 py-14">
+              {minutesList.map(m => {
+                const isActive = tempMinute === m;
+                return (
+                  <div 
+                    key={m}
+                    onClick={() => setTempMinute(m)}
+                    className={`py-1 cursor-pointer transition-all text-xs font-bold rounded-md ${isActive ? `${themeClasses.accentColor} active-time-item` : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    {m}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Periods Column */}
+            <div className="w-1/4 overflow-y-auto scrollbar-none text-center z-20 flex flex-col gap-1 py-14">
+              {periodsList.map(p => {
+                const isActive = tempPeriod === p;
+                return (
+                  <div 
+                    key={p}
+                    onClick={() => setTempPeriod(p)}
+                    className={`py-1.5 cursor-pointer transition-all text-xs font-bold rounded-md ${isActive ? `${themeClasses.accentColor} active-time-item` : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    {p}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Footer Controls */}
+          <div className="flex items-center justify-between border-t pt-3 border-gray-100">
+            <button
+              type="button"
+              onClick={handleResetClick}
+              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer"
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className={`p-1.5 ${themeClasses.checkBg} text-white rounded-full shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ChipInput = ({ 
   value, 
   onChange, 
@@ -2150,75 +2345,43 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                     {/* Clock Picker: From Time */}
                     <div>
                       <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">From Time</label>
-                      <div className="w-full border border-purple-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-purple-400 focus-within:bg-white transition-all shadow-inner">
-                        <div className="flex items-center gap-1">
-                          <Clock size={14} className="text-purple-400 mr-1.5" />
-                          <select 
-                            value={visitHourFrom} 
-                            onChange={(e) => setVisitHourFrom(e.target.value)}
-                            className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-850 font-bold"
-                          >
-                            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                          <span className="text-gray-400">:</span>
-                          <select 
-                            value={visitMinFrom} 
-                            onChange={(e) => setVisitMinFrom(e.target.value)}
-                            className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-855 font-bold"
-                          >
-                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
-                              <option key={m} value={m}>{m}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <select 
-                          value={visitPeriodFrom} 
-                          onChange={(e) => setVisitPeriodFrom(e.target.value)}
-                          className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 outline-none cursor-pointer font-black text-[10px]"
-                        >
-                          <option value="AM">AM</option>
-                          <option value="PM">PM</option>
-                        </select>
-                      </div>
+                      <WheelTimePicker
+                        hour={visitHourFrom}
+                        minute={visitMinFrom}
+                        period={visitPeriodFrom}
+                        onChange={(h, m, p) => {
+                          setVisitHourFrom(h);
+                          setVisitMinFrom(m);
+                          setVisitPeriodFrom(p);
+                        }}
+                        onReset={() => {
+                          setVisitHourFrom('09');
+                          setVisitMinFrom('00');
+                          setVisitPeriodFrom('AM');
+                        }}
+                        themeColor="purple"
+                      />
                     </div>
 
                     {/* Clock Picker: To Time */}
                     <div>
                       <label className="block text-[10px] font-black text-purple-700 mb-1 uppercase tracking-wide">To Time</label>
-                      <div className="w-full border border-purple-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-purple-400 focus-within:bg-white transition-all shadow-inner">
-                        <div className="flex items-center gap-1">
-                          <Clock size={14} className="text-purple-400 mr-1.5" />
-                          <select 
-                            value={visitHourTo} 
-                            onChange={(e) => setVisitHourTo(e.target.value)}
-                            className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-850 font-bold"
-                          >
-                            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                              <option key={h} value={h}>{h}</option>
-                            ))}
-                          </select>
-                          <span className="text-gray-400">:</span>
-                          <select 
-                            value={visitMinTo} 
-                            onChange={(e) => setVisitMinTo(e.target.value)}
-                            className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-855 font-bold"
-                          >
-                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
-                              <option key={m} value={m}>{m}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <select 
-                          value={visitPeriodTo} 
-                          onChange={(e) => setVisitPeriodTo(e.target.value)}
-                          className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 outline-none cursor-pointer font-black text-[10px]"
-                        >
-                          <option value="AM">AM</option>
-                          <option value="PM">PM</option>
-                        </select>
-                      </div>
+                      <WheelTimePicker
+                        hour={visitHourTo}
+                        minute={visitMinTo}
+                        period={visitPeriodTo}
+                        onChange={(h, m, p) => {
+                          setVisitHourTo(h);
+                          setVisitMinTo(m);
+                          setVisitPeriodTo(p);
+                        }}
+                        onReset={() => {
+                          setVisitHourTo('06');
+                          setVisitMinTo('00');
+                          setVisitPeriodTo('PM');
+                        }}
+                        themeColor="purple"
+                      />
                     </div>
                   </div>
                 </div>
@@ -2340,75 +2503,43 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 {/* Clock Picker: From Time */}
                 <div>
                   <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">Start Time</label>
-                  <div className="w-full border border-emerald-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-emerald-400 focus-within:bg-white transition-all shadow-inner">
-                    <div className="flex items-center gap-1">
-                      <Clock size={14} className="text-emerald-400 mr-1.5" />
-                      <select 
-                        value={extraHourFrom} 
-                        onChange={(e) => setExtraHourFrom(e.target.value)}
-                        className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-850 font-bold"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                          <option key={h} value={h}>{h}</option>
-                        ))}
-                      </select>
-                      <span className="text-gray-400">:</span>
-                      <select 
-                        value={extraMinFrom} 
-                        onChange={(e) => setExtraMinFrom(e.target.value)}
-                        className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-855 font-bold"
-                      >
-                        {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <select 
-                      value={extraPeriodFrom} 
-                      onChange={(e) => setExtraPeriodFrom(e.target.value)}
-                      className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200 outline-none cursor-pointer font-black text-[10px]"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
+                  <WheelTimePicker
+                    hour={extraHourFrom}
+                    minute={extraMinFrom}
+                    period={extraPeriodFrom}
+                    onChange={(h, m, p) => {
+                      setExtraHourFrom(h);
+                      setExtraMinFrom(m);
+                      setExtraPeriodFrom(p);
+                    }}
+                    onReset={() => {
+                      setExtraHourFrom('10');
+                      setExtraMinFrom('00');
+                      setExtraPeriodFrom('AM');
+                    }}
+                    themeColor="emerald"
+                  />
                 </div>
 
                 {/* Clock Picker: To Time */}
                 <div>
                   <label className="block text-[10px] font-black text-emerald-700 mb-1 uppercase tracking-wide">End Time</label>
-                  <div className="w-full border border-emerald-100 rounded-lg p-2.5 bg-gray-50/50 flex items-center justify-between gap-1 text-xs font-bold text-gray-800 focus-within:border-emerald-400 focus-within:bg-white transition-all shadow-inner">
-                    <div className="flex items-center gap-1">
-                      <Clock size={14} className="text-emerald-400 mr-1.5" />
-                      <select 
-                        value={extraHourTo} 
-                        onChange={(e) => setExtraHourTo(e.target.value)}
-                        className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-850 font-bold"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                          <option key={h} value={h}>{h}</option>
-                        ))}
-                      </select>
-                      <span className="text-gray-400">:</span>
-                      <select 
-                        value={extraMinTo} 
-                        onChange={(e) => setExtraMinTo(e.target.value)}
-                        className="bg-transparent border-none outline-none cursor-pointer text-center w-6 text-gray-855 font-bold"
-                      >
-                        {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <select 
-                      value={extraPeriodTo} 
-                      onChange={(e) => setExtraPeriodTo(e.target.value)}
-                      className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200 outline-none cursor-pointer font-black text-[10px]"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
+                  <WheelTimePicker
+                    hour={extraHourTo}
+                    minute={extraMinTo}
+                    period={extraPeriodTo}
+                    onChange={(h, m, p) => {
+                      setExtraHourTo(h);
+                      setExtraMinTo(m);
+                      setExtraPeriodTo(p);
+                    }}
+                    onReset={() => {
+                      setExtraHourTo('11');
+                      setExtraMinTo('30');
+                      setExtraPeriodTo('AM');
+                    }}
+                    themeColor="emerald"
+                  />
                 </div>
               </div>
 
