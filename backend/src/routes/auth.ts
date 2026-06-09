@@ -118,8 +118,7 @@ router.post('/login', async (req, res) => {
         for (let i = 1; i <= 5; i++) {
           const inT = recentAtt[`inTime${i}` as keyof typeof recentAtt];
           const outT = recentAtt[`outTime${i}` as keyof typeof recentAtt];
-          const outB = recentAtt[`outBranch${i}` as keyof typeof recentAtt];
-          if (inT && (!outT || outB === 'Auto')) {
+          if (inT && !outT) {
             forgotPunchOut = true;
             break;
           }

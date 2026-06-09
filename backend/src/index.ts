@@ -7,7 +7,6 @@ import cors from 'cors';
 import authRoutes from './routes/auth';
 import attendanceRoutes from './routes/attendance';
 import adminRoutes from './routes/admin';
-import { performAutoPunchOut } from './utils/autoPunchOut';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -101,10 +100,6 @@ async function updatePreviousLateRecords() {
 }
 
 updatePreviousLateRecords();
-
-// Run auto punch out on startup and then every 1 minute
-performAutoPunchOut();
-setInterval(performAutoPunchOut, 60 * 1000);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

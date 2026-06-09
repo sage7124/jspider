@@ -1,12 +1,5 @@
 import * as exceljs from 'exceljs';
 
-export function formatMinsToPoints(totalMins: number): string {
-  const h = Math.floor(totalMins / 60);
-  const m = totalMins % 60;
-  const mStr = m < 10 ? `0${m}` : `${m}`;
-  return `${h}.${mStr}`;
-}
-
 export const getTraineeReportData = (user: any, attendances: any[], year: number, mon: number, daysInMonth: number, holidays: any[] = [], leaves: any[] = []) => {
   let totalWorkedMinutes = 0;
   let totalLateMinutes = 0;
@@ -265,12 +258,12 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
           const l = calcLate(slot, safeIn, sIn, false);
           const e = calcEarly(slot, safeOut, safeIn, sOut, sIn, false);
           
-          if (typeof l === 'number') { dayLateMins += l; finalLate = parseFloat(formatMinsToPoints(l)); } else { finalLate = l; }
+          if (typeof l === 'number') { dayLateMins += l; finalLate = `${l}m`; } else { finalLate = l; }
           
           if (finalLate === 'ABSENT') {
             finalEarly = 'ABSENT';
           } else {
-            if (typeof e === 'number') { dayEarlyMins += e; finalEarly = parseFloat(formatMinsToPoints(e)); } else { finalEarly = e; }
+            if (typeof e === 'number') { dayEarlyMins += e; finalEarly = `${e}m`; } else { finalEarly = e; }
           }
           
           // Overwrite missing out for overall record safety
@@ -301,9 +294,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     totalExtraMinutes += dayExtraMins;
 
     // Update final row strings
-    rowData.late = parseFloat(formatMinsToPoints(dayLateMins));
-    rowData.earlyDeparture = parseFloat(formatMinsToPoints(dayEarlyMins));
-    rowData.extraWork = parseFloat(formatMinsToPoints(dayExtraMins));
+    rowData.late = dayLateMins > 0 ? `${Math.floor(dayLateMins / 60)}h ${dayLateMins % 60}m` : '0m';
+    rowData.earlyDeparture = dayEarlyMins > 0 ? `${Math.floor(dayEarlyMins / 60)}h ${dayEarlyMins % 60}m` : '0m';
+    rowData.extraWork = dayExtraMins > 0 ? `${Math.floor(dayExtraMins / 60)}h ${dayExtraMins % 60}m` : '0m';
 
     const allInfos = att ? [att.info, att.info1, att.info2, att.info3, att.info4, att.info5]
       .filter(Boolean)
@@ -317,9 +310,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   return {
     rows,
     totals: {
-      late: parseFloat(formatMinsToPoints(totalLateMinutes)),
-      earlyDeparture: parseFloat(formatMinsToPoints(totalEarlyMinutes)),
-      extraWork: parseFloat(formatMinsToPoints(totalExtraMinutes))
+      late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
+      earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`,
+      extraWork: `${Math.floor(totalExtraMinutes / 60)}h ${totalExtraMinutes % 60}m`
     },
     assignedSlotNos,
     hasExtraSlots,
@@ -350,23 +343,23 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
     
     // Only show Late/Early for regular slots, not extra work slots
     if (!isExtra) {
-      slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18, numFmt: '0.00' });
-      slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18, numFmt: '0.00' });
+      slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18 });
+      slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18 });
     }
   }
 
   const endColumns = [
     { header: 'Info', key: 'infoText', width: 25 },
-    { header: 'Total Late', key: 'late', width: 15, numFmt: '0.00' },
-    { header: 'Total Early', key: 'earlyDeparture', width: 15, numFmt: '0.00' },
+    { header: 'Total Late', key: 'late', width: 15 },
+    { header: 'Total Early', key: 'earlyDeparture', width: 15 },
   ];
   // Conditionally gating extra work column to hide functionally per user's instructions (can restore boolean check later if wanted)
   if (false && hasExtraSlots) {
-    endColumns.push({ header: 'TOTAL EXTRA WORK', key: 'extraWork', width: 20, numFmt: '0.00' });
+    endColumns.push({ header: 'TOTAL EXTRA WORK', key: 'extraWork', width: 20 });
   }
 
   const allColumns = [...baseColumns, ...slotColumns, ...endColumns];
-  ws.columns = allColumns.map(c => ({ key: c.key, width: c.width, numFmt: c.numFmt }));
+  ws.columns = allColumns.map(c => ({ key: c.key, width: c.width }));
 
   // Add merged header row
   ws.addRow([]);

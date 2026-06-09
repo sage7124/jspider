@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/authMiddleware';
 import bcrypt from 'bcryptjs';
 import * as exceljs from 'exceljs';
-import { generateTraineeWorksheet, formatMinsToPoints } from '../utils/excel';
+import { generateTraineeWorksheet } from '../utils/excel';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -2348,9 +2348,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
               if (type === 'COLLEGE_VISIT') {
                 const parsed = parseCollegeVisit(b);
                 const hrs = parseFloat(parsed.numberOfHours);
-                let formattedHrs = parsed.numberOfHours || '--';
                 if (!isNaN(hrs)) {
-                  formattedHrs = formatMinsToPoints(Math.round(hrs * 60));
                   monthlyTotalHours += hrs;
                 }
                 
@@ -2362,7 +2360,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   conveyanceList.push(`Break ${idx + 1}: ${parsed.conveyance}`);
                   fromTimeList.push(`Break ${idx + 1}: ${parsed.fromTime}`);
                   toTimeList.push(`Break ${idx + 1}: ${parsed.toTime}`);
-                  numberOfHoursList.push(`Break ${idx + 1}: ${formattedHrs}`);
+                  numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
                   outTimesList.push(`Break ${idx + 1}: ${outStr}`);
                   inTimesList.push(`Break ${idx + 1}: ${inStr}`);
                 } else {
@@ -2373,7 +2371,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   conveyanceList.push(parsed.conveyance);
                   fromTimeList.push(parsed.fromTime);
                   toTimeList.push(parsed.toTime);
-                  numberOfHoursList.push(formattedHrs);
+                  numberOfHoursList.push(parsed.numberOfHours);
                   outTimesList.push(outStr);
                   inTimesList.push(inStr);
                 }
@@ -2432,24 +2430,27 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             if (isOnBreak) {
               row.getCell(durationColIndex).value = 'On Break';
             } else if (totalMins > 0) {
-              row.getCell(durationColIndex).value = parseFloat(formatMinsToPoints(totalMins));
-              row.getCell(durationColIndex).numFmt = '0.00';
+              const actualHrs = (totalMins / 60).toFixed(2);
+              row.getCell(durationColIndex).value = `${totalMins} mins (${actualHrs} hrs)`;
               monthlyTotalMins += totalMins;
             } else {
               row.getCell(durationColIndex).value = '--';
             }
 
             if (type === 'COLLEGE_VISIT') {
-              if (dayBreaks.length === 1) {
-                const hrsVal = parseFloat(numberOfHoursVal);
-                if (!isNaN(hrsVal)) {
-                  row.getCell(10).value = hrsVal;
-                  row.getCell(10).numFmt = '0.00';
+              if (dayBreaks.length > 1) {
+                row.getCell(10).value = numberOfHoursVal;
+              } else if (dayBreaks.length === 1) {
+                const parsed = parseCollegeVisit(dayBreaks[0]);
+                const hrs = parseFloat(parsed.numberOfHours);
+                if (!isNaN(hrs)) {
+                  row.getCell(10).value = hrs;
+                  row.getCell(10).numFmt = '0.0" hrs"';
                 } else {
-                  row.getCell(10).value = numberOfHoursVal;
+                  row.getCell(10).value = parsed.numberOfHours;
                 }
               } else {
-                row.getCell(10).value = numberOfHoursVal;
+                row.getCell(10).value = '--';
               }
             }
           } else {
@@ -2480,8 +2481,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Add Grand Total Row
         const totalRowData = type === 'COLLEGE_VISIT'
-          ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', '', '', parseFloat(formatMinsToPoints(Math.round(monthlyTotalHours * 60))), '', '', parseFloat(formatMinsToPoints(monthlyTotalMins))]
-          : ['', 'TOTAL DURATION', '', '', parseFloat(formatMinsToPoints(monthlyTotalMins)), ''];
+          ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', '', '', monthlyTotalHours, '', '', `${monthlyTotalMins} mins (${(monthlyTotalMins / 60).toFixed(2)} hrs)`]
+          : ['', 'TOTAL DURATION', '', '', monthlyTotalMins, ''];
 
         const totalRow = ws.addRow(totalRowData);
         totalRow.height = 24;
@@ -2521,10 +2522,9 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           }
         });
         if (type === 'COLLEGE_VISIT') {
-          totalRow.getCell(10).numFmt = '0.00';
-          totalRow.getCell(totalDurationColIndex).numFmt = '0.00';
+          totalRow.getCell(10).numFmt = '0.0" hrs"';
         } else {
-          totalRow.getCell(totalDurationColIndex).numFmt = '0.00';
+          totalRow.getCell(totalDurationColIndex).numFmt = '0" mins"';
         }
 
         // Auto-fit column widths (safety margins)
@@ -2962,7 +2962,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
           { key: 'day', width: 12 },
           { key: 'subject', width: 25 },
           { key: 'batchNo', width: 15 },
-          { key: 'duration', width: 15, numFmt: '0.00' },
+          { key: 'duration', width: 15 },
           { key: 'startTime', width: 15 },
           { key: 'endTime', width: 15 },
           { key: 'noOfStudents', width: 15 },
@@ -3017,7 +3017,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
             l.day,
             l.subject,
             l.batchNo,
-            parseFloat(formatMinsToPoints(Math.round(l.duration * 60))),
+            l.duration,
             l.startTime,
             l.endTime,
             l.noOfStudents,

@@ -486,7 +486,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       setStatus(res.data);
       
       if (res.data.forgotPunchOut && !hasAlertedForgetRef.current) {
-        alert("you forget to punch out last time");
+        alert("⚠️ IMPORTANT: You forgot to punch out during a previous session! Contact admin ASAP.");
         hasAlertedForgetRef.current = true;
       }
     } catch (err) {
