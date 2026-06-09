@@ -2243,7 +2243,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 <><Clock size={20} className="animate-pulse" /> Start Normal Break</>
               )}
             </h3>
-            <div className="space-y-4 text-left">
+            <div className="space-y-4 text-left overflow-y-auto max-h-[70vh] pr-1">
               {breakType === 'NORMAL' ? (
                 <div>
                   <label className="block text-[10px] font-black text-purple-700 mb-2 uppercase tracking-wide">
