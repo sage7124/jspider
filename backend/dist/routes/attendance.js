@@ -615,10 +615,46 @@ router.get('/reports/monthly-json', authMiddleware_1.authenticateToken, async (r
             finalLeaves = [...leaves, ...remoteLeaves];
         }
         const reportData = (0, excel_1.getTraineeReportData)(user, finalAttendances, y, m, daysInMonth, finalHolidays, finalLeaves);
+        const collegeVisits = await prisma.breakLog.findMany({
+            where: {
+                userId,
+                date: { gte: startDate, lte: endDate },
+                collegeName: { not: null }
+            },
+            orderBy: { date: 'asc' }
+        });
+        const breaks = await prisma.breakLog.findMany({
+            where: {
+                userId,
+                date: { gte: startDate, lte: endDate },
+                collegeName: null
+            },
+            orderBy: { date: 'asc' }
+        });
+        const classesCancelled = await prisma.classCancelledLog.findMany({
+            where: {
+                userId,
+                date: { gte: startDate, lte: endDate }
+            },
+            orderBy: { date: 'asc' }
+        });
+        const extraClasses = await prisma.extraClassLog.findMany({
+            where: {
+                userId,
+                date: { gte: startDate, lte: endDate }
+            },
+            orderBy: { date: 'asc' }
+        });
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
-        res.json(reportData);
+        res.json({
+            ...reportData,
+            collegeVisits,
+            breaks,
+            classesCancelled,
+            extraClasses
+        });
     }
     catch (error) {
         console.error(error);
@@ -662,10 +698,11 @@ router.post('/break/out', authMiddleware_1.authenticateToken, async (req, res) =
         }
         const approvedBreaks = todayBreaks.filter(b => b.status === 'APPROVED');
         const activeBreak = approvedBreaks.find(b => b.breakIn === null);
-        if (activeBreak) {
+        if (activeBreak && breakType !== 'COLLEGE_VISIT') {
             return res.status(400).json({ error: 'You are already on an active break.' });
         }
-        if (approvedBreaks.length >= 4) {
+        const normalApprovedBreaks = approvedBreaks.filter(b => !b.collegeName);
+        if (breakType === 'NORMAL' && normalApprovedBreaks.length >= 4) {
             return res.status(400).json({ error: 'Maximum 4 breaks allowed in a day.' });
         }
         let finalStatus = 'APPROVED';
@@ -678,8 +715,8 @@ router.post('/break/out', authMiddleware_1.authenticateToken, async (req, res) =
             finalReason = reason.trim();
         }
         else if (breakType === 'COLLEGE_VISIT') {
-            if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !fromTime || !toTime) {
-                return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, From Time, To Time) are required for a College Visit.' });
+            if (!bookletNo || !collegeName || !subject || !topicsCovered || !fromTime || !toTime) {
+                return res.status(400).json({ error: 'All fields except Conveyance (Booklet No, College Name, Subject, Topics Covered, From Time, To Time) are required for a College Visit.' });
             }
             // 12-hour format validation (regex matches hh:mm AM/PM, spaces optional)
             const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM)$/i;
@@ -694,20 +731,21 @@ router.post('/break/out', authMiddleware_1.authenticateToken, async (req, res) =
                 userId,
                 date: today,
                 breakOut: new Date(),
+                breakIn: breakType === 'COLLEGE_VISIT' ? new Date() : null,
                 reason: finalReason,
                 status: finalStatus,
                 bookletNo: breakType === 'COLLEGE_VISIT' ? bookletNo.trim() : null,
                 collegeName: breakType === 'COLLEGE_VISIT' ? collegeName.trim() : null,
                 subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : null,
                 topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : null,
-                conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : null,
+                conveyance: breakType === 'COLLEGE_VISIT' ? (conveyance ? conveyance.trim() : null) : null,
                 fromTime: breakType === 'COLLEGE_VISIT' ? fromTime.trim() : null,
                 toTime: breakType === 'COLLEGE_VISIT' ? toTime.trim() : null,
                 numberOfHours: computedHours
             }
         });
         const responseMsg = breakType === 'COLLEGE_VISIT'
-            ? 'College visit breakout started successfully!'
+            ? 'College visit update successfully'
             : 'Break started successfully! Safe travels.';
         res.status(201).json({ message: responseMsg, breakLog: newBreak });
     }
@@ -763,9 +801,9 @@ router.post('/break/in', authMiddleware_1.authenticateToken, async (req, res) =>
 router.post('/extra-class/apply', authMiddleware_1.authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        const { subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks } = req.body;
-        if (!subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName) {
-            return res.status(400).json({ error: 'All fields (Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name) are required.' });
+        const { subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks, classMode } = req.body;
+        if (!subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName || !classMode) {
+            return res.status(400).json({ error: 'All fields (Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name, Class Mode) are required.' });
         }
         const durationVal = parseFloat(duration);
         if (isNaN(durationVal) || durationVal <= 0) {
@@ -791,10 +829,11 @@ router.post('/extra-class/apply', authMiddleware_1.authenticateToken, async (req
                 noOfStudents: studentsVal,
                 centerName: centerName.trim(),
                 remarks: remarks ? remarks.trim() : null,
+                classMode: classMode.trim(),
                 status: 'PENDING'
             }
         });
-        res.status(201).json({ message: 'Extra class details submitted and pending approval.', extraClass });
+        res.status(201).json({ message: 'Extra class details submitted and pending approval. Meet the supervisor for approval of the class', extraClass });
     }
     catch (error) {
         console.error(error);
@@ -819,9 +858,13 @@ router.get('/extra-class/status', authMiddleware_1.authenticateToken, async (req
 router.post('/class-cancelled/apply', authMiddleware_1.authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
-        const { subject, batchNo, centerName, remarks } = req.body;
-        if (!subject || !batchNo || !centerName) {
-            return res.status(400).json({ error: 'All fields (Subject, Batch No, Center Name) are required.' });
+        const { subject, batchNo, centerName, reason, remarks } = req.body;
+        if (!subject || !batchNo || !centerName || !reason) {
+            return res.status(400).json({ error: 'All fields (Subject, Batch No, Center Name, Reason) are required.' });
+        }
+        const validReasons = ['Students Absent', 'Faculty Cancelled Class', 'Faculty at College', 'Other reasons'];
+        if (!validReasons.includes(reason)) {
+            return res.status(400).json({ error: 'Invalid cancellation reason selected.' });
         }
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -834,6 +877,7 @@ router.post('/class-cancelled/apply', authMiddleware_1.authenticateToken, async 
                 subject: subject.trim(),
                 batchNo: batchNo.trim(),
                 centerName: centerName.trim(),
+                reason: reason.trim(),
                 remarks: remarks ? remarks.trim() : null
             }
         });

@@ -700,8 +700,8 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       }
       finalReason = reason.trim();
     } else if (breakType === 'COLLEGE_VISIT') {
-      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !fromTime || !toTime) {
-        return res.status(400).json({ error: 'All fields (Booklet No, College Name, Subject, Topics Covered, Conveyance Details, From Time, To Time) are required for a College Visit.' });
+      if (!bookletNo || !collegeName || !subject || !topicsCovered || !fromTime || !toTime) {
+        return res.status(400).json({ error: 'All fields except Conveyance (Booklet No, College Name, Subject, Topics Covered, From Time, To Time) are required for a College Visit.' });
       }
 
       // 12-hour format validation (regex matches hh:mm AM/PM, spaces optional)
@@ -726,7 +726,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
         collegeName: breakType === 'COLLEGE_VISIT' ? collegeName.trim() : null,
         subject: breakType === 'COLLEGE_VISIT' ? subject.trim() : null,
         topicsCovered: breakType === 'COLLEGE_VISIT' ? topicsCovered.trim() : null,
-        conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : null,
+        conveyance: breakType === 'COLLEGE_VISIT' ? (conveyance ? conveyance.trim() : null) : null,
         fromTime: breakType === 'COLLEGE_VISIT' ? fromTime.trim() : null,
         toTime: breakType === 'COLLEGE_VISIT' ? toTime.trim() : null,
         numberOfHours: computedHours
@@ -803,10 +803,10 @@ router.post('/break/in', authenticateToken, async (req: AuthRequest, res) => {
 router.post('/extra-class/apply', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
-    const { subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks } = req.body;
+    const { subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks, classMode } = req.body;
 
-    if (!subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName) {
-      return res.status(400).json({ error: 'All fields (Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name) are required.' });
+    if (!subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName || !classMode) {
+      return res.status(400).json({ error: 'All fields (Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name, Class Mode) are required.' });
     }
 
     const durationVal = parseFloat(duration);
@@ -837,6 +837,7 @@ router.post('/extra-class/apply', authenticateToken, async (req: AuthRequest, re
         noOfStudents: studentsVal,
         centerName: centerName.trim(),
         remarks: remarks ? remarks.trim() : null,
+        classMode: classMode.trim(),
         status: 'PENDING'
       }
     });

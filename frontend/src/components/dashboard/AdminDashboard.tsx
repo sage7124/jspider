@@ -4631,6 +4631,7 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
   const [inMin, setInMin] = useState('30');
   const [inPeriod, setInPeriod] = useState('AM');
   const [saving, setSaving] = useState(false);
+  const [classMode, setClassMode] = useState('OFFLINE');
 
   useEffect(() => {
     fetchLogs();
@@ -4661,6 +4662,7 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
     setNoOfStudents('0');
     setCenterName('');
     setRemarks('');
+    setClassMode('OFFLINE');
     setOutHour('10');
     setOutMin('00');
     setOutPeriod('AM');
@@ -4678,6 +4680,7 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
     setNoOfStudents(String(b.noOfStudents || 0));
     setCenterName(b.centerName || '');
     setRemarks(b.remarks || '');
+    setClassMode(b.classMode || 'OFFLINE');
 
     const outTime = parse12hTime(b.startTime);
     setOutHour(outTime.hour);
@@ -4714,7 +4717,8 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
           endTime: endTimeStr,
           noOfStudents: parseInt(noOfStudents) || 0,
           centerName: centerName.trim(),
-          remarks: remarks.trim()
+          remarks: remarks.trim(),
+          classMode: classMode
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -4730,7 +4734,8 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
           endTime: endTimeStr,
           noOfStudents: parseInt(noOfStudents) || 0,
           centerName: centerName.trim(),
-          remarks: remarks.trim()
+          remarks: remarks.trim(),
+          classMode: classMode
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -4840,7 +4845,7 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-left">
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
                 <select
@@ -4878,6 +4883,18 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                   onChange={e => setCenterName(e.target.value)}
                   className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold" 
                 />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Class Mode</label>
+                <select
+                  value={classMode}
+                  onChange={e => setClassMode(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
+                >
+                  <option value="OFFLINE">Offline</option>
+                  <option value="ONLINE">Online</option>
+                </select>
               </div>
             </div>
 
@@ -5064,7 +5081,10 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                             <div className="font-semibold text-emerald-800">{log.subject}</div>
                             <div className="text-[10px] font-mono text-gray-500">Batch: {log.batchNo}</div>
                           </td>
-                          <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
+                          <td className="px-4 py-3 font-medium text-gray-600">
+                            <div>{log.centerName}</div>
+                            <div className="text-[10px] font-bold text-gray-400">({log.classMode || 'OFFLINE'})</div>
+                          </td>
                           <td className="px-4 py-3 text-center">
                             <div className="font-mono text-purple-700 font-semibold">{log.startTime} - {log.endTime}</div>
                             <div className="text-[10px] font-bold text-gray-500">{log.duration} hrs</div>

@@ -2954,7 +2954,6 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
           counter++;
         }
         usedNames.add(sheetName);
-
         const ws = workbook.addWorksheet(sheetName);
         ws.columns = [
           { key: 'index', width: 6 },
@@ -2962,6 +2961,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
           { key: 'day', width: 12 },
           { key: 'subject', width: 25 },
           { key: 'batchNo', width: 15 },
+          { key: 'classMode', width: 15 },
           { key: 'duration', width: 15 },
           { key: 'startTime', width: 15 },
           { key: 'endTime', width: 15 },
@@ -2973,7 +2973,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
         ];
 
         // Title Block (Row 1)
-        ws.mergeCells('A1:M1');
+        ws.mergeCells('A1:N1');
         const titleCell = ws.getCell('A1');
         titleCell.value = `EXTRA CLASSES REPORT: ${user.fullName.toUpperCase()} | PHONE: ${user.identifier}`;
         titleCell.font = { bold: true, size: 14, name: 'Calibri' };
@@ -2989,6 +2989,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
           'Day',
           'Subject',
           'Batch No',
+          'Class Mode',
           'Duration (hrs)',
           'Start Time',
           'End Time',
@@ -3017,6 +3018,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
             l.day,
             l.subject,
             l.batchNo,
+            l.classMode || 'OFFLINE',
             l.duration,
             l.startTime,
             l.endTime,
@@ -3261,10 +3263,10 @@ router.get('/reports/classes-cancelled/export', authenticateToken, async (req: A
 // 1. Log Extra Class
 router.post('/extra-classes/log', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { traineeId, date, subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks } = req.body;
+    const { traineeId, date, subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks, classMode } = req.body;
 
-    if (!traineeId || !date || !subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName) {
-      return res.status(400).json({ error: 'All fields (Trainee, Date, Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name) are required.' });
+    if (!traineeId || !date || !subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName || !classMode) {
+      return res.status(400).json({ error: 'All fields (Trainee, Date, Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name, Class Mode) are required.' });
     }
 
     const durationVal = parseFloat(duration);
@@ -3293,6 +3295,7 @@ router.post('/extra-classes/log', authenticateToken, async (req: AuthRequest, re
         noOfStudents: studentsVal,
         centerName: centerName.trim(),
         remarks: remarks ? remarks.trim() : null,
+        classMode: classMode.trim(),
         status: 'APPROVED',
         adminReason: 'Logged directly by Administrator/Supervisor'
       }
@@ -3498,9 +3501,9 @@ router.put('/breaks/:id', authenticateToken, async (req: AuthRequest, res) => {
 router.put('/extra-classes/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { traineeId, date, subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks } = req.body;
+    const { traineeId, date, subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks, classMode } = req.body;
 
-    if (!traineeId || !date || !subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName) {
+    if (!traineeId || !date || !subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName || !classMode) {
       return res.status(400).json({ error: 'All fields are required.' });
     }
 
@@ -3558,7 +3561,8 @@ router.put('/extra-classes/:id', authenticateToken, async (req: AuthRequest, res
         endTime: endTime.trim(),
         noOfStudents: studentsVal,
         centerName: centerName.trim(),
-        remarks: remarks ? remarks.trim() : null
+        remarks: remarks ? remarks.trim() : null,
+        classMode: classMode.trim()
       }
     });
 

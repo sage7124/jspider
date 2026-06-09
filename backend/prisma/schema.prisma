@@ -240,6 +240,7 @@ model ExtraClassLog {
   noOfStudents  Int
   centerName    String    // NICT Center Name
   remarks       String?
+  classMode     String    @default("OFFLINE") // "ONLINE" or "OFFLINE"
   status        String    @default("PENDING") // PENDING, APPROVED, REJECTED
   adminReason   String?   // Supervisor approval/rejection remarks
   createdAt     DateTime  @default(now())
