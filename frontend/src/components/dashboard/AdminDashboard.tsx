@@ -3754,7 +3754,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                 >
                   <option value="">-- Choose Trainee --</option>
                   {(allTrainees || []).map(t => (
-                    <option key={t.id} value={t.id}>${t.name} (${t.empCode})</option>
+                    <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
                   ))}
                 </select>
               </div>
@@ -3788,13 +3788,13 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                 <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Out Time (HH:MM AM/PM)</label>
                 <div className="flex gap-2">
                   <select value={outHour} onChange={e => setOutHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                   <select value={outMin} onChange={e => setOutMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                    {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                   <select value={outPeriod} onChange={e => setOutPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
               </div>
@@ -3803,13 +3803,13 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                 <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">In Time (HH:MM AM/PM)</label>
                 <div className="flex gap-2">
                   <select value={inHour} onChange={e => setInHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                   <select value={inMin} onChange={e => setInMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                    {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                   <select value={inPeriod} onChange={e => setInPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
               </div>
@@ -4184,7 +4184,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 >
                   <option value="">-- Choose Trainee --</option>
                   {(allTrainees || []).map(t => (
-                    <option key={t.id} value={t.id}>${t.name} (${t.empCode})</option>
+                    <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
                   ))}
                 </select>
               </div>
@@ -4271,13 +4271,13 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Planned Start Time (Out Time)</label>
                 <div className="flex gap-2">
                   <select value={outHour} onChange={e => setOutHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                   <select value={outMin} onChange={e => setOutMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                    {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                   <select value={outPeriod} onChange={e => setOutPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
               </div>
@@ -4286,13 +4286,13 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Planned End Time (In Time)</label>
                 <div className="flex gap-2">
                   <select value={inHour} onChange={e => setInHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                   <select value={inMin} onChange={e => setInMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                    {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                   <select value={inPeriod} onChange={e => setInPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
               </div>
@@ -4670,7 +4670,7 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 >
                   <option value="">-- Choose Trainee --</option>
                   {(allTrainees || []).map(t => (
-                    <option key={t.id} value={t.id}>${t.name} (${t.empCode})</option>
+                    <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
                   ))}
                 </select>
               </div>
@@ -4743,13 +4743,13 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Class Start Time (HH:MM AM/PM)</label>
                 <div className="flex gap-2">
                   <select value={outHour} onChange={e => setOutHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                   <select value={outMin} onChange={e => setOutMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                    {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                   <select value={outPeriod} onChange={e => setOutPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
               </div>
@@ -4758,13 +4758,13 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Class End Time (HH:MM AM/PM)</label>
                 <div className="flex gap-2">
                   <select value={inHour} onChange={e => setInHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                   <select value={inMin} onChange={e => setInMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                    {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                   <select value={inPeriod} onChange={e => setInPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
               </div>
@@ -5134,7 +5134,7 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
                 >
                   <option value="">-- Choose Trainee --</option>
                   {(allTrainees || []).map(t => (
-                    <option key={t.id} value={t.id}>${t.name} (${t.empCode})</option>
+                    <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
                   ))}
                 </select>
               </div>
@@ -5195,7 +5195,7 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
                   onChange={e => setReason(e.target.value)}
                   className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold animate-fade-in"
                 >
-                  {CANCELLATION_REASONS.map(r => <option key={r} value={r}>${r}</option>)}
+                  {CANCELLATION_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
             </div>
@@ -5312,7 +5312,7 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
                           <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
                           <td className="px-4 py-3">
                             <div className="font-bold text-red-700 text-xs">{log.reason || 'Other reasons'}</div>
-                            {log.remarks && <div className="text-[10px] text-gray-500 italic mt-0.5">"${log.remarks}"</div>}
+                            {log.remarks && <div className="text-[10px] text-gray-500 italic mt-0.5">"{log.remarks}"</div>}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <button
