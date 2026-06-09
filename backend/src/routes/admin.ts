@@ -3256,5 +3256,144 @@ router.get('/reports/classes-cancelled/export', authenticateToken, async (req: A
   }
 });
 
+// ── Admin/Supervisor Logging Actions on Behalf of Trainees ──────────────────
+
+// 1. Log Extra Class
+router.post('/extra-classes/log', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { traineeId, date, subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks } = req.body;
+
+    if (!traineeId || !date || !subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName) {
+      return res.status(400).json({ error: 'All fields (Trainee, Date, Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name) are required.' });
+    }
+
+    const durationVal = parseFloat(duration);
+    if (isNaN(durationVal) || durationVal <= 0) {
+      return res.status(400).json({ error: 'Duration must be a positive number.' });
+    }
+
+    const studentsVal = parseInt(noOfStudents);
+    if (isNaN(studentsVal) || studentsVal < 0) {
+      return res.status(400).json({ error: 'Number of students must be a valid positive integer.' });
+    }
+
+    const parsedDate = new Date(date);
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][parsedDate.getDay()];
+
+    const extraClass = await prisma.extraClassLog.create({
+      data: {
+        userId: Number(traineeId),
+        date: parsedDate,
+        day: dayOfWeek,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        duration: durationVal,
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+        noOfStudents: studentsVal,
+        centerName: centerName.trim(),
+        remarks: remarks ? remarks.trim() : null,
+        status: 'APPROVED',
+        adminReason: 'Logged directly by Administrator/Supervisor'
+      }
+    });
+
+    res.status(201).json({ message: 'Extra class logged and approved successfully.', extraClass });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 2. Log Cancelled Class
+router.post('/class-cancelled/log', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { traineeId, date, subject, batchNo, centerName, reason, remarks } = req.body;
+
+    if (!traineeId || !date || !subject || !batchNo || !centerName || !reason) {
+      return res.status(400).json({ error: 'All fields (Trainee, Date, Subject, Batch No, Center Name, Reason) are required.' });
+    }
+
+    const parsedDate = new Date(date);
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][parsedDate.getDay()];
+
+    const cancelledClass = await prisma.classCancelledLog.create({
+      data: {
+        userId: Number(traineeId),
+        date: parsedDate,
+        day: dayOfWeek,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        centerName: centerName.trim(),
+        reason: reason.trim(),
+        remarks: remarks ? remarks.trim() : null
+      }
+    });
+
+    res.status(201).json({ message: 'Cancelled class logged successfully.', cancelledClass });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 3. Log Break / College Visit
+router.post('/breaks/log', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { traineeId, date, breakType, breakOut, breakIn, reason, bookletNo, collegeName, subject, topicsCovered, conveyance, numberOfHours, fromTime, toTime } = req.body;
+
+    if (!traineeId || !date || !breakType || !breakOut) {
+      return res.status(400).json({ error: 'Trainee, Date, Break Type, and Out Time are required.' });
+    }
+
+    const parsedDate = new Date(date);
+    const parsedBreakOut = new Date(breakOut);
+    const parsedBreakIn = breakIn ? new Date(breakIn) : null;
+
+    let breakLog;
+
+    if (breakType === 'COLLEGE_VISIT') {
+      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !numberOfHours || !fromTime || !toTime) {
+        return res.status(400).json({ error: 'All College Visit details are required.' });
+      }
+
+      breakLog = await prisma.breakLog.create({
+        data: {
+          userId: Number(traineeId),
+          date: parsedDate,
+          breakOut: parsedBreakOut,
+          breakIn: parsedBreakIn || parsedBreakOut, // Save immediately
+          reason: 'College Visit',
+          status: 'APPROVED',
+          bookletNo: bookletNo.trim(),
+          collegeName: collegeName.trim(),
+          subject: subject.trim(),
+          topicsCovered: topicsCovered.trim(),
+          conveyance: conveyance.trim(),
+          numberOfHours: numberOfHours.trim(),
+          fromTime: fromTime.trim(),
+          toTime: toTime.trim()
+        }
+      });
+    } else {
+      breakLog = await prisma.breakLog.create({
+        data: {
+          userId: Number(traineeId),
+          date: parsedDate,
+          breakOut: parsedBreakOut,
+          breakIn: parsedBreakIn,
+          reason: reason ? reason.trim() : 'Manual Break Entry',
+          status: 'APPROVED'
+        }
+      });
+    }
+
+    res.status(201).json({ message: 'Break record logged successfully.', breakLog });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

@@ -236,6 +236,39 @@ function calculateExtraWork(t: Trainee): string {
   return `${mins} mins`;
 }
 
+function convertTo24h(hour: string, min: string, period: string): string {
+  let h = parseInt(hour, 10);
+  const m = min.padStart(2, '0');
+  if (period === 'PM' && h < 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return `${String(h).padStart(2, '0')}:${m}`;
+}
+
+function calculateDuration12h(outHour: string, outMin: string, outPeriod: string, inHour: string, inMin: string, inPeriod: string): string {
+  const out24 = convertTo24h(outHour, outMin, outPeriod);
+  const in24 = convertTo24h(inHour, inMin, inPeriod);
+  const [hOut, mOut] = out24.split(':').map(Number);
+  const [hIn, mIn] = in24.split(':').map(Number);
+  let diffMin = (hIn * 60 + mIn) - (hOut * 60 + mOut);
+  if (diffMin < 0) diffMin += 24 * 60;
+  const hrs = Math.floor(diffMin / 60);
+  const mins = diffMin % 60;
+  if (hrs > 0) {
+    return `${hrs} hr ${mins} mins`;
+  }
+  return `${mins} mins`;
+}
+
+function getDurationInHours(outHour: string, outMin: string, outPeriod: string, inHour: string, inMin: string, inPeriod: string): number {
+  const out24 = convertTo24h(outHour, outMin, outPeriod);
+  const in24 = convertTo24h(inHour, inMin, inPeriod);
+  const [hOut, mOut] = out24.split(':').map(Number);
+  const [hIn, mIn] = in24.split(':').map(Number);
+  let diffMin = (hIn * 60 + mIn) - (hOut * 60 + mOut);
+  if (diffMin < 0) diffMin += 24 * 60;
+  return Number((diffMin / 60).toFixed(2));
+}
+
 // ── Select component ──────────────────────────────────────────────────────────
 const Sel = ({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) => (
   <select value={value} onChange={(e) => onChange(e.target.value)}
@@ -1269,8 +1302,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role={role} />}
       {showBreaks && <BreakLogsModal onClose={() => setShowBreaks(false)} allTrainees={trainees} />}
       {showCollegeVisits && <CollegeVisitLogsModal onClose={() => setShowCollegeVisits(false)} allTrainees={trainees} />}
-      {showExtraClasses && <ExtraClassesLogsModal onClose={() => setShowExtraClasses(false)} />}
-      {showCancelledClasses && <CancelledClassesLogsModal onClose={() => setShowCancelledClasses(false)} />}
+      {showExtraClasses && <ExtraClassesLogsModal onClose={() => setShowExtraClasses(false)} allTrainees={trainees} />}
+      {showCancelledClasses && <CancelledClassesLogsModal onClose={() => setShowCancelledClasses(false)} allTrainees={trainees} />}
     </div>
   );
 };
@@ -3535,6 +3568,19 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
   const [exporting, setExporting] = useState(false);
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
 
+  // Form states
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [outHour, setOutHour] = useState('10');
+  const [outMin, setOutMin] = useState('00');
+  const [outPeriod, setOutPeriod] = useState('AM');
+  const [inHour, setInHour] = useState('10');
+  const [inMin, setInMin] = useState('30');
+  const [inPeriod, setInPeriod] = useState('AM');
+  const [reason, setReason] = useState('Tea Break');
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     fetchLogs();
   }, [date]);
@@ -3558,6 +3604,50 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddBreak = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTraineeId) return alert('Please select a trainee.');
+
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('token');
+      const out24 = convertTo24h(outHour, outMin, outPeriod);
+      const in24 = convertTo24h(inHour, inMin, inPeriod);
+      const breakOutStr = `${logDate}T${out24}:00`;
+      const breakInStr = `${logDate}T${in24}:00`;
+
+      await axios.post(`${API}/breaks/log`, {
+        traineeId: Number(selectedTraineeId),
+        date: logDate,
+        breakType: 'NORMAL',
+        breakOut: breakOutStr,
+        breakIn: breakInStr,
+        reason: reason.trim(),
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert('Outing logged successfully!');
+      setShowAddForm(false);
+      
+      // Reset form
+      setSelectedTraineeId('');
+      setOutHour('10');
+      setOutMin('00');
+      setOutPeriod('AM');
+      setInHour('10');
+      setInMin('30');
+      setInPeriod('AM');
+      setReason('Tea Break');
+
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to log outing');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -3608,6 +3698,8 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
     }
   };
 
+  const MINS_60 = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
   // Group logs by teacher identifier to combine entries per teacher in a day
   const groupedLogsMap = new Map<string, any>();
   logs.forEach((log) => {
@@ -3624,6 +3716,8 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
   });
   const groupedLogs = Array.from(groupedLogsMap.values());
 
+  const currentDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl p-6 relative max-h-[90vh] flex flex-col">
@@ -3634,126 +3728,245 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
           <Clock size={20} /> Teacher Daily Outing Logs
         </h2>
 
-        {/* Filter Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
-              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
-          </div>
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+        {showAddForm ? (
+          <form onSubmit={handleAddBreak} className="space-y-4 text-xs overflow-y-auto max-h-[70vh] p-1 text-left">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-sm font-bold text-amber-700 uppercase tracking-wide">
+                Log Daily Outing on Behalf of Trainee
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setShowAddForm(false)}
+                className="text-gray-500 hover:text-gray-800 font-bold"
+              >
+                Back to List
+              </button>
             </div>
-            <button onClick={handleExport} disabled={exporting}
-              className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-            </button>
-          </div>
-        </div>
 
-        {/* Logs Table */}
-        <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
-          {loading ? (
-            <p className="text-center py-10 text-gray-400">Loading break logs...</p>
-          ) : (
-            <table className="w-full text-xs text-left">
-              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
-                <tr>
-                  <th className="px-4 py-3">Teacher</th>
-                  <th className="px-4 py-3">Mobile/ID</th>
-                  <th className="px-4 py-3 text-center">Total Outings</th>
-                  <th className="px-4 py-3 text-center w-[15%]">Export</th>
-                  <th className="px-4 py-3 text-center w-[15%]">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {groupedLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No daily outing logs found for this date.</td>
-                  </tr>
-                ) : (
-                  groupedLogs.map((group) => (
-                    <React.Fragment key={group.identifier}>
-                      <tr className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
-                        <td className="px-4 py-3 font-mono">{group.identifier}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100">
-                            {group.breaks.length} {group.breaks.length === 1 ? 'outing' : 'outings'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => handleIndividualExport(group.name, group.identifier)}
-                            className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer animate-fade-in"
-                            title={`Export monthly report for ${group.name}`}
-                          >
-                            <Download size={14} />
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => setExpandedTeacher(expandedTeacher === group.identifier ? null : group.identifier)}
-                            className="bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-800 border border-gray-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer font-bold animate-fade-in"
-                          >
-                            {expandedTeacher === group.identifier ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                          </button>
-                        </td>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
+                <select
+                  required
+                  value={selectedTraineeId}
+                  onChange={e => setSelectedTraineeId(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-amber-500 font-semibold"
+                >
+                  <option value="">-- Choose Trainee --</option>
+                  {(allTrainees || []).map(t => (
+                    <option key={t.id} value={t.id}>${t.name} (${t.empCode})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Date</label>
+                <input 
+                  type="date" 
+                  required
+                  value={logDate} 
+                  onChange={e => setLogDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-amber-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Reason</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Tea Break"
+                  value={reason} 
+                  onChange={e => setReason(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-amber-500 font-semibold" 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Out Time (HH:MM AM/PM)</label>
+                <div className="flex gap-2">
+                  <select value={outHour} onChange={e => setOutHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                  </select>
+                  <select value={outMin} onChange={e => setOutMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                  </select>
+                  <select value={outPeriod} onChange={e => setOutPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">In Time (HH:MM AM/PM)</label>
+                <div className="flex gap-2">
+                  <select value={inHour} onChange={e => setInHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                  </select>
+                  <select value={inMin} onChange={e => setInMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                  </select>
+                  <select value={inPeriod} onChange={e => setInPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t pt-4 bg-amber-50 p-3 rounded border border-amber-200">
+              <span className="text-amber-800 font-bold uppercase text-[10px]">Computed Duration:</span>
+              <span className="font-extrabold text-amber-900 bg-amber-100 px-3 py-1 rounded border border-amber-300 text-sm">
+                {currentDuration}
+              </span>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : '🚀 Save'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {/* Filter Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                  className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                    className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
+                </div>
+                <button onClick={handleExport} disabled={exporting}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+                </button>
+                <button onClick={() => setShowAddForm(true)}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+                  ➕ Log Outing
+                </button>
+              </div>
+            </div>
+
+            {/* Logs Table */}
+            <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+              {loading ? (
+                <p className="text-center py-10 text-gray-400">Loading break logs...</p>
+              ) : (
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
+                    <tr>
+                      <th className="px-4 py-3">Teacher</th>
+                      <th className="px-4 py-3">Mobile/ID</th>
+                      <th className="px-4 py-3 text-center">Total Outings</th>
+                      <th className="px-4 py-3 text-center w-[15%]">Export</th>
+                      <th className="px-4 py-3 text-center w-[15%]">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {groupedLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No daily outing logs found for this date.</td>
                       </tr>
-                      {expandedTeacher === group.identifier && (
-                        <tr className="bg-amber-50/10">
-                          <td colSpan={5} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
-                            <div className="text-[10px] font-bold text-amber-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
-                              <Clock size={12} /> Outings for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                            </div>
-                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                              <table className="w-full text-xs text-left">
-                                <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
-                                  <tr>
-                                    <th className="px-4 py-2 w-[8%] text-center">#</th>
-                                    <th className="px-4 py-2">Out Time</th>
-                                    <th className="px-2 py-2 text-center w-[5%]">-</th>
-                                    <th className="px-4 py-2">In Time</th>
-                                    <th className="px-4 py-2 text-center">Duration</th>
-                                    <th className="px-4 py-2">Reason</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-150">
-                                  {group.breaks.map((b: any, idx: number) => (
-                                    <tr key={b.id} className="hover:bg-gray-50/50">
-                                      <td className="px-4 py-2.5 text-center font-bold text-gray-400">{idx + 1}</td>
-                                      <td className="px-4 py-2.5 text-purple-700 font-semibold">{b.breakOut}</td>
-                                      <td className="px-2 py-2.5 text-center text-gray-400 font-bold">➔</td>
-                                      <td className="px-4 py-2.5 text-green-700 font-semibold">{b.breakIn}</td>
-                                      <td className="px-4 py-2.5 text-center">
-                                        <span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
-                                          {b.duration}
-                                        </span>
-                                      </td>
-                                      <td className="px-4 py-2.5 text-gray-600 italic font-medium">{b.reason || '--'}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+                    ) : (
+                      groupedLogs.map((group) => (
+                        <React.Fragment key={group.identifier}>
+                          <tr className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
+                            <td className="px-4 py-3 font-mono">{group.identifier}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100">
+                                {group.breaks.length} {group.breaks.length === 1 ? 'outing' : 'outings'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => handleIndividualExport(group.name, group.identifier)}
+                                className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer animate-fade-in"
+                                title={`Export monthly report for ${group.name}`}
+                              >
+                                <Download size={14} />
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => setExpandedTeacher(expandedTeacher === group.identifier ? null : group.identifier)}
+                                className="bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-800 border border-gray-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer font-bold animate-fade-in"
+                              >
+                                {expandedTeacher === group.identifier ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              </button>
+                            </td>
+                          </tr>
+                          {expandedTeacher === group.identifier && (
+                            <tr className="bg-amber-50/10">
+                              <td colSpan={5} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
+                                <div className="text-[10px] font-bold text-amber-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
+                                  <Clock size={12} /> Outings for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </div>
+                                <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                                  <table className="w-full text-xs text-left">
+                                    <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
+                                      <tr>
+                                        <th className="px-4 py-2 w-[8%] text-center">#</th>
+                                        <th className="px-4 py-2">Out Time</th>
+                                        <th className="px-2 py-2 text-center w-[5%]">-</th>
+                                        <th className="px-4 py-2">In Time</th>
+                                        <th className="px-4 py-2 text-center">Duration</th>
+                                        <th className="px-4 py-2">Reason</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-150">
+                                      {group.breaks.map((b: any, idx: number) => (
+                                        <tr key={b.id} className="hover:bg-gray-50/50">
+                                          <td className="px-4 py-2.5 text-center font-bold text-gray-400">{idx + 1}</td>
+                                          <td className="px-4 py-2.5 text-purple-700 font-semibold">{b.breakOut}</td>
+                                          <td className="px-2 py-2.5 text-center text-gray-400 font-bold">➔</td>
+                                          <td className="px-4 py-2.5 text-green-700 font-semibold">{b.breakIn}</td>
+                                          <td className="px-4 py-2.5 text-center">
+                                            <span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                                              {b.duration}
+                                            </span>
+                                          </td>
+                                          <td className="px-4 py-2.5 text-gray-600 italic font-medium">{b.reason || '--'}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -3768,6 +3981,23 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
   const [exportMonth, setExportMonth] = useState(new Date().toISOString().substring(0, 7));
   const [exporting, setExporting] = useState(false);
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
+
+  // Form states
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [outHour, setOutHour] = useState('10');
+  const [outMin, setOutMin] = useState('00');
+  const [outPeriod, setOutPeriod] = useState('AM');
+  const [inHour, setInHour] = useState('12');
+  const [inMin, setInMin] = useState('30');
+  const [inPeriod, setInPeriod] = useState('PM');
+  const [bookletNo, setBookletNo] = useState('');
+  const [collegeName, setCollegeName] = useState('');
+  const [subject, setSubject] = useState('');
+  const [topicsCovered, setTopicsCovered] = useState('');
+  const [conveyance, setConveyance] = useState('Two Wheeler');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -3792,6 +4022,62 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddCollegeVisit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTraineeId) return alert('Please select a trainee.');
+
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('token');
+      const out24 = convertTo24h(outHour, outMin, outPeriod);
+      const in24 = convertTo24h(inHour, inMin, inPeriod);
+      const breakOutStr = `${logDate}T${out24}:00`;
+      const breakInStr = `${logDate}T${in24}:00`;
+      const computedDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+
+      await axios.post(`${API}/breaks/log`, {
+        traineeId: Number(selectedTraineeId),
+        date: logDate,
+        breakType: 'COLLEGE_VISIT',
+        breakOut: breakOutStr,
+        breakIn: breakInStr,
+        bookletNo: bookletNo.trim(),
+        collegeName: collegeName.trim(),
+        subject: subject.trim(),
+        topicsCovered: topicsCovered.trim(),
+        conveyance: conveyance.trim(),
+        numberOfHours: computedDuration,
+        fromTime: `${outHour}:${outMin} ${outPeriod}`,
+        toTime: `${inHour}:${inMin} ${inPeriod}`
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert('College Visit logged successfully!');
+      setShowAddForm(false);
+      
+      // Reset form
+      setSelectedTraineeId('');
+      setBookletNo('');
+      setCollegeName('');
+      setSubject('');
+      setTopicsCovered('');
+      setConveyance('Two Wheeler');
+      setOutHour('10');
+      setOutMin('00');
+      setOutPeriod('AM');
+      setInHour('12');
+      setInMin('30');
+      setInPeriod('PM');
+
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to log college visit');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -3842,6 +4128,8 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
     }
   };
 
+  const MINS_60 = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
   // Group logs by teacher identifier to combine entries per teacher in a day
   const groupedLogsMap = new Map<string, any>();
   logs.forEach((log) => {
@@ -3858,6 +4146,8 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
   });
   const groupedLogs = Array.from(groupedLogsMap.values());
 
+  const currentDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-5xl p-6 relative max-h-[90vh] flex flex-col">
@@ -3868,143 +4158,315 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
           <GraduationCap size={20} /> Teacher College Visit Logs
         </h2>
 
-        {/* Filter Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
-              className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+        {showAddForm ? (
+          <form onSubmit={handleAddCollegeVisit} className="space-y-4 text-xs overflow-y-auto max-h-[70vh] p-1 text-left">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wide">
+                Log College Visit on Behalf of Trainee
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setShowAddForm(false)}
+                className="text-gray-500 hover:text-gray-800 font-bold"
+              >
+                Back to List
+              </button>
             </div>
-            <button onClick={handleExport} disabled={exporting}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-            </button>
-          </div>
-        </div>
 
-        {/* Logs Table */}
-        <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
-          {loading ? (
-            <p className="text-center py-10 text-gray-400">Loading College Visit logs...</p>
-          ) : (
-            <table className="w-full text-xs text-left">
-              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
-                <tr>
-                  <th className="px-4 py-3">Teacher</th>
-                  <th className="px-4 py-3">Mobile/ID</th>
-                  <th className="px-4 py-3 text-center">Total Visits</th>
-                  <th className="px-4 py-3 text-center w-[15%]">Export</th>
-                  <th className="px-4 py-3 text-center w-[15%]">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {groupedLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No College Visit logs found for this date.</td>
-                  </tr>
-                ) : (
-                  groupedLogs.map((group) => (
-                    <React.Fragment key={group.identifier}>
-                      <tr className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
-                        <td className="px-4 py-3 font-mono">{group.identifier}</td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
-                            {group.breaks.length} {group.breaks.length === 1 ? 'visit' : 'visits'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => handleIndividualExport(group.name, group.identifier)}
-                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border border-blue-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer animate-fade-in"
-                            title={`Export monthly report for ${group.name}`}
-                          >
-                            <Download size={14} />
-                          </button>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => setExpandedTeacher(expandedTeacher === group.identifier ? null : group.identifier)}
-                            className="bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-800 border border-gray-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer font-bold animate-fade-in"
-                          >
-                            {expandedTeacher === group.identifier ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                          </button>
-                        </td>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
+                <select
+                  required
+                  value={selectedTraineeId}
+                  onChange={e => setSelectedTraineeId(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                >
+                  <option value="">-- Choose Trainee --</option>
+                  {(allTrainees || []).map(t => (
+                    <option key={t.id} value={t.id}>${t.name} (${t.empCode})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Date</label>
+                <input 
+                  type="date" 
+                  required
+                  value={logDate} 
+                  onChange={e => setLogDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Booklet No</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Enter Booklet Number"
+                  value={bookletNo} 
+                  onChange={e => setBookletNo(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold" 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">College Name</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Enter College Name"
+                  value={collegeName} 
+                  onChange={e => setCollegeName(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Subject / Purpose</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Enter Subject or Purpose"
+                  value={subject} 
+                  onChange={e => setSubject(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Conveyance</label>
+                <select
+                  value={conveyance}
+                  onChange={e => setConveyance(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                >
+                  <option value="Two Wheeler">Two Wheeler</option>
+                  <option value="Four Wheeler">Four Wheeler</option>
+                  <option value="Bus">Bus</option>
+                  <option value="Train">Train</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Topics Covered</label>
+              <textarea 
+                required
+                placeholder="Enter details of topics covered during college visit..."
+                value={topicsCovered} 
+                onChange={e => setTopicsCovered(e.target.value)}
+                rows={3}
+                className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold resize-none" 
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Planned Start Time (Out Time)</label>
+                <div className="flex gap-2">
+                  <select value={outHour} onChange={e => setOutHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                  </select>
+                  <select value={outMin} onChange={e => setOutMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                  </select>
+                  <select value={outPeriod} onChange={e => setOutPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Planned End Time (In Time)</label>
+                <div className="flex gap-2">
+                  <select value={inHour} onChange={e => setInHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                  </select>
+                  <select value={inMin} onChange={e => setInMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                  </select>
+                  <select value={inPeriod} onChange={e => setInPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t pt-4 bg-blue-50 p-3 rounded border border-blue-200">
+              <span className="text-blue-800 font-bold uppercase text-[10px]">Computed Duration / Hours:</span>
+              <span className="font-extrabold text-blue-900 bg-blue-100 px-3 py-1 rounded border border-blue-300 text-sm">
+                {currentDuration}
+              </span>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : '🚀 Save'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {/* Filter Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                    className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <button onClick={handleExport} disabled={exporting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+                </button>
+                <button onClick={() => setShowAddForm(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+                  ➕ Log College Visit
+                </button>
+              </div>
+            </div>
+
+            {/* Logs Table */}
+            <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+              {loading ? (
+                <p className="text-center py-10 text-gray-400">Loading College Visit logs...</p>
+              ) : (
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
+                    <tr>
+                      <th className="px-4 py-3">Teacher</th>
+                      <th className="px-4 py-3">Mobile/ID</th>
+                      <th className="px-4 py-3 text-center">Total Visits</th>
+                      <th className="px-4 py-3 text-center w-[15%]">Export</th>
+                      <th className="px-4 py-3 text-center w-[15%]">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {groupedLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No College Visit logs found for this date.</td>
                       </tr>
-                      {expandedTeacher === group.identifier && (
-                        <tr className="bg-blue-50/10">
-                          <td colSpan={5} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
-                            <div className="text-[10px] font-bold text-blue-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
-                              <GraduationCap size={12} /> Visits for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                            </div>
-                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                              <table className="w-full text-xs text-left">
-                                <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
-                                  <tr>
-                                    <th className="px-3 py-2 w-[4%] text-center">#</th>
-                                    <th className="px-3 py-2">Booklet No</th>
-                                    <th className="px-3 py-2">College Name</th>
-                                    <th className="px-3 py-2">Subject / Purpose</th>
-                                    <th className="px-3 py-2">Topics Covered</th>
-                                    <th className="px-3 py-2">Conveyance</th>
-                                    <th className="px-3 py-2">Planned Timing</th>
-                                    <th className="px-3 py-2 text-center">No of hours</th>
-                                    <th className="px-3 py-2 text-center">Out Time</th>
-                                    <th className="px-3 py-2 text-center">In Time</th>
-                                    <th className="px-3 py-2 text-center">Duration</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-150">
-                                  {group.breaks.map((b: any, idx: number) => (
-                                    <tr key={b.id} className="hover:bg-gray-50/50">
-                                      <td className="px-3 py-2.5 text-center font-bold text-gray-400">{idx + 1}</td>
-                                      <td className="px-3 py-2.5 font-semibold text-gray-700">{b.bookletNo || '--'}</td>
-                                      <td className="px-3 py-2.5 text-gray-800 font-medium">{b.collegeName || '--'}</td>
-                                      <td className="px-3 py-2.5 text-gray-800 font-medium">{b.subject || b.reason || '--'}</td>
-                                      <td className="px-3 py-2.5 text-gray-600">{b.topicsCovered || '--'}</td>
-                                      <td className="px-3 py-2.5 text-gray-600">{b.conveyance || '--'}</td>
-                                      <td className="px-3 py-2.5 text-gray-700 font-mono">{b.fromTime && b.toTime ? `${b.fromTime} - ${b.toTime}` : '--'}</td>
-                                      <td className="px-3 py-2.5 text-center text-gray-600">{b.numberOfHours || '--'}</td>
-                                      <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{b.breakOut}</td>
-                                      <td className="px-3 py-2.5 text-center text-green-700 font-semibold">{b.breakIn}</td>
-                                      <td className="px-3 py-2.5 text-center">
-                                        <span className="font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                          {b.duration}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+                    ) : (
+                      groupedLogs.map((group) => (
+                        <React.Fragment key={group.identifier}>
+                          <tr className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
+                            <td className="px-4 py-3 font-mono">{group.identifier}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
+                                {group.breaks.length} {group.breaks.length === 1 ? 'visit' : 'visits'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => handleIndividualExport(group.name, group.identifier)}
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border border-blue-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer animate-fade-in"
+                                title={`Export monthly report for ${group.name}`}
+                              >
+                                <Download size={14} />
+                              </button>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => setExpandedTeacher(expandedTeacher === group.identifier ? null : group.identifier)}
+                                className="bg-gray-50 hover:bg-gray-100 text-gray-600 hover:text-gray-800 border border-gray-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer font-bold animate-fade-in"
+                              >
+                                {expandedTeacher === group.identifier ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              </button>
+                            </td>
+                          </tr>
+                          {expandedTeacher === group.identifier && (
+                            <tr className="bg-blue-50/10">
+                              <td colSpan={5} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
+                                <div className="text-[10px] font-bold text-blue-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
+                                  <GraduationCap size={12} /> Visits for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </div>
+                                <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                                  <table className="w-full text-xs text-left">
+                                    <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
+                                      <tr>
+                                        <th className="px-3 py-2 w-[4%] text-center">#</th>
+                                        <th className="px-3 py-2">Booklet No</th>
+                                        <th className="px-3 py-2">College Name</th>
+                                        <th className="px-3 py-2">Subject / Purpose</th>
+                                        <th className="px-3 py-2">Topics Covered</th>
+                                        <th className="px-3 py-2">Conveyance</th>
+                                        <th className="px-3 py-2">Planned Timing</th>
+                                        <th className="px-3 py-2 text-center">No of hours</th>
+                                        <th className="px-3 py-2 text-center">Out Time</th>
+                                        <th className="px-3 py-2 text-center">In Time</th>
+                                        <th className="px-3 py-2 text-center">Duration</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-150">
+                                      {group.breaks.map((b: any, idx: number) => (
+                                        <tr key={b.id} className="hover:bg-gray-50/50">
+                                          <td className="px-3 py-2.5 text-center font-bold text-gray-400">{idx + 1}</td>
+                                          <td className="px-3 py-2.5 font-semibold text-gray-700">{b.bookletNo || '--'}</td>
+                                          <td className="px-3 py-2.5 text-gray-800 font-medium">{b.collegeName || '--'}</td>
+                                          <td className="px-3 py-2.5 text-gray-800 font-medium">{b.subject || b.reason || '--'}</td>
+                                          <td className="px-3 py-2.5 text-gray-600">{b.topicsCovered || '--'}</td>
+                                          <td className="px-3 py-2.5 text-gray-600">{b.conveyance || '--'}</td>
+                                          <td className="px-3 py-2.5 text-gray-700 font-mono">{b.fromTime && b.toTime ? `${b.fromTime} - ${b.toTime}` : '--'}</td>
+                                          <td className="px-3 py-2.5 text-center text-gray-600">{b.numberOfHours || '--'}</td>
+                                          <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{b.breakOut}</td>
+                                          <td className="px-3 py-2.5 text-center text-green-700 font-semibold">{b.breakIn}</td>
+                                          <td className="px-3 py-2.5 text-center">
+                                            <span className="font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                                              {b.duration}
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 };
 
 // ── Extra Classes Logs Modal ──────────────────────────────────────────────────
-const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
+const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -4014,6 +4476,23 @@ const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
   const [exporting, setExporting] = useState(false);
   const [adminRemarks, setAdminRemarks] = useState<Record<number, string>>({});
   const [processing, setProcessing] = useState<Record<number, boolean>>({});
+
+  // Form states
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [subject, setSubject] = useState('');
+  const [batchNo, setBatchNo] = useState('');
+  const [noOfStudents, setNoOfStudents] = useState('0');
+  const [centerName, setCenterName] = useState('');
+  const [remarks, setRemarks] = useState('');
+  const [outHour, setOutHour] = useState('10');
+  const [outMin, setOutMin] = useState('00');
+  const [outPeriod, setOutPeriod] = useState('AM');
+  const [inHour, setInHour] = useState('11');
+  const [inMin, setInMin] = useState('30');
+  const [inPeriod, setInPeriod] = useState('AM');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -4032,6 +4511,57 @@ const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddExtraClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTraineeId) return alert('Please select a trainee.');
+
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('token');
+      const durationVal = getDurationInHours(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+      const startTimeStr = `${outHour}:${outMin} ${outPeriod}`;
+      const endTimeStr = `${inHour}:${inMin} ${inPeriod}`;
+
+      await axios.post(`${API}/extra-classes/log`, {
+        traineeId: Number(selectedTraineeId),
+        date: logDate,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        duration: durationVal,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+        noOfStudents: parseInt(noOfStudents) || 0,
+        centerName: centerName.trim(),
+        remarks: remarks.trim()
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert('Extra class logged successfully and auto-approved!');
+      setShowAddForm(false);
+      
+      // Reset form
+      setSelectedTraineeId('');
+      setSubject('');
+      setBatchNo('');
+      setNoOfStudents('0');
+      setCenterName('');
+      setRemarks('');
+      setOutHour('10');
+      setOutMin('00');
+      setOutPeriod('AM');
+      setInHour('11');
+      setInMin('30');
+      setInPeriod('AM');
+
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to log extra class');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -4101,6 +4631,9 @@ const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const MINS_60 = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  const currentDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl p-6 relative max-h-[90vh] flex flex-col">
@@ -4111,167 +4644,357 @@ const ExtraClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
           <BookOpen size={20} /> Teacher Extra Classes Logs
         </h2>
 
-        {/* Filter Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
-            <input type="month" value={month} onChange={e => setMonth(e.target.value)}
-              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or ID..."
-              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Status</label>
-            <select value={status} onChange={e => setStatus(e.target.value)}
-              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
-              <option value="ALL">All Statuses</option>
-              <option value="PENDING">Pending Only</option>
-              <option value="APPROVED">Approved Only</option>
-              <option value="REJECTED">Rejected Only</option>
-            </select>
-          </div>
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
+        {showAddForm ? (
+          <form onSubmit={handleAddExtraClass} className="space-y-4 text-xs overflow-y-auto max-h-[70vh] p-1 text-left">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-sm font-bold text-emerald-700 uppercase tracking-wide">
+                Log Extra Class on Behalf of Trainee
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setShowAddForm(false)}
+                className="text-gray-500 hover:text-gray-800 font-bold"
+              >
+                Back to List
+              </button>
             </div>
-            <button onClick={handleExport} disabled={exporting}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-            </button>
-          </div>
-        </div>
 
-        {/* Logs Table */}
-        <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
-          {loading ? (
-            <p className="text-center py-10 text-gray-400">Loading logs...</p>
-          ) : (
-            <table className="w-full text-xs text-left">
-              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b sticky top-0 z-10">
-                <tr>
-                  <th className="px-4 py-3">Teacher</th>
-                  <th className="px-4 py-3">Date & Day</th>
-                  <th className="px-4 py-3">Subject & Batch</th>
-                  <th className="px-4 py-3">Center</th>
-                  <th className="px-4 py-3 text-center">Timing & Duration</th>
-                  <th className="px-4 py-3 text-center">Students</th>
-                  <th className="px-4 py-3 text-center">Status</th>
-                  <th className="px-4 py-3 text-right">Remarks / Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
-                {logs.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center text-gray-400 italic">No extra class logs found.</td>
-                  </tr>
-                ) : (
-                  logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-gray-800">{log.user?.fullName}</div>
-                        <div className="text-[10px] text-gray-500">{log.user?.identifier} • {log.user?.department}</div>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-gray-700">
-                        <div>{new Date(log.date).toLocaleDateString('en-IN')}</div>
-                        <div className="text-[10px] text-gray-400">{log.day}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-emerald-800">{log.subject}</div>
-                        <div className="text-[10px] font-mono text-gray-500">Batch: {log.batchNo}</div>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="font-mono text-purple-700 font-semibold">{log.startTime} - {log.endTime}</div>
-                        <div className="text-[10px] font-bold text-gray-500">{log.duration} hrs</div>
-                      </td>
-                      <td className="px-4 py-3 text-center font-bold text-gray-700">{log.noOfStudents}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
-                          log.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                          log.status === 'APPROVED' ? 'bg-green-100 text-green-800 border border-green-200' :
-                          'bg-red-100 text-red-800 border border-red-200'
-                        }`}>
-                          {log.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right max-w-xs">
-                        <div className="flex flex-col gap-2 items-end">
-                          {log.remarks && (
-                            <div className="text-[10px] text-gray-500 italic mb-1 text-left w-full max-w-[200px] line-clamp-2" title={log.remarks}>
-                              Teacher: "{log.remarks}"
-                            </div>
-                          )}
-                          
-                          <div className="flex gap-2 items-center w-full justify-between max-w-[200px]">
-                            <button
-                              onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
-                              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1"
-                              title={`Export monthly report for ${log.user?.fullName}`}
-                            >
-                              <Download size={12} /> Excel
-                            </button>
-                            
-                            {log.status === 'PENDING' && (
-                              <div className="flex gap-2">
-                                <button 
-                                  onClick={() => handleProcess(log.id, 'APPROVED')} 
-                                  disabled={processing[log.id]}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-2.5 py-1 rounded text-[10px] transition-all cursor-pointer shadow-sm active:scale-95"
-                                >
-                                  Approve
-                                </button>
-                                <button 
-                                  onClick={() => handleProcess(log.id, 'REJECTED')} 
-                                  disabled={processing[log.id]}
-                                  className="bg-red-600 hover:bg-red-700 text-white font-extrabold px-2.5 py-1 rounded text-[10px] transition-all cursor-pointer shadow-sm active:scale-95"
-                                >
-                                  Reject
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {log.status === 'PENDING' ? (
-                            <input 
-                              type="text"
-                              placeholder="Supervisor remark..."
-                              value={adminRemarks[log.id] || ''}
-                              onChange={(e) => setAdminRemarks(prev => ({ ...prev, [log.id]: e.target.value }))}
-                              className="border border-gray-300 rounded px-2 py-1 text-[11px] w-full max-w-[200px] outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
-                          ) : (
-                            <div className="text-[10px] text-gray-500 font-medium text-left bg-gray-50 p-1.5 rounded border w-full max-w-[200px]">
-                              <span className="font-bold text-gray-600 block">Supervisor Remark:</span>
-                              {log.adminReason || '--'}
-                            </div>
-                          )}
-                        </div>
-                      </td>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
+                <select
+                  required
+                  value={selectedTraineeId}
+                  onChange={e => setSelectedTraineeId(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
+                >
+                  <option value="">-- Choose Trainee --</option>
+                  {(allTrainees || []).map(t => (
+                    <option key={t.id} value={t.id}>${t.name} (${t.empCode})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Date</label>
+                <input 
+                  type="date" 
+                  required
+                  value={logDate} 
+                  onChange={e => setLogDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Center Name</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Enter Center Name"
+                  value={centerName} 
+                  onChange={e => setCenterName(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold" 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Subject / Topic</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. JavaScript Async"
+                  value={subject} 
+                  onChange={e => setSubject(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Batch Code / No</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. BATCH-101"
+                  value={batchNo} 
+                  onChange={e => setBatchNo(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">No of Students Attended</label>
+                <input 
+                  type="number" 
+                  required
+                  min="0"
+                  placeholder="e.g. 25"
+                  value={noOfStudents} 
+                  onChange={e => setNoOfStudents(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold" 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Class Start Time (HH:MM AM/PM)</label>
+                <div className="flex gap-2">
+                  <select value={outHour} onChange={e => setOutHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                  </select>
+                  <select value={outMin} onChange={e => setOutMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                  </select>
+                  <select value={outPeriod} onChange={e => setOutPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Class End Time (HH:MM AM/PM)</label>
+                <div className="flex gap-2">
+                  <select value={inHour} onChange={e => setInHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {HOURS.map(h => <option key={h} value={h}>${h}</option>)}
+                  </select>
+                  <select value={inMin} onChange={e => setInMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {MINS_60.map(m => <option key={m} value={m}>${m}</option>)}
+                  </select>
+                  <select value={inPeriod} onChange={e => setInPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {AMPM.map(p => <option key={p} value={p}>${p}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Remarks / Additional Details</label>
+              <textarea 
+                placeholder="Enter remarks or additional details..."
+                value={remarks} 
+                onChange={e => setRemarks(e.target.value)}
+                rows={3}
+                className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold resize-none" 
+              />
+            </div>
+
+            <div className="flex items-center justify-between border-t pt-4 bg-emerald-50 p-3 rounded border border-emerald-200">
+              <span className="text-emerald-800 font-bold uppercase text-[10px]">Computed Duration:</span>
+              <span className="font-extrabold text-emerald-900 bg-emerald-100 px-3 py-1 rounded border border-emerald-300 text-sm">
+                {currentDuration}
+              </span>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : '🚀 Save'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {/* Filter Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
+                <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or ID..."
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Status</label>
+                <select value={status} onChange={e => setStatus(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+                  <option value="ALL">All Statuses</option>
+                  <option value="PENDING">Pending Only</option>
+                  <option value="APPROVED">Approved Only</option>
+                  <option value="REJECTED">Rejected Only</option>
+                </select>
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                    className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <button onClick={handleExport} disabled={exporting}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+                </button>
+                <button onClick={() => setShowAddForm(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+                  ➕ Log Extra Class
+                </button>
+              </div>
+            </div>
+
+            {/* Logs Table */}
+            <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+              {loading ? (
+                <p className="text-center py-10 text-gray-400">Loading logs...</p>
+              ) : (
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b sticky top-0 z-10">
+                    <tr>
+                      <th className="px-4 py-3">Teacher</th>
+                      <th className="px-4 py-3">Date & Day</th>
+                      <th className="px-4 py-3">Subject & Batch</th>
+                      <th className="px-4 py-3">Center</th>
+                      <th className="px-4 py-3 text-center">Timing & Duration</th>
+                      <th className="px-4 py-3 text-center">Students</th>
+                      <th className="px-4 py-3 text-center">Status</th>
+                      <th className="px-4 py-3 text-right">Remarks / Actions</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {logs.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-10 text-center text-gray-400 italic">No extra class logs found.</td>
+                      </tr>
+                    ) : (
+                      logs.map((log) => (
+                        <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-gray-800">{log.user?.fullName}</div>
+                            <div className="text-[10px] text-gray-500">{log.user?.identifier} • {log.user?.department}</div>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-gray-700">
+                            <div>{new Date(log.date).toLocaleDateString('en-IN')}</div>
+                            <div className="text-[10px] text-gray-400">{log.day}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-emerald-800">{log.subject}</div>
+                            <div className="text-[10px] font-mono text-gray-500">Batch: {log.batchNo}</div>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="font-mono text-purple-700 font-semibold">{log.startTime} - {log.endTime}</div>
+                            <div className="text-[10px] font-bold text-gray-500">{log.duration} hrs</div>
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold text-gray-700">{log.noOfStudents}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
+                              log.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                              log.status === 'APPROVED' ? 'bg-green-100 text-green-800 border border-green-200' :
+                              'bg-red-100 text-red-800 border border-red-200'
+                            }`}>
+                              {log.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right max-w-xs">
+                            <div className="flex flex-col gap-2 items-end">
+                              {log.remarks && (
+                                <div className="text-[10px] text-gray-500 italic mb-1 text-left w-full max-w-[200px] line-clamp-2" title={log.remarks}>
+                                  Teacher: "{log.remarks}"
+                                </div>
+                              )}
+                              
+                              <div className="flex gap-2 items-center w-full justify-between max-w-[200px]">
+                                <button
+                                  onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
+                                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1"
+                                  title={`Export monthly report for ${log.user?.fullName}`}
+                                >
+                                  <Download size={12} /> Excel
+                                </button>
+                                
+                                {log.status === 'PENDING' && (
+                                  <div className="flex gap-2">
+                                    <button 
+                                      onClick={() => handleProcess(log.id, 'APPROVED')} 
+                                      disabled={processing[log.id]}
+                                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-2.5 py-1 rounded text-[10px] transition-all cursor-pointer shadow-sm active:scale-95"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button 
+                                      onClick={() => handleProcess(log.id, 'REJECTED')} 
+                                      disabled={processing[log.id]}
+                                      className="bg-red-600 hover:bg-red-700 text-white font-extrabold px-2.5 py-1 rounded text-[10px] transition-all cursor-pointer shadow-sm active:scale-95"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {log.status === 'PENDING' ? (
+                                <input 
+                                  type="text"
+                                  placeholder="Supervisor remark..."
+                                  value={adminRemarks[log.id] || ''}
+                                  onChange={(e) => setAdminRemarks(prev => ({ ...prev, [log.id]: e.target.value }))}
+                                  className="border border-gray-300 rounded px-2 py-1 text-[11px] w-full max-w-[200px] outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                              ) : (
+                                <div className="text-[10px] text-gray-500 font-medium text-left bg-gray-50 p-1.5 rounded border w-full max-w-[200px]">
+                                  <span className="font-bold text-gray-600 block">Supervisor Remark:</span>
+                                  {log.adminReason || '--'}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 };
 
 // ── Cancelled Classes Logs Modal ──────────────────────────────────────────────
-const CancelledClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
+const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
   const [exporting, setExporting] = useState(false);
+
+  // Form states
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [subject, setSubject] = useState('');
+  const [batchNo, setBatchNo] = useState('');
+  const [centerName, setCenterName] = useState('');
+  const [reason, setReason] = useState('Personal Work');
+  const [customReason, setCustomReason] = useState('');
+  const [remarks, setRemarks] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const CANCELLATION_REASONS = [
+    'Personal Work',
+    'Health Issues / Medical Leave',
+    'Official Meeting / Training',
+    'Holiday / Festival',
+    'Technical Issues / Power Cut',
+    'Other (Specify below)'
+  ];
 
   useEffect(() => {
     fetchLogs();
@@ -4289,6 +5012,48 @@ const CancelledClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddCancelledClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTraineeId) return alert('Please select a trainee.');
+
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('token');
+      const reasonVal = reason.startsWith('Other') ? customReason.trim() : reason;
+      if (!reasonVal) return alert('Please enter a cancellation reason.');
+
+      await axios.post(`${API}/class-cancelled/log`, {
+        traineeId: Number(selectedTraineeId),
+        date: logDate,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        centerName: centerName.trim(),
+        reason: reasonVal,
+        remarks: remarks.trim()
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert('Cancelled class logged successfully!');
+      setShowAddForm(false);
+      
+      // Reset form
+      setSelectedTraineeId('');
+      setSubject('');
+      setBatchNo('');
+      setCenterName('');
+      setReason('Personal Work');
+      setCustomReason('');
+      setRemarks('');
+
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to log cancelled class');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -4343,94 +5108,233 @@ const CancelledClassesLogsModal = ({ onClose }: { onClose: () => void }) => {
           <CalendarX size={20} /> Teacher Cancelled Classes Logs
         </h2>
 
-        {/* Filter Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
-            <input type="month" value={month} onChange={e => setMonth(e.target.value)}
-              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or ID..."
-              className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
-          </div>
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-              <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
+        {showAddForm ? (
+          <form onSubmit={handleAddCancelledClass} className="space-y-4 text-xs overflow-y-auto max-h-[70vh] p-1 text-left">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-sm font-bold text-red-700 uppercase tracking-wide">
+                Log Cancelled Class on Behalf of Trainee
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setShowAddForm(false)}
+                className="text-gray-500 hover:text-gray-800 font-bold"
+              >
+                Back to List
+              </button>
             </div>
-            <button onClick={handleExport} disabled={exporting}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-              <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-            </button>
-          </div>
-        </div>
 
-        {/* Logs Table */}
-        <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
-          {loading ? (
-            <p className="text-center py-10 text-gray-400">Loading logs...</p>
-          ) : (
-            <table className="w-full text-xs text-left">
-              <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b sticky top-0 z-10">
-                <tr>
-                  <th className="px-4 py-3">Teacher</th>
-                  <th className="px-4 py-3">Date & Day</th>
-                  <th className="px-4 py-3">Subject & Batch</th>
-                  <th className="px-4 py-3">Center</th>
-                  <th className="px-4 py-3">Cancellation Reasons / Remarks</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
-                {logs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No class cancellation logs found.</td>
-                  </tr>
-                ) : (
-                  logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-gray-800">{log.user?.fullName}</div>
-                        <div className="text-[10px] text-gray-500">{log.user?.identifier} • {log.user?.department}</div>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-gray-700">
-                        <div>{new Date(log.date).toLocaleDateString('en-IN')}</div>
-                        <div className="text-[10px] text-gray-400">{log.day}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-red-800">{log.subject}</div>
-                        <div className="text-[10px] font-mono text-gray-500">Batch: {log.batchNo}</div>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-red-700 text-xs">{log.reason || 'Other reasons'}</div>
-                        {log.remarks && <div className="text-[10px] text-gray-500 italic mt-0.5">"{log.remarks}"</div>}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
-                          className="bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1 animate-fade-in"
-                          title={`Export monthly report for ${log.user?.fullName}`}
-                        >
-                          <Download size={12} /> Excel
-                        </button>
-                      </td>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
+                <select
+                  required
+                  value={selectedTraineeId}
+                  onChange={e => setSelectedTraineeId(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold"
+                >
+                  <option value="">-- Choose Trainee --</option>
+                  {(allTrainees || []).map(t => (
+                    <option key={t.id} value={t.id}>${t.name} (${t.empCode})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Date</label>
+                <input 
+                  type="date" 
+                  required
+                  value={logDate} 
+                  onChange={e => setLogDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Center Name</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Enter Center Name"
+                  value={centerName} 
+                  onChange={e => setCenterName(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold" 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Subject / Topic</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Java Classes"
+                  value={subject} 
+                  onChange={e => setSubject(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Batch Code / No</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. BTC-999"
+                  value={batchNo} 
+                  onChange={e => setBatchNo(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Cancellation Reason</label>
+                <select
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold animate-fade-in"
+                >
+                  {CANCELLATION_REASONS.map(r => <option key={r} value={r}>${r}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {reason.startsWith('Other') && (
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Specify Custom Reason</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Enter the specific reason for cancellation"
+                  value={customReason} 
+                  onChange={e => setCustomReason(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold" 
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Remarks / Additional Details</label>
+              <textarea 
+                placeholder="Enter remarks or additional details..."
+                value={remarks} 
+                onChange={e => setRemarks(e.target.value)}
+                rows={3}
+                className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold resize-none" 
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : '🚀 Save'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {/* Filter Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
+                <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or ID..."
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                    className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
+                </div>
+                <button onClick={handleExport} disabled={exporting}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+                </button>
+                <button onClick={() => setShowAddForm(true)}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
+                  ➕ Log Cancelled Class
+                </button>
+              </div>
+            </div>
+
+            {/* Logs Table */}
+            <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+              {loading ? (
+                <p className="text-center py-10 text-gray-400">Loading logs...</p>
+              ) : (
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b sticky top-0 z-10">
+                    <tr>
+                      <th className="px-4 py-3">Teacher</th>
+                      <th className="px-4 py-3">Date & Day</th>
+                      <th className="px-4 py-3">Subject & Batch</th>
+                      <th className="px-4 py-3">Center</th>
+                      <th className="px-4 py-3">Cancellation Reasons / Remarks</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {logs.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No class cancellation logs found.</td>
+                      </tr>
+                    ) : (
+                      logs.map((log) => (
+                        <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-gray-800">{log.user?.fullName}</div>
+                            <div className="text-[10px] text-gray-500">{log.user?.identifier} • {log.user?.department}</div>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-gray-700">
+                            <div>{new Date(log.date).toLocaleDateString('en-IN')}</div>
+                            <div className="text-[10px] text-gray-400">{log.day}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-red-800">{log.subject}</div>
+                            <div className="text-[10px] font-mono text-gray-500">Batch: {log.batchNo}</div>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-600">{log.centerName}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-red-700 text-xs">{log.reason || 'Other reasons'}</div>
+                            {log.remarks && <div className="text-[10px] text-gray-500 italic mt-0.5">"${log.remarks}"</div>}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
+                              className="bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1 animate-fade-in"
+                              title={`Export monthly report for ${log.user?.fullName}`}
+                            >
+                              <Download size={12} /> Excel
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
 };
 
 export default AdminDashboard;
-
-
-
