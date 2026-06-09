@@ -2432,14 +2432,25 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             if (isOnBreak) {
               row.getCell(durationColIndex).value = 'On Break';
             } else if (totalMins > 0) {
-              row.getCell(durationColIndex).value = formatMinsToPoints(totalMins);
+              row.getCell(durationColIndex).value = parseFloat(formatMinsToPoints(totalMins));
+              row.getCell(durationColIndex).numFmt = '0.00';
               monthlyTotalMins += totalMins;
             } else {
               row.getCell(durationColIndex).value = '--';
             }
 
             if (type === 'COLLEGE_VISIT') {
-              row.getCell(10).value = numberOfHoursVal;
+              if (dayBreaks.length === 1) {
+                const hrsVal = parseFloat(numberOfHoursVal);
+                if (!isNaN(hrsVal)) {
+                  row.getCell(10).value = hrsVal;
+                  row.getCell(10).numFmt = '0.00';
+                } else {
+                  row.getCell(10).value = numberOfHoursVal;
+                }
+              } else {
+                row.getCell(10).value = numberOfHoursVal;
+              }
             }
           } else {
             row.getCell(durationColIndex).value = '--';
@@ -2469,8 +2480,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Add Grand Total Row
         const totalRowData = type === 'COLLEGE_VISIT'
-          ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', '', '', formatMinsToPoints(Math.round(monthlyTotalHours * 60)), '', '', formatMinsToPoints(monthlyTotalMins)]
-          : ['', 'TOTAL DURATION', '', '', formatMinsToPoints(monthlyTotalMins), ''];
+          ? ['', 'TOTAL DURATION & HOURS', '', '', '', '', '', '', '', parseFloat(formatMinsToPoints(Math.round(monthlyTotalHours * 60))), '', '', parseFloat(formatMinsToPoints(monthlyTotalMins))]
+          : ['', 'TOTAL DURATION', '', '', parseFloat(formatMinsToPoints(monthlyTotalMins)), ''];
 
         const totalRow = ws.addRow(totalRowData);
         totalRow.height = 24;
@@ -2510,9 +2521,10 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           }
         });
         if (type === 'COLLEGE_VISIT') {
-          totalRow.getCell(10).numFmt = '0.0" hrs"';
+          totalRow.getCell(10).numFmt = '0.00';
+          totalRow.getCell(totalDurationColIndex).numFmt = '0.00';
         } else {
-          totalRow.getCell(totalDurationColIndex).numFmt = '0" mins"';
+          totalRow.getCell(totalDurationColIndex).numFmt = '0.00';
         }
 
         // Auto-fit column widths (safety margins)
@@ -2950,7 +2962,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
           { key: 'day', width: 12 },
           { key: 'subject', width: 25 },
           { key: 'batchNo', width: 15 },
-          { key: 'duration', width: 15 },
+          { key: 'duration', width: 15, numFmt: '0.00' },
           { key: 'startTime', width: 15 },
           { key: 'endTime', width: 15 },
           { key: 'noOfStudents', width: 15 },
@@ -3005,7 +3017,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
             l.day,
             l.subject,
             l.batchNo,
-            formatMinsToPoints(Math.round(l.duration * 60)),
+            parseFloat(formatMinsToPoints(Math.round(l.duration * 60))),
             l.startTime,
             l.endTime,
             l.noOfStudents,

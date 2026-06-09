@@ -265,12 +265,12 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
           const l = calcLate(slot, safeIn, sIn, false);
           const e = calcEarly(slot, safeOut, safeIn, sOut, sIn, false);
           
-          if (typeof l === 'number') { dayLateMins += l; finalLate = formatMinsToPoints(l); } else { finalLate = l; }
+          if (typeof l === 'number') { dayLateMins += l; finalLate = parseFloat(formatMinsToPoints(l)); } else { finalLate = l; }
           
           if (finalLate === 'ABSENT') {
             finalEarly = 'ABSENT';
           } else {
-            if (typeof e === 'number') { dayEarlyMins += e; finalEarly = formatMinsToPoints(e); } else { finalEarly = e; }
+            if (typeof e === 'number') { dayEarlyMins += e; finalEarly = parseFloat(formatMinsToPoints(e)); } else { finalEarly = e; }
           }
           
           // Overwrite missing out for overall record safety
@@ -301,9 +301,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     totalExtraMinutes += dayExtraMins;
 
     // Update final row strings
-    rowData.late = formatMinsToPoints(dayLateMins);
-    rowData.earlyDeparture = formatMinsToPoints(dayEarlyMins);
-    rowData.extraWork = formatMinsToPoints(dayExtraMins);
+    rowData.late = parseFloat(formatMinsToPoints(dayLateMins));
+    rowData.earlyDeparture = parseFloat(formatMinsToPoints(dayEarlyMins));
+    rowData.extraWork = parseFloat(formatMinsToPoints(dayExtraMins));
 
     const allInfos = att ? [att.info, att.info1, att.info2, att.info3, att.info4, att.info5]
       .filter(Boolean)
@@ -317,9 +317,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   return {
     rows,
     totals: {
-      late: formatMinsToPoints(totalLateMinutes),
-      earlyDeparture: formatMinsToPoints(totalEarlyMinutes),
-      extraWork: formatMinsToPoints(totalExtraMinutes)
+      late: parseFloat(formatMinsToPoints(totalLateMinutes)),
+      earlyDeparture: parseFloat(formatMinsToPoints(totalEarlyMinutes)),
+      extraWork: parseFloat(formatMinsToPoints(totalExtraMinutes))
     },
     assignedSlotNos,
     hasExtraSlots,
@@ -350,23 +350,23 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
     
     // Only show Late/Early for regular slots, not extra work slots
     if (!isExtra) {
-      slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18 });
-      slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18 });
+      slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18, numFmt: '0.00' });
+      slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18, numFmt: '0.00' });
     }
   }
 
   const endColumns = [
     { header: 'Info', key: 'infoText', width: 25 },
-    { header: 'Total Late', key: 'late', width: 15 },
-    { header: 'Total Early', key: 'earlyDeparture', width: 15 },
+    { header: 'Total Late', key: 'late', width: 15, numFmt: '0.00' },
+    { header: 'Total Early', key: 'earlyDeparture', width: 15, numFmt: '0.00' },
   ];
   // Conditionally gating extra work column to hide functionally per user's instructions (can restore boolean check later if wanted)
   if (false && hasExtraSlots) {
-    endColumns.push({ header: 'TOTAL EXTRA WORK', key: 'extraWork', width: 20 });
+    endColumns.push({ header: 'TOTAL EXTRA WORK', key: 'extraWork', width: 20, numFmt: '0.00' });
   }
 
   const allColumns = [...baseColumns, ...slotColumns, ...endColumns];
-  ws.columns = allColumns.map(c => ({ key: c.key, width: c.width }));
+  ws.columns = allColumns.map(c => ({ key: c.key, width: c.width, numFmt: c.numFmt }));
 
   // Add merged header row
   ws.addRow([]);
