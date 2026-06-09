@@ -81,14 +81,31 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         const token = jsonwebtoken_1.default.sign({ id: user.id, role: user.role, fullName: user.fullName }, JWT_SECRET, { expiresIn: '24h' });
+        let forgotPunchOut = false;
         // For trainees: save the active token so only one session is valid at a time
         if (user.role === 'TRAINEE') {
             await prisma.user.update({
                 where: { id: user.id },
                 data: { activeSessionToken: token }
             });
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const recentAtt = await prisma.attendance.findFirst({
+                where: { userId: user.id, date: { lt: today } },
+                orderBy: { date: 'desc' }
+            });
+            if (recentAtt) {
+                for (let i = 1; i <= 5; i++) {
+                    const inT = recentAtt[`inTime${i}`];
+                    const outT = recentAtt[`outTime${i}`];
+                    if (inT && !outT) {
+                        forgotPunchOut = true;
+                        break;
+                    }
+                }
+            }
         }
-        res.json({ token, user: { id: user.id, role: user.role, fullName: user.fullName, permissions: user.permissions } });
+        res.json({ token, user: { id: user.id, role: user.role, fullName: user.fullName, permissions: user.permissions }, forgotPunchOut });
     }
     catch (error) {
         console.error('Login error:', error);

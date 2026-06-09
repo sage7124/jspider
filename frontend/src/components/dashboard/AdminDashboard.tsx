@@ -1052,6 +1052,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [showBreaks, setShowBreaks] = useState(false);
   const [showCollegeVisits, setShowCollegeVisits] = useState(false);
   const [showExtraClasses, setShowExtraClasses] = useState(false);
+  const [showOtherCenterClasses, setShowOtherCenterClasses] = useState(false);
   const [showCancelledClasses, setShowCancelledClasses] = useState(false);
 
   const regenerateQr = () => {
@@ -1216,6 +1217,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
               <BookOpen size={18} /> Extra Classes
             </button>
           )}
+          {hasPermission('MANAGE_OTHER_CENTER_CLASSES') && (
+            <button onClick={() => setShowOtherCenterClasses(true)}
+              className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <BookOpen size={18} /> Other Center Classes
+            </button>
+          )}
           {hasPermission('MANAGE_CANCELLED_CLASSES') && (
             <button onClick={() => setShowCancelledClasses(true)}
               className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-medium transition-colors">
@@ -1339,6 +1346,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showBreaks && <BreakLogsModal onClose={() => setShowBreaks(false)} allTrainees={trainees} />}
       {showCollegeVisits && <CollegeVisitLogsModal onClose={() => setShowCollegeVisits(false)} allTrainees={trainees} />}
       {showExtraClasses && <ExtraClassesLogsModal onClose={() => setShowExtraClasses(false)} allTrainees={trainees} />}
+      {showOtherCenterClasses && <OtherCenterClassesLogsModal onClose={() => setShowOtherCenterClasses(false)} allTrainees={trainees} />}
       {showCancelledClasses && <CancelledClassesLogsModal onClose={() => setShowCancelledClasses(false)} allTrainees={trainees} />}
     </div>
   );
@@ -2422,6 +2430,7 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                         { id: 'GPS_LOCATION', label: '📡 Branch GPS Config', core: false },
                         { id: 'MANAGE_BREAKS', label: '🕒 Manage Breaks', core: false },
                         { id: 'MANAGE_EXTRA_CLASSES', label: '📚 Manage Extra Classes', core: false },
+                        { id: 'MANAGE_OTHER_CENTER_CLASSES', label: '🏢 Manage Other Center Classes', core: false },
                         { id: 'MANAGE_CANCELLED_CLASSES', label: '❌ Manage Cancelled Classes', core: false },
                       ].map(p => (
                         <label key={p.id} className="flex items-center gap-2 cursor-pointer text-[10px] font-bold select-none text-gray-700 hover:text-blue-700">
@@ -5152,6 +5161,579 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                   value={adminRemarks[log.id] || ''}
                                   onChange={(e) => setAdminRemarks(prev => ({ ...prev, [log.id]: e.target.value }))}
                                   className="border border-gray-300 rounded px-2 py-1 text-[11px] w-full max-w-[200px] outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                              ) : (
+                                <div className="text-[10px] text-gray-500 font-medium text-left bg-gray-50 p-1.5 rounded border w-full max-w-[200px]">
+                                  <span className="font-bold text-gray-600 block">Supervisor Remark:</span>
+                                  {log.adminReason || '--'}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Other Center Classes Logs Modal ──────────────────────────────────────────────────
+const OtherCenterClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [status, setStatus] = useState('ALL'); // ALL, PENDING, APPROVED, REJECTED
+  const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [exporting, setExporting] = useState(false);
+  const [adminRemarks, setAdminRemarks] = useState<Record<number, string>>({});
+  const [processing, setProcessing] = useState<Record<number, boolean>>({});
+
+  // Form states
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingLog, setEditingLog] = useState<any>(null);
+  const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [subject, setSubject] = useState('');
+  const [batchNo, setBatchNo] = useState('');
+  const [noOfStudents, setNoOfStudents] = useState('0');
+  const [centerName, setCenterName] = useState('');
+  const [remarks, setRemarks] = useState('');
+  const [outHour, setOutHour] = useState('10');
+  const [outMin, setOutMin] = useState('00');
+  const [outPeriod, setOutPeriod] = useState('AM');
+  const [inHour, setInHour] = useState('11');
+  const [inMin, setInMin] = useState('30');
+  const [inPeriod, setInPeriod] = useState('AM');
+  const [saving, setSaving] = useState(false);
+  const [classMode, setClassMode] = useState('OFFLINE');
+
+  useEffect(() => {
+    fetchLogs();
+  }, [search, month, status]);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const statusParam = status === 'ALL' ? '' : status;
+      const res = await axios.get(`${API}/other-center-classes?status=${statusParam}&search=${search}&month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLogs(res.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const closeForm = () => {
+    setShowAddForm(false);
+    setEditingLog(null);
+    setSelectedTraineeId('');
+    setSubject('');
+    setBatchNo('');
+    setNoOfStudents('0');
+    setCenterName('');
+    setRemarks('');
+    setClassMode('OFFLINE');
+    setOutHour('10');
+    setOutMin('00');
+    setOutPeriod('AM');
+    setInHour('11');
+    setInMin('30');
+    setInPeriod('AM');
+  };
+
+  const handleStartEdit = (b: any) => {
+    setEditingLog(b);
+    setSelectedTraineeId(b.userId || '');
+    setLogDate(parseInDate(b.date));
+    setSubject(b.subject || '');
+    setBatchNo(b.batchNo || '');
+    setNoOfStudents(String(b.noOfStudents || 0));
+    setCenterName(b.centerName || '');
+    setRemarks(b.remarks || '');
+    setClassMode(b.classMode || 'OFFLINE');
+
+    const outTime = parse12hTime(b.startTime);
+    setOutHour(outTime.hour);
+    setOutMin(outTime.min);
+    setOutPeriod(outTime.period);
+
+    const inTime = parse12hTime(b.endTime);
+    setInHour(inTime.hour);
+    setInMin(inTime.min);
+    setInPeriod(inTime.period);
+
+    setShowAddForm(true);
+  };
+
+  const handleAddOtherCenterClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTraineeId) return alert('Please select a trainee.');
+
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('token');
+      const durationVal = getDurationInHours(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+      const startTimeStr = `${outHour}:${outMin} ${outPeriod}`;
+      const endTimeStr = `${inHour}:${inMin} ${inPeriod}`;
+
+      if (editingLog) {
+        await axios.put(`${API}/other-center-classes/${editingLog.id}`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          subject: subject.trim(),
+          batchNo: batchNo.trim(),
+          duration: durationVal,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          noOfStudents: parseInt(noOfStudents) || 0,
+          centerName: centerName.trim(),
+          remarks: remarks.trim(),
+          classMode: classMode
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Other center class updated successfully!');
+      } else {
+        await axios.post(`${API}/other-center-classes/log`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          subject: subject.trim(),
+          batchNo: batchNo.trim(),
+          duration: durationVal,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          noOfStudents: parseInt(noOfStudents) || 0,
+          centerName: centerName.trim(),
+          remarks: remarks.trim(),
+          classMode: classMode
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Other center class logged successfully and auto-approved!');
+      }
+
+      closeForm();
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to save other center class');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleProcess = async (logId: number, newStatus: 'APPROVED' | 'REJECTED') => {
+    const remark = adminRemarks[logId] || '';
+    if (!remark.trim()) {
+      alert(`Please enter a remark before clicking ${newStatus === 'APPROVED' ? 'Approve' : 'Reject'}.`);
+      return;
+    }
+    setProcessing(prev => ({ ...prev, [logId]: true }));
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/other-center-classes/process`, {
+        logId,
+        status: newStatus,
+        adminReason: remark
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert(`Log ${newStatus.toLowerCase()} successfully.`);
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to process request');
+    } finally {
+      setProcessing(prev => ({ ...prev, [logId]: false }));
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/other-center-classes/export?month=${exportMonth}&search=${search}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Other_Center_Classes_${exportMonth}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert('Failed to export Other Center Classes report');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/other-center-classes/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${teacherName.replace(/\s+/g, '_')}_Other_Center_Classes_${exportMonth}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert(`Failed to export Other Center Classes report for ${teacherName}`);
+    }
+  };
+
+  const MINS_60 = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  const currentDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl p-6 relative max-h-[90vh] flex flex-col">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-sky-700 flex items-center gap-2 border-b pb-3">
+          <BookOpen size={20} className="text-sky-600" /> Teacher Other Center Classes Logs
+        </h2>
+
+        {showAddForm ? (
+          <form onSubmit={handleAddOtherCenterClass} className="space-y-4 text-xs overflow-y-auto max-h-[70vh] p-1 text-left">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-sm font-bold text-sky-700 uppercase tracking-wide">
+                {editingLog ? 'Edit Other Center Class' : 'Log Other Center Class on Behalf of Trainee'}
+              </h3>
+              <button 
+                type="button" 
+                onClick={closeForm}
+                className="text-gray-500 hover:text-gray-800 font-bold"
+              >
+                Back to List
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
+                <select
+                  required
+                  disabled={!!editingLog}
+                  value={selectedTraineeId}
+                  onChange={e => setSelectedTraineeId(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-sky-500 font-semibold"
+                >
+                  <option value="">-- Choose Trainee --</option>
+                  {(allTrainees || []).map(t => (
+                    <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Date</label>
+                <input 
+                  type="date" 
+                  required
+                  value={logDate} 
+                  onChange={e => setLogDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-sky-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Center Name</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="Enter Center Name"
+                  value={centerName} 
+                  onChange={e => setCenterName(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-sky-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Class Mode</label>
+                <select
+                  value={classMode}
+                  onChange={e => setClassMode(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-sky-500 font-semibold"
+                >
+                  <option value="OFFLINE">Offline</option>
+                  <option value="ONLINE">Online</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Subject / Topic</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. JavaScript Async"
+                  value={subject} 
+                  onChange={e => setSubject(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-sky-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Batch Code / No</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. BATCH-101"
+                  value={batchNo} 
+                  onChange={e => setBatchNo(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-sky-500 font-semibold" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">No of Students Attended</label>
+                <input 
+                  type="number" 
+                  required
+                  min="0"
+                  placeholder="e.g. 25"
+                  value={noOfStudents} 
+                  onChange={e => setNoOfStudents(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-sky-500 font-semibold" 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Class Start Time (HH:MM AM/PM)</label>
+                <div className="flex gap-2">
+                  <select value={outHour} onChange={e => setOutHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                  <select value={outMin} onChange={e => setOutMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <select value={outPeriod} onChange={e => setOutPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Class End Time (HH:MM AM/PM)</label>
+                <div className="flex gap-2">
+                  <select value={inHour} onChange={e => setInHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                  <select value={inMin} onChange={e => setInMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <select value={inPeriod} onChange={e => setInPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Remarks / Additional Details</label>
+              <textarea 
+                placeholder="Enter remarks or additional details..."
+                value={remarks} 
+                onChange={e => setRemarks(e.target.value)}
+                rows={3}
+                className="w-full border border-gray-355 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-sky-500 font-semibold resize-none" 
+              />
+            </div>
+
+            <div className="flex items-center justify-between border-t pt-4 bg-sky-50 p-3 rounded border border-sky-200">
+              <span className="text-sky-850 font-bold uppercase text-[10px]">Computed Duration:</span>
+              <span className="font-extrabold text-sky-900 bg-sky-100 px-3 py-1 rounded border border-sky-300 text-sm">
+                {currentDuration}
+              </span>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2 border-t">
+              <button
+                type="button"
+                onClick={closeForm}
+                className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : editingLog ? '🚀 Update' : '🚀 Save'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {/* Filter Controls */}
+            <div className="flex flex-wrap items-end gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+              <div className="min-w-[140px] flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
+                <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              <div className="min-w-[140px] flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or ID..."
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              <div className="min-w-[130px]">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Status</label>
+                <select value={status} onChange={e => setStatus(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-sky-500 font-medium">
+                  <option value="ALL">All Statuses</option>
+                  <option value="PENDING">Pending Only</option>
+                  <option value="APPROVED">Approved Only</option>
+                  <option value="REJECTED">Rejected Only</option>
+                </select>
+              </div>
+              <div className="min-w-[140px] flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-sky-500" />
+              </div>
+              <button onClick={handleExport} disabled={exporting}
+                className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+              </button>
+              <button onClick={() => setShowAddForm(true)}
+                className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                ➕ Log Other Center Class
+              </button>
+            </div>
+
+            {/* Logs Table */}
+            <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+              {loading ? (
+                <p className="text-center py-10 text-gray-400">Loading logs...</p>
+              ) : (
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b sticky top-0 z-10">
+                    <tr>
+                      <th className="px-4 py-3">Teacher</th>
+                      <th className="px-4 py-3">Date & Day</th>
+                      <th className="px-4 py-3">Subject & Batch</th>
+                      <th className="px-4 py-3">Center</th>
+                      <th className="px-4 py-3 text-center">Timing & Duration</th>
+                      <th className="px-4 py-3 text-center">Students</th>
+                      <th className="px-4 py-3 text-center">Status</th>
+                      <th className="px-4 py-3 text-right">Remarks / Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {logs.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-10 text-center text-gray-400 italic">No other center class logs found.</td>
+                      </tr>
+                    ) : (
+                      logs.map((log) => (
+                        <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-gray-800">{log.user?.fullName}</div>
+                            <div className="text-[10px] text-gray-500">{log.user?.identifier} • {log.user?.department}</div>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-gray-700">
+                            <div>{new Date(log.date).toLocaleDateString('en-IN')}</div>
+                            <div className="text-[10px] text-gray-400">{log.day}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-sky-800">{log.subject}</div>
+                            <div className="text-[10px] font-mono text-gray-500">Batch: {log.batchNo}</div>
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-600">
+                            <div>{log.centerName}</div>
+                            <div className="text-[10px] font-bold text-gray-400">({log.classMode || 'OFFLINE'})</div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="font-mono text-purple-700 font-semibold">{log.startTime} - {log.endTime}</div>
+                            <div className="text-[10px] font-bold text-gray-500">{log.duration} hrs</div>
+                          </td>
+                          <td className="px-4 py-3 text-center font-bold text-gray-700">{log.noOfStudents}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
+                              log.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                              log.status === 'APPROVED' ? 'bg-green-100 text-green-800 border border-green-200' :
+                              'bg-red-100 text-red-800 border border-red-200'
+                            }`}>
+                              {log.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right max-w-xs">
+                            <div className="flex flex-col gap-2 items-end">
+                              {log.remarks && (
+                                <div className="text-[10px] text-gray-500 italic mb-1 text-left w-full max-w-[200px] line-clamp-2" title={log.remarks}>
+                                  Teacher: "{log.remarks}"
+                                </div>
+                              )}
+                              
+                              <div className="flex gap-2 items-center w-full justify-between max-w-[200px]">
+                                <div className="flex gap-1.5">
+                                  <button
+                                    onClick={() => handleStartEdit(log)}
+                                    className="bg-sky-50 hover:bg-sky-100 text-sky-700 hover:text-sky-800 border border-sky-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                    title="Edit other center class details"
+                                  >
+                                    <Edit size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
+                                    className="bg-sky-50 hover:bg-sky-100 text-sky-700 hover:text-sky-800 border border-sky-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1"
+                                    title={`Export monthly report for ${log.user?.fullName}`}
+                                  >
+                                    <Download size={12} /> Excel
+                                  </button>
+                                </div>
+                                
+                                {log.status === 'PENDING' && (
+                                  <div className="flex gap-2">
+                                    <button 
+                                      onClick={() => handleProcess(log.id, 'APPROVED')} 
+                                      disabled={processing[log.id]}
+                                      className="bg-sky-600 hover:bg-sky-700 text-white font-extrabold px-2.5 py-1 rounded text-[10px] transition-all cursor-pointer shadow-sm active:scale-95"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button 
+                                      onClick={() => handleProcess(log.id, 'REJECTED')} 
+                                      disabled={processing[log.id]}
+                                      className="bg-red-600 hover:bg-red-700 text-white font-extrabold px-2.5 py-1 rounded text-[10px] transition-all cursor-pointer shadow-sm active:scale-95"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              {log.status === 'PENDING' ? (
+                                <input 
+                                  type="text"
+                                  placeholder="Supervisor remark..."
+                                  value={adminRemarks[log.id] || ''}
+                                  onChange={(e) => setAdminRemarks(prev => ({ ...prev, [log.id]: e.target.value }))}
+                                  className="border border-gray-300 rounded px-2 py-1 text-[11px] w-full max-w-[200px] outline-none focus:ring-1 focus:ring-sky-500"
                                 />
                               ) : (
                                 <div className="text-[10px] text-gray-500 font-medium text-left bg-gray-50 p-1.5 rounded border w-full max-w-[200px]">

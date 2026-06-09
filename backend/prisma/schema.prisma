@@ -68,6 +68,7 @@ model User {
   breakLogs      BreakLog[]
   extraClassLogs         ExtraClassLog[]
   classCancelledLogs     ClassCancelledLog[]
+  otherCenterClassLogs   OtherCenterClassLog[]
   supervisorId   Int?
   supervisor     User?        @relation("SupervisorTrainees", fields: [supervisorId], references: [id], onDelete: SetNull)
   trainees       User[]       @relation("SupervisorTrainees")
@@ -259,4 +260,25 @@ model ClassCancelledLog {
   reason        String    @default("Other reasons")
   remarks       String?
   createdAt     DateTime  @default(now())
+}
+
+model OtherCenterClassLog {
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime
+  day           String
+  subject       String
+  batchNo       String
+  duration      Float     // Duration in hours
+  startTime     String    // 12-hour format string (e.g. 10:00 AM)
+  endTime       String    // 12-hour format string (e.g. 11:30 AM)
+  noOfStudents  Int
+  centerName    String    // NICT Center Name
+  remarks       String?
+  classMode     String    @default("OFFLINE") // "ONLINE" or "OFFLINE"
+  status        String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  adminReason   String?   // Supervisor approval/rejection remarks
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

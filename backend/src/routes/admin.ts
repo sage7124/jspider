@@ -3643,5 +3643,423 @@ router.put('/class-cancelled/:id', authenticateToken, async (req: AuthRequest, r
   }
 });
 
+// ── Other Center Classes Admin Endpoints ──────────────────────────────────────────
+router.get('/other-center-classes', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { status, search, month } = req.query;
+
+    // Dynamic Database-backed clearance check for Supervisors
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_OTHER_CENTER_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage other center classes.' });
+      }
+    }
+
+    let dateFilter = {};
+    if (month && typeof month === 'string') {
+      const [year, mon] = month.split('-').map(Number);
+      const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+      const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+      dateFilter = { date: { gte: startOfMonth, lte: endOfMonth } };
+    }
+
+    const searchStr = search as string;
+    const whereClause: any = {
+      ...dateFilter,
+    };
+    if (status) {
+      whereClause.status = status as string;
+    }
+
+    const userConditions: any = {};
+    if (req.user?.role === 'SUPERVISOR') {
+      userConditions.supervisorId = req.user.id;
+    }
+    if (searchStr) {
+      userConditions.OR = [
+        { fullName: { contains: searchStr, mode: 'insensitive' } },
+        { identifier: { contains: searchStr, mode: 'insensitive' } }
+      ];
+    }
+    if (Object.keys(userConditions).length > 0) {
+      whereClause.user = userConditions;
+    }
+
+    const otherCenterClasses = await prisma.otherCenterClassLog.findMany({
+      where: whereClause,
+      include: {
+        user: { select: { fullName: true, identifier: true, department: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    res.json(otherCenterClasses);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/other-center-classes/process', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { logId, status, adminReason } = req.body; // status: APPROVED or REJECTED
+
+    if (!logId || !status) {
+      return res.status(400).json({ error: 'logId and status are required.' });
+    }
+
+    if (status !== 'APPROVED' && status !== 'REJECTED') {
+      return res.status(400).json({ error: 'Status must be APPROVED or REJECTED.' });
+    }
+
+    if (!adminReason || !adminReason.trim()) {
+      return res.status(400).json({ error: 'A remark is required to approve or reject the request.' });
+    }
+
+    const log = await prisma.otherCenterClassLog.findUnique({
+      where: { id: Number(logId) }
+    });
+
+    if (!log) {
+      return res.status(404).json({ error: 'Other center class log not found.' });
+    }
+
+    // Strict Supervisor Authorization Sandbox & Clearance Checks
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_OTHER_CENTER_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage other center classes.' });
+      }
+
+      // Check if trainee belongs to supervisor
+      const trainee = await prisma.user.findUnique({
+        where: { id: log.userId }
+      });
+      if (!trainee || trainee.supervisorId !== req.user.id) {
+        return res.status(403).json({ error: 'Access Denied: You can only process other center class requests for trainees assigned to you.' });
+      }
+    }
+
+    if (log.status !== 'PENDING') {
+      return res.status(400).json({ error: 'Request has already been processed.' });
+    }
+
+    const updatedLog = await prisma.otherCenterClassLog.update({
+      where: { id: Number(logId) },
+      data: {
+        status,
+        adminReason: adminReason ? adminReason.trim() : null
+      }
+    });
+
+    res.json({ message: `Other center class request ${status.toLowerCase()} successfully.`, otherCenterClass: updatedLog });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/reports/other-center-classes/export', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { month, search } = req.query;
+    if (!month || typeof month !== 'string') {
+      return res.status(400).json({ error: 'Month is required' });
+    }
+
+    // Dynamic Database-backed clearance check for Supervisors
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_OTHER_CENTER_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage other center classes.' });
+      }
+    }
+
+    const [year, mon] = month.split('-').map(Number);
+    const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+    const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+
+    const searchStr = search as string;
+    const whereClause: any = {
+      date: { gte: startOfMonth, lte: endOfMonth }
+    };
+
+    const userConditions: any = {};
+    if (req.user?.role === 'SUPERVISOR') {
+      userConditions.supervisorId = req.user.id;
+    }
+    if (searchStr) {
+      userConditions.OR = [
+        { fullName: { contains: searchStr, mode: 'insensitive' } },
+        { identifier: { contains: searchStr, mode: 'insensitive' } }
+      ];
+    }
+    if (Object.keys(userConditions).length > 0) {
+      whereClause.user = userConditions;
+    }
+
+    const logs = await prisma.otherCenterClassLog.findMany({
+      where: whereClause,
+      include: {
+        user: { select: { fullName: true, identifier: true, department: true } }
+      },
+      orderBy: [
+        { date: 'asc' },
+        { createdAt: 'asc' }
+      ]
+    });
+
+    const workbook = new exceljs.Workbook();
+    workbook.creator = 'Attendance System';
+
+    // Group logs by teacher/user
+    const userMap = new Map<number, any[]>();
+    logs.forEach(l => {
+      const uLogs = userMap.get(l.userId) || [];
+      uLogs.push(l);
+      userMap.set(l.userId, uLogs);
+    });
+
+    if (userMap.size === 0) {
+      const ws = workbook.addWorksheet('No Data');
+      ws.getCell('A1').value = 'No other center classes found for this month.';
+    } else {
+      const usedNames = new Set<string>();
+
+      for (const [userId, uLogs] of userMap.entries()) {
+        const user = uLogs[0].user;
+        let sheetName = user.fullName.substring(0, 30);
+        let counter = 1;
+        while (usedNames.has(sheetName)) {
+          const suffix = `_${counter}`;
+          sheetName = `${user.fullName.substring(0, 30 - suffix.length)}${suffix}`;
+          counter++;
+        }
+        usedNames.add(sheetName);
+        const ws = workbook.addWorksheet(sheetName);
+        ws.columns = [
+          { key: 'index', width: 6 },
+          { key: 'date', width: 15 },
+          { key: 'day', width: 12 },
+          { key: 'subject', width: 25 },
+          { key: 'batchNo', width: 15 },
+          { key: 'classMode', width: 15 },
+          { key: 'duration', width: 15 },
+          { key: 'startTime', width: 15 },
+          { key: 'endTime', width: 15 },
+          { key: 'noOfStudents', width: 15 },
+          { key: 'centerName', width: 20 },
+          { key: 'status', width: 15 },
+          { key: 'adminReason', width: 25 },
+          { key: 'remarks', width: 25 }
+        ];
+
+        // Title Block (Row 1)
+        ws.mergeCells('A1:N1');
+        const titleCell = ws.getCell('A1');
+        titleCell.value = `OTHER CENTER CLASSES REPORT: ${user.fullName.toUpperCase()} | PHONE: ${user.identifier}`;
+        titleCell.font = { bold: true, size: 14, name: 'Calibri' };
+        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        ws.getRow(1).height = 40;
+        ws.getRow(2).height = 15;
+
+        // Header Row (Row 3)
+        const headerRow = ws.getRow(3);
+        headerRow.values = [
+          '#',
+          'Date',
+          'Day',
+          'Subject',
+          'Batch No',
+          'Class Mode',
+          'Duration (hrs)',
+          'Start Time',
+          'End Time',
+          'No of Students',
+          'Center Name',
+          'Status',
+          'Supervisor Remarks',
+          'Remarks'
+        ];
+        headerRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
+        headerRow.eachCell((cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '2E7D32' } // Dark Green
+          };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+        ws.getRow(3).height = 25;
+
+        // Populate
+        uLogs.forEach((l, idx) => {
+          const row = ws.addRow([
+            idx + 1,
+            l.date.toLocaleDateString('en-IN'),
+            l.day,
+            l.subject,
+            l.batchNo,
+            l.classMode || 'OFFLINE',
+            l.duration,
+            l.startTime,
+            l.endTime,
+            l.noOfStudents,
+            l.centerName,
+            l.status,
+            l.adminReason || '--',
+            l.remarks || '--'
+          ]);
+          row.eachCell((cell) => {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          });
+        });
+      }
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=Other_Center_Classes_Report_${month}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/other-center-classes/log', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { traineeId, date, subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks, classMode } = req.body;
+
+    if (!traineeId || !date || !subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName || !classMode) {
+      return res.status(400).json({ error: 'All fields (Trainee, Date, Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name, Class Mode) are required.' });
+    }
+
+    const durationVal = parseFloat(duration);
+    if (isNaN(durationVal) || durationVal <= 0) {
+      return res.status(400).json({ error: 'Duration must be a positive number.' });
+    }
+
+    const studentsVal = parseInt(noOfStudents);
+    if (isNaN(studentsVal) || studentsVal < 0) {
+      return res.status(400).json({ error: 'Number of students must be a valid positive integer.' });
+    }
+
+    const parsedDate = new Date(date);
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][parsedDate.getDay()];
+
+    const otherCenterClass = await prisma.otherCenterClassLog.create({
+      data: {
+        userId: Number(traineeId),
+        date: parsedDate,
+        day: dayOfWeek,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        duration: durationVal,
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+        noOfStudents: studentsVal,
+        centerName: centerName.trim(),
+        remarks: remarks ? remarks.trim() : null,
+        classMode: classMode.trim(),
+        status: 'APPROVED',
+        adminReason: 'Logged directly by Administrator/Supervisor'
+      }
+    });
+
+    res.status(201).json({ message: 'Other center class logged and approved successfully.', otherCenterClass });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/other-center-classes/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { traineeId, date, subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks, classMode } = req.body;
+
+    if (!traineeId || !date || !subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName || !classMode) {
+      return res.status(400).json({ error: 'All fields (Trainee, Date, Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name, Class Mode) are required.' });
+    }
+
+    const durationVal = parseFloat(duration);
+    if (isNaN(durationVal) || durationVal <= 0) {
+      return res.status(400).json({ error: 'Duration must be a positive number.' });
+    }
+
+    const studentsVal = parseInt(noOfStudents);
+    if (isNaN(studentsVal) || studentsVal < 0) {
+      return res.status(400).json({ error: 'Number of students must be a valid positive integer.' });
+    }
+
+    const logId = Number(id);
+    const log = await prisma.otherCenterClassLog.findUnique({
+      where: { id: logId }
+    });
+
+    if (!log) {
+      return res.status(404).json({ error: 'Other center class log not found.' });
+    }
+
+    // Supervisor Clearance check
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_OTHER_CENTER_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage other center classes.' });
+      }
+
+      const trainee = await prisma.user.findUnique({
+        where: { id: log.userId }
+      });
+      if (!trainee || trainee.supervisorId !== req.user.id) {
+        return res.status(403).json({ error: 'Access Denied: You can only edit other center class requests for trainees assigned to you.' });
+      }
+    }
+
+    const parsedDate = new Date(date);
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][parsedDate.getDay()];
+
+    const updatedOtherCenterClass = await prisma.otherCenterClassLog.update({
+      where: { id: logId },
+      data: {
+        userId: Number(traineeId),
+        date: parsedDate,
+        day: dayOfWeek,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        duration: durationVal,
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+        noOfStudents: studentsVal,
+        centerName: centerName.trim(),
+        classMode: classMode.trim(),
+        remarks: remarks ? remarks.trim() : null
+      }
+    });
+
+    res.status(200).json({ message: 'Other center class updated successfully.', otherCenterClass: updatedOtherCenterClass });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

@@ -102,7 +102,7 @@ const WheelTimePicker = ({
   period: string;
   onChange: (h: string, m: string, p: string) => void;
   onReset: () => void;
-  themeColor: 'purple' | 'emerald';
+  themeColor: 'purple' | 'emerald' | 'sky';
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -161,6 +161,15 @@ const WheelTimePicker = ({
       checkBg: 'bg-blue-600 hover:bg-blue-700',
       iconColor: 'text-emerald-400',
       accentColor: 'text-emerald-700 bg-emerald-50 font-black scale-110 shadow-sm border border-emerald-100'
+    },
+    sky: {
+      border: 'border-sky-100 hover:border-sky-300',
+      activeBorder: 'border-sky-400 bg-white',
+      text: 'text-sky-700',
+      bg: 'bg-sky-100',
+      checkBg: 'bg-blue-600 hover:bg-blue-700',
+      iconColor: 'text-sky-400',
+      accentColor: 'text-sky-700 bg-sky-50 font-black scale-110 shadow-sm border border-sky-100'
     }
   }[themeColor];
 
@@ -411,6 +420,23 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
   const [submittingExtraClass, setSubmittingExtraClass] = useState(false);
   const [extraClassMode, setExtraClassMode] = useState('OFFLINE');
 
+  // Other Center Classes States
+  const [otherCenterSubject, setOtherCenterSubject] = useState('');
+  const [otherCenterBatchNo, setOtherCenterBatchNo] = useState('');
+  const [otherCenterHourFrom, setOtherCenterHourFrom] = useState('10');
+  const [otherCenterMinFrom, setOtherCenterMinFrom] = useState('00');
+  const [otherCenterPeriodFrom, setOtherCenterPeriodFrom] = useState('AM');
+  const [otherCenterHourTo, setOtherCenterHourTo] = useState('11');
+  const [otherCenterMinTo, setOtherCenterMinTo] = useState('30');
+  const [otherCenterPeriodTo, setOtherCenterPeriodTo] = useState('AM');
+  const [otherCenterNoOfStudents, setOtherCenterNoOfStudents] = useState('');
+  const [otherCenterCenterName, setOtherCenterCenterName] = useState('');
+  const [otherCenterRemarks, setOtherCenterRemarks] = useState('');
+  const [otherCenterClasses, setOtherCenterClasses] = useState<any[]>([]);
+  const [showOtherCenterClassModal, setShowOtherCenterClassModal] = useState(false);
+  const [submittingOtherCenterClass, setSubmittingOtherCenterClass] = useState(false);
+  const [otherCenterClassMode, setOtherCenterClassMode] = useState('OFFLINE');
+
   // Class Cancelled States
   const [cancelSubject, setCancelSubject] = useState('');
   const [cancelBatchNo, setCancelBatchNo] = useState('');
@@ -432,6 +458,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     fetchDropdowns();
     fetchExtraClassHistory();
     fetchClassCancelledHistory();
+    fetchOtherCenterClassHistory();
     
     // Global interceptor: auto-logout if session was replaced by another device
     const interceptor = axios.interceptors.response.use(
@@ -505,6 +532,83 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       });
       setCancelledClasses(res.data.classCancelledLogs || []);
     } catch (err) { console.error('Failed to fetch class cancellation history', err); }
+  };
+
+  const fetchOtherCenterClassHistory = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.get(`${API_URL}/api/attendance/other-center-class/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setOtherCenterClasses(res.data.otherCenterClassLogs || []);
+    } catch (err) { console.error('Failed to fetch other center class history', err); }
+  };
+
+  const handleLogOtherCenterClass = async () => {
+    if (!otherCenterSubject.trim() || !otherCenterBatchNo.trim() || !otherCenterHourFrom || !otherCenterMinFrom || !otherCenterHourTo || !otherCenterMinTo || !otherCenterNoOfStudents.trim() || !otherCenterCenterName.trim() || !otherCenterClassMode) {
+      alert('Please fill out all mandatory fields for Other Center Class.');
+      return;
+    }
+
+    const durationVal = calculateDuration12h(
+      otherCenterHourFrom, otherCenterMinFrom, otherCenterPeriodFrom,
+      otherCenterHourTo, otherCenterMinTo, otherCenterPeriodTo
+    );
+    if (durationVal <= 0) {
+      alert('End Time must be after Start Time.');
+      return;
+    }
+
+    const studentsVal = parseInt(otherCenterNoOfStudents);
+    if (isNaN(studentsVal) || studentsVal < 0) {
+      alert('Number of students must be a valid positive integer.');
+      return;
+    }
+
+    const startTimeFormatted = `${otherCenterHourFrom}:${otherCenterMinFrom} ${otherCenterPeriodFrom}`;
+    const endTimeFormatted = `${otherCenterHourTo}:${otherCenterMinTo} ${otherCenterPeriodTo}`;
+
+    try {
+      setSubmittingOtherCenterClass(true);
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await axios.post(`${API_URL}/api/attendance/other-center-class/apply`, {
+        subject: otherCenterSubject.trim(),
+        batchNo: otherCenterBatchNo.trim(),
+        duration: durationVal,
+        startTime: startTimeFormatted,
+        endTime: endTimeFormatted,
+        noOfStudents: studentsVal,
+        centerName: otherCenterCenterName.trim(),
+        remarks: otherCenterRemarks.trim() || undefined,
+        classMode: otherCenterClassMode
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert(res.data?.message || 'Other center class log submitted successfully!');
+      fetchOtherCenterClassHistory();
+      setShowOtherCenterClassModal(false);
+      
+      // Reset form
+      setOtherCenterSubject('');
+      setOtherCenterBatchNo('');
+      setOtherCenterHourFrom('10');
+      setOtherCenterMinFrom('00');
+      setOtherCenterPeriodFrom('AM');
+      setOtherCenterHourTo('11');
+      setOtherCenterMinTo('30');
+      setOtherCenterPeriodTo('AM');
+      setOtherCenterNoOfStudents('');
+      setOtherCenterCenterName('');
+      setOtherCenterRemarks('');
+      setOtherCenterClassMode('OFFLINE');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to submit other center class log');
+    } finally {
+      setSubmittingOtherCenterClass(false);
+    }
   };
 
   const handleLogExtraClass = async () => {
@@ -1301,6 +1405,61 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
               </button>
             </div>
           </div>
+
+          {/* Card 5: Other Center Classes */}
+          <div className="bg-white rounded-lg shadow-md p-6 border border-sky-100 hover:shadow-lg transition-all flex flex-col justify-between">
+            <div>
+              <h3 className="text-lg font-black text-sky-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+                <BookOpen className="text-sky-600 animate-pulse" size={22} />
+                Other Center Classes
+              </h3>
+              
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                {otherCenterClasses.length === 0 ? (
+                  <p className="text-center py-6 text-gray-400 text-xs">No other center classes logged yet.</p>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {otherCenterClasses.map((oc: any) => (
+                      <div key={oc.id} className="py-2.5 space-y-1">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-bold text-gray-700">{oc.subject}</span>
+                          <span className={`px-2 py-0.5 rounded-full font-black text-[9px] uppercase tracking-wider ${
+                            oc.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                            oc.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                            'bg-amber-100 text-amber-700 animate-pulse'
+                          }`}>
+                            {oc.status}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 space-y-0.5 font-medium bg-gray-50/50 p-2 rounded border border-gray-100">
+                          <p><span className="font-bold text-gray-600">Batch:</span> {oc.batchNo} | <span className="font-bold text-gray-600">Mode:</span> {oc.classMode || 'OFFLINE'} | <span className="font-bold text-gray-600">Students:</span> {oc.noOfStudents}</p>
+                          <p><span className="font-bold text-gray-600">Center:</span> {oc.centerName}</p>
+                          <p><span className="font-bold text-gray-600">Time:</span> {oc.startTime} - {oc.endTime} ({oc.duration} hrs)</p>
+                          <p><span className="font-bold text-gray-600">Date:</span> {new Date(oc.date).toLocaleDateString('en-IN')} ({oc.day})</p>
+                          {oc.remarks && <p><span className="font-bold text-gray-600">Remarks:</span> {oc.remarks}</p>}
+                          {oc.adminReason && (
+                            <p className="mt-1 pt-1 border-t border-gray-200 text-purple-700 font-semibold">
+                              <span className="font-bold text-gray-700">Reason:</span> {oc.adminReason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="pt-4">
+              <button
+                type="button"
+                onClick={() => setShowOtherCenterClassModal(true)}
+                className="w-full font-black py-4 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                ➕ Log Other Center Class
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1856,6 +2015,87 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.batchNo || '--'}</td>
                       <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.startTime && log.endTime ? `${log.startTime} - ${log.endTime}` : '--'}</td>
                       <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r font-bold text-indigo-700">{log.duration ? `${log.duration} hrs` : '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r text-center">{log.noOfStudents ?? '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.centerName || '--'}</td>
+                      <td className="px-4 py-2 border-r text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          log.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                          log.status === 'APPROVED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-gray-600 border-r italic">{log.adminReason || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 border-r">{log.remarks || '--'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Other Center Class Taken Report */}
+      <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+        <div className="p-6 border-b flex flex-wrap justify-between items-center gap-4 bg-gray-50">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <BookOpen className="text-sky-600" /> Other Center Class Taken Report
+            <span className="ml-2 text-xs font-bold bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-full">
+              {reportData?.otherCenterClasses?.length || 0} Logs
+            </span>
+          </h2>
+          <div className="flex gap-4">
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">MONTH</label>
+              <select value={reportMonth} onChange={e => setReportMonth(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {Array.from({length: 12}, (_, i) => <option key={i+1} value={i+1}>{new Date(2000, i).toLocaleString('default', { month: 'long' })}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 mb-1">YEAR</label>
+              <select value={reportYear} onChange={e => setReportYear(e.target.value)} className="border rounded px-3 py-1.5 outline-none font-medium text-gray-750">
+                {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div className="overflow-x-auto w-full">
+          {loadingReport ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium">Loading report data...</div>
+          ) : !reportData || !reportData.otherCenterClasses || reportData.otherCenterClasses.length === 0 ? (
+            <div className="flex items-center justify-center p-8 text-gray-500 font-medium text-xs">No other center classes logged for this month</div>
+          ) : (
+            <table className="w-full text-sm text-left min-w-[1100px]">
+              <thead className="bg-[#0288D1] text-white">
+                <tr>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Date</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Day</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Subject</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Batch No</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Timings</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Duration</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Students</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Center</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-center">Status</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Supervisor Remark</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Remarks</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {reportData.otherCenterClasses.map((log: any, i: number) => {
+                  const dateObj = new Date(log.date);
+                  const dateStr = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                  const dayStr = log.day || dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+                  return (
+                    <tr key={log.id || i} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2 font-medium whitespace-nowrap border-r">{dateStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{dayStr}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.subject || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.batchNo || '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.startTime && log.endTime ? `${log.startTime} - ${log.endTime}` : '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r font-bold text-sky-700">{log.duration ? `${log.duration} hrs` : '--'}</td>
                       <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r text-center">{log.noOfStudents ?? '--'}</td>
                       <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.centerName || '--'}</td>
                       <td className="px-4 py-2 border-r text-center">
@@ -2602,6 +2842,195 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-emerald-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {submittingExtraClass ? 'Saving...' : '🚀 Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Other Center Class Modal */}
+      {showOtherCenterClassModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => {
+                setShowOtherCenterClassModal(false);
+                setOtherCenterSubject('');
+                setOtherCenterBatchNo('');
+                setOtherCenterHourFrom('10');
+                setOtherCenterMinFrom('00');
+                setOtherCenterPeriodFrom('AM');
+                setOtherCenterHourTo('11');
+                setOtherCenterMinTo('30');
+                setOtherCenterPeriodTo('AM');
+                setOtherCenterNoOfStudents('');
+                setOtherCenterCenterName('');
+                setOtherCenterRemarks('');
+                setOtherCenterClassMode('OFFLINE');
+              }}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"
+            >
+              <X size={20} />
+            </button>
+            
+            <h3 className="text-lg font-black text-sky-800 mb-4 flex items-center gap-2 border-b pb-3 uppercase tracking-wider">
+              <BookOpen size={20} className="animate-pulse" /> Log Other Center Class
+            </h3>
+
+            <div className="space-y-3 text-left overflow-y-auto max-h-[70vh] pr-1">
+              <div>
+                <label className="block text-[10px] font-black text-sky-700 mb-1 uppercase tracking-wide">Subject / Topic</label>
+                <input
+                  type="text"
+                  required
+                  value={otherCenterSubject}
+                  onChange={(e) => setOtherCenterSubject(e.target.value)}
+                  className="w-full border border-sky-100 rounded-lg p-2.5 text-xs outline-none focus:border-sky-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                  placeholder="e.g. JavaScript Async / Tally Prime"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-sky-700 mb-1 uppercase tracking-wide">Batch Code / No</label>
+                  <input
+                    type="text"
+                    required
+                    value={otherCenterBatchNo}
+                    onChange={(e) => setOtherCenterBatchNo(e.target.value)}
+                    className="w-full border border-sky-100 rounded-lg p-2.5 text-xs outline-none focus:border-sky-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                    placeholder="e.g. B-125"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-sky-700 mb-1 uppercase tracking-wide">No of Students Attended</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={otherCenterNoOfStudents}
+                    onChange={(e) => setOtherCenterNoOfStudents(e.target.value)}
+                    className="w-full border border-sky-100 rounded-lg p-2.5 text-xs outline-none focus:border-sky-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                    placeholder="e.g. 25"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-black text-sky-700 mb-1 uppercase tracking-wide">NICT Center Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={otherCenterCenterName}
+                    onChange={(e) => setOtherCenterCenterName(e.target.value)}
+                    className="w-full border border-sky-100 rounded-lg p-2.5 text-xs outline-none focus:border-sky-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400"
+                    placeholder="e.g. Rajajinagar"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-sky-700 mb-1 uppercase tracking-wide">Class Mode</label>
+                  <select
+                    value={otherCenterClassMode}
+                    onChange={(e) => setOtherCenterClassMode(e.target.value)}
+                    className="w-full border border-sky-100 rounded-lg p-2.5 text-xs outline-none focus:border-sky-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner"
+                  >
+                    <option value="OFFLINE">Offline</option>
+                    <option value="ONLINE">Online</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Clock Picker: From Time */}
+                <div>
+                  <label className="block text-[10px] font-black text-sky-700 mb-1 uppercase tracking-wide">Start Time</label>
+                  <WheelTimePicker
+                    hour={otherCenterHourFrom}
+                    minute={otherCenterMinFrom}
+                    period={otherCenterPeriodFrom}
+                    onChange={(h, m, p) => {
+                      setOtherCenterHourFrom(h);
+                      setOtherCenterMinFrom(m);
+                      setOtherCenterPeriodFrom(p);
+                    }}
+                    onReset={() => {
+                      setOtherCenterHourFrom('10');
+                      setOtherCenterMinFrom('00');
+                      setOtherCenterPeriodFrom('AM');
+                    }}
+                    themeColor="sky"
+                  />
+                </div>
+
+                {/* Clock Picker: To Time */}
+                <div>
+                  <label className="block text-[10px] font-black text-sky-700 mb-1 uppercase tracking-wide">End Time</label>
+                  <WheelTimePicker
+                    hour={otherCenterHourTo}
+                    minute={otherCenterMinTo}
+                    period={otherCenterPeriodTo}
+                    onChange={(h, m, p) => {
+                      setOtherCenterHourTo(h);
+                      setOtherCenterMinTo(m);
+                      setOtherCenterPeriodTo(p);
+                    }}
+                    onReset={() => {
+                      setOtherCenterHourTo('11');
+                      setOtherCenterMinTo('30');
+                      setOtherCenterPeriodTo('AM');
+                    }}
+                    themeColor="sky"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-sky-700 mb-1 uppercase tracking-wide">Remarks / Details (Optional)</label>
+                <textarea
+                  value={otherCenterRemarks}
+                  onChange={(e) => setOtherCenterRemarks(e.target.value)}
+                  className="w-full border border-sky-100 rounded-lg p-2.5 text-xs outline-none focus:border-sky-400 bg-gray-50/50 font-bold focus:bg-white transition-all shadow-inner placeholder-gray-400 resize-none h-20"
+                  placeholder="Enter additional details..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-4 border-t mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOtherCenterClassModal(false);
+                  setOtherCenterSubject('');
+                  setOtherCenterBatchNo('');
+                  setOtherCenterHourFrom('10');
+                  setOtherCenterMinFrom('00');
+                  setOtherCenterPeriodFrom('AM');
+                  setOtherCenterHourTo('11');
+                  setOtherCenterMinTo('30');
+                  setOtherCenterPeriodTo('AM');
+                  setOtherCenterNoOfStudents('');
+                  setOtherCenterCenterName('');
+                  setOtherCenterRemarks('');
+                  setOtherCenterClassMode('OFFLINE');
+                }}
+                className="flex-1 bg-white border border-gray-200 text-gray-600 py-3 rounded-xl font-bold tracking-wider text-xs uppercase shadow-sm hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={
+                  submittingOtherCenterClass ||
+                  !otherCenterSubject.trim() ||
+                  !otherCenterBatchNo.trim() ||
+                  !otherCenterNoOfStudents.trim() ||
+                  !otherCenterCenterName.trim()
+                }
+                onClick={handleLogOtherCenterClass}
+                className="flex-[2] bg-sky-600 hover:bg-sky-700 text-white py-3 rounded-xl font-black tracking-widest text-xs uppercase shadow-lg shadow-sky-100 active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {submittingOtherCenterClass ? 'Saving...' : '🚀 Save'}
               </button>
             </div>
           </div>

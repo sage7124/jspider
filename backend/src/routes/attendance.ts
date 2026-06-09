@@ -684,6 +684,14 @@ router.get('/reports/monthly-json', authenticateToken, async (req: AuthRequest, 
       orderBy: { date: 'asc' }
     });
 
+    const otherCenterClasses = await prisma.otherCenterClassLog.findMany({
+      where: {
+        userId,
+        date: { gte: startDate, lte: endDate }
+      },
+      orderBy: { date: 'asc' }
+    });
+
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -692,7 +700,8 @@ router.get('/reports/monthly-json', authenticateToken, async (req: AuthRequest, 
       collegeVisits,
       breaks,
       classesCancelled,
-      extraClasses
+      extraClasses,
+      otherCenterClasses
     });
   } catch (error) {
     console.error(error);
@@ -920,6 +929,70 @@ router.get('/extra-class/status', authenticateToken, async (req: AuthRequest, re
       orderBy: { createdAt: 'desc' }
     });
     res.json({ extraClassLogs });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ── Other Center Classes Taken ──────────────────────────────────────────────────
+router.post('/other-center-class/apply', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks, classMode } = req.body;
+
+    if (!subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName || !classMode) {
+      return res.status(400).json({ error: 'All fields (Subject, Batch No, Duration, Start Time, End Time, No of Students, Center Name, Class Mode) are required.' });
+    }
+
+    const durationVal = parseFloat(duration);
+    if (isNaN(durationVal) || durationVal <= 0) {
+      return res.status(400).json({ error: 'Duration must be a positive number.' });
+    }
+
+    const studentsVal = parseInt(noOfStudents);
+    if (isNaN(studentsVal) || studentsVal < 0) {
+      return res.status(400).json({ error: 'Number of students must be a valid positive integer.' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date().getDay()];
+
+    const otherCenterClass = await prisma.otherCenterClassLog.create({
+      data: {
+        userId,
+        date: today,
+        day: dayOfWeek,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        duration: durationVal,
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+        noOfStudents: studentsVal,
+        centerName: centerName.trim(),
+        remarks: remarks ? remarks.trim() : null,
+        classMode: classMode.trim(),
+        status: 'PENDING'
+      }
+    });
+
+    res.status(201).json({ message: 'Other center class details submitted and pending approval. Meet the supervisor for approval of the class', otherCenterClass });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/other-center-class/status', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const otherCenterClassLogs = await prisma.otherCenterClassLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ otherCenterClassLogs });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
