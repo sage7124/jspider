@@ -1152,6 +1152,7 @@ router.put('/attendance-manual/:traineeId', async (req, res) => {
                 // Collate all punch timings across ALL slots (1-5) to compute proper new global mins/maxes!
                 const allIns = [];
                 const allOuts = [];
+                let hasActivePunchIn = false;
                 for (let i = 1; i <= 5; i++) {
                     let finalI = existing?.[`inTime${i}`] || null;
                     let finalO = existing?.[`outTime${i}`] || null;
@@ -1163,19 +1164,25 @@ router.put('/attendance-manual/:traineeId', async (req, res) => {
                     }
                     allIns.push(finalI);
                     allOuts.push(finalO);
+                    if (finalI && !finalO) {
+                        hasActivePunchIn = true;
+                    }
                 }
                 const validIns = allIns.filter(Boolean);
                 const validOuts = allOuts.filter(Boolean);
                 updateData.inTime = validIns.length > 0 ? new Date(Math.min(...validIns.map(d => d.getTime()))) : null;
-                updateData.outTime = validOuts.length > 0 ? new Date(Math.max(...validOuts.map(d => d.getTime()))) : null;
-                if (!updateData.inTime) {
-                    updateData.status = 'ABSENT';
-                }
-                else if (updateData.inTime && !updateData.outTime) {
+                if (hasActivePunchIn) {
+                    updateData.outTime = null;
                     updateData.status = 'IN';
                 }
                 else {
-                    updateData.status = 'OUT';
+                    updateData.outTime = validOuts.length > 0 ? new Date(Math.max(...validOuts.map(d => d.getTime()))) : null;
+                    if (!updateData.inTime) {
+                        updateData.status = 'ABSENT';
+                    }
+                    else {
+                        updateData.status = 'OUT';
+                    }
                 }
             }
             else {
@@ -2857,6 +2864,7 @@ router.get('/reports/extra-classes/export', authMiddleware_1.authenticateToken, 
                     { key: 'day', width: 12 },
                     { key: 'subject', width: 25 },
                     { key: 'batchNo', width: 15 },
+                    { key: 'classMode', width: 15 },
                     { key: 'duration', width: 15 },
                     { key: 'startTime', width: 15 },
                     { key: 'endTime', width: 15 },
@@ -2867,7 +2875,7 @@ router.get('/reports/extra-classes/export', authMiddleware_1.authenticateToken, 
                     { key: 'remarks', width: 25 }
                 ];
                 // Title Block (Row 1)
-                ws.mergeCells('A1:M1');
+                ws.mergeCells('A1:N1');
                 const titleCell = ws.getCell('A1');
                 titleCell.value = `EXTRA CLASSES REPORT: ${user.fullName.toUpperCase()} | PHONE: ${user.identifier}`;
                 titleCell.font = { bold: true, size: 14, name: 'Calibri' };
@@ -2882,6 +2890,7 @@ router.get('/reports/extra-classes/export', authMiddleware_1.authenticateToken, 
                     'Day',
                     'Subject',
                     'Batch No',
+                    'Class Mode',
                     'Duration (hrs)',
                     'Start Time',
                     'End Time',
@@ -2909,6 +2918,7 @@ router.get('/reports/extra-classes/export', authMiddleware_1.authenticateToken, 
                         l.day,
                         l.subject,
                         l.batchNo,
+                        l.classMode || 'OFFLINE',
                         l.duration,
                         l.startTime,
                         l.endTime,

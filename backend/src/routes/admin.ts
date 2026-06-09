@@ -1152,6 +1152,7 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
         // Collate all punch timings across ALL slots (1-5) to compute proper new global mins/maxes!
         const allIns: (Date | null)[] = [];
         const allOuts: (Date | null)[] = [];
+        let hasActivePunchIn = false;
 
         for (let i = 1; i <= 5; i++) {
           let finalI = existing?.[`inTime${i}` as keyof typeof existing] as Date || null;
@@ -1163,20 +1164,27 @@ router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
           }
           allIns.push(finalI);
           allOuts.push(finalO);
+
+          if (finalI && !finalO) {
+            hasActivePunchIn = true;
+          }
         }
 
         const validIns = allIns.filter(Boolean) as Date[];
         const validOuts = allOuts.filter(Boolean) as Date[];
 
         updateData.inTime = validIns.length > 0 ? new Date(Math.min(...validIns.map(d => d.getTime()))) : null;
-        updateData.outTime = validOuts.length > 0 ? new Date(Math.max(...validOuts.map(d => d.getTime()))) : null;
 
-        if (!updateData.inTime) {
-          updateData.status = 'ABSENT';
-        } else if (updateData.inTime && !updateData.outTime) {
+        if (hasActivePunchIn) {
+          updateData.outTime = null;
           updateData.status = 'IN';
         } else {
-          updateData.status = 'OUT';
+          updateData.outTime = validOuts.length > 0 ? new Date(Math.max(...validOuts.map(d => d.getTime()))) : null;
+          if (!updateData.inTime) {
+            updateData.status = 'ABSENT';
+          } else {
+            updateData.status = 'OUT';
+          }
         }
       } else {
         if (inTime === '') {
