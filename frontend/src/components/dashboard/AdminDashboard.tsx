@@ -3842,32 +3842,30 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
         ) : (
           <>
             {/* Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-              <div>
+            <div className="flex flex-wrap items-end gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+              <div className="min-w-[160px] flex-1">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
                 <input type="date" value={date} onChange={e => setDate(e.target.value)}
                   className="w-full border border-gray-350 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
               </div>
-              <div>
+              <div className="min-w-[160px] flex-1">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
                 <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
               </div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                    className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
-                </div>
-                <button onClick={handleExport} disabled={exporting}
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-                </button>
-                <button onClick={() => setShowAddForm(true)}
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-                  ➕ Log Outing
-                </button>
+              <div className="min-w-[160px] flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-amber-500" />
               </div>
+              <button onClick={handleExport} disabled={exporting}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+              </button>
+              <button onClick={() => setShowAddForm(true)}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                ➕ Log Outing
+              </button>
             </div>
 
             {/* Logs Table */}
@@ -4325,32 +4323,30 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
         ) : (
           <>
             {/* Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-              <div>
+            <div className="flex flex-wrap items-end gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+              <div className="min-w-[160px] flex-1">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
                 <input type="date" value={date} onChange={e => setDate(e.target.value)}
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div>
+              <div className="min-w-[160px] flex-1">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
                 <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                    className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <button onClick={handleExport} disabled={exporting}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-                </button>
-                <button onClick={() => setShowAddForm(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-                  ➕ Log College Visit
-                </button>
+              <div className="min-w-[160px] flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+              <button onClick={handleExport} disabled={exporting}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+              </button>
+              <button onClick={() => setShowAddForm(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                ➕ Log College Visit
+              </button>
             </div>
 
             {/* Logs Table */}
@@ -4808,18 +4804,18 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
         ) : (
           <>
             {/* Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-              <div>
+            <div className="flex flex-wrap items-end gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+              <div className="min-w-[140px] flex-1">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
                 <input type="month" value={month} onChange={e => setMonth(e.target.value)}
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
-              <div>
+              <div className="min-w-[140px] flex-1">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
                 <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or ID..."
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
-              <div>
+              <div className="min-w-[130px]">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Status</label>
                 <select value={status} onChange={e => setStatus(e.target.value)}
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
@@ -4829,21 +4825,19 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                   <option value="REJECTED">Rejected Only</option>
                 </select>
               </div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                    className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
-                </div>
-                <button onClick={handleExport} disabled={exporting}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-                </button>
-                <button onClick={() => setShowAddForm(true)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-                  ➕ Log Extra Class
-                </button>
+              <div className="min-w-[140px] flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
+              <button onClick={handleExport} disabled={exporting}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+              </button>
+              <button onClick={() => setShowAddForm(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                ➕ Log Extra Class
+              </button>
             </div>
 
             {/* Logs Table */}
@@ -5245,32 +5239,30 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
         ) : (
           <>
             {/* Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-              <div>
+            <div className="flex flex-wrap items-end gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
+              <div className="min-w-[160px] flex-1">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
                 <input type="month" value={month} onChange={e => setMonth(e.target.value)}
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
               </div>
-              <div>
+              <div className="min-w-[160px] flex-1">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Search Teacher</label>
                 <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or ID..."
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
               </div>
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
-                  <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
-                    className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
-                </div>
-                <button onClick={handleExport} disabled={exporting}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-                  <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
-                </button>
-                <button onClick={() => setShowAddForm(true)}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer">
-                  ➕ Log Cancelled Class
-                </button>
+              <div className="min-w-[160px] flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
+                <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-red-500" />
               </div>
+              <button onClick={handleExport} disabled={exporting}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                <Download size={14} /> {exporting ? 'Exporting...' : 'Export'}
+              </button>
+              <button onClick={() => setShowAddForm(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded shadow transition-all active:scale-95 flex items-center gap-1.5 h-[32px] cursor-pointer whitespace-nowrap">
+                ➕ Log Cancelled Class
+              </button>
             </div>
 
             {/* Logs Table */}
