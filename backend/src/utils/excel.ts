@@ -1,5 +1,12 @@
 import * as exceljs from 'exceljs';
 
+export function formatMinsToPoints(totalMins: number): string {
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  const mStr = m < 10 ? `0${m}` : `${m}`;
+  return `${h}.${mStr}`;
+}
+
 export const getTraineeReportData = (user: any, attendances: any[], year: number, mon: number, daysInMonth: number, holidays: any[] = [], leaves: any[] = []) => {
   let totalWorkedMinutes = 0;
   let totalLateMinutes = 0;
@@ -258,12 +265,12 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
           const l = calcLate(slot, safeIn, sIn, false);
           const e = calcEarly(slot, safeOut, safeIn, sOut, sIn, false);
           
-          if (typeof l === 'number') { dayLateMins += l; finalLate = `${l}m`; } else { finalLate = l; }
+          if (typeof l === 'number') { dayLateMins += l; finalLate = formatMinsToPoints(l); } else { finalLate = l; }
           
           if (finalLate === 'ABSENT') {
             finalEarly = 'ABSENT';
           } else {
-            if (typeof e === 'number') { dayEarlyMins += e; finalEarly = `${e}m`; } else { finalEarly = e; }
+            if (typeof e === 'number') { dayEarlyMins += e; finalEarly = formatMinsToPoints(e); } else { finalEarly = e; }
           }
           
           // Overwrite missing out for overall record safety
@@ -294,9 +301,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     totalExtraMinutes += dayExtraMins;
 
     // Update final row strings
-    rowData.late = dayLateMins > 0 ? `${Math.floor(dayLateMins / 60)}h ${dayLateMins % 60}m` : '0m';
-    rowData.earlyDeparture = dayEarlyMins > 0 ? `${Math.floor(dayEarlyMins / 60)}h ${dayEarlyMins % 60}m` : '0m';
-    rowData.extraWork = dayExtraMins > 0 ? `${Math.floor(dayExtraMins / 60)}h ${dayExtraMins % 60}m` : '0m';
+    rowData.late = formatMinsToPoints(dayLateMins);
+    rowData.earlyDeparture = formatMinsToPoints(dayEarlyMins);
+    rowData.extraWork = formatMinsToPoints(dayExtraMins);
 
     const allInfos = att ? [att.info, att.info1, att.info2, att.info3, att.info4, att.info5]
       .filter(Boolean)
@@ -310,9 +317,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   return {
     rows,
     totals: {
-      late: `${Math.floor(totalLateMinutes / 60)}h ${totalLateMinutes % 60}m`,
-      earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`,
-      extraWork: `${Math.floor(totalExtraMinutes / 60)}h ${totalExtraMinutes % 60}m`
+      late: formatMinsToPoints(totalLateMinutes),
+      earlyDeparture: formatMinsToPoints(totalEarlyMinutes),
+      extraWork: formatMinsToPoints(totalExtraMinutes)
     },
     assignedSlotNos,
     hasExtraSlots,

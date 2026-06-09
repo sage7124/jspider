@@ -5,6 +5,7 @@ import { getDistance } from 'geolib';
 import bcrypt from 'bcryptjs';
 import * as exceljs from 'exceljs';
 import { generateTraineeWorksheet, getTraineeReportData } from '../utils/excel';
+import { performAutoPunchOut } from '../utils/autoPunchOut';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -40,6 +41,7 @@ const MAX_DISTANCE_METERS = 500; // 500 meters geofence
 
 router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
   try {
+    await performAutoPunchOut();
     const userId = req.user!.id;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -60,11 +62,12 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
     });
     let forgotPunchOut = false;
     if (recentAtt) {
-      // Check if any punched slot failed to record corresponding punch out
+      // Check if any punched slot failed to record corresponding punch out, or was auto-punched out
       for (let i = 1; i <= 5; i++) {
         const inT = recentAtt[`inTime${i}` as keyof typeof recentAtt];
         const outT = recentAtt[`outTime${i}` as keyof typeof recentAtt];
-        if (inT && !outT) {
+        const outB = recentAtt[`outBranch${i}` as keyof typeof recentAtt];
+        if (inT && (!outT || outB === 'Auto')) {
           forgotPunchOut = true;
           break;
         }
@@ -115,6 +118,7 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
 
 router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
   try {
+    await performAutoPunchOut();
     const { type, qrToken, lat, lng, deviceId, platform } = req.body;
     const userId = req.user!.id;
 
