@@ -105,21 +105,9 @@ const WheelTimePicker = ({
   themeColor: 'purple' | 'emerald';
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [tempHour, setTempHour] = useState(hour);
-  const [tempMinute, setTempMinute] = useState(minute);
-  const [tempPeriod, setTempPeriod] = useState(period);
   
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
-
-  // Sync temp state when picker is opened
-  useEffect(() => {
-    if (isOpen) {
-      setTempHour(hour);
-      setTempMinute(minute);
-      setTempPeriod(period);
-    }
-  }, [isOpen, hour, minute, period]);
 
   // Close when clicking outside
   useEffect(() => {
@@ -145,16 +133,10 @@ const WheelTimePicker = ({
         });
       }, 50);
     }
-  }, [isOpen, tempHour, tempMinute, tempPeriod]);
-
-  const handleSave = () => {
-    onChange(tempHour, tempMinute, tempPeriod);
-    setIsOpen(false);
-  };
+  }, [isOpen, hour, minute, period]);
 
   const handleResetClick = () => {
     onReset();
-    setIsOpen(false);
   };
 
   const hoursList = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
@@ -211,11 +193,11 @@ const WheelTimePicker = ({
             {/* Hours Column */}
             <div className="w-1/3 overflow-y-auto scrollbar-none text-center z-20 flex flex-col gap-1 py-14">
               {hoursList.map(h => {
-                const isActive = tempHour === h;
+                const isActive = hour === h;
                 return (
                   <div 
                     key={h}
-                    onClick={() => setTempHour(h)}
+                    onClick={() => onChange(h, minute, period)}
                     className={`py-1 cursor-pointer transition-all text-xs font-bold rounded-md ${isActive ? `${themeClasses.accentColor} active-time-item` : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
                   >
                     {h}
@@ -229,11 +211,11 @@ const WheelTimePicker = ({
             {/* Minutes Column */}
             <div className="w-1/3 overflow-y-auto scrollbar-none text-center z-20 flex flex-col gap-1 py-14">
               {minutesList.map(m => {
-                const isActive = tempMinute === m;
+                const isActive = minute === m;
                 return (
                   <div 
                     key={m}
-                    onClick={() => setTempMinute(m)}
+                    onClick={() => onChange(hour, m, period)}
                     className={`py-1 cursor-pointer transition-all text-xs font-bold rounded-md ${isActive ? `${themeClasses.accentColor} active-time-item` : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
                   >
                     {m}
@@ -245,11 +227,11 @@ const WheelTimePicker = ({
             {/* Periods Column */}
             <div className="w-1/4 overflow-y-auto scrollbar-none text-center z-20 flex flex-col gap-1 py-14">
               {periodsList.map(p => {
-                const isActive = tempPeriod === p;
+                const isActive = period === p;
                 return (
                   <div 
                     key={p}
-                    onClick={() => setTempPeriod(p)}
+                    onClick={() => onChange(hour, minute, p)}
                     className={`py-1.5 cursor-pointer transition-all text-xs font-bold rounded-md ${isActive ? `${themeClasses.accentColor} active-time-item` : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
                   >
                     {p}
@@ -270,12 +252,10 @@ const WheelTimePicker = ({
             </button>
             <button
               type="button"
-              onClick={handleSave}
-              className={`p-1.5 ${themeClasses.checkBg} text-white rounded-full shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center`}
+              onClick={() => setIsOpen(false)}
+              className={`px-4 py-1.5 ${themeClasses.checkBg} text-white text-xs font-bold rounded-lg shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="3.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+              Done
             </button>
           </div>
         </div>
