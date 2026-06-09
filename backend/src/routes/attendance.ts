@@ -238,25 +238,50 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         }
       }
 
-      // If no slot matches above or it is an IN punch, fallback to time-based matching
+      // If no slot matches above or it is an IN punch, fallback to robust midpoint time-based matching
       if (!activeSlot) {
-        for (const s of slots) {
-          const [eTime, eMod] = s.endTime.split(' ');
-          let [eh, em] = eTime.split(':').map(Number);
-          if (eMod === 'PM' && eh < 12) eh += 12;
-          if (eMod === 'AM' && eh === 12) eh = 0;
-          const slotEnd = new Date(today);
-          slotEnd.setHours(eh, em, 0, 0);
+        // Parse slot start and end times
+        const slotRanges = slots.map(s => {
+          const parseTime = (timeStr: string) => {
+            const [tStr, mod] = timeStr.split(' ');
+            let [h, m] = tStr.split(':').map(Number);
+            if (mod === 'PM' && h < 12) h += 12;
+            if (mod === 'AM' && h === 12) h = 0;
+            const d = new Date(today);
+            d.setHours(h, m, 0, 0);
+            return d;
+          };
+          return {
+            slot: s,
+            start: parseTime(s.startTime),
+            end: parseTime(s.endTime)
+          };
+        });
 
-          if (now.getTime() <= slotEnd.getTime()) {
-            activeSlot = s;
+        // Find the slot whose window contains 'now'
+        for (let i = 0; i < slotRanges.length; i++) {
+          let windowStart = new Date(today); // Start of day
+          if (i > 0) {
+            windowStart = new Date((slotRanges[i - 1].end.getTime() + slotRanges[i].start.getTime()) / 2);
+          }
+
+          let windowEnd = new Date(today);
+          windowEnd.setDate(windowEnd.getDate() + 1); // End of day (next day start)
+          if (i < slotRanges.length - 1) {
+            windowEnd = new Date((slotRanges[i].end.getTime() + slotRanges[i + 1].start.getTime()) / 2);
+          }
+
+          if (now.getTime() >= windowStart.getTime() && now.getTime() < windowEnd.getTime()) {
+            activeSlot = slotRanges[i].slot;
             break;
           }
         }
-      }
 
-      // If all slots have passed, compare with the last slot
-      if (!activeSlot) activeSlot = slots[slots.length - 1];
+        // Fallback in case of any boundary issue
+        if (!activeSlot) {
+          activeSlot = slots[0];
+        }
+      }
 
       if (type === 'IN') {
         // Parse active slot start time
@@ -287,11 +312,49 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         inTime: existing?.inTime || now,
         isLate: existing ? existing.isLate : isLate
       };
-      if (activeSlotNo === 1) { dataUpdate.inTime1 = now; dataUpdate.inBranch1 = punchedBranchName; }
-      if (activeSlotNo === 2) { dataUpdate.inTime2 = now; dataUpdate.inBranch2 = punchedBranchName; }
-      if (activeSlotNo === 3) { dataUpdate.inTime3 = now; dataUpdate.inBranch3 = punchedBranchName; }
-      if (activeSlotNo === 4) { dataUpdate.inTime4 = now; }
-      if (activeSlotNo === 5) { dataUpdate.inTime5 = now; }
+
+      // Set inTime / inBranch only if not already set. If already set, clear outTime so slot is active again.
+      if (activeSlotNo === 1) {
+        if (!existing?.inTime1) {
+          dataUpdate.inTime1 = now;
+          dataUpdate.inBranch1 = punchedBranchName;
+        } else {
+          dataUpdate.outTime1 = null;
+          dataUpdate.outBranch1 = null;
+        }
+      }
+      if (activeSlotNo === 2) {
+        if (!existing?.inTime2) {
+          dataUpdate.inTime2 = now;
+          dataUpdate.inBranch2 = punchedBranchName;
+        } else {
+          dataUpdate.outTime2 = null;
+          dataUpdate.outBranch2 = null;
+        }
+      }
+      if (activeSlotNo === 3) {
+        if (!existing?.inTime3) {
+          dataUpdate.inTime3 = now;
+          dataUpdate.inBranch3 = punchedBranchName;
+        } else {
+          dataUpdate.outTime3 = null;
+          dataUpdate.outBranch3 = null;
+        }
+      }
+      if (activeSlotNo === 4) {
+        if (!existing?.inTime4) {
+          dataUpdate.inTime4 = now;
+        } else {
+          dataUpdate.outTime4 = null;
+        }
+      }
+      if (activeSlotNo === 5) {
+        if (!existing?.inTime5) {
+          dataUpdate.inTime5 = now;
+        } else {
+          dataUpdate.outTime5 = null;
+        }
+      }
 
       const dataCreate: any = {
         userId,
