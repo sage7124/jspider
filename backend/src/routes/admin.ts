@@ -2066,6 +2066,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
       const parsed = parseCollegeVisit(b);
       return {
         id: b.id,
+        userId: b.userId,
         date: b.date.toLocaleDateString('en-IN'),
         name: b.user.fullName,
         identifier: b.user.identifier,
@@ -3389,6 +3390,242 @@ router.post('/breaks/log', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     res.status(201).json({ message: 'Break record logged successfully.', breakLog });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 4. Edit Break / College Visit Log
+router.put('/breaks/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { traineeId, date, breakType, breakOut, breakIn, reason, bookletNo, collegeName, subject, topicsCovered, conveyance, numberOfHours, fromTime, toTime } = req.body;
+
+    if (!traineeId || !date || !breakType || !breakOut) {
+      return res.status(400).json({ error: 'Trainee, Date, Break Type, and Out Time are required.' });
+    }
+
+    const logId = Number(id);
+    const breakLog = await prisma.breakLog.findUnique({
+      where: { id: logId },
+      include: { user: true }
+    });
+
+    if (!breakLog) {
+      return res.status(404).json({ error: 'Break record not found.' });
+    }
+
+    // Supervisor clearance check
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_BREAKS')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
+      }
+
+      if (breakLog.user.supervisorId !== req.user.id || Number(traineeId) !== breakLog.userId) {
+        // Also check if trainee belongs to supervisor if they changed the trainee
+        const trainee = await prisma.user.findUnique({
+          where: { id: Number(traineeId) }
+        });
+        if (!trainee || trainee.supervisorId !== req.user.id) {
+          return res.status(403).json({ error: 'Access Denied: You can only edit breaks for trainees assigned under you.' });
+        }
+      }
+    }
+
+    const parsedDate = new Date(date);
+    const parsedBreakOut = new Date(breakOut);
+    const parsedBreakIn = breakIn ? new Date(breakIn) : null;
+
+    let updatedBreakLog;
+
+    if (breakType === 'COLLEGE_VISIT') {
+      if (!bookletNo || !collegeName || !subject || !topicsCovered || !conveyance || !numberOfHours || !fromTime || !toTime) {
+        return res.status(400).json({ error: 'All College Visit details are required.' });
+      }
+
+      updatedBreakLog = await prisma.breakLog.update({
+        where: { id: logId },
+        data: {
+          userId: Number(traineeId),
+          date: parsedDate,
+          breakOut: parsedBreakOut,
+          breakIn: parsedBreakIn || parsedBreakOut,
+          reason: 'College Visit',
+          bookletNo: bookletNo.trim(),
+          collegeName: collegeName.trim(),
+          subject: subject.trim(),
+          topicsCovered: topicsCovered.trim(),
+          conveyance: conveyance.trim(),
+          numberOfHours: numberOfHours.trim(),
+          fromTime: fromTime.trim(),
+          toTime: toTime.trim()
+        }
+      });
+    } else {
+      updatedBreakLog = await prisma.breakLog.update({
+        where: { id: logId },
+        data: {
+          userId: Number(traineeId),
+          date: parsedDate,
+          breakOut: parsedBreakOut,
+          breakIn: parsedBreakIn,
+          reason: reason ? reason.trim() : 'Manual Break Entry',
+          bookletNo: null,
+          collegeName: null,
+          subject: null,
+          topicsCovered: null,
+          conveyance: null,
+          numberOfHours: null,
+          fromTime: null,
+          toTime: null
+        }
+      });
+    }
+
+    res.status(200).json({ message: 'Break record updated successfully.', breakLog: updatedBreakLog });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 5. Edit Extra Class Log
+router.put('/extra-classes/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { traineeId, date, subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks } = req.body;
+
+    if (!traineeId || !date || !subject || !batchNo || duration === undefined || !startTime || !endTime || noOfStudents === undefined || !centerName) {
+      return res.status(400).json({ error: 'All fields are required.' });
+    }
+
+    const durationVal = parseFloat(duration);
+    if (isNaN(durationVal) || durationVal <= 0) {
+      return res.status(400).json({ error: 'Duration must be a positive number.' });
+    }
+
+    const studentsVal = parseInt(noOfStudents);
+    if (isNaN(studentsVal) || studentsVal < 0) {
+      return res.status(400).json({ error: 'Number of students must be a valid positive integer.' });
+    }
+
+    const logId = Number(id);
+    const log = await prisma.extraClassLog.findUnique({
+      where: { id: logId }
+    });
+
+    if (!log) {
+      return res.status(404).json({ error: 'Extra class log not found.' });
+    }
+
+    // Supervisor Clearance check
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_EXTRA_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage extra classes.' });
+      }
+
+      const trainee = await prisma.user.findUnique({
+        where: { id: log.userId }
+      });
+      if (!trainee || trainee.supervisorId !== req.user.id) {
+        return res.status(403).json({ error: 'Access Denied: You can only edit extra class requests for trainees assigned to you.' });
+      }
+    }
+
+    const parsedDate = new Date(date);
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][parsedDate.getDay()];
+
+    const updatedExtraClass = await prisma.extraClassLog.update({
+      where: { id: logId },
+      data: {
+        userId: Number(traineeId),
+        date: parsedDate,
+        day: dayOfWeek,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        duration: durationVal,
+        startTime: startTime.trim(),
+        endTime: endTime.trim(),
+        noOfStudents: studentsVal,
+        centerName: centerName.trim(),
+        remarks: remarks ? remarks.trim() : null
+      }
+    });
+
+    res.status(200).json({ message: 'Extra class updated successfully.', extraClass: updatedExtraClass });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// 6. Edit Cancelled Class Log
+router.put('/class-cancelled/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { traineeId, date, subject, batchNo, centerName, reason, remarks } = req.body;
+
+    if (!traineeId || !date || !subject || !batchNo || !centerName || !reason) {
+      return res.status(400).json({ error: 'All fields are required.' });
+    }
+
+    const logId = Number(id);
+    const log = await prisma.classCancelledLog.findUnique({
+      where: { id: logId }
+    });
+
+    if (!log) {
+      return res.status(404).json({ error: 'Cancelled class log not found.' });
+    }
+
+    // Supervisor Clearance check
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_CANCELLED_CLASSES')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage cancelled classes.' });
+      }
+
+      const trainee = await prisma.user.findUnique({
+        where: { id: log.userId }
+      });
+      if (!trainee || trainee.supervisorId !== req.user.id) {
+        return res.status(403).json({ error: 'Access Denied: You can only edit cancelled class requests for trainees assigned to you.' });
+      }
+    }
+
+    const parsedDate = new Date(date);
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][parsedDate.getDay()];
+
+    const updatedCancelledClass = await prisma.classCancelledLog.update({
+      where: { id: logId },
+      data: {
+        userId: Number(traineeId),
+        date: parsedDate,
+        day: dayOfWeek,
+        subject: subject.trim(),
+        batchNo: batchNo.trim(),
+        centerName: centerName.trim(),
+        reason: reason.trim(),
+        remarks: remarks ? remarks.trim() : null
+      }
+    });
+
+    res.status(200).json({ message: 'Cancelled class updated successfully.', cancelledClass: updatedCancelledClass });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });

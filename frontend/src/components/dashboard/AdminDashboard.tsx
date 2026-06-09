@@ -269,6 +269,42 @@ function getDurationInHours(outHour: string, outMin: string, outPeriod: string, 
   return Number((diffMin / 60).toFixed(2));
 }
 
+function parse12hTime(timeStr: string) {
+  if (!timeStr || timeStr === 'On Break' || timeStr === '--') return { hour: '10', min: '00', period: 'AM' };
+  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/i);
+  if (match) {
+    let hour = match[1];
+    let min = match[2];
+    let period = match[3] ? match[3].toUpperCase() : 'AM';
+    let hNum = parseInt(hour, 10);
+    if (hNum > 12) {
+      hNum = hNum - 12;
+      period = 'PM';
+    } else if (hNum === 0) {
+      hNum = 12;
+      period = 'AM';
+    }
+    hour = String(hNum);
+    return {
+      hour: hour.padStart(2, '0'),
+      min: min.padStart(2, '0'),
+      period
+    };
+  }
+  return { hour: '10', min: '00', period: 'AM' };
+}
+
+function parseInDate(inDateStr: string) {
+  const parts = inDateStr.split('/');
+  if (parts.length === 3) {
+    const day = parts[0].padStart(2, '0');
+    const month = parts[1].padStart(2, '0');
+    const year = parts[2];
+    return `${year}-${month}-${day}`;
+  }
+  return new Date().toISOString().split('T')[0];
+}
+
 // ── Select component ──────────────────────────────────────────────────────────
 const Sel = ({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) => (
   <select value={value} onChange={(e) => onChange(e.target.value)}
@@ -3570,6 +3606,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingLog, setEditingLog] = useState<any>(null);
   const [selectedTraineeId, setSelectedTraineeId] = useState('');
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [outHour, setOutHour] = useState('10');
@@ -3607,6 +3644,38 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
     }
   };
 
+  const closeForm = () => {
+    setShowAddForm(false);
+    setEditingLog(null);
+    setSelectedTraineeId('');
+    setOutHour('10');
+    setOutMin('00');
+    setOutPeriod('AM');
+    setInHour('10');
+    setInMin('30');
+    setInPeriod('AM');
+    setReason('Tea Break');
+  };
+
+  const handleStartEdit = (b: any) => {
+    setEditingLog(b);
+    setSelectedTraineeId(b.userId || '');
+    setLogDate(parseInDate(b.date));
+    
+    const outTime = parse12hTime(b.breakOut);
+    setOutHour(outTime.hour);
+    setOutMin(outTime.min);
+    setOutPeriod(outTime.period);
+
+    const inTime = parse12hTime(b.breakIn);
+    setInHour(inTime.hour);
+    setInMin(inTime.min);
+    setInPeriod(inTime.period);
+
+    setReason(b.reason || '');
+    setShowAddForm(true);
+  };
+
   const handleAddBreak = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTraineeId) return alert('Please select a trainee.');
@@ -3619,33 +3688,36 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
       const breakOutStr = `${logDate}T${out24}:00`;
       const breakInStr = `${logDate}T${in24}:00`;
 
-      await axios.post(`${API}/breaks/log`, {
-        traineeId: Number(selectedTraineeId),
-        date: logDate,
-        breakType: 'NORMAL',
-        breakOut: breakOutStr,
-        breakIn: breakInStr,
-        reason: reason.trim(),
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (editingLog) {
+        await axios.put(`${API}/breaks/${editingLog.id}`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          breakType: 'NORMAL',
+          breakOut: breakOutStr,
+          breakIn: breakInStr,
+          reason: reason.trim(),
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Outing updated successfully!');
+      } else {
+        await axios.post(`${API}/breaks/log`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          breakType: 'NORMAL',
+          breakOut: breakOutStr,
+          breakIn: breakInStr,
+          reason: reason.trim(),
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Outing logged successfully!');
+      }
 
-      alert('Outing logged successfully!');
-      setShowAddForm(false);
-      
-      // Reset form
-      setSelectedTraineeId('');
-      setOutHour('10');
-      setOutMin('00');
-      setOutPeriod('AM');
-      setInHour('10');
-      setInMin('30');
-      setInPeriod('AM');
-      setReason('Tea Break');
-
+      closeForm();
       fetchLogs();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to log outing');
+      alert(err.response?.data?.error || 'Failed to save outing');
     } finally {
       setSaving(false);
     }
@@ -3732,11 +3804,11 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
           <form onSubmit={handleAddBreak} className="space-y-4 text-xs overflow-y-auto max-h-[70vh] p-1 text-left">
             <div className="flex justify-between items-center border-b pb-3 mb-4">
               <h3 className="text-sm font-bold text-amber-700 uppercase tracking-wide">
-                Log Daily Outing on Behalf of Trainee
+                {editingLog ? 'Edit Daily Outing' : 'Log Daily Outing on Behalf of Trainee'}
               </h3>
               <button 
                 type="button" 
-                onClick={() => setShowAddForm(false)}
+                onClick={closeForm}
                 className="text-gray-500 hover:text-gray-800 font-bold"
               >
                 Back to List
@@ -3748,6 +3820,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
                 <select
                   required
+                  disabled={!!editingLog}
                   value={selectedTraineeId}
                   onChange={e => setSelectedTraineeId(e.target.value)}
                   className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-amber-500 font-semibold"
@@ -3825,7 +3898,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
             <div className="flex gap-2 justify-end pt-2 border-t">
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
+                onClick={closeForm}
                 className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
               >
                 Cancel
@@ -3835,7 +3908,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                 disabled={saving}
                 className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
               >
-                {saving ? 'Saving...' : '🚀 Save'}
+                {saving ? 'Saving...' : editingLog ? '🚀 Update' : '🚀 Save'}
               </button>
             </div>
           </form>
@@ -3933,6 +4006,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                                         <th className="px-4 py-2">In Time</th>
                                         <th className="px-4 py-2 text-center">Duration</th>
                                         <th className="px-4 py-2">Reason</th>
+                                        <th className="px-4 py-2 text-right w-[10%]">Actions</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-150">
@@ -3948,6 +4022,15 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                                             </span>
                                           </td>
                                           <td className="px-4 py-2.5 text-gray-600 italic font-medium">{b.reason || '--'}</td>
+                                          <td className="px-4 py-2.5 text-right">
+                                            <button
+                                              onClick={() => handleStartEdit(b)}
+                                              className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                              title="Edit outing details"
+                                            >
+                                              <Edit size={12} />
+                                            </button>
+                                          </td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -3982,6 +4065,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingLog, setEditingLog] = useState<any>(null);
   const [selectedTraineeId, setSelectedTraineeId] = useState('');
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [outHour, setOutHour] = useState('10');
@@ -4023,6 +4107,46 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
     }
   };
 
+  const closeForm = () => {
+    setShowAddForm(false);
+    setEditingLog(null);
+    setSelectedTraineeId('');
+    setBookletNo('');
+    setCollegeName('');
+    setSubject('');
+    setTopicsCovered('');
+    setConveyance('Two Wheeler');
+    setOutHour('10');
+    setOutMin('00');
+    setOutPeriod('AM');
+    setInHour('12');
+    setInMin('30');
+    setInPeriod('PM');
+  };
+
+  const handleStartEdit = (b: any) => {
+    setEditingLog(b);
+    setSelectedTraineeId(b.userId || '');
+    setLogDate(parseInDate(b.date));
+    setBookletNo(b.bookletNo || '');
+    setCollegeName(b.collegeName || '');
+    setSubject(b.subject || '');
+    setTopicsCovered(b.topicsCovered || '');
+    setConveyance(b.conveyance || 'Two Wheeler');
+
+    const outTime = parse12hTime(b.fromTime);
+    setOutHour(outTime.hour);
+    setOutMin(outTime.min);
+    setOutPeriod(outTime.period);
+
+    const inTime = parse12hTime(b.toTime);
+    setInHour(inTime.hour);
+    setInMin(inTime.min);
+    setInPeriod(inTime.period);
+
+    setShowAddForm(true);
+  };
+
   const handleAddCollegeVisit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTraineeId) return alert('Please select a trainee.');
@@ -4036,44 +4160,50 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
       const breakInStr = `${logDate}T${in24}:00`;
       const computedDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
 
-      await axios.post(`${API}/breaks/log`, {
-        traineeId: Number(selectedTraineeId),
-        date: logDate,
-        breakType: 'COLLEGE_VISIT',
-        breakOut: breakOutStr,
-        breakIn: breakInStr,
-        bookletNo: bookletNo.trim(),
-        collegeName: collegeName.trim(),
-        subject: subject.trim(),
-        topicsCovered: topicsCovered.trim(),
-        conveyance: conveyance.trim(),
-        numberOfHours: computedDuration,
-        fromTime: `${outHour}:${outMin} ${outPeriod}`,
-        toTime: `${inHour}:${inMin} ${inPeriod}`
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (editingLog) {
+        await axios.put(`${API}/breaks/${editingLog.id}`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          breakType: 'COLLEGE_VISIT',
+          breakOut: breakOutStr,
+          breakIn: breakInStr,
+          bookletNo: bookletNo.trim(),
+          collegeName: collegeName.trim(),
+          subject: subject.trim(),
+          topicsCovered: topicsCovered.trim(),
+          conveyance: conveyance.trim(),
+          numberOfHours: computedDuration,
+          fromTime: `${outHour}:${outMin} ${outPeriod}`,
+          toTime: `${inHour}:${inMin} ${inPeriod}`
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('College Visit updated successfully!');
+      } else {
+        await axios.post(`${API}/breaks/log`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          breakType: 'COLLEGE_VISIT',
+          breakOut: breakOutStr,
+          breakIn: breakInStr,
+          bookletNo: bookletNo.trim(),
+          collegeName: collegeName.trim(),
+          subject: subject.trim(),
+          topicsCovered: topicsCovered.trim(),
+          conveyance: conveyance.trim(),
+          numberOfHours: computedDuration,
+          fromTime: `${outHour}:${outMin} ${outPeriod}`,
+          toTime: `${inHour}:${inMin} ${inPeriod}`
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('College Visit logged successfully!');
+      }
 
-      alert('College Visit logged successfully!');
-      setShowAddForm(false);
-      
-      // Reset form
-      setSelectedTraineeId('');
-      setBookletNo('');
-      setCollegeName('');
-      setSubject('');
-      setTopicsCovered('');
-      setConveyance('Two Wheeler');
-      setOutHour('10');
-      setOutMin('00');
-      setOutPeriod('AM');
-      setInHour('12');
-      setInMin('30');
-      setInPeriod('PM');
-
+      closeForm();
       fetchLogs();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to log college visit');
+      alert(err.response?.data?.error || 'Failed to save college visit');
     } finally {
       setSaving(false);
     }
@@ -4160,11 +4290,11 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
           <form onSubmit={handleAddCollegeVisit} className="space-y-4 text-xs overflow-y-auto max-h-[70vh] p-1 text-left">
             <div className="flex justify-between items-center border-b pb-3 mb-4">
               <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wide">
-                Log College Visit on Behalf of Trainee
+                {editingLog ? 'Edit College Visit' : 'Log College Visit on Behalf of Trainee'}
               </h3>
               <button 
                 type="button" 
-                onClick={() => setShowAddForm(false)}
+                onClick={closeForm}
                 className="text-gray-500 hover:text-gray-800 font-bold"
               >
                 Back to List
@@ -4176,6 +4306,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
                 <select
                   required
+                  disabled={!!editingLog}
                   value={selectedTraineeId}
                   onChange={e => setSelectedTraineeId(e.target.value)}
                   className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
@@ -4306,7 +4437,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
             <div className="flex gap-2 justify-end pt-2 border-t">
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
+                onClick={closeForm}
                 className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
               >
                 Cancel
@@ -4316,7 +4447,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 disabled={saving}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
               >
-                {saving ? 'Saving...' : '🚀 Save'}
+                {saving ? 'Saving...' : editingLog ? '🚀 Update' : '🚀 Save'}
               </button>
             </div>
           </form>
@@ -4419,6 +4550,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                         <th className="px-3 py-2 text-center">Out Time</th>
                                         <th className="px-3 py-2 text-center">In Time</th>
                                         <th className="px-3 py-2 text-center">Duration</th>
+                                        <th className="px-3 py-2 text-right w-[8%]">Actions</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-150">
@@ -4438,6 +4570,15 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                             <span className="font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
                                               {b.duration}
                                             </span>
+                                          </td>
+                                          <td className="px-3 py-2.5 text-right">
+                                            <button
+                                              onClick={() => handleStartEdit(b)}
+                                              className="bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border border-blue-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                              title="Edit college visit details"
+                                            >
+                                              <Edit size={12} />
+                                            </button>
                                           </td>
                                         </tr>
                                       ))}
@@ -4475,6 +4616,7 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingLog, setEditingLog] = useState<any>(null);
   const [selectedTraineeId, setSelectedTraineeId] = useState('');
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [subject, setSubject] = useState('');
@@ -4510,6 +4652,46 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
     }
   };
 
+  const closeForm = () => {
+    setShowAddForm(false);
+    setEditingLog(null);
+    setSelectedTraineeId('');
+    setSubject('');
+    setBatchNo('');
+    setNoOfStudents('0');
+    setCenterName('');
+    setRemarks('');
+    setOutHour('10');
+    setOutMin('00');
+    setOutPeriod('AM');
+    setInHour('11');
+    setInMin('30');
+    setInPeriod('AM');
+  };
+
+  const handleStartEdit = (b: any) => {
+    setEditingLog(b);
+    setSelectedTraineeId(b.userId || '');
+    setLogDate(parseInDate(b.date));
+    setSubject(b.subject || '');
+    setBatchNo(b.batchNo || '');
+    setNoOfStudents(String(b.noOfStudents || 0));
+    setCenterName(b.centerName || '');
+    setRemarks(b.remarks || '');
+
+    const outTime = parse12hTime(b.startTime);
+    setOutHour(outTime.hour);
+    setOutMin(outTime.min);
+    setOutPeriod(outTime.period);
+
+    const inTime = parse12hTime(b.endTime);
+    setInHour(inTime.hour);
+    setInMin(inTime.min);
+    setInPeriod(inTime.period);
+
+    setShowAddForm(true);
+  };
+
   const handleAddExtraClass = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTraineeId) return alert('Please select a trainee.');
@@ -4521,41 +4703,44 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
       const startTimeStr = `${outHour}:${outMin} ${outPeriod}`;
       const endTimeStr = `${inHour}:${inMin} ${inPeriod}`;
 
-      await axios.post(`${API}/extra-classes/log`, {
-        traineeId: Number(selectedTraineeId),
-        date: logDate,
-        subject: subject.trim(),
-        batchNo: batchNo.trim(),
-        duration: durationVal,
-        startTime: startTimeStr,
-        endTime: endTimeStr,
-        noOfStudents: parseInt(noOfStudents) || 0,
-        centerName: centerName.trim(),
-        remarks: remarks.trim()
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (editingLog) {
+        await axios.put(`${API}/extra-classes/${editingLog.id}`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          subject: subject.trim(),
+          batchNo: batchNo.trim(),
+          duration: durationVal,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          noOfStudents: parseInt(noOfStudents) || 0,
+          centerName: centerName.trim(),
+          remarks: remarks.trim()
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Extra class updated successfully!');
+      } else {
+        await axios.post(`${API}/extra-classes/log`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          subject: subject.trim(),
+          batchNo: batchNo.trim(),
+          duration: durationVal,
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          noOfStudents: parseInt(noOfStudents) || 0,
+          centerName: centerName.trim(),
+          remarks: remarks.trim()
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Extra class logged successfully and auto-approved!');
+      }
 
-      alert('Extra class logged successfully and auto-approved!');
-      setShowAddForm(false);
-      
-      // Reset form
-      setSelectedTraineeId('');
-      setSubject('');
-      setBatchNo('');
-      setNoOfStudents('0');
-      setCenterName('');
-      setRemarks('');
-      setOutHour('10');
-      setOutMin('00');
-      setOutPeriod('AM');
-      setInHour('11');
-      setInMin('30');
-      setInPeriod('AM');
-
+      closeForm();
       fetchLogs();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to log extra class');
+      alert(err.response?.data?.error || 'Failed to save extra class');
     } finally {
       setSaving(false);
     }
@@ -4644,11 +4829,11 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
           <form onSubmit={handleAddExtraClass} className="space-y-4 text-xs overflow-y-auto max-h-[70vh] p-1 text-left">
             <div className="flex justify-between items-center border-b pb-3 mb-4">
               <h3 className="text-sm font-bold text-emerald-700 uppercase tracking-wide">
-                Log Extra Class on Behalf of Trainee
+                {editingLog ? 'Edit Extra Class' : 'Log Extra Class on Behalf of Trainee'}
               </h3>
               <button 
                 type="button" 
-                onClick={() => setShowAddForm(false)}
+                onClick={closeForm}
                 className="text-gray-500 hover:text-gray-800 font-bold"
               >
                 Back to List
@@ -4660,6 +4845,7 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
                 <select
                   required
+                  disabled={!!editingLog}
                   value={selectedTraineeId}
                   onChange={e => setSelectedTraineeId(e.target.value)}
                   className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
@@ -4787,7 +4973,7 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
             <div className="flex gap-2 justify-end pt-2 border-t">
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
+                onClick={closeForm}
                 className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
               >
                 Cancel
@@ -4797,7 +4983,7 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 disabled={saving}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
               >
-                {saving ? 'Saving...' : '🚀 Save'}
+                {saving ? 'Saving...' : editingLog ? '🚀 Update' : '🚀 Save'}
               </button>
             </div>
           </form>
@@ -4902,13 +5088,22 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                               )}
                               
                               <div className="flex gap-2 items-center w-full justify-between max-w-[200px]">
-                                <button
-                                  onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
-                                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1"
-                                  title={`Export monthly report for ${log.user?.fullName}`}
-                                >
-                                  <Download size={12} /> Excel
-                                </button>
+                                <div className="flex gap-1.5">
+                                  <button
+                                    onClick={() => handleStartEdit(log)}
+                                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                    title="Edit extra class details"
+                                  >
+                                    <Edit size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
+                                    className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1"
+                                    title={`Export monthly report for ${log.user?.fullName}`}
+                                  >
+                                    <Download size={12} /> Excel
+                                  </button>
+                                </div>
                                 
                                 {log.status === 'PENDING' && (
                                   <div className="flex gap-2">
@@ -4971,6 +5166,7 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingLog, setEditingLog] = useState<any>(null);
   const [selectedTraineeId, setSelectedTraineeId] = useState('');
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [subject, setSubject] = useState('');
@@ -5009,6 +5205,39 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
     }
   };
 
+  const closeForm = () => {
+    setShowAddForm(false);
+    setEditingLog(null);
+    setSelectedTraineeId('');
+    setSubject('');
+    setBatchNo('');
+    setCenterName('');
+    setReason('Personal Work');
+    setCustomReason('');
+    setRemarks('');
+  };
+
+  const handleStartEdit = (b: any) => {
+    setEditingLog(b);
+    setSelectedTraineeId(b.userId || '');
+    setLogDate(parseInDate(b.date));
+    setSubject(b.subject || '');
+    setBatchNo(b.batchNo || '');
+    setCenterName(b.centerName || '');
+    
+    // Check if the reason is one of the standard options
+    if (CANCELLATION_REASONS.includes(b.reason)) {
+      setReason(b.reason);
+      setCustomReason('');
+    } else {
+      setReason('Other (Specify below)');
+      setCustomReason(b.reason || '');
+    }
+    
+    setRemarks(b.remarks || '');
+    setShowAddForm(true);
+  };
+
   const handleAddCancelledClass = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTraineeId) return alert('Please select a trainee.');
@@ -5019,33 +5248,38 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
       const reasonVal = reason.startsWith('Other') ? customReason.trim() : reason;
       if (!reasonVal) return alert('Please enter a cancellation reason.');
 
-      await axios.post(`${API}/class-cancelled/log`, {
-        traineeId: Number(selectedTraineeId),
-        date: logDate,
-        subject: subject.trim(),
-        batchNo: batchNo.trim(),
-        centerName: centerName.trim(),
-        reason: reasonVal,
-        remarks: remarks.trim()
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (editingLog) {
+        await axios.put(`${API}/class-cancelled/${editingLog.id}`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          subject: subject.trim(),
+          batchNo: batchNo.trim(),
+          centerName: centerName.trim(),
+          reason: reasonVal,
+          remarks: remarks.trim()
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Cancelled class updated successfully!');
+      } else {
+        await axios.post(`${API}/class-cancelled/log`, {
+          traineeId: Number(selectedTraineeId),
+          date: logDate,
+          subject: subject.trim(),
+          batchNo: batchNo.trim(),
+          centerName: centerName.trim(),
+          reason: reasonVal,
+          remarks: remarks.trim()
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Cancelled class logged successfully!');
+      }
 
-      alert('Cancelled class logged successfully!');
-      setShowAddForm(false);
-      
-      // Reset form
-      setSelectedTraineeId('');
-      setSubject('');
-      setBatchNo('');
-      setCenterName('');
-      setReason('Personal Work');
-      setCustomReason('');
-      setRemarks('');
-
+      closeForm();
       fetchLogs();
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to log cancelled class');
+      alert(err.response?.data?.error || 'Failed to save cancelled class');
     } finally {
       setSaving(false);
     }
@@ -5106,11 +5340,11 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
           <form onSubmit={handleAddCancelledClass} className="space-y-4 text-xs overflow-y-auto max-h-[70vh] p-1 text-left">
             <div className="flex justify-between items-center border-b pb-3 mb-4">
               <h3 className="text-sm font-bold text-red-700 uppercase tracking-wide">
-                Log Cancelled Class on Behalf of Trainee
+                {editingLog ? 'Edit Cancelled Class' : 'Log Cancelled Class on Behalf of Trainee'}
               </h3>
               <button 
                 type="button" 
-                onClick={() => setShowAddForm(false)}
+                onClick={closeForm}
                 className="text-gray-500 hover:text-gray-800 font-bold"
               >
                 Back to List
@@ -5122,6 +5356,7 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
                 <select
                   required
+                  disabled={!!editingLog}
                   value={selectedTraineeId}
                   onChange={e => setSelectedTraineeId(e.target.value)}
                   className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-red-500 font-semibold"
@@ -5222,7 +5457,7 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
             <div className="flex gap-2 justify-end pt-2 border-t">
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
+                onClick={closeForm}
                 className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
               >
                 Cancel
@@ -5232,7 +5467,7 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
                 disabled={saving}
                 className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
               >
-                {saving ? 'Saving...' : '🚀 Save'}
+                {saving ? 'Saving...' : editingLog ? '🚀 Update' : '🚀 Save'}
               </button>
             </div>
           </form>
@@ -5307,13 +5542,22 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
                             {log.remarks && <div className="text-[10px] text-gray-500 italic mt-0.5">"{log.remarks}"</div>}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
-                              className="bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1 animate-fade-in"
-                              title={`Export monthly report for ${log.user?.fullName}`}
-                            >
-                              <Download size={12} /> Excel
-                            </button>
+                            <div className="flex gap-1.5 justify-end">
+                              <button
+                                onClick={() => handleStartEdit(log)}
+                                className="bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer animate-fade-in"
+                                title="Edit cancelled class details"
+                              >
+                                <Edit size={12} />
+                              </button>
+                              <button
+                                onClick={() => handleIndividualExport(log.user?.fullName, log.user?.identifier)}
+                                className="bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-800 border border-red-200 rounded px-2 py-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer text-[10px] font-bold gap-1 animate-fade-in"
+                                title={`Export monthly report for ${log.user?.fullName}`}
+                              >
+                                <Download size={12} /> Excel
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
