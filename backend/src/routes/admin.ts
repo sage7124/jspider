@@ -292,7 +292,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
     endOfToday.setHours(23, 59, 59, 999);
 
     const { search } = _req.query;
-    const supervisorFilter = _req.user?.role === 'SUPERVISOR' ? { supervisorId: _req.user.id } : {};
+    const supervisorFilter = _req.user?.role === 'SUPERVISOR' ? { supervisors: { some: { id: _req.user.id } } } : {};
 
     const users = await prisma.user.findMany({
       where: { 
@@ -623,7 +623,7 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
     const endOfTarget = new Date(targetDate);
     endOfTarget.setHours(23, 59, 59, 999);
 
-    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { supervisorId: req.user.id } : {};
+    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { supervisors: { some: { id: req.user.id } } } : {};
 
     const trainees = await prisma.user.findMany({
       where: { 
@@ -1458,9 +1458,13 @@ router.post('/supervisors', async (req: AuthRequest, res) => {
 
     // Handle initial trainees assignment
     if (Array.isArray(traineeIds) && traineeIds.length > 0) {
-      await prisma.user.updateMany({
-        where: { id: { in: traineeIds.map(Number) }, role: 'TRAINEE' },
-        data: { supervisorId: supervisorUser.id }
+      await prisma.user.update({
+        where: { id: supervisorUser.id },
+        data: {
+          trainees: {
+            connect: traineeIds.map(id => ({ id: Number(id) }))
+          }
+        }
       });
     }
 
@@ -1539,28 +1543,17 @@ router.put('/supervisors/:id', async (req: AuthRequest, res) => {
       updateData.plainPassword = password;
     }
 
+    if (traineeIds !== undefined) {
+      updateData.trainees = {
+        set: Array.isArray(traineeIds) ? traineeIds.map(id => ({ id: Number(id) })) : []
+      };
+    }
+
     const updated = await prisma.user.update({
       where: { id: Number(id) },
       data: updateData,
       select: { id: true, fullName: true, identifier: true, email: true, plainPassword: true, permissions: true }
     });
-
-    // Handle updating trainees assignment under this supervisor
-    if (traineeIds !== undefined) {
-      // First, set supervisorId to null for all trainees currently assigned to this supervisor
-      await prisma.user.updateMany({
-        where: { supervisorId: Number(id) },
-        data: { supervisorId: null }
-      });
-
-      // Next, assign the new supervisorId to the given traineeIds
-      if (Array.isArray(traineeIds) && traineeIds.length > 0) {
-        await prisma.user.updateMany({
-          where: { id: { in: traineeIds.map(Number) }, role: 'TRAINEE' },
-          data: { supervisorId: Number(id) }
-        });
-      }
-    }
 
     res.json({ success: true, user: updated, message: 'Supervisor profile and permissions updated successfully.' });
   } catch (err) {
@@ -2039,7 +2032,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
     targetDate.setHours(0, 0, 0, 0);
 
     const searchStr = search as string;
-    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
+    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisors: { some: { id: req.user.id } } } } : {};
 
     const breakLogs = await prisma.breakLog.findMany({
       where: {
@@ -2121,7 +2114,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
     const searchStr = search as string;
 
-    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
+    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisors: { some: { id: req.user.id } } } } : {};
     const breakLogs = await prisma.breakLog.findMany({
       where: {
         date: { gte: startOfMonth, lte: endOfMonth },
@@ -2582,7 +2575,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 // ── Pending Break Requests Approval pipeline (Sandboxed) ───────────────────────────
 router.get('/reports/breaks/pending', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisorId: req.user.id } } : {};
+    const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisors: { some: { id: req.user.id } } } } : {};
 
     // Dynamic Database-backed clearance check for Supervisors
     if (req.user?.role === 'SUPERVISOR') {
@@ -2633,7 +2626,7 @@ router.post('/reports/breaks/process', authenticateToken, async (req: AuthReques
 
     const breakLog = await prisma.breakLog.findUnique({
       where: { id: Number(breakLogId) },
-      include: { user: true }
+      include: { user: { include: { supervisors: true } } }
     });
 
     if (!breakLog) {
@@ -2651,7 +2644,8 @@ router.post('/reports/breaks/process', authenticateToken, async (req: AuthReques
         return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
       }
 
-      if (breakLog.user.supervisorId !== req.user.id) {
+      const isAssigned = breakLog.user.supervisors.some(s => s.id === req.user.id);
+      if (!isAssigned) {
         return res.status(403).json({ error: 'Access Denied: You can only process break requests for trainees assigned to you.' });
       }
     }
@@ -2688,7 +2682,8 @@ router.post('/reports/breaks/direct-out', authenticateToken, async (req: AuthReq
     }
 
     const trainee = await prisma.user.findUnique({
-      where: { id: Number(traineeId) }
+      where: { id: Number(traineeId) },
+      include: { supervisors: true }
     });
 
     if (!trainee || trainee.role !== 'TRAINEE') {
@@ -2706,7 +2701,8 @@ router.post('/reports/breaks/direct-out', authenticateToken, async (req: AuthReq
         return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
       }
 
-      if (trainee.supervisorId !== req.user.id) {
+      const isAssigned = trainee.supervisors.some(s => s.id === req.user.id);
+      if (!isAssigned) {
         return res.status(403).json({ error: 'Access Denied: You can only direct breakout trainees assigned under you.' });
       }
     }
@@ -2792,7 +2788,7 @@ router.get('/extra-classes', authenticateToken, async (req: AuthRequest, res) =>
 
     const userConditions: any = {};
     if (req.user?.role === 'SUPERVISOR') {
-      userConditions.supervisorId = req.user.id;
+      userConditions.supervisors = { some: { id: req.user.id } };
     }
     if (searchStr) {
       userConditions.OR = [
@@ -2856,9 +2852,10 @@ router.post('/extra-classes/process', authenticateToken, async (req: AuthRequest
 
       // Check if trainee belongs to supervisor
       const trainee = await prisma.user.findUnique({
-        where: { id: log.userId }
+        where: { id: log.userId },
+        include: { supervisors: true }
       });
-      if (!trainee || trainee.supervisorId !== req.user.id) {
+      if (!trainee || !trainee.supervisors.some(s => s.id === req.user.id)) {
         return res.status(403).json({ error: 'Access Denied: You can only process extra class requests for trainees assigned to you.' });
       }
     }
@@ -2912,7 +2909,7 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
 
     const userConditions: any = {};
     if (req.user?.role === 'SUPERVISOR') {
-      userConditions.supervisorId = req.user.id;
+      userConditions.supervisors = { some: { id: req.user.id } };
     }
     if (searchStr) {
       userConditions.OR = [
@@ -3085,7 +3082,7 @@ router.get('/classes-cancelled', authenticateToken, async (req: AuthRequest, res
 
     const userConditions: any = {};
     if (req.user?.role === 'SUPERVISOR') {
-      userConditions.supervisorId = req.user.id;
+      userConditions.supervisors = { some: { id: req.user.id } };
     }
     if (searchStr) {
       userConditions.OR = [
@@ -3142,7 +3139,7 @@ router.get('/reports/classes-cancelled/export', authenticateToken, async (req: A
 
     const userConditions: any = {};
     if (req.user?.role === 'SUPERVISOR') {
-      userConditions.supervisorId = req.user.id;
+      userConditions.supervisors = { some: { id: req.user.id } };
     }
     if (searchStr) {
       userConditions.OR = [
@@ -3419,7 +3416,7 @@ router.put('/breaks/:id', authenticateToken, async (req: AuthRequest, res) => {
     const logId = Number(id);
     const breakLog = await prisma.breakLog.findUnique({
       where: { id: logId },
-      include: { user: true }
+      include: { user: { include: { supervisors: true } } }
     });
 
     if (!breakLog) {
@@ -3437,12 +3434,14 @@ router.put('/breaks/:id', authenticateToken, async (req: AuthRequest, res) => {
         return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
       }
 
-      if (breakLog.user.supervisorId !== req.user.id || Number(traineeId) !== breakLog.userId) {
+      const isAssigned = breakLog.user.supervisors.some(s => s.id === req.user.id);
+      if (!isAssigned || Number(traineeId) !== breakLog.userId) {
         // Also check if trainee belongs to supervisor if they changed the trainee
         const trainee = await prisma.user.findUnique({
-          where: { id: Number(traineeId) }
+          where: { id: Number(traineeId) },
+          include: { supervisors: true }
         });
-        if (!trainee || trainee.supervisorId !== req.user.id) {
+        if (!trainee || !trainee.supervisors.some(s => s.id === req.user.id)) {
           return res.status(403).json({ error: 'Access Denied: You can only edit breaks for trainees assigned under you.' });
         }
       }
@@ -3546,9 +3545,10 @@ router.put('/extra-classes/:id', authenticateToken, async (req: AuthRequest, res
       }
 
       const trainee = await prisma.user.findUnique({
-        where: { id: log.userId }
+        where: { id: log.userId },
+        include: { supervisors: true }
       });
-      if (!trainee || trainee.supervisorId !== req.user.id) {
+      if (!trainee || !trainee.supervisors.some(s => s.id === req.user.id)) {
         return res.status(403).json({ error: 'Access Denied: You can only edit extra class requests for trainees assigned to you.' });
       }
     }
@@ -3612,9 +3612,10 @@ router.put('/class-cancelled/:id', authenticateToken, async (req: AuthRequest, r
       }
 
       const trainee = await prisma.user.findUnique({
-        where: { id: log.userId }
+        where: { id: log.userId },
+        include: { supervisors: true }
       });
-      if (!trainee || trainee.supervisorId !== req.user.id) {
+      if (!trainee || !trainee.supervisors.some(s => s.id === req.user.id)) {
         return res.status(403).json({ error: 'Access Denied: You can only edit cancelled class requests for trainees assigned to you.' });
       }
     }
@@ -3678,7 +3679,7 @@ router.get('/other-center-classes', authenticateToken, async (req: AuthRequest, 
 
     const userConditions: any = {};
     if (req.user?.role === 'SUPERVISOR') {
-      userConditions.supervisorId = req.user.id;
+      userConditions.supervisors = { some: { id: req.user.id } };
     }
     if (searchStr) {
       userConditions.OR = [
@@ -3742,9 +3743,10 @@ router.post('/other-center-classes/process', authenticateToken, async (req: Auth
 
       // Check if trainee belongs to supervisor
       const trainee = await prisma.user.findUnique({
-        where: { id: log.userId }
+        where: { id: log.userId },
+        include: { supervisors: true }
       });
-      if (!trainee || trainee.supervisorId !== req.user.id) {
+      if (!trainee || !trainee.supervisors.some(s => s.id === req.user.id)) {
         return res.status(403).json({ error: 'Access Denied: You can only process other center class requests for trainees assigned to you.' });
       }
     }
@@ -3798,7 +3800,7 @@ router.get('/reports/other-center-classes/export', authenticateToken, async (req
 
     const userConditions: any = {};
     if (req.user?.role === 'SUPERVISOR') {
-      userConditions.supervisorId = req.user.id;
+      userConditions.supervisors = { some: { id: req.user.id } };
     }
     if (searchStr) {
       userConditions.OR = [
@@ -4026,9 +4028,10 @@ router.put('/other-center-classes/:id', authenticateToken, async (req: AuthReque
       }
 
       const trainee = await prisma.user.findUnique({
-        where: { id: log.userId }
+        where: { id: log.userId },
+        include: { supervisors: true }
       });
-      if (!trainee || trainee.supervisorId !== req.user.id) {
+      if (!trainee || !trainee.supervisors.some(s => s.id === req.user.id)) {
         return res.status(403).json({ error: 'Access Denied: You can only edit other center class requests for trainees assigned to you.' });
       }
     }

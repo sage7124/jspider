@@ -69,8 +69,7 @@ model User {
   extraClassLogs         ExtraClassLog[]
   classCancelledLogs     ClassCancelledLog[]
   otherCenterClassLogs   OtherCenterClassLog[]
-  supervisorId   Int?
-  supervisor     User?        @relation("SupervisorTrainees", fields: [supervisorId], references: [id], onDelete: SetNull)
+  supervisors    User[]       @relation("SupervisorTrainees")
   trainees       User[]       @relation("SupervisorTrainees")
 }
 
