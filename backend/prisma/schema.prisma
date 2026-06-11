@@ -71,6 +71,11 @@ model User {
   otherCenterClassLogs   OtherCenterClassLog[]
   supervisors    User[]       @relation("SupervisorTrainees")
   trainees       User[]       @relation("SupervisorTrainees")
+  isDisabled             Boolean      @default(false)
+  disableReason          String?
+  hasLeft                Boolean      @default(false)
+  disableLogs            DisableLog[] @relation("UserDisableLogs")
+  disabledByLogs         DisableLog[] @relation("AdminDisableLogs")
 }
 
 model LeaveRequest {
@@ -280,4 +285,15 @@ model OtherCenterClassLog {
   adminReason   String?   // Supervisor approval/rejection remarks
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model DisableLog {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  user         User      @relation("UserDisableLogs", fields: [userId], references: [id], onDelete: Cascade)
+  disabledAt   DateTime  @default(now())
+  enabledAt    DateTime?
+  reason       String
+  disabledById Int
+  disabledBy   User      @relation("AdminDisableLogs", fields: [disabledById], references: [id], onDelete: Cascade)
 }

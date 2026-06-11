@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -127,6 +127,7 @@ interface Trainee {
   slots: Slot[]; status: string; date: string; in: string; out: string;
   inTime1?: string; outTime1?: string; inTime2?: string; outTime2?: string; inTime3?: string; outTime3?: string;
   isLate: boolean; isApproved: boolean; leaveBalance: number; totalLeaves: number;
+  isDisabled?: boolean; disableReason?: string | null; hasLeft?: boolean;
 }
 interface LeaveRequest {
   id: number; userId: number; startDate: string; endDate: string; reason: string | null;
@@ -1048,6 +1049,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [showNotices, setShowNotices] = useState(false);
   const [showDropdownOptions, setShowDropdownOptions] = useState(false);
   const [viewOnboardingUser, setViewOnboardingUser] = useState<Trainee | null>(null);
+  const [disableUser, setDisableUser] = useState<Trainee | null>(null);
   const [showMemos, setShowMemos] = useState(false);
   const [showBreaks, setShowBreaks] = useState(false);
   const [showCollegeVisits, setShowCollegeVisits] = useState(false);
@@ -1305,6 +1307,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
                     {hasPermission('DELETE_USER') && <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User"><Trash2 size={16} /></button>}
                     {hasPermission('VIEW_SLOT_STATUS') && <button onClick={() => setViewDetailUser(t)} className="text-pink-600 hover:text-pink-800 transition-colors" title="View Slot Statuses"><Eye size={16} /></button>}
                     {hasPermission('DOWNLOAD_REPORT') && <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>}
+                    {hasPermission('EDIT_USER') && (
+                      <button
+                        onClick={() => setDisableUser(t)}
+                        className={`${t.isDisabled ? 'text-yellow-600 hover:text-yellow-800 font-bold' : 'text-gray-400 hover:text-gray-600'} transition-colors`}
+                        title={t.isDisabled ? 'Reactivate / View Disable Logs' : 'Temporarily Disable Account'}
+                      >
+                        <Ban size={16} />
+                      </button>
+                    )}
+                    {hasPermission('EDIT_USER') && (
+                      <button
+                        onClick={async () => {
+                          const actionText = t.hasLeft ? 'Reactivate User' : 'Mark as Left Institute';
+                          if (!confirm(`Are you sure you want to: ${actionText} for ${t.name}?`)) return;
+                          try {
+                            const token = localStorage.getItem('token');
+                            await axios.post(`${API}/user/${t.id}/mark-left`, { hasLeft: !t.hasLeft }, {
+                              headers: { Authorization: `Bearer ${token}` }
+                            });
+                            alert(`Successfully updated user's left status.`);
+                            fetchTrainees();
+                          } catch (err: any) {
+                            alert(err.response?.data?.error || 'Failed to update left status.');
+                          }
+                        }}
+                        className={`${t.hasLeft ? 'text-red-600 hover:text-red-800 font-bold' : 'text-gray-400 hover:text-gray-600'} transition-colors`}
+                        title={t.hasLeft ? 'Reactivate Left Employee' : 'Mark Employee as Left'}
+                      >
+                        <UserX size={16} />
+                      </button>
+                    )}
                     {hasPermission('FORCE_LOGOUT') && (
                       <button onClick={async () => {
                         if(!confirm('Force Punch Out for this user?')) return;
@@ -1342,6 +1375,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showNotices && <NoticesModal onClose={() => setShowNotices(false)} canManage={hasPermission('NOTICES')} />}
       {showDropdownOptions && <DropdownOptionsModal onClose={() => setShowDropdownOptions(false)} />}
       {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => { setViewOnboardingUser(null); fetchTrainees(); }} />}
+      {disableUser && <DisableUserModal trainee={disableUser} onClose={() => { setDisableUser(null); fetchTrainees(); }} />}
       {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role={role} />}
       {showBreaks && <BreakLogsModal onClose={() => setShowBreaks(false)} allTrainees={trainees} />}
       {showCollegeVisits && <CollegeVisitLogsModal onClose={() => setShowCollegeVisits(false)} allTrainees={trainees} />}
@@ -2674,11 +2708,19 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
         .from('nict-onboarding')
         .getPublicUrl(filePath);
 
-      setProfile((prev: any) => ({
-        ...prev,
+      const updatedProfile = {
+        ...profile,
         [fieldName]: publicUrl
-      }));
-      alert('Document uploaded successfully!');
+      };
+      setProfile(updatedProfile);
+
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/user/${trainee.id}`, {
+        [fieldName]: publicUrl
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Document uploaded and saved successfully!');
     } catch (err: any) {
       console.error('Upload error:', err);
       alert(`Upload failed: ${err.message || err}`);
@@ -2738,7 +2780,9 @@ const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; on
         presentAddress: profile.presentAddress,
         permanentAddress: profile.permanentAddress,
         aadhaarNumber: profile.aadhaarNumber,
+        aadhaarPhotoUrl: profile.aadhaarPhotoUrl,
         panNumber: profile.panNumber,
+        panPhotoUrl: profile.panPhotoUrl,
         bankName: profile.bankName,
         bankAccountNo: profile.bankAccountNo,
         bankIfscCode: profile.bankIfscCode,
@@ -3409,6 +3453,170 @@ const NoticesModal = ({ onClose, canManage }: { onClose: () => void; canManage: 
   );
 };
 
+// ── Disable User Modal ────────────────────────────────────────────────────────
+const DisableUserModal = ({ trainee, onClose }: { trainee: any; onClose: () => void }) => {
+  const [reason, setReason] = useState('');
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchLogs = async () => {
+    try {
+      setLoadingLogs(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/user/${trainee.id}/disable-logs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLogs(res.data || []);
+    } catch (e) {
+      console.error('Failed to fetch disable logs', e);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, [trainee.id]);
+
+  const handleDisable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reason.trim()) return alert('Please enter a reason.');
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/user/${trainee.id}/disable`, { reason: reason.trim() }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Account temporarily disabled successfully.');
+      onClose();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to disable account.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEnable = async () => {
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/user/${trainee.id}/enable`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Account reactivated successfully.');
+      onClose();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to enable account.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 text-left">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl p-6 relative max-h-[90vh] flex flex-col">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-red-700 flex items-center gap-2 border-b pb-3">
+          <Ban size={20} /> Account Access Control: {trainee.name}
+        </h2>
+
+        <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+          {trainee.isDisabled ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-xs font-semibold">
+              <div className="flex items-center gap-2 text-yellow-800 font-bold uppercase mb-2">
+                <span className="animate-pulse">⚠️</span> Current Status: Temporarily Disabled
+              </div>
+              <p className="text-gray-700 mb-4">
+                <strong>Reason:</strong> {trainee.disableReason || 'No details specified.'}
+              </p>
+              <button
+                onClick={handleEnable}
+                disabled={submitting}
+                className="bg-green-600 hover:bg-green-700 text-white font-black px-4 py-2.5 rounded text-xs uppercase tracking-wider transition-all active:scale-95 shadow cursor-pointer disabled:opacity-50"
+              >
+                {submitting ? 'Processing...' : '🔓 Remove Disable / Reactivate Account'}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleDisable} className="space-y-3 text-xs">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-gray-700 leading-relaxed font-semibold mb-2">
+                Disabling the account will block the employee from viewing their dashboard or punching in. They will see a blocker message prompting them to contact the admin.
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Reason for Disabling Account</label>
+                <textarea
+                  required
+                  placeholder="e.g. Please submit your outstanding onboarding documents immediately."
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded px-2.5 py-2 outline-none focus:ring-2 focus:ring-red-500 font-semibold resize-none"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 shadow cursor-pointer disabled:opacity-50"
+                >
+                  {submitting ? 'Disabling...' : '🚫 Disable Account'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Historical Logs */}
+          <div className="border-t pt-4">
+            <h3 className="text-xs font-extrabold text-gray-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Clock size={14} /> Disable/Enable Log History
+            </h3>
+            {loadingLogs ? (
+              <p className="text-xs text-gray-405 italic">Loading logs...</p>
+            ) : logs.length === 0 ? (
+              <p className="text-xs text-gray-405 italic">No access logs recorded for this employee.</p>
+            ) : (
+              <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                <table className="w-full text-[11px] text-left">
+                  <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
+                    <tr>
+                      <th className="px-3 py-2">Disabled Date</th>
+                      <th className="px-3 py-2">Re-activated Date</th>
+                      <th className="px-3 py-2">Reason</th>
+                      <th className="px-3 py-2">Action By</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium">
+                    {logs.map((log) => (
+                      <tr key={log.id} className="hover:bg-gray-50/50">
+                        <td className="px-3 py-2 text-red-600 font-semibold">{new Date(log.disabledAt).toLocaleString('en-IN')}</td>
+                        <td className="px-3 py-2 text-green-600 font-semibold">
+                          {log.enabledAt ? new Date(log.enabledAt).toLocaleString('en-IN') : <span className="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-black text-[9px] uppercase">Active Disable</span>}
+                        </td>
+                        <td className="px-3 py-2 text-gray-700 italic max-w-[200px] truncate" title={log.reason}>{log.reason}</td>
+                        <td className="px-3 py-2 text-gray-700 font-bold">{log.disabledBy?.fullName || '--'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Teacher Memo Management Modal ─────────────────────────────────────────────
 const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: string }) => {
   const [memos, setMemos] = useState<any[]>([]);
@@ -3417,6 +3625,15 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
   const [content, setContent] = useState('');
   const [recipientId, setRecipientId] = useState('');
   const [memoTab, setMemoTab] = useState<'received' | 'send' | 'sent'>('received');
+
+  const currentUser = (() => {
+    try {
+      const data = localStorage.getItem('user');
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
+  })();
 
   useEffect(() => {
     if (role === 'ADMIN') {
@@ -3586,7 +3803,14 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
                     memos.map((m) => (
                       <div key={m.id} className="p-4 rounded-lg bg-purple-50/50 border border-purple-100 flex flex-col gap-1 text-xs">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="font-black text-purple-800 uppercase">FROM: {m.sender?.fullName || 'ADMIN'}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-purple-800 uppercase">FROM: {m.sender?.fullName || 'ADMIN'}</span>
+                            {currentUser && m.recipientId !== currentUser.id && (
+                              <span className="bg-purple-100 text-purple-800 text-[9px] font-black px-1.5 py-0.5 rounded border border-purple-200 uppercase whitespace-nowrap">
+                                TO: {m.recipient?.fullName || 'Trainee'}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-gray-400">{new Date(m.createdAt).toLocaleString()}</span>
                         </div>
                         <p className="text-gray-700 leading-relaxed bg-white p-2.5 rounded border border-purple-50 whitespace-pre-wrap">{m.content}</p>
@@ -3790,6 +4014,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
         name: log.name,
         identifier: log.identifier,
         department: log.department,
+        supervisor: log.supervisor || '--',
         breaks: []
       });
     }
@@ -3959,6 +4184,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                   <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
                     <tr>
                       <th className="px-4 py-3">Teacher</th>
+                      <th className="px-4 py-3">Supervisor</th>
                       <th className="px-4 py-3">Mobile/ID</th>
                       <th className="px-4 py-3 text-center">Total Outings</th>
                       <th className="px-4 py-3 text-center w-[15%]">Export</th>
@@ -3968,13 +4194,14 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                   <tbody className="divide-y divide-gray-100">
                     {groupedLogs.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No daily outing logs found for this date.</td>
+                        <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No daily outing logs found for this date.</td>
                       </tr>
                     ) : (
                       groupedLogs.map((group) => (
                         <React.Fragment key={group.identifier}>
                           <tr className="hover:bg-gray-50/50 transition-colors">
                             <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
+                            <td className="px-4 py-3 text-gray-600">{group.supervisor}</td>
                             <td className="px-4 py-3 font-mono">{group.identifier}</td>
                             <td className="px-4 py-3 text-center">
                               <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-100">
@@ -4001,7 +4228,7 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                           </tr>
                           {expandedTeacher === group.identifier && (
                             <tr className="bg-amber-50/10">
-                              <td colSpan={5} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
+                              <td colSpan={6} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
                                 <div className="text-[10px] font-bold text-amber-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
                                   <Clock size={12} /> Outings for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 </div>
@@ -4100,6 +4327,22 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  const handleProcessBreak = async (breakLogId: number, status: 'APPROVED' | 'REJECTED') => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/reports/breaks/process`, {
+        breakLogId,
+        status
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert(`College Visit request ${status.toLowerCase()} successfully.`);
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || `Failed to process college visit request.`);
+    }
+  };
 
   const fetchLogs = async () => {
     try {
@@ -4276,6 +4519,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
         name: log.name,
         identifier: log.identifier,
         department: log.department,
+        supervisor: log.supervisor || '--',
         breaks: []
       });
     }
@@ -4498,6 +4742,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                   <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b">
                     <tr>
                       <th className="px-4 py-3">Teacher</th>
+                      <th className="px-4 py-3">Supervisor</th>
                       <th className="px-4 py-3">Mobile/ID</th>
                       <th className="px-4 py-3 text-center">Total Visits</th>
                       <th className="px-4 py-3 text-center w-[15%]">Export</th>
@@ -4507,13 +4752,14 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                   <tbody className="divide-y divide-gray-100">
                     {groupedLogs.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-10 text-center text-gray-400 italic">No College Visit logs found for this date.</td>
+                        <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No College Visit logs found for this date.</td>
                       </tr>
                     ) : (
                       groupedLogs.map((group) => (
                         <React.Fragment key={group.identifier}>
                           <tr className="hover:bg-gray-50/50 transition-colors">
                             <td className="px-4 py-3 font-semibold text-gray-800">{group.name}</td>
+                            <td className="px-4 py-3 text-gray-600">{group.supervisor}</td>
                             <td className="px-4 py-3 font-mono">{group.identifier}</td>
                             <td className="px-4 py-3 text-center">
                               <span className="font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
@@ -4540,7 +4786,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                           </tr>
                           {expandedTeacher === group.identifier && (
                             <tr className="bg-blue-50/10">
-                              <td colSpan={5} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
+                              <td colSpan={6} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
                                 <div className="text-[10px] font-bold text-blue-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
                                   <GraduationCap size={12} /> Visits for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 </div>
@@ -4559,7 +4805,8 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                         <th className="px-3 py-2 text-center">Out Time</th>
                                         <th className="px-3 py-2 text-center">In Time</th>
                                         <th className="px-3 py-2 text-center">Duration</th>
-                                        <th className="px-3 py-2 text-right w-[8%]">Actions</th>
+                                        <th className="px-3 py-2 text-center">Status</th>
+                                        <th className="px-3 py-2 text-right w-[15%]">Actions</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-150">
@@ -4580,7 +4827,34 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                               {b.duration}
                                             </span>
                                           </td>
-                                          <td className="px-3 py-2.5 text-right">
+                                          <td className="px-3 py-2.5 text-center">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider ${
+                                              b.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                                              b.status === 'APPROVED' ? 'bg-green-100 text-green-800 border border-green-200' :
+                                              'bg-red-100 text-red-800 border border-red-200'
+                                            }`}>
+                                              {b.status}
+                                            </span>
+                                          </td>
+                                          <td className="px-3 py-2.5 text-right flex items-center justify-end gap-1">
+                                            {b.status === 'PENDING' && (
+                                              <>
+                                                <button
+                                                  onClick={() => handleProcessBreak(b.id, 'APPROVED')}
+                                                  className="bg-green-50 hover:bg-green-100 text-green-700 hover:text-green-855 border border-green-200 rounded px-1.5 py-0.5 text-[9px] font-bold transition-all active:scale-90 cursor-pointer"
+                                                  title="Approve visit"
+                                                >
+                                                  Approve
+                                                </button>
+                                                <button
+                                                  onClick={() => handleProcessBreak(b.id, 'REJECTED')}
+                                                  className="bg-red-50 hover:bg-red-100 text-red-700 hover:text-red-855 border border-red-200 rounded px-1.5 py-0.5 text-[9px] font-bold transition-all active:scale-90 cursor-pointer"
+                                                  title="Reject visit"
+                                                >
+                                                  Reject
+                                                </button>
+                                              </>
+                                            )}
                                             <button
                                               onClick={() => handleStartEdit(b)}
                                               className="bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border border-blue-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
@@ -4604,7 +4878,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                             return total.toFixed(2);
                                           })()} hrs
                                         </td>
-                                        <td colSpan={4} className="px-3 py-2"></td>
+                                        <td colSpan={5} className="px-3 py-2"></td>
                                       </tr>
                                     </tfoot>
                                   </table>

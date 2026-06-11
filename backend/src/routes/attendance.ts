@@ -92,7 +92,7 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
       todayBreaksCount: approvedBreaks.length,
       activeBreak,
       pendingBreak,
-      completedBreaks: approvedBreaks.filter(b => b.breakIn !== null).map(b => ({
+      completedBreaks: todayBreaks.filter(b => b.breakIn !== null).map(b => ({
         id: b.id,
         breakOut: b.breakOut,
         breakIn: b.breakIn,
@@ -104,7 +104,8 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
         conveyance: b.conveyance,
         numberOfHours: b.numberOfHours,
         fromTime: b.fromTime,
-        toTime: b.toTime
+        toTime: b.toTime,
+        status: b.status
       }))
     });
   } catch (error) {
@@ -772,6 +773,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       }
       finalReason = reason.trim();
     } else if (breakType === 'COLLEGE_VISIT') {
+      finalStatus = 'PENDING';
       if (!bookletNo || !collegeName || !subject || !topicsCovered || !fromTime || !toTime) {
         return res.status(400).json({ error: 'All fields except Conveyance (Booklet No, College Name, Subject, Topics Covered, From Time, To Time) are required for a College Visit.' });
       }
@@ -874,6 +876,9 @@ router.post('/break/in', authenticateToken, async (req: AuthRequest, res) => {
 // ── Extra Classes Taken ───────────────────────────────────────────────────────
 router.post('/extra-class/apply', authenticateToken, async (req: AuthRequest, res) => {
   try {
+    if (req.user?.role === 'TRAINEE') {
+      return res.status(403).json({ error: 'Access Denied: Teachers cannot apply for extra classes directly. Please contact Admin/Supervisor to log extra classes.' });
+    }
     const userId = req.user!.id;
     const { subject, batchNo, duration, startTime, endTime, noOfStudents, centerName, remarks, classMode } = req.body;
 

@@ -824,11 +824,18 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         .from('nict-onboarding')
         .getPublicUrl(filePath);
 
-      setProfile((prev: any) => ({
-        ...prev,
+      const updatedProfile = {
+        ...profile,
         [fieldName]: publicUrl
-      }));
-      alert('Document uploaded successfully!');
+      };
+      setProfile(updatedProfile);
+
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${API_URL}/api/auth/profile`, updatedProfile, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Document uploaded and saved successfully!');
     } catch (err: any) {
       console.error('Upload error:', err);
       alert(`Upload failed: ${err.message || err}`);
@@ -997,6 +1004,64 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       }
     );
   };
+
+  if (profile?.hasLeft) {
+    return (
+      <div className="fixed inset-0 bg-[#0f172a] flex items-center justify-center z-[9999] p-6 text-center select-none">
+        <div className="bg-[#1e293b]/80 backdrop-blur-md rounded-2xl border border-red-500/20 max-w-md w-full p-8 shadow-2xl flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-6 border border-red-500/20">
+            <span className="text-red-500 text-3xl font-bold">⚠️</span>
+          </div>
+          <h2 className="text-2xl font-black text-white mb-4 uppercase tracking-wider">Access Revoked</h2>
+          <p className="text-gray-300 text-sm leading-relaxed mb-6 font-semibold">
+            You have left the institute. Your account is closed and you no longer have access to this portal.
+          </p>
+          <div className="w-full h-[1px] bg-gray-800 mb-6" />
+          <button
+            onClick={() => {
+              localStorage.removeItem('token');
+              window.location.reload();
+            }}
+            className="w-full py-3.5 bg-red-600 hover:bg-red-700 active:scale-95 transition-all text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-red-900/20 cursor-pointer"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (profile?.isDisabled) {
+    return (
+      <div className="fixed inset-0 bg-[#0f172a] flex items-center justify-center z-[9999] p-6 text-center select-none">
+        <div className="bg-[#1e293b]/80 backdrop-blur-md rounded-2xl border border-yellow-500/20 max-w-md w-full p-8 shadow-2xl flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center mb-6 border border-yellow-500/20 animate-pulse">
+            <span className="text-yellow-500 text-3xl font-bold">⚠️</span>
+          </div>
+          <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-wider">Account Disabled</h2>
+          <h3 className="text-yellow-400 font-extrabold text-sm mb-4 uppercase tracking-widest">Contact Admin As Soon As Possible</h3>
+          
+          <div className="bg-[#0f172a]/80 rounded-xl p-4 border border-yellow-500/10 mb-6 text-left w-full">
+            <p className="text-[10px] font-black text-yellow-500 mb-1 uppercase tracking-wide">Message from Admin:</p>
+            <p className="text-gray-200 text-xs font-semibold leading-relaxed whitespace-pre-wrap">
+              {profile.disableReason || 'No details provided. Please contact the administrator.'}
+            </p>
+          </div>
+          
+          <div className="w-full h-[1px] bg-gray-800 mb-6" />
+          <button
+            onClick={() => {
+              localStorage.removeItem('token');
+              window.location.reload();
+            }}
+            className="w-full py-3.5 bg-yellow-600 hover:bg-yellow-700 active:scale-95 transition-all text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-yellow-900/20 cursor-pointer"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 relative">
@@ -1264,7 +1329,16 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                             return (
                               <div key={b.id} className="p-3 flex flex-col gap-1 hover:bg-gray-50/50 transition-colors">
                                 <div className="flex justify-between items-center text-xs">
-                                  <span className="font-semibold text-gray-600">Visit {index + 1}</span>
+                                  <span className="font-semibold text-gray-600 flex items-center gap-1.5">
+                                    Visit {index + 1}
+                                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black tracking-wider ${
+                                      b.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                                      b.status === 'APPROVED' ? 'bg-green-100 text-green-800 border border-green-250' :
+                                      'bg-red-100 text-red-800 border border-red-200'
+                                    }`}>
+                                      {b.status}
+                                    </span>
+                                  </span>
                                   <span className="text-gray-800 font-mono">{b.fromTime || '--'} - {b.toTime || '--'}</span>
                                   <span className="font-extrabold text-purple-700">{b.numberOfHours ? `${b.numberOfHours} hrs` : '--'}</span>
                                 </div>
@@ -1767,6 +1841,7 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Conveyance</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Timings</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Duration</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
                 </tr>
               </thead>
               <tbody className="bg-white">
@@ -1785,22 +1860,33 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.conveyance || '--'}</td>
                       <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">{log.fromTime && log.toTime ? `${log.fromTime} - ${log.toTime}` : '--'}</td>
                       <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r font-bold text-emerald-700">{log.numberOfHours ? `${log.numberOfHours} hrs` : '--'}</td>
+                      <td className="px-4 py-2 text-gray-600 whitespace-nowrap border-r">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-black tracking-wider ${
+                          log.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                          log.status === 'APPROVED' ? 'bg-green-100 text-green-800 border border-green-200' :
+                          'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          {log.status}
+                        </span>
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
               <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
                 <tr>
-                  <td colSpan={8} className="px-4 py-3 text-right text-gray-700">Total Duration:</td>
+                  <td colSpan={8} className="px-4 py-3 text-right text-gray-700">Total Approved Duration:</td>
                   <td className="px-4 py-3 font-extrabold text-emerald-700">
                     {(() => {
                       const total = reportData.collegeVisits.reduce((acc: number, log: any) => {
+                        if (log.status !== 'APPROVED') return acc;
                         const val = parseFloat(log.numberOfHours);
                         return acc + (isNaN(val) ? 0 : val);
                       }, 0);
                       return total.toFixed(2);
                     })()} hrs
                   </td>
+                  <td className="px-4 py-3 border-l"></td>
                 </tr>
               </tfoot>
             </table>
