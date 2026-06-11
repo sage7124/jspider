@@ -1426,16 +1426,6 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 )}
               </div>
             </div>
-            
-            <div className="pt-4">
-              <button
-                type="button"
-                onClick={() => setShowExtraClassModal(true)}
-                className="w-full font-black py-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-              >
-                ➕ Log Extra Class
-              </button>
-            </div>
           </div>
 
           {/* Card 4: Classes Cancelled */}
