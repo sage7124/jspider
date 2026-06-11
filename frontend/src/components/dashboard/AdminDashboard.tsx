@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX, UserCheck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -1056,6 +1056,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [showExtraClasses, setShowExtraClasses] = useState(false);
   const [showOtherCenterClasses, setShowOtherCenterClasses] = useState(false);
   const [showCancelledClasses, setShowCancelledClasses] = useState(false);
+  const [showLeftNICTians, setShowLeftNICTians] = useState(false);
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -1231,6 +1232,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
               <CalendarX size={18} /> Cancelled Classes
             </button>
           )}
+          {hasPermission('EDIT_USER') && (
+            <button onClick={() => setShowLeftNICTians(true)}
+              className="flex items-center gap-2 bg-rose-700 hover:bg-rose-800 text-white px-4 py-2 rounded font-medium transition-colors"
+              id="btn-left-nictians"
+            >
+              <UserX size={18} /> Left NICTians
+            </button>
+          )}
         </div>
       </div>
 
@@ -1359,6 +1368,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       </div>
 
       {/* Modals */}
+      {showLeftNICTians && (
+        <LeftNICTiansModal
+          onClose={() => {
+            setShowLeftNICTians(false);
+            fetchTrainees();
+          }}
+          setViewOnboardingUser={setViewOnboardingUser}
+          setEditUser={setEditUser}
+          setSlotsUser={setSlotsUser}
+          setResetUser={setResetUser}
+          setManualPunchUser={setManualPunchUser}
+          setDirectLeaveUser={setDirectLeaveUser}
+          setDeleteUser={setDeleteUser}
+          setViewDetailUser={setViewDetailUser}
+          setIndividualReport={setIndividualReport}
+          setDisableUser={setDisableUser}
+          hasPermission={hasPermission}
+        />
+      )}
       {editUser && <EditUserModal trainee={editUser} onClose={() => setEditUser(null)} onSave={fetchTrainees} />}
       {slotsUser && <SlotsModal trainee={slotsUser} onClose={() => setSlotsUser(null)} onSave={fetchTrainees} />}
       {resetUser && <ResetPasswordModal trainee={resetUser} onClose={() => setResetUser(null)} />}
@@ -6495,6 +6523,204 @@ const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => vo
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+};
+
+// ── Left NICTians Modal ───────────────────────────────────────────────────────────
+interface LeftNICTiansModalProps {
+  onClose: () => void;
+  setViewOnboardingUser: (t: Trainee) => void;
+  setEditUser: (t: Trainee) => void;
+  setSlotsUser: (t: Trainee) => void;
+  setResetUser: (t: Trainee) => void;
+  setManualPunchUser: (t: Trainee) => void;
+  setDirectLeaveUser: (t: Trainee) => void;
+  setDeleteUser: (t: Trainee) => void;
+  setViewDetailUser: (t: Trainee) => void;
+  setIndividualReport: (t: Trainee) => void;
+  setDisableUser: (t: Trainee) => void;
+  hasPermission: (perm: string) => boolean;
+}
+
+const LeftNICTiansModal = ({
+  onClose,
+  setViewOnboardingUser,
+  setEditUser,
+  setSlotsUser,
+  setResetUser,
+  setManualPunchUser,
+  setDirectLeaveUser,
+  setDeleteUser,
+  setViewDetailUser,
+  setIndividualReport,
+  setDisableUser,
+  hasPermission
+}: LeftNICTiansModalProps) => {
+  const [leftUsers, setLeftUsers] = useState<Trainee[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const fetchLeftUsers = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/left-users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLeftUsers(res.data || []);
+    } catch (err) {
+      console.error('[LEFT USERS GET FETCH ERROR]', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeftUsers();
+  }, []);
+
+  const handleReactivate = async (t: Trainee) => {
+    if (!confirm(`Are you sure you want to reactivate ${t.name}?`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/user/${t.id}/mark-left`, { hasLeft: false }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert(`Successfully reactivated ${t.name}.`);
+      fetchLeftUsers();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to reactivate employee.');
+    }
+  };
+
+  const filteredUsers = leftUsers.filter(u => {
+    const q = search.toLowerCase();
+    return (
+      (u.name && u.name.toLowerCase().includes(q)) ||
+      (u.empCode && u.empCode.toLowerCase().includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.department && u.department.toLowerCase().includes(q))
+    );
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-6xl p-6 relative max-h-[90vh] flex flex-col text-left">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700">
+          <X size={20} />
+        </button>
+        <h2 className="text-lg font-bold mb-4 uppercase tracking-wider text-rose-700 flex items-center gap-2 border-b pb-3">
+          <UserX size={20} /> Left NICTians Management
+        </h2>
+
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Search Left NICTians by Name, Code, Email or Dept..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full md:max-w-md border border-gray-300 rounded px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-rose-500 font-medium text-sm"
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto border rounded">
+          {loading ? (
+            <div className="p-8 text-center text-gray-500">Loading left employees...</div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="p-8 text-center text-gray-400 italic">No left employees found.</div>
+          ) : (
+            <table className="w-full text-xs text-left border-collapse">
+              <thead className="bg-gray-100 text-gray-700 font-bold border-b sticky top-0">
+                <tr>
+                  <th className="px-4 py-3">Code</th>
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Department</th>
+                  <th className="px-4 py-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredUsers.map((t) => (
+                  <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-semibold text-gray-700">{t.empCode}</td>
+                    <td className="px-4 py-3 font-bold text-rose-950">{t.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{t.email || '--'}</td>
+                    <td className="px-4 py-3 text-gray-600">{t.department || '--'}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-2">
+                        {hasPermission('VIEW_PROFILE') && (
+                          <button onClick={() => setViewOnboardingUser(t)} className="text-purple-600 hover:text-purple-800 transition-colors" title="View Onboarding Profile">
+                            <User size={14} />
+                          </button>
+                        )}
+                        {hasPermission('EDIT_USER') && (
+                          <button onClick={() => setEditUser(t)} className="text-emerald-600 hover:text-emerald-800 transition-colors" title="Edit User Info">
+                            <Edit size={14} />
+                          </button>
+                        )}
+                        {hasPermission('UPDATE_SLOTS') && (
+                          <button onClick={() => setSlotsUser(t)} className="text-green-600 hover:text-green-800 transition-colors" title="Update Slots">
+                            <Clock size={14} />
+                          </button>
+                        )}
+                        {hasPermission('RESET_PASSWORD') && (
+                          <button onClick={() => setResetUser(t)} className="text-yellow-600 hover:text-yellow-800 transition-colors" title="Reset Password">
+                            <Key size={14} />
+                          </button>
+                        )}
+                        {hasPermission('MANUAL_ATTENDANCE') && (
+                          <button onClick={() => setManualPunchUser(t)} className="text-orange-600 hover:text-orange-800 transition-colors" title="Manual Attendance">
+                            <Clock size={14} />
+                          </button>
+                        )}
+                        {hasPermission('DIRECT_LEAVE') && (
+                          <button onClick={() => setDirectLeaveUser(t)} className="text-indigo-600 hover:text-indigo-800 transition-colors" title="Direct Leave">
+                            <Calendar size={14} />
+                          </button>
+                        )}
+                        {hasPermission('DELETE_USER') && (
+                          <button onClick={() => setDeleteUser(t)} className="text-red-600 hover:text-red-800 transition-colors" title="Delete User">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                        {hasPermission('VIEW_SLOT_STATUS') && (
+                          <button onClick={() => setViewDetailUser(t)} className="text-pink-600 hover:text-pink-800 transition-colors" title="View Slot Statuses">
+                            <Eye size={14} />
+                          </button>
+                        )}
+                        {hasPermission('DOWNLOAD_REPORT') && (
+                          <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report">
+                            <FileDown size={14} />
+                          </button>
+                        )}
+                        {hasPermission('EDIT_USER') && (
+                          <button
+                            onClick={() => setDisableUser(t)}
+                            className={`${t.isDisabled ? 'text-yellow-600 hover:text-yellow-800 font-bold' : 'text-gray-400 hover:text-gray-600'} transition-colors`}
+                            title={t.isDisabled ? 'Reactivate / View Disable Logs' : 'Temporarily Disable Account'}
+                          >
+                            <Ban size={14} />
+                          </button>
+                        )}
+                        {hasPermission('EDIT_USER') && (
+                          <button
+                            onClick={() => handleReactivate(t)}
+                            className="text-blue-600 hover:text-blue-800 transition-colors font-bold"
+                            title="Reactivate Employee"
+                          >
+                            <UserCheck size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );

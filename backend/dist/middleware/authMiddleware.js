@@ -17,17 +17,26 @@ const authenticateToken = async (req, res, next) => {
     try {
         const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
         req.user = decoded;
-        // For trainees: check if this token is still the active session
-        if (decoded.role === 'TRAINEE') {
-            const user = await prisma.user.findUnique({
-                where: { id: decoded.id },
-                select: { activeSessionToken: true }
-            });
-            if (user && user.activeSessionToken && user.activeSessionToken !== token) {
-                return res.status(401).json({
-                    error: 'You have been logged in on another device. Please login again.',
-                    code: 'SESSION_REPLACED'
-                });
+        // Check if account is disabled or user has left
+        const user = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: { activeSessionToken: true, isDisabled: true, hasLeft: true }
+        });
+        if (user) {
+            const path = req.path.toLowerCase();
+            if (user.hasLeft && !path.startsWith('/profile') && !path.startsWith('/logout')) {
+                return res.status(403).json({ error: 'Access Denied: You have left the institute.' });
+            }
+            if (user.isDisabled && !path.startsWith('/profile') && !path.startsWith('/logout')) {
+                return res.status(403).json({ error: 'Access Denied: Account is temporarily disabled.' });
+            }
+            if (decoded.role === 'TRAINEE') {
+                if (user.activeSessionToken && user.activeSessionToken !== token) {
+                    return res.status(401).json({
+                        error: 'You have been logged in on another device. Please login again.',
+                        code: 'SESSION_REPLACED'
+                    });
+                }
             }
         }
         next();

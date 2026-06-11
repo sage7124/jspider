@@ -105,7 +105,19 @@ router.post('/login', async (req, res) => {
                 }
             }
         }
-        res.json({ token, user: { id: user.id, role: user.role, fullName: user.fullName, permissions: user.permissions }, forgotPunchOut });
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                role: user.role,
+                fullName: user.fullName,
+                permissions: user.permissions,
+                isDisabled: user.isDisabled,
+                disableReason: user.disableReason,
+                hasLeft: user.hasLeft
+            },
+            forgotPunchOut
+        });
     }
     catch (error) {
         console.error('Login error:', error);
@@ -202,6 +214,9 @@ router.get('/profile', authMiddleware_1.authenticateToken, async (req, res) => {
                 educationCompleted: true,
                 subClassification: true,
                 permissions: true,
+                isDisabled: true,
+                disableReason: true,
+                hasLeft: true,
             }
         });
         if (!user)

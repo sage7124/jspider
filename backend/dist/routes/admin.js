@@ -328,6 +328,7 @@ router.get('/attendance', async (_req, res) => {
         const users = await prisma.user.findMany({
             where: {
                 role: 'TRAINEE',
+                hasLeft: false,
                 ...supervisorFilter,
                 OR: search ? [
                     { fullName: { contains: search, mode: 'insensitive' } },
@@ -430,6 +431,9 @@ router.get('/attendance', async (_req, res) => {
                 isApproved: user.isApproved,
                 totalLeaves: user.totalLeaves,
                 leaveBalance: user.leaveBalance,
+                isDisabled: user.isDisabled,
+                disableReason: user.disableReason,
+                hasLeft: user.hasLeft,
             };
         });
         res.json(result);
@@ -543,6 +547,116 @@ router.get('/user/:id', async (req, res) => {
     }
     catch (error) {
         console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// ── Disable / Enable / Left User Management ────────────────────────────────────
+router.post('/user/:id/disable', async (req, res) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+    console.log(`[DISABLE USER API] Requested to disable user ID: ${id}, reason: "${reason}"`);
+    try {
+        if (!reason || reason.trim() === '') {
+            console.log(`[DISABLE USER API] Failed: reason is missing or empty`);
+            return res.status(400).json({ error: 'Reason is required to temporarily disable account.' });
+        }
+        const disabledById = req.user.id;
+        console.log(`[DISABLE USER API] Performed by Admin ID: ${disabledById}`);
+        const updatedUser = await prisma.user.update({
+            where: { id: Number(id) },
+            data: {
+                isDisabled: true,
+                disableReason: reason.trim()
+            }
+        });
+        console.log(`[DISABLE USER API] Updated user in DB:`, updatedUser.fullName);
+        const log = await prisma.disableLog.create({
+            data: {
+                userId: Number(id),
+                reason: reason.trim(),
+                disabledById
+            }
+        });
+        console.log(`[DISABLE USER API] Created disable log record:`, log.id);
+        res.json({ message: 'User temporarily disabled successfully.', log });
+    }
+    catch (error) {
+        console.error(`[DISABLE USER API] ERROR:`, error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.post('/user/:id/enable', async (req, res) => {
+    const { id } = req.params;
+    console.log(`[ENABLE USER API] Requested to enable user ID: ${id}`);
+    try {
+        const updatedUser = await prisma.user.update({
+            where: { id: Number(id) },
+            data: {
+                isDisabled: false,
+                disableReason: null
+            }
+        });
+        console.log(`[ENABLE USER API] Reactivated user:`, updatedUser.fullName);
+        const updateLogsResult = await prisma.disableLog.updateMany({
+            where: {
+                userId: Number(id),
+                enabledAt: null
+            },
+            data: {
+                enabledAt: new Date()
+            }
+        });
+        console.log(`[ENABLE USER API] Marked logs as completed:`, updateLogsResult.count);
+        res.json({ message: 'User account reactivated successfully.' });
+    }
+    catch (error) {
+        console.error(`[ENABLE USER API] ERROR:`, error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.post('/user/:id/mark-left', async (req, res) => {
+    const { id } = req.params;
+    const { hasLeft } = req.body;
+    console.log(`[MARK LEFT API] Requested to toggle hasLeft to ${hasLeft} for user ID: ${id}`);
+    try {
+        if (hasLeft === undefined) {
+            console.log(`[MARK LEFT API] Failed: hasLeft parameter is missing`);
+            return res.status(400).json({ error: 'hasLeft boolean parameter is required.' });
+        }
+        const updatedUser = await prisma.user.update({
+            where: { id: Number(id) },
+            data: {
+                hasLeft: !!hasLeft
+            }
+        });
+        console.log(`[MARK LEFT API] Successfully updated user ${updatedUser.fullName} hasLeft to ${!!hasLeft}`);
+        res.json({ message: hasLeft ? 'Employee marked as left institute.' : 'Employee reactivated successfully.' });
+    }
+    catch (error) {
+        console.error(`[MARK LEFT API] ERROR:`, error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+router.get('/user/:id/disable-logs', async (req, res) => {
+    const { id } = req.params;
+    console.log(`[DISABLE LOGS API] Requested logs for user ID: ${id}`);
+    try {
+        const logs = await prisma.disableLog.findMany({
+            where: { userId: Number(id) },
+            include: {
+                disabledBy: {
+                    select: {
+                        fullName: true
+                    }
+                }
+            },
+            orderBy: { disabledAt: 'desc' }
+        });
+        console.log(`[DISABLE LOGS API] Returning ${logs.length} log records`);
+        res.json(logs);
+    }
+    catch (error) {
+        console.error(`[DISABLE LOGS API] ERROR:`, error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -663,6 +777,7 @@ router.get('/attendance/daily', async (req, res) => {
         const trainees = await prisma.user.findMany({
             where: {
                 role: 'TRAINEE',
+                hasLeft: false,
                 ...supervisorFilter
             },
             orderBy: { fullName: 'asc' },
@@ -784,7 +899,7 @@ router.get('/reports/monthly', async (req, res) => {
         const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
         const daysInMonth = new Date(year, mon, 0).getDate();
         const trainees = await prisma.user.findMany({
-            where: { role: 'TRAINEE' },
+            where: { role: 'TRAINEE', hasLeft: false },
             include: { slots: true },
             orderBy: { fullName: 'asc' }
         });
@@ -1485,6 +1600,7 @@ router.get('/supervisors', async (req, res) => {
                 createdAt: true,
                 permissions: true,
                 trainees: {
+                    where: { hasLeft: false },
                     select: { id: true, fullName: true, identifier: true }
                 }
             },
@@ -1642,7 +1758,7 @@ router.post('/allow-all-edit-24h', async (req, res) => {
     try {
         const editAccessGrantedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
         await prisma.user.updateMany({
-            where: { role: 'TRAINEE' },
+            where: { role: 'TRAINEE', hasLeft: false },
             data: { editAccessGrantedUntil }
         });
         res.json({ message: 'All trainees have been granted edit access for 24 hours', until: editAccessGrantedUntil });
@@ -1840,6 +1956,60 @@ router.post('/sync-sister-permanent', async (req, res) => {
         res.status(500).json({ error: error.message || 'Failed to perform permanent sister synchronization' });
     }
 });
+// ── Get Left Trainees for Management ──────────────────────────────────────────
+router.get('/left-users', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        if (req.user?.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'Admin permissions required.' });
+        }
+        const today = new Date();
+        const users = await prisma.user.findMany({
+            where: {
+                role: 'TRAINEE',
+                hasLeft: true
+            },
+            orderBy: { fullName: 'asc' },
+            include: {
+                slots: { orderBy: [{ dayOfWeek: 'asc' }, { slotNo: 'asc' }] }
+            }
+        });
+        const result = users.map((user) => ({
+            id: user.id,
+            empCode: user.identifier,
+            name: user.fullName,
+            email: user.email,
+            department: user.department,
+            slots: user.slots.map((s) => ({
+                day: s.dayOfWeek,
+                start: s.startTime,
+                end: s.endTime,
+                slotNo: s.slotNo,
+            })),
+            status: '--',
+            date: today.toLocaleDateString('en-IN'),
+            in: '--',
+            out: '--',
+            inTime1: '--',
+            outTime1: '--',
+            inTime2: '--',
+            outTime2: '--',
+            inTime3: '--',
+            outTime3: '--',
+            isLate: false,
+            isApproved: user.isApproved,
+            totalLeaves: user.totalLeaves,
+            leaveBalance: user.leaveBalance,
+            isDisabled: user.isDisabled,
+            disableReason: user.disableReason,
+            hasLeft: user.hasLeft,
+        }));
+        res.json(result);
+    }
+    catch (error) {
+        console.error('[LEFT USERS GET] ERROR:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 // ── Teacher Memos Management ──────────────────────────────────────────────────
 router.get('/memos/recipients', authMiddleware_1.authenticateToken, async (req, res) => {
     try {
@@ -1848,7 +2018,8 @@ router.get('/memos/recipients', authMiddleware_1.authenticateToken, async (req, 
         }
         const list = await prisma.user.findMany({
             where: {
-                role: { in: ['SUPERVISOR', 'TRAINEE'] }
+                role: { in: ['SUPERVISOR', 'TRAINEE'] },
+                hasLeft: false
             },
             select: {
                 id: true,
@@ -1926,10 +2097,21 @@ router.delete('/memos/:id', authMiddleware_1.authenticateToken, async (req, res)
 router.get('/memos/received', authMiddleware_1.authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
+        const role = req.user.role;
+        let whereCondition = { recipientId: userId };
+        if (role === 'SUPERVISOR') {
+            whereCondition = {
+                OR: [
+                    { recipientId: userId },
+                    { recipient: { supervisors: { some: { id: userId } } } }
+                ]
+            };
+        }
         const memos = await prisma.memo.findMany({
-            where: { recipientId: userId },
+            where: whereCondition,
             include: {
-                sender: { select: { fullName: true } }
+                sender: { select: { fullName: true } },
+                recipient: { select: { id: true, fullName: true } }
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -1998,7 +2180,7 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
         const breakLogs = await prisma.breakLog.findMany({
             where: {
                 date: targetDate,
-                status: 'APPROVED',
+                status: type === 'COLLEGE_VISIT' ? { in: ['APPROVED', 'PENDING', 'REJECTED'] } : 'APPROVED',
                 ...supervisorFilter,
                 user: {
                     OR: searchStr ? [
@@ -2008,7 +2190,18 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
                 }
             },
             include: {
-                user: { select: { fullName: true, identifier: true, department: true } }
+                user: {
+                    select: {
+                        fullName: true,
+                        identifier: true,
+                        department: true,
+                        supervisors: {
+                            select: {
+                                fullName: true
+                            }
+                        }
+                    }
+                }
             },
             orderBy: { breakOut: 'desc' }
         });
@@ -2034,12 +2227,14 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
                 name: b.user.fullName,
                 identifier: b.user.identifier,
                 department: b.user.department || '--',
+                supervisor: b.user.supervisors.map((s) => s.fullName).join(', ') || '--',
                 breakOut: new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 breakIn: b.breakIn
                     ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : 'On Break',
                 duration: duration !== null ? `${duration} mins (${durationHrs} hrs)` : 'On Break',
                 reason: b.reason || '--',
+                status: b.status,
                 // Structured fields for college visits
                 bookletNo: parsed.bookletNo,
                 collegeName: parsed.collegeName,

@@ -297,6 +297,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
     const users = await prisma.user.findMany({
       where: { 
         role: 'TRAINEE',
+        hasLeft: false,
         ...supervisorFilter,
         OR: search ? [
           { fullName: { contains: search as string, mode: 'insensitive' } },
@@ -749,6 +750,7 @@ router.get('/attendance/daily', async (req: AuthRequest, res) => {
     const trainees = await prisma.user.findMany({
       where: { 
         role: 'TRAINEE',
+        hasLeft: false,
         ...supervisorFilter
       },
       orderBy: { fullName: 'asc' },
@@ -872,7 +874,7 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
     const daysInMonth = new Date(year, mon, 0).getDate();
 
     const trainees = await prisma.user.findMany({ 
-      where: { role: 'TRAINEE' }, 
+      where: { role: 'TRAINEE', hasLeft: false }, 
       include: { slots: true },
       orderBy: { fullName: 'asc' }
     });
@@ -1620,6 +1622,7 @@ router.get('/supervisors', async (req: AuthRequest, res) => {
         createdAt: true,
         permissions: true,
         trainees: {
+          where: { hasLeft: false },
           select: { id: true, fullName: true, identifier: true }
         }
       },
@@ -1779,7 +1782,7 @@ router.post('/allow-all-edit-24h', async (req: AuthRequest, res) => {
   try {
     const editAccessGrantedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await prisma.user.updateMany({
-      where: { role: 'TRAINEE' },
+      where: { role: 'TRAINEE', hasLeft: false },
       data: { editAccessGrantedUntil }
     });
     res.json({ message: 'All trainees have been granted edit access for 24 hours', until: editAccessGrantedUntil });
@@ -1989,6 +1992,62 @@ router.post('/sync-sister-permanent', async (req: AuthRequest, res) => {
   }
 });
 
+// ── Get Left Trainees for Management ──────────────────────────────────────────
+router.get('/left-users', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin permissions required.' });
+    }
+    const today = new Date();
+    const users = await prisma.user.findMany({
+      where: {
+        role: 'TRAINEE',
+        hasLeft: true
+      },
+      orderBy: { fullName: 'asc' },
+      include: {
+        slots: { orderBy: [{ dayOfWeek: 'asc' }, { slotNo: 'asc' }] }
+      }
+    });
+
+    const result = users.map((user) => ({
+      id: user.id,
+      empCode: user.identifier,
+      name: user.fullName,
+      email: user.email,
+      department: user.department,
+      slots: user.slots.map((s) => ({
+        day: s.dayOfWeek,
+        start: s.startTime,
+        end: s.endTime,
+        slotNo: s.slotNo,
+      })),
+      status: '--',
+      date: today.toLocaleDateString('en-IN'),
+      in: '--',
+      out: '--',
+      inTime1: '--',
+      outTime1: '--',
+      inTime2: '--',
+      outTime2: '--',
+      inTime3: '--',
+      outTime3: '--',
+      isLate: false,
+      isApproved: user.isApproved,
+      totalLeaves: user.totalLeaves,
+      leaveBalance: user.leaveBalance,
+      isDisabled: user.isDisabled,
+      disableReason: user.disableReason,
+      hasLeft: user.hasLeft,
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error('[LEFT USERS GET] ERROR:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ── Teacher Memos Management ──────────────────────────────────────────────────
 router.get('/memos/recipients', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -1997,7 +2056,8 @@ router.get('/memos/recipients', authenticateToken, async (req: AuthRequest, res)
     }
     const list = await prisma.user.findMany({
       where: {
-        role: { in: ['SUPERVISOR', 'TRAINEE'] }
+        role: { in: ['SUPERVISOR', 'TRAINEE'] },
+        hasLeft: false
       },
       select: {
         id: true,
