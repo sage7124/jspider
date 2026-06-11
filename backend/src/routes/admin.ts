@@ -500,22 +500,26 @@ router.get('/user/:id', async (req: AuthRequest, res) => {
 
 // ── Disable / Enable / Left User Management ────────────────────────────────────
 router.post('/user/:id/disable', async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  console.log(`[DISABLE USER API] Requested to disable user ID: ${id}, reason: "${reason}"`);
   try {
-    const { id } = req.params;
-    const { reason } = req.body;
     if (!reason || reason.trim() === '') {
+      console.log(`[DISABLE USER API] Failed: reason is missing or empty`);
       return res.status(400).json({ error: 'Reason is required to temporarily disable account.' });
     }
 
     const disabledById = req.user!.id;
+    console.log(`[DISABLE USER API] Performed by Admin ID: ${disabledById}`);
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: Number(id) },
       data: {
         isDisabled: true,
         disableReason: reason.trim()
       }
     });
+    console.log(`[DISABLE USER API] Updated user in DB:`, updatedUser.fullName);
 
     const log = await prisma.disableLog.create({
       data: {
@@ -524,27 +528,29 @@ router.post('/user/:id/disable', async (req: AuthRequest, res) => {
         disabledById
       }
     });
+    console.log(`[DISABLE USER API] Created disable log record:`, log.id);
 
     res.json({ message: 'User temporarily disabled successfully.', log });
   } catch (error) {
-    console.error(error);
+    console.error(`[DISABLE USER API] ERROR:`, error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 router.post('/user/:id/enable', async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  console.log(`[ENABLE USER API] Requested to enable user ID: ${id}`);
   try {
-    const { id } = req.params;
-
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: Number(id) },
       data: {
         isDisabled: false,
         disableReason: null
       }
     });
+    console.log(`[ENABLE USER API] Reactivated user:`, updatedUser.fullName);
 
-    await prisma.disableLog.updateMany({
+    const updateLogsResult = await prisma.disableLog.updateMany({
       where: {
         userId: Number(id),
         enabledAt: null
@@ -553,40 +559,44 @@ router.post('/user/:id/enable', async (req: AuthRequest, res) => {
         enabledAt: new Date()
       }
     });
+    console.log(`[ENABLE USER API] Marked logs as completed:`, updateLogsResult.count);
 
     res.json({ message: 'User account reactivated successfully.' });
   } catch (error) {
-    console.error(error);
+    console.error(`[ENABLE USER API] ERROR:`, error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 router.post('/user/:id/mark-left', async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const { hasLeft } = req.body;
+  console.log(`[MARK LEFT API] Requested to toggle hasLeft to ${hasLeft} for user ID: ${id}`);
   try {
-    const { id } = req.params;
-    const { hasLeft } = req.body;
-
     if (hasLeft === undefined) {
+      console.log(`[MARK LEFT API] Failed: hasLeft parameter is missing`);
       return res.status(400).json({ error: 'hasLeft boolean parameter is required.' });
     }
 
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: Number(id) },
       data: {
         hasLeft: !!hasLeft
       }
     });
+    console.log(`[MARK LEFT API] Successfully updated user ${updatedUser.fullName} hasLeft to ${!!hasLeft}`);
 
     res.json({ message: hasLeft ? 'Employee marked as left institute.' : 'Employee reactivated successfully.' });
   } catch (error) {
-    console.error(error);
+    console.error(`[MARK LEFT API] ERROR:`, error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 router.get('/user/:id/disable-logs', async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  console.log(`[DISABLE LOGS API] Requested logs for user ID: ${id}`);
   try {
-    const { id } = req.params;
     const logs = await prisma.disableLog.findMany({
       where: { userId: Number(id) },
       include: {
@@ -598,9 +608,10 @@ router.get('/user/:id/disable-logs', async (req: AuthRequest, res) => {
       },
       orderBy: { disabledAt: 'desc' }
     });
+    console.log(`[DISABLE LOGS API] Returning ${logs.length} log records`);
     res.json(logs);
   } catch (error) {
-    console.error(error);
+    console.error(`[DISABLE LOGS API] ERROR:`, error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
