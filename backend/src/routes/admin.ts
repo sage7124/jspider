@@ -2052,13 +2052,33 @@ router.get('/left-users', authenticateToken, async (req: AuthRequest, res) => {
 router.get('/memos/recipients', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user!.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Unauthorized: Admin privileges required.' });
+      if (req.user!.role === 'SUPERVISOR') {
+        const supervisor = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { permissions: true }
+        });
+        const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+        if (!perms.includes('MANAGE_MEMOS')) {
+          return res.status(403).json({ error: 'Access Denied: You do not have permission to manage memos.' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Unauthorized: Admin or Supervisor privileges required.' });
+      }
     }
+
+    const whereCondition: any = {
+      hasLeft: false
+    };
+
+    if (req.user!.role === 'SUPERVISOR') {
+      whereCondition.role = 'TRAINEE';
+      whereCondition.supervisors = { some: { id: req.user!.id } };
+    } else {
+      whereCondition.role = { in: ['SUPERVISOR', 'TRAINEE'] };
+    }
+
     const list = await prisma.user.findMany({
-      where: {
-        role: { in: ['SUPERVISOR', 'TRAINEE'] },
-        hasLeft: false
-      },
+      where: whereCondition,
       select: {
         id: true,
         fullName: true,
@@ -2076,11 +2096,35 @@ router.get('/memos/recipients', authenticateToken, async (req: AuthRequest, res)
 router.post('/memos', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user!.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Only admins can issue memos.' });
+      if (req.user!.role === 'SUPERVISOR') {
+        const supervisor = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { permissions: true }
+        });
+        const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+        if (!perms.includes('MANAGE_MEMOS')) {
+          return res.status(403).json({ error: 'Access Denied: You do not have permission to manage memos.' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Only admins or authorized supervisors can issue memos.' });
+      }
     }
     const { recipientId, content } = req.body;
     if (!recipientId || !content || content.trim() === '') {
       return res.status(400).json({ error: 'Recipient and Content are required.' });
+    }
+
+    if (req.user!.role === 'SUPERVISOR') {
+      const trainee = await prisma.user.findFirst({
+        where: {
+          id: Number(recipientId),
+          role: 'TRAINEE',
+          supervisors: { some: { id: req.user!.id } }
+        }
+      });
+      if (!trainee) {
+        return res.status(403).json({ error: 'Access Denied: You can only send memos to trainees assigned under you.' });
+      }
     }
 
     const memo = await prisma.memo.create({
@@ -2104,7 +2148,18 @@ router.post('/memos', authenticateToken, async (req: AuthRequest, res) => {
 router.get('/memos/sent', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user!.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Unauthorized' });
+      if (req.user!.role === 'SUPERVISOR') {
+        const supervisor = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { permissions: true }
+        });
+        const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+        if (!perms.includes('MANAGE_MEMOS')) {
+          return res.status(403).json({ error: 'Access Denied: You do not have permission to manage memos.' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
     }
 
     const memos = await prisma.memo.findMany({
@@ -2123,13 +2178,37 @@ router.get('/memos/sent', authenticateToken, async (req: AuthRequest, res) => {
 
 router.delete('/memos/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    if (req.user!.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
     const { id } = req.params;
+    const memoId = Number(id);
+
+    const memo = await prisma.memo.findUnique({
+      where: { id: memoId }
+    });
+
+    if (!memo) {
+      return res.status(404).json({ error: 'Memo not found' });
+    }
+
+    if (req.user!.role !== 'ADMIN') {
+      if (req.user!.role === 'SUPERVISOR') {
+        const supervisor = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { permissions: true }
+        });
+        const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+        if (!perms.includes('MANAGE_MEMOS')) {
+          return res.status(403).json({ error: 'Access Denied: You do not have permission to manage memos.' });
+        }
+        if (memo.senderId !== req.user!.id) {
+          return res.status(403).json({ error: 'Access Denied: You can only delete memos that you sent.' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+    }
 
     await prisma.memo.delete({
-      where: { id: Number(id) }
+      where: { id: memoId }
     });
 
     res.json({ message: 'Memo deleted successfully' });
@@ -2223,6 +2302,17 @@ function parseCollegeVisit(b: any) {
 router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { date, search, type } = req.query;
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      const requiredPerm = type === 'COLLEGE_VISIT' ? 'MANAGE_COLLEGE_VISITS' : 'MANAGE_BREAKS';
+      if (!perms.includes(requiredPerm)) {
+        return res.status(403).json({ error: `Access Denied: You do not have clearance to manage ${type === 'COLLEGE_VISIT' ? 'college visits' : 'breaks'}.` });
+      }
+    }
     const targetDate = date ? new Date(date as string) : new Date();
     targetDate.setHours(0, 0, 0, 0);
 
@@ -2311,6 +2401,17 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
 router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { month, search, type } = req.query; // e.g., "2026-05", with optional search & type
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      const requiredPerm = type === 'COLLEGE_VISIT' ? 'MANAGE_COLLEGE_VISITS' : 'MANAGE_BREAKS';
+      if (!perms.includes(requiredPerm)) {
+        return res.status(403).json({ error: `Access Denied: You do not have clearance to export ${type === 'COLLEGE_VISIT' ? 'college visits' : 'breaks'}.` });
+      }
+    }
     if (!month || typeof month !== 'string') {
       return res.status(400).json({ error: 'Month is required' });
     }
@@ -2785,16 +2886,21 @@ router.get('/reports/breaks/pending', authenticateToken, async (req: AuthRequest
   try {
     const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisors: { some: { id: req.user.id } } } } : {};
 
-    // Dynamic Database-backed clearance check for Supervisors
+    let allowedTypes: string[] = [];
     if (req.user?.role === 'SUPERVISOR') {
       const supervisor = await prisma.user.findUnique({
         where: { id: req.user.id },
         select: { permissions: true }
       });
       const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
-      if (!perms.includes('MANAGE_BREAKS')) {
-        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
+      if (perms.includes('MANAGE_BREAKS')) allowedTypes.push('NORMAL');
+      if (perms.includes('MANAGE_COLLEGE_VISITS')) allowedTypes.push('COLLEGE_VISIT');
+
+      if (allowedTypes.length === 0) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks or college visits.' });
       }
+    } else {
+      allowedTypes = ['NORMAL', 'COLLEGE_VISIT'];
     }
 
     const pendingLogs = await prisma.breakLog.findMany({
@@ -2808,7 +2914,14 @@ router.get('/reports/breaks/pending', authenticateToken, async (req: AuthRequest
       orderBy: { createdAt: 'desc' }
     });
 
-    const result = pendingLogs.map(b => ({
+    const filteredLogs = pendingLogs.filter(b => {
+      const isCollege = b.reason && b.reason.startsWith('College Visit:');
+      if (isCollege && allowedTypes.includes('COLLEGE_VISIT')) return true;
+      if (!isCollege && allowedTypes.includes('NORMAL')) return true;
+      return false;
+    });
+
+    const result = filteredLogs.map(b => ({
       id: b.id,
       date: b.date.toLocaleDateString('en-IN'),
       name: b.user.fullName,
@@ -2848,8 +2961,10 @@ router.post('/reports/breaks/process', authenticateToken, async (req: AuthReques
         select: { permissions: true }
       });
       const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
-      if (!perms.includes('MANAGE_BREAKS')) {
-        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
+      const isCollege = breakLog.reason && breakLog.reason.startsWith('College Visit:');
+      const requiredPerm = isCollege ? 'MANAGE_COLLEGE_VISITS' : 'MANAGE_BREAKS';
+      if (!perms.includes(requiredPerm)) {
+        return res.status(403).json({ error: `Access Denied: You do not have clearance to manage ${isCollege ? 'college visits' : 'breaks'}.` });
       }
 
       const isAssigned = breakLog.user.supervisors.some(s => s.id === req.user.id);
@@ -2905,8 +3020,8 @@ router.post('/reports/breaks/direct-out', authenticateToken, async (req: AuthReq
         select: { permissions: true }
       });
       const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
-      if (!perms.includes('MANAGE_BREAKS')) {
-        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage breaks.' });
+      if (!perms.includes('MANAGE_COLLEGE_VISITS')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to manage college visits.' });
       }
 
       const isAssigned = trainee.supervisors.some(s => s.id === req.user.id);

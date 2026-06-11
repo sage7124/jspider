@@ -1190,29 +1190,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
               <Download size={18} /> Download
             </button>
           )}
-          {role === 'SUPERVISOR' && (
+          {hasPermission('MANAGE_MEMOS') && (
             <button onClick={() => setShowMemos(true)}
               className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium transition-colors">
-              <Mail size={18} /> My Memos
-            </button>
-          )}
-          {role === 'ADMIN' && (
-            <button onClick={() => setShowMemos(true)}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-medium transition-colors">
-              <Mail size={18} /> Memos
+              <Mail size={18} /> {role === 'ADMIN' ? 'Memos' : 'My Memos'}
             </button>
           )}
           {hasPermission('MANAGE_BREAKS') && (
-            <>
-              <button onClick={() => setShowBreaks(true)}
-                className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded font-medium transition-colors">
-                <Clock size={18} /> Breaks
-              </button>
-              <button onClick={() => setShowCollegeVisits(true)}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
-                <GraduationCap size={18} /> College Visits
-              </button>
-            </>
+            <button onClick={() => setShowBreaks(true)}
+              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <Clock size={18} /> Breaks
+            </button>
+          )}
+          {hasPermission('MANAGE_COLLEGE_VISITS') && (
+            <button onClick={() => setShowCollegeVisits(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              <GraduationCap size={18} /> College Visits
+            </button>
           )}
           {hasPermission('MANAGE_EXTRA_CLASSES') && (
             <button onClick={() => setShowExtraClasses(true)}
@@ -1404,7 +1398,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showDropdownOptions && <DropdownOptionsModal onClose={() => setShowDropdownOptions(false)} />}
       {viewOnboardingUser && <ViewOnboardingProfileModal trainee={viewOnboardingUser} onClose={() => { setViewOnboardingUser(null); fetchTrainees(); }} />}
       {disableUser && <DisableUserModal trainee={disableUser} onClose={() => { setDisableUser(null); fetchTrainees(); }} />}
-      {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role={role} />}
+      {showMemos && <MemoManagementModal onClose={() => setShowMemos(false)} role={role} hasPermission={hasPermission} />}
       {showBreaks && <BreakLogsModal onClose={() => setShowBreaks(false)} allTrainees={trainees} />}
       {showCollegeVisits && <CollegeVisitLogsModal onClose={() => setShowCollegeVisits(false)} allTrainees={trainees} />}
       {showExtraClasses && <ExtraClassesLogsModal onClose={() => setShowExtraClasses(false)} allTrainees={trainees} />}
@@ -2491,6 +2485,8 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                         { id: 'NOTICES', label: '📢 Manage Notices', core: false },
                         { id: 'GPS_LOCATION', label: '📡 Branch GPS Config', core: false },
                         { id: 'MANAGE_BREAKS', label: '🕒 Manage Breaks', core: false },
+                        { id: 'MANAGE_MEMOS', label: '✉️ Manage Memos', core: false },
+                        { id: 'MANAGE_COLLEGE_VISITS', label: '🎓 Manage College Visits', core: false },
                         { id: 'MANAGE_EXTRA_CLASSES', label: '📚 Manage Extra Classes', core: false },
                         { id: 'MANAGE_OTHER_CENTER_CLASSES', label: '🏢 Manage Other Center Classes', core: false },
                         { id: 'MANAGE_CANCELLED_CLASSES', label: '❌ Manage Cancelled Classes', core: false },
@@ -3646,7 +3642,7 @@ const DisableUserModal = ({ trainee, onClose }: { trainee: any; onClose: () => v
 };
 
 // ── Teacher Memo Management Modal ─────────────────────────────────────────────
-const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: string }) => {
+const MemoManagementModal = ({ onClose, role, hasPermission }: { onClose: () => void; role: string; hasPermission: (perm: string) => boolean }) => {
   const [memos, setMemos] = useState<any[]>([]);
   const [supervisors, setSupervisors] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -3755,13 +3751,19 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
         </h2>
 
         {/* Tab Headers */}
-        {role === 'ADMIN' && (
+        {(role === 'ADMIN' || (role === 'SUPERVISOR' && hasPermission('MANAGE_MEMOS'))) && (
           <div className="flex border-b mb-4">
-            <button onClick={() => setMemoTab('send')}
+            {role === 'SUPERVISOR' && (
+              <button onClick={() => { setMemoTab('received'); fetchReceivedMemos(); }}
+                className={`flex-1 py-2 font-bold text-xs uppercase tracking-wider ${memoTab === 'received' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-400'}`}>
+                Received Memos
+              </button>
+            )}
+            <button onClick={() => { setMemoTab('send'); fetchSupervisors(); }}
               className={`flex-1 py-2 font-bold text-xs uppercase tracking-wider ${memoTab === 'send' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-400'}`}>
               Send Memo
             </button>
-            <button onClick={() => setMemoTab('sent')}
+            <button onClick={() => { setMemoTab('sent'); fetchSentMemos(); }}
               className={`flex-1 py-2 font-bold text-xs uppercase tracking-wider ${memoTab === 'sent' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-400'}`}>
               Sent History ({memos.length})
             </button>
@@ -3773,8 +3775,8 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
             <p className="text-center py-10 text-gray-400">Loading memos...</p>
           ) : (
             <>
-              {/* Send Tab (Admin only) */}
-              {memoTab === 'send' && role === 'ADMIN' && (
+              {/* Send Tab */}
+              {memoTab === 'send' && (role === 'ADMIN' || (role === 'SUPERVISOR' && hasPermission('MANAGE_MEMOS'))) && (
                 <form onSubmit={handleSendMemo} className="space-y-4 text-left">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Select Teacher</label>
@@ -3800,8 +3802,8 @@ const MemoManagementModal = ({ onClose, role }: { onClose: () => void; role: str
                 </form>
               )}
 
-              {/* Sent Tab (Admin only) */}
-              {memoTab === 'sent' && role === 'ADMIN' && (
+              {/* Sent Tab */}
+              {memoTab === 'sent' && (role === 'ADMIN' || (role === 'SUPERVISOR' && hasPermission('MANAGE_MEMOS'))) && (
                 <div className="space-y-3 text-left">
                   {memos.length === 0 ? (
                     <p className="text-center py-10 text-gray-400 italic text-sm">No official memos dispatched yet.</p>
