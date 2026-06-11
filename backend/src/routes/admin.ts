@@ -3016,7 +3016,11 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
         ws.getRow(3).height = 25;
 
         // Populate
+        let totalApprovedHours = 0;
         uLogs.forEach((l, idx) => {
+          if (l.status === 'APPROVED') {
+            totalApprovedHours += l.duration;
+          }
           const row = ws.addRow([
             idx + 1,
             l.date.toLocaleDateString('en-IN'),
@@ -3037,6 +3041,57 @@ router.get('/reports/extra-classes/export', authenticateToken, async (req: AuthR
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           });
         });
+
+        // Add Spacer Row
+        ws.addRow([]);
+
+        // Add Grand Total Row
+        const totalRow = ws.addRow([
+          '',
+          'TOTAL APPROVED HOURS',
+          '',
+          '',
+          '',
+          '',
+          totalApprovedHours,
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          ''
+        ]);
+        totalRow.height = 24;
+
+        ws.mergeCells(`B${totalRow.number}:F${totalRow.number}`);
+
+        totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          if (colNumber >= 1 && colNumber <= 14) {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: '2E7D32' } // Dark Green
+            };
+            cell.font = { 
+              bold: true, 
+              name: 'Calibri', 
+              size: 11, 
+              color: { argb: 'FFFFFFFF' } 
+            };
+            cell.alignment = { 
+              vertical: 'middle', 
+              horizontal: colNumber === 7 ? 'center' : (colNumber === 2 ? 'left' : 'center') 
+            };
+            cell.border = {
+              top: { style: 'medium', color: { argb: 'FF2E7D32' } },
+              left: { style: 'thin', color: { argb: 'FFFFFF' } },
+              right: { style: 'thin', color: { argb: 'FFFFFF' } },
+              bottom: { style: 'medium', color: { argb: 'FF2E7D32' } }
+            };
+          }
+        });
+        totalRow.getCell(7).numFmt = '0.0" hrs"';
       }
     }
 
@@ -3907,7 +3962,11 @@ router.get('/reports/other-center-classes/export', authenticateToken, async (req
         ws.getRow(3).height = 25;
 
         // Populate
+        let totalApprovedHours = 0;
         uLogs.forEach((l, idx) => {
+          if (l.status === 'APPROVED') {
+            totalApprovedHours += l.duration;
+          }
           const row = ws.addRow([
             idx + 1,
             l.date.toLocaleDateString('en-IN'),
@@ -3928,6 +3987,57 @@ router.get('/reports/other-center-classes/export', authenticateToken, async (req
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           });
         });
+
+        // Add Spacer Row
+        ws.addRow([]);
+
+        // Add Grand Total Row
+        const totalRow = ws.addRow([
+          '',
+          'TOTAL APPROVED HOURS',
+          '',
+          '',
+          '',
+          '',
+          totalApprovedHours,
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          ''
+        ]);
+        totalRow.height = 24;
+
+        ws.mergeCells(`B${totalRow.number}:F${totalRow.number}`);
+
+        totalRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          if (colNumber >= 1 && colNumber <= 14) {
+            cell.fill = {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: '2E7D32' } // Dark Green
+            };
+            cell.font = { 
+              bold: true, 
+              name: 'Calibri', 
+              size: 11, 
+              color: { argb: 'FFFFFFFF' } 
+            };
+            cell.alignment = { 
+              vertical: 'middle', 
+              horizontal: colNumber === 7 ? 'center' : (colNumber === 2 ? 'left' : 'center') 
+            };
+            cell.border = {
+              top: { style: 'medium', color: { argb: 'FF2E7D32' } },
+              left: { style: 'thin', color: { argb: 'FFFFFF' } },
+              right: { style: 'thin', color: { argb: 'FFFFFF' } },
+              bottom: { style: 'medium', color: { argb: 'FF2E7D32' } }
+            };
+          }
+        });
+        totalRow.getCell(7).numFmt = '0.0" hrs"';
       }
     }
 

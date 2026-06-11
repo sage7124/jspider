@@ -4592,6 +4592,21 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                         </tr>
                                       ))}
                                     </tbody>
+                                    <tfoot className="bg-gray-100 font-bold border-t border-gray-200">
+                                      <tr>
+                                        <td colSpan={7} className="px-3 py-2 text-right text-gray-700">Total Hours:</td>
+                                        <td className="px-3 py-2 text-center font-extrabold text-blue-700">
+                                          {(() => {
+                                            const total = group.breaks.reduce((acc: number, b: any) => {
+                                              const val = parseFloat(b.numberOfHours);
+                                              return acc + (isNaN(val) ? 0 : val);
+                                            }, 0);
+                                            return total.toFixed(2);
+                                          })()} hrs
+                                        </td>
+                                        <td colSpan={4} className="px-3 py-2"></td>
+                                      </tr>
+                                    </tfoot>
                                   </table>
                                 </div>
                               </td>
@@ -5174,6 +5189,24 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                       ))
                     )}
                   </tbody>
+                  <tfoot className="bg-gray-100 font-bold border-t border-gray-200 sticky bottom-0 z-10">
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 text-right text-gray-700">Total Approved Hours:</td>
+                      <td className="px-4 py-3 text-center font-extrabold text-emerald-700">
+                        {(() => {
+                          const total = logs.reduce((acc: number, log: any) => {
+                            if (log.status === 'APPROVED') {
+                              const val = parseFloat(log.duration);
+                              return acc + (isNaN(val) ? 0 : val);
+                            }
+                            return acc;
+                          }, 0);
+                          return total.toFixed(2);
+                        })()} hrs
+                      </td>
+                      <td colSpan={3} className="px-4 py-3"></td>
+                    </tr>
+                  </tfoot>
                 </table>
               )}
             </div>
@@ -5747,6 +5780,24 @@ const OtherCenterClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => 
                       ))
                     )}
                   </tbody>
+                  <tfoot className="bg-gray-100 font-bold border-t border-gray-200 sticky bottom-0 z-10">
+                    <tr>
+                      <td colSpan={4} className="px-4 py-3 text-right text-gray-700">Total Approved Hours:</td>
+                      <td className="px-4 py-3 text-center font-extrabold text-sky-700">
+                        {(() => {
+                          const total = logs.reduce((acc: number, log: any) => {
+                            if (log.status === 'APPROVED') {
+                              const val = parseFloat(log.duration);
+                              return acc + (isNaN(val) ? 0 : val);
+                            }
+                            return acc;
+                          }, 0);
+                          return total.toFixed(2);
+                        })()} hrs
+                      </td>
+                      <td colSpan={3} className="px-4 py-3"></td>
+                    </tr>
+                  </tfoot>
                 </table>
               )}
             </div>

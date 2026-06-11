@@ -1793,7 +1793,13 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 <tr>
                   <td colSpan={8} className="px-4 py-3 text-right text-gray-700">Total Duration:</td>
                   <td className="px-4 py-3 font-extrabold text-emerald-700">
-                    {reportData.collegeVisits.reduce((acc: number, log: any) => acc + parseFloat(log.numberOfHours || 0), 0).toFixed(2)} hrs
+                    {(() => {
+                      const total = reportData.collegeVisits.reduce((acc: number, log: any) => {
+                        const val = parseFloat(log.numberOfHours);
+                        return acc + (isNaN(val) ? 0 : val);
+                      }, 0);
+                      return total.toFixed(2);
+                    })()} hrs
                   </td>
                 </tr>
               </tfoot>
@@ -2031,6 +2037,24 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   );
                 })}
               </tbody>
+              <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                <tr>
+                  <td colSpan={5} className="px-4 py-3 text-right text-gray-700">Total Approved Hours:</td>
+                  <td className="px-4 py-3 font-extrabold text-indigo-700">
+                    {(() => {
+                      const total = reportData.extraClasses.reduce((acc: number, log: any) => {
+                        if (log.status === 'APPROVED') {
+                          const val = parseFloat(log.duration);
+                          return acc + (isNaN(val) ? 0 : val);
+                        }
+                        return acc;
+                      }, 0);
+                      return total.toFixed(2);
+                    })()} hrs
+                  </td>
+                  <td colSpan={5} className="px-4 py-3"></td>
+                </tr>
+              </tfoot>
             </table>
           )}
         </div>
@@ -2112,6 +2136,24 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                   );
                 })}
               </tbody>
+              <tfoot className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                <tr>
+                  <td colSpan={5} className="px-4 py-3 text-right text-gray-700">Total Approved Hours:</td>
+                  <td className="px-4 py-3 font-extrabold text-sky-700">
+                    {(() => {
+                      const total = reportData.otherCenterClasses.reduce((acc: number, log: any) => {
+                        if (log.status === 'APPROVED') {
+                          const val = parseFloat(log.duration);
+                          return acc + (isNaN(val) ? 0 : val);
+                        }
+                        return acc;
+                      }, 0);
+                      return total.toFixed(2);
+                    })()} hrs
+                  </td>
+                  <td colSpan={5} className="px-4 py-3"></td>
+                </tr>
+              </tfoot>
             </table>
           )}
         </div>
