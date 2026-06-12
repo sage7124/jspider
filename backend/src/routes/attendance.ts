@@ -142,24 +142,42 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     // 🚀 Dynamic Geofence Check for INFINITE LOCATIONS
-    if (branches.length === 0) {
-      // Fallback to basic check if someone deleted all branches
-      return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Please contact Admin.' });
-    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const validBranch = branches.find(branch => {
-      const distance = getDistance(
-        { latitude: lat, longitude: lng },
-        { latitude: branch.lat, longitude: branch.lng }
-      );
-      return distance <= branch.radius;
+    const collegeVisitLog = await prisma.breakLog.findFirst({
+      where: {
+        userId,
+        date: today,
+        OR: [
+          { bookletNo: { not: null } },
+          { collegeName: { not: null } }
+        ]
+      }
     });
 
-    if (!validBranch) {
-      return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
+    let punchedBranchName = 'COLLEGE_VISIT';
+
+    if (!collegeVisitLog) {
+      if (branches.length === 0) {
+        // Fallback to basic check if someone deleted all branches
+        return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Please contact Admin.' });
+      }
+
+      const validBranch = branches.find(branch => {
+        const distance = getDistance(
+          { latitude: lat, longitude: lng },
+          { latitude: branch.lat, longitude: branch.lng }
+        );
+        return distance <= branch.radius;
+      });
+
+      if (!validBranch) {
+        return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
+      }
+      const baseBranchCode = validBranch.branchCode || validBranch.name;
+      punchedBranchName = isKioskDevice ? `${baseBranchCode}, MOBILE` : baseBranchCode;
     }
-    const baseBranchCode = validBranch.branchCode || validBranch.name;
-    const punchedBranchName = isKioskDevice ? `${baseBranchCode}, MOBILE` : baseBranchCode;
 
     // 2. QR Token validation removed as requested by user
     /*
@@ -168,8 +186,6 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     }
     */
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const now = new Date();
 
     const existing = await prisma.attendance.findUnique({

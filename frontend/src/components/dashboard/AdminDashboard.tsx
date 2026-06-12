@@ -4832,9 +4832,9 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                         <th className="px-3 py-2">Conveyance</th>
                                         <th className="px-3 py-2">Planned Timing</th>
                                         <th className="px-3 py-2 text-center">No of hours</th>
-                                        <th className="px-3 py-2 text-center">Out Time</th>
-                                        <th className="px-3 py-2 text-center">In Time</th>
-                                        <th className="px-3 py-2 text-center">Duration</th>
+                                        <th className="px-3 py-2 text-center">Punch In Time</th>
+                                        <th className="px-3 py-2 text-center">Punch Out Time</th>
+                                        <th className="px-3 py-2 text-center">Punch Duration</th>
                                         <th className="px-3 py-2 text-center">Status</th>
                                         <th className="px-3 py-2 text-right w-[15%]">Actions</th>
                                       </tr>
@@ -4850,11 +4850,11 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                           <td className="px-3 py-2.5 text-gray-600">{b.conveyance || '--'}</td>
                                           <td className="px-3 py-2.5 text-gray-700 font-mono">{b.fromTime && b.toTime ? `${b.fromTime} - ${b.toTime}` : '--'}</td>
                                           <td className="px-3 py-2.5 text-center text-gray-600">{b.numberOfHours || '--'}</td>
-                                          <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{b.breakOut}</td>
-                                          <td className="px-3 py-2.5 text-center text-green-700 font-semibold">{b.breakIn}</td>
+                                          <td className="px-3 py-2.5 text-center text-purple-700 font-semibold">{b.punchIn || '--'}</td>
+                                          <td className="px-3 py-2.5 text-center text-green-700 font-semibold">{b.punchOut || '--'}</td>
                                           <td className="px-3 py-2.5 text-center">
                                             <span className="font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                              {b.duration}
+                                              {b.punchDuration || '--'}
                                             </span>
                                           </td>
                                           <td className="px-3 py-2.5 text-center">
