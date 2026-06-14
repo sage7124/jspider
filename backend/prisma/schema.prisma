@@ -139,6 +139,19 @@ model Attendance {
   inTime5        DateTime?
   outTime5       DateTime?
 
+  // Real / Original geofenced punch timings
+  realInTime1    DateTime?
+  realOutTime1   DateTime?
+  realInTime2    DateTime?
+  realOutTime2   DateTime?
+  realInTime3    DateTime?
+  realOutTime3   DateTime?
+  realInTime4    DateTime?
+  realOutTime4   DateTime?
+  realInTime5    DateTime?
+  realOutTime5   DateTime?
+
+
   info           String?
   info1          String?
   info2          String?

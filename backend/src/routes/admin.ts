@@ -1215,6 +1215,32 @@ router.post('/force-logout/:id', async (req: AuthRequest, res) => {
   }
 });
 
+router.get('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
+  try {
+    const { traineeId } = req.params;
+    const { date } = req.query;
+    if (!date || typeof date !== 'string') {
+      return res.status(400).json({ error: 'Date is required' });
+    }
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    const attendance = await prisma.attendance.findUnique({
+      where: {
+        userId_date: {
+          userId: Number(traineeId),
+          date: targetDate
+        }
+      }
+    });
+
+    res.json(attendance || null);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.put('/attendance-manual/:traineeId', async (req: AuthRequest, res) => {
   try {
     const { traineeId } = req.params;

@@ -645,6 +645,58 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
   const [outTime, setOutTime] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
+  const [existingAttendance, setExistingAttendance] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchExisting = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await axios.get(`${API}/attendance-manual/${trainee.id}?date=${date}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setExistingAttendance(res.data);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchExisting();
+  }, [date, trainee.id]);
+
+  const formatTime12 = (isoString: string | Date | null | undefined) => {
+    if (!isoString) return '--';
+    const dateObj = new Date(isoString);
+    if (isNaN(dateObj.getTime())) return '--';
+    return dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  };
+
+  const getRealTimes = () => {
+    if (!existingAttendance) return { realIn: '--', realOut: '--' };
+    if (slotNo === null) {
+      const validRealIns: Date[] = [];
+      const validRealOuts: Date[] = [];
+      for (let i = 1; i <= 5; i++) {
+        const ri = existingAttendance[`realInTime${i}`] || existingAttendance[`inTime${i}`];
+        const ro = existingAttendance[`realOutTime${i}`] || existingAttendance[`outTime${i}`];
+        if (ri) validRealIns.push(new Date(ri));
+        if (ro) validRealOuts.push(new Date(ro));
+      }
+      const realIn = validRealIns.length > 0 ? new Date(Math.min(...validRealIns.map(d => d.getTime()))) : existingAttendance.inTime;
+      const realOut = validRealOuts.length > 0 ? new Date(Math.max(...validRealOuts.map(d => d.getTime()))) : existingAttendance.outTime;
+      return {
+        realIn: formatTime12(realIn),
+        realOut: formatTime12(realOut)
+      };
+    } else {
+      const realIn = existingAttendance[`realInTime${slotNo}`] || existingAttendance[`inTime${slotNo}`];
+      const realOut = existingAttendance[`realOutTime${slotNo}`] || existingAttendance[`outTime${slotNo}`];
+      return {
+        realIn: formatTime12(realIn),
+        realOut: formatTime12(realOut)
+      };
+    }
+  };
+
+  const { realIn, realOut } = getRealTimes();
 
   const getLocalDay = (dateStr: string) => {
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -775,6 +827,7 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               </div>
               <input type="time" value={inTime} onChange={e => setInTime(e.target.value)}
                 className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+              <p className="text-[10px] text-gray-400 mt-1 font-semibold">Real: {realIn}</p>
             </div>
             <div className="flex-1">
               <div className="flex justify-between items-end mb-1">
@@ -788,6 +841,7 @@ const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               </div>
               <input type="time" value={outTime} onChange={e => setOutTime(e.target.value)}
                 className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" />
+              <p className="text-[10px] text-gray-400 mt-1 font-semibold">Real: {realOut}</p>
             </div>
           </div>
 
