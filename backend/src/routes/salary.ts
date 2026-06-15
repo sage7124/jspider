@@ -203,6 +203,7 @@ router.get('/admin/reports/payslip/list', authenticateToken, checkSalarySlipsAcc
 
     const trainees = await prisma.user.findMany({
       where: traineesFilter,
+      include: { slots: true },
       orderBy: { fullName: 'asc' }
     });
 
@@ -1036,6 +1037,7 @@ router.get('/admin/reports/payslip/export-all', authenticateToken, checkSalarySl
 
     const trainees = await prisma.user.findMany({
       where: traineesFilter,
+      include: { slots: true },
       orderBy: { fullName: 'asc' }
     });
 
