@@ -59,6 +59,13 @@ model User {
   lateRate               Float?
   earlyRate              Float?
   absentRate             Float?
+  tdsRate                Float?
+  otherAdditions         Float        @default(0.0)
+  otherDeductions        Float        @default(0.0)
+  lateDeductionType      String?
+  earlyDeductionType     String?
+  lateIntervalValue      Int?
+  earlyIntervalValue     Int?
   
   permissions            String       @default("RESET_PASSWORD,DIRECT_LEAVE,DOWNLOAD_REPORT")
   

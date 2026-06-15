@@ -128,6 +128,19 @@ interface Trainee {
   inTime1?: string; outTime1?: string; inTime2?: string; outTime2?: string; inTime3?: string; outTime3?: string;
   isLate: boolean; isApproved: boolean; leaveBalance: number; totalLeaves: number;
   isDisabled?: boolean; disableReason?: string | null; hasLeft?: boolean;
+  fullName?: string;
+  professionalFee?: number;
+  trainingFee?: number;
+  personalLateRate?: number | null;
+  personalEarlyRate?: number | null;
+  personalAbsentRate?: number | null;
+  personalTdsRate?: number | null;
+  otherAdditions?: number;
+  otherDeductions?: number;
+  personalLateDeductionType?: string | null;
+  personalLateIntervalValue?: number | null;
+  personalEarlyDeductionType?: string | null;
+  personalEarlyIntervalValue?: number | null;
 }
 interface LeaveRequest {
   id: number; userId: number; startDate: string; endDate: string; reason: string | null;
@@ -2602,6 +2615,7 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
                         { id: 'MANAGE_EXTRA_CLASSES', label: '📚 Manage Extra Classes', core: false },
                         { id: 'MANAGE_OTHER_CENTER_CLASSES', label: '🏢 Manage Other Center Classes', core: false },
                         { id: 'MANAGE_CANCELLED_CLASSES', label: '❌ Manage Cancelled Classes', core: false },
+                        { id: 'MANAGE_SALARY_SLIPS', label: '💵 Manage Salary Slips', core: false },
                       ].map(p => (
                         <label key={p.id} className="flex items-center gap-2 cursor-pointer text-[10px] font-bold select-none text-gray-700 hover:text-blue-700">
                           <input 
@@ -6903,6 +6917,13 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [editPersonalLateRate, setEditPersonalLateRate] = useState('');
   const [editPersonalEarlyRate, setEditPersonalEarlyRate] = useState('');
   const [editPersonalAbsentRate, setEditPersonalAbsentRate] = useState('');
+  const [editTdsOverridePercent, setEditTdsOverridePercent] = useState('');
+  const [editOtherAdditions, setEditOtherAdditions] = useState('');
+  const [editOtherDeductions, setEditOtherDeductions] = useState('');
+  const [editPersonalLateDeductionType, setEditPersonalLateDeductionType] = useState('');
+  const [editPersonalLateIntervalValue, setEditPersonalLateIntervalValue] = useState('');
+  const [editPersonalEarlyDeductionType, setEditPersonalEarlyDeductionType] = useState('');
+  const [editPersonalEarlyIntervalValue, setEditPersonalEarlyIntervalValue] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Global rates state
@@ -7041,8 +7062,8 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
       return;
     }
 
-    const grossEarnings = t.professionalFee || 0;
-    const grossDeductions = (t.trainingFee || 0) + (t.lateDeduction || 0) + (t.earlyDeduction || 0) + (t.absentDeduction || 0) + (t.tdsDeduction || 0);
+    const grossEarnings = t.grossEarnings || 0;
+    const grossDeductions = t.totalDeductions || 0;
     const netTakeHome = t.netTakeHome || 0;
 
     printWindow.document.write(`
@@ -7328,23 +7349,29 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       <span class="item-name">Basic / Professional Fee</span>
                       <span class="item-value">₹${(t.professionalFee || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
-                  </td>
-                  <td class="col-50">
                     ${t.trainingFee > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">Training Fee Recovery</span>
-                      <span class="item-value deduction">₹${t.trainingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span class="item-name">Training Fee</span>
+                      <span class="item-value">₹${t.trainingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
+                    ${t.otherAdditions > 0 ? `
+                    <div class="item-row">
+                      <span class="item-name">Arrears/Additions</span>
+                      <span class="item-value">₹${t.otherAdditions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    ` : ''}
+                  </td>
+                  <td class="col-50">
                     ${t.lateDeduction > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">Late Arrival Penalty (${t.lateInstances} times)</span>
+                      <span class="item-name">Late Arrival Penalty (${t.lateInstances} times, ${t.totalLateMinutes} mins)</span>
                       <span class="item-value deduction">₹${t.lateDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
                     ${t.earlyDeduction > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">Early Departure Penalty (${t.earlyInstances} times)</span>
+                      <span class="item-name">Early Departure Penalty (${t.earlyInstances} times, ${t.totalEarlyMinutes} mins)</span>
                       <span class="item-value deduction">₹${t.earlyDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
@@ -7354,13 +7381,19 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       <span class="item-value deduction">₹${t.absentDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
+                    ${t.otherDeductions > 0 ? `
+                    <div class="item-row">
+                      <span class="item-name">Other Deductions</span>
+                      <span class="item-value deduction">₹${t.otherDeductions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    ` : ''}
                     ${t.tdsDeduction > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">TDS Deduction (10%)</span>
+                      <span class="item-name">TDS Deduction (${t.tdsPercentage}%)</span>
                       <span class="item-value deduction">₹${t.tdsDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
-                    ${t.trainingFee === 0 && t.lateDeduction === 0 && t.earlyDeduction === 0 && t.absentDeduction === 0 && t.tdsDeduction === 0 ? `
+                    ${t.totalDeductions === 0 ? `
                     <div class="item-row">
                       <span class="item-name" style="color: #94a3b8; font-style: italic;">No deductions this month</span>
                       <span class="item-value">₹0.00</span>
@@ -7430,7 +7463,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         trainingFee: parseFloat(editTrainingFee) || 0,
         lateRate: editPersonalLateRate !== '' ? parseFloat(editPersonalLateRate) : null,
         earlyRate: editPersonalEarlyRate !== '' ? parseFloat(editPersonalEarlyRate) : null,
-        absentRate: editPersonalAbsentRate !== '' ? parseFloat(editPersonalAbsentRate) : null
+        absentRate: editPersonalAbsentRate !== '' ? parseFloat(editPersonalAbsentRate) : null,
+        tdsRate: editTdsOverridePercent !== '' ? parseFloat(editTdsOverridePercent) : null,
+        otherAdditions: editOtherAdditions !== '' ? parseFloat(editOtherAdditions) : 0,
+        otherDeductions: editOtherDeductions !== '' ? parseFloat(editOtherDeductions) : 0,
+        lateDeductionType: editPersonalLateDeductionType !== '' ? editPersonalLateDeductionType : null,
+        lateIntervalValue: editPersonalLateIntervalValue !== '' ? parseInt(editPersonalLateIntervalValue) : null,
+        earlyDeductionType: editPersonalEarlyDeductionType !== '' ? editPersonalEarlyDeductionType : null,
+        earlyIntervalValue: editPersonalEarlyIntervalValue !== '' ? parseInt(editPersonalEarlyIntervalValue) : null
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -7658,12 +7698,13 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                     <th className="py-3 px-4">Employee / Teacher</th>
                     <th className="py-3 px-4 text-right">Professional Fee</th>
                     <th className="py-3 px-4 text-right">Training Fee</th>
+                    <th className="py-3 px-4 text-center">Extra Classes</th>
+                    <th className="py-3 px-4 text-center">Other Center Classes</th>
                     <th className="py-3 px-4 text-center">Late Penalty</th>
                     <th className="py-3 px-4 text-center">Early Penalty</th>
                     <th className="py-3 px-4 text-center">Absent Penalty</th>
-                    <th className="py-3 px-4 text-right">TDS (10%)</th>
+                    <th className="py-3 px-4 text-right">TDS</th>
                     <th className="py-3 px-4 text-right font-bold border-l border-slate-800">Net Takehome</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -7678,6 +7719,18 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       </td>
                       <td className="py-3 px-4 text-right text-slate-300">
                         ₹{(t.trainingFee || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-center text-slate-300">
+                        <span className="font-medium">{t.extraClassesCount || 0} classes</span>
+                        {(t.extraClassesHours || 0) > 0 && (
+                          <span className="text-slate-400 text-[10px] block">({t.extraClassesHours.toFixed(1)}h)</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center text-slate-300">
+                        <span className="font-medium">{t.otherCenterClassesCount || 0} classes</span>
+                        {(t.otherCenterClassesHours || 0) > 0 && (
+                          <span className="text-slate-400 text-[10px] block">({t.otherCenterClassesHours.toFixed(1)}h)</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="text-slate-300 font-medium">{t.lateInstances} times</span>
@@ -7699,13 +7752,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       </td>
                       <td className="py-3 px-4 text-right text-slate-400">
                         ₹{(t.tdsDeduction || 0).toLocaleString('en-IN')}
+                        <span className="text-[10px] text-slate-500 block">({t.tdsPercentage}%)</span>
                       </td>
                       <td className="py-3 px-4 text-right text-emerald-400 font-extrabold text-sm border-l border-slate-800">
                         ₹{(t.netTakeHome || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex justify-center items-center gap-3">
-                          <button 
+                           <button 
                             onClick={() => {
                               setEditingTrainee(t);
                               setEditBaseSalary(String(t.professionalFee || 0));
@@ -7713,6 +7767,13 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                               setEditPersonalLateRate(t.personalLateRate !== null && t.personalLateRate !== undefined ? String(t.personalLateRate) : '');
                               setEditPersonalEarlyRate(t.personalEarlyRate !== null && t.personalEarlyRate !== undefined ? String(t.personalEarlyRate) : '');
                               setEditPersonalAbsentRate(t.personalAbsentRate !== null && t.personalAbsentRate !== undefined ? String(t.personalAbsentRate) : '');
+                              setEditTdsOverridePercent(t.personalTdsRate !== null && t.personalTdsRate !== undefined ? String(t.personalTdsRate) : '');
+                              setEditOtherAdditions(String(t.otherAdditions || 0));
+                              setEditOtherDeductions(String(t.otherDeductions || 0));
+                              setEditPersonalLateDeductionType(t.personalLateDeductionType || '');
+                              setEditPersonalLateIntervalValue(t.personalLateIntervalValue !== null && t.personalLateIntervalValue !== undefined ? String(t.personalLateIntervalValue) : '');
+                              setEditPersonalEarlyDeductionType(t.personalEarlyDeductionType || '');
+                              setEditPersonalEarlyIntervalValue(t.personalEarlyIntervalValue !== null && t.personalEarlyIntervalValue !== undefined ? String(t.personalEarlyIntervalValue) : '');
                             }}
                             className="text-amber-400 hover:text-amber-200 transition-colors"
                             title="Edit Salary Settings"
@@ -7833,21 +7894,141 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                {/* ── Personal Deduction Type Overrides Section ── */}
+                <div className="border-t border-slate-800 pt-3 space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-purple-400 flex items-center gap-1">⏱️ Deduction Type Overrides</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Late Type</label>
+                      <select
+                        value={editPersonalLateDeductionType}
+                        onChange={(e) => setEditPersonalLateDeductionType(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="">Global Default</option>
+                        <option value="instance">Per Instance</option>
+                        <option value="minute">Per Minute</option>
+                        <option value="hour">Per Hour</option>
+                        <option value="interval">Per Interval</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Early Type</label>
+                      <select
+                        value={editPersonalEarlyDeductionType}
+                        onChange={(e) => setEditPersonalEarlyDeductionType(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="">Global Default</option>
+                        <option value="instance">Per Instance</option>
+                        <option value="minute">Per Minute</option>
+                        <option value="hour">Per Hour</option>
+                        <option value="interval">Per Interval</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {editPersonalLateDeductionType === 'interval' && (
+                      <div>
+                        <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Late Interval (Mins)</label>
+                        <input
+                          type="number"
+                          value={editPersonalLateIntervalValue}
+                          onChange={(e) => setEditPersonalLateIntervalValue(e.target.value)}
+                          placeholder="e.g. 15"
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    )}
+                    {editPersonalEarlyDeductionType === 'interval' && (
+                      <div className={editPersonalLateDeductionType !== 'interval' ? 'col-start-2' : ''}>
+                        <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Early Interval (Mins)</label>
+                        <input
+                          type="number"
+                          value={editPersonalEarlyIntervalValue}
+                          onChange={(e) => setEditPersonalEarlyIntervalValue(e.target.value)}
+                          placeholder="e.g. 15"
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── TDS & Other Adjustments ── */}
+                <div className="border-t border-slate-800 pt-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-sky-400 mb-2 flex items-center gap-1">📝 Adjustments & TDS</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">TDS (%)</label>
+                      <input 
+                        type="number" 
+                        step="0.1"
+                        value={editTdsOverridePercent}
+                        onChange={(e) => setEditTdsOverridePercent(e.target.value)}
+                        placeholder="Global (10%)"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Additions (₹)</label>
+                      <input 
+                        type="number" 
+                        value={editOtherAdditions}
+                        onChange={(e) => setEditOtherAdditions(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Deductions (₹)</label>
+                      <input 
+                        type="number" 
+                        value={editOtherDeductions}
+                        onChange={(e) => setEditOtherDeductions(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t border-slate-800">
                   <button 
                     type="button"
-                    onClick={() => setEditingTrainee(null)}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-3 rounded-lg text-xs font-semibold"
+                    onClick={() => {
+                      setEditPersonalLateRate('');
+                      setEditPersonalEarlyRate('');
+                      setEditPersonalAbsentRate('');
+                      setEditTdsOverridePercent('');
+                      setEditOtherAdditions('0');
+                      setEditOtherDeductions('0');
+                      setEditPersonalLateDeductionType('');
+                      setEditPersonalLateIntervalValue('');
+                      setEditPersonalEarlyDeductionType('');
+                      setEditPersonalEarlyIntervalValue('');
+                    }}
+                    className="text-amber-500 hover:text-amber-400 text-[10px] font-bold uppercase tracking-wider hover:underline"
                   >
-                    Cancel
+                    Clear All Overrides
                   </button>
-                  <button 
-                    type="submit"
-                    disabled={saving}
-                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white py-1.5 px-3 rounded-lg text-xs font-semibold"
-                  >
-                    {saving ? "Saving..." : "Save Settings"}
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      type="button"
+                      onClick={() => setEditingTrainee(null)}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-3 rounded-lg text-xs font-semibold"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit"
+                      disabled={saving}
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white py-1.5 px-3 rounded-lg text-xs font-semibold"
+                    >
+                      {saving ? "Saving..." : "Save Settings"}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
@@ -7943,9 +8124,9 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
       return;
     }
 
-    const grossEarnings = data.salaryData.basicSalary + data.salaryData.additions;
-    const grossDeductions = data.salaryData.totalDeduction;
-    const netTakeHome = data.salaryData.netSalary;
+    const grossEarnings = data.salaryData.grossEarnings;
+    const grossDeductions = data.salaryData.totalDeductions;
+    const netTakeHome = data.salaryData.netTakeHome;
 
     printWindow.document.write(`
       <html>
@@ -8276,7 +8457,7 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
                     ` : ''}
                     ${data.salaryData.tdsDeduction > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">TDS Deduction (10%)</span>
+                      <span class="item-name">TDS Deduction (${data.salaryData.tdsPercentage}%)</span>
                       <span class="item-value deduction">₹${data.salaryData.tdsDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
@@ -8426,15 +8607,23 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
                       <tbody className="divide-y divide-slate-800 text-slate-300">
                         <tr>
                           <td className="p-3">Basic Salary</td>
-                          <td className="p-3 text-right">₹{data.salaryData.basicSalary.toFixed(2)}</td>
+                          <td className="p-3 text-right">₹{data.salaryData.professionalFee.toFixed(2)}</td>
                         </tr>
-                        <tr>
-                          <td className="p-3">Arrears/Additions</td>
-                          <td className="p-3 text-right">₹{data.salaryData.additions.toFixed(2)}</td>
-                        </tr>
+                        {data.salaryData.trainingFee > 0 && (
+                          <tr>
+                            <td className="p-3">Training Fee</td>
+                            <td className="p-3 text-right">₹{data.salaryData.trainingFee.toFixed(2)}</td>
+                          </tr>
+                        )}
+                        {data.salaryData.otherAdditions > 0 && (
+                          <tr>
+                            <td className="p-3">Arrears/Additions</td>
+                            <td className="p-3 text-right">₹{data.salaryData.otherAdditions.toFixed(2)}</td>
+                          </tr>
+                        )}
                         <tr className="bg-slate-900/50 font-bold text-emerald-400">
                           <td className="p-3">Total Earnings (A)</td>
-                          <td className="p-3 text-right">₹{(data.salaryData.basicSalary + data.salaryData.additions).toFixed(2)}</td>
+                          <td className="p-3 text-right">₹{data.salaryData.grossEarnings.toFixed(2)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -8462,16 +8651,22 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
                           <td className="p-3 text-right">₹{data.salaryData.earlyDeduction.toFixed(2)}</td>
                         </tr>
                         <tr>
-                          <td className="p-3">Absent ({data.salaryData.absentCount} days)</td>
+                          <td className="p-3">Absent ({data.salaryData.absentDays} days)</td>
                           <td className="p-3 text-right">₹{data.salaryData.absentDeduction.toFixed(2)}</td>
                         </tr>
                         <tr>
                           <td className="p-3">Other Deductions</td>
                           <td className="p-3 text-right">₹{data.salaryData.otherDeductions.toFixed(2)}</td>
                         </tr>
+                        {data.salaryData.tdsDeduction > 0 && (
+                          <tr>
+                            <td className="p-3">TDS Deduction ({data.salaryData.tdsPercentage ?? 10}%)</td>
+                            <td className="p-3 text-right">₹{data.salaryData.tdsDeduction.toFixed(2)}</td>
+                          </tr>
+                        )}
                         <tr className="bg-slate-900/50 font-bold text-red-400">
                           <td className="p-3">Total Deductions (B)</td>
-                          <td className="p-3 text-right">₹{data.salaryData.totalDeduction.toFixed(2)}</td>
+                          <td className="p-3 text-right">₹{data.salaryData.totalDeductions.toFixed(2)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -8486,7 +8681,7 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
                   <p className="text-xs text-slate-400 mt-1">Total Earnings (A) minus Total Deductions (B)</p>
                 </div>
                 <div className="text-xl font-extrabold text-emerald-300">
-                  ₹{data.salaryData.netSalary.toFixed(2)}
+                  ₹{data.salaryData.netTakeHome.toFixed(2)}
                 </div>
               </div>
             </div>
