@@ -7425,7 +7425,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`${API}/admin/trainees/${editingTrainee.id}/salary`, {
+      await axios.put(`${API}/trainees/${editingTrainee.id}/salary`, {
         baseSalary: parseFloat(editBaseSalary) || 0,
         trainingFee: parseFloat(editTrainingFee) || 0,
         lateRate: editPersonalLateRate !== '' ? parseFloat(editPersonalLateRate) : null,
