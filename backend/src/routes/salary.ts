@@ -92,9 +92,9 @@ export const calculateTraineeSalaryData = async (
   const trainingFee = trainee.trainingFee || 0.0;
 
   // Deduction values
-  const lateRate = settings?.lateRate !== undefined ? settings.lateRate : 30.0;
-  const earlyRate = settings?.earlyRate !== undefined ? settings.earlyRate : 30.0;
-  const absentRateSetting = settings?.absentRate !== undefined ? settings.absentRate : 0.0;
+  const lateRate = trainee.lateRate !== null && trainee.lateRate !== undefined ? trainee.lateRate : (settings?.lateRate !== undefined ? settings.lateRate : 30.0);
+  const earlyRate = trainee.earlyRate !== null && trainee.earlyRate !== undefined ? trainee.earlyRate : (settings?.earlyRate !== undefined ? settings.earlyRate : 30.0);
+  const absentRateSetting = trainee.absentRate !== null && trainee.absentRate !== undefined ? trainee.absentRate : (settings?.absentRate !== undefined ? settings.absentRate : 0.0);
   const eligibleCLs = 1;
 
   const lateDeduction = lateInstances * lateRate;
@@ -140,6 +140,9 @@ export const calculateTraineeSalaryData = async (
     tdsDeduction,
     totalDeductions,
     netTakeHome,
+    personalLateRate: trainee.lateRate,
+    personalEarlyRate: trainee.earlyRate,
+    personalAbsentRate: trainee.absentRate,
     panNo: trainee.panNumber || '--',
     aadhaarNo: trainee.aadhaarNumber || '--'
   };
@@ -166,13 +169,16 @@ const checkSalarySlipsAccess = async (req: AuthRequest, res: any, next: () => vo
 router.put('/admin/trainees/:id/salary', authenticateToken, checkSalarySlipsAccess, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { baseSalary, trainingFee } = req.body;
+    const { baseSalary, trainingFee, lateRate, earlyRate, absentRate } = req.body;
     
     const user = await prisma.user.update({
       where: { id: parseInt(id as string) },
       data: {
         baseSalary: parseFloat(baseSalary) || 0.0,
-        trainingFee: parseFloat(trainingFee) || 0.0
+        trainingFee: parseFloat(trainingFee) || 0.0,
+        lateRate: (lateRate !== undefined && lateRate !== "" && lateRate !== null) ? parseFloat(lateRate) : null,
+        earlyRate: (earlyRate !== undefined && earlyRate !== "" && earlyRate !== null) ? parseFloat(earlyRate) : null,
+        absentRate: (absentRate !== undefined && absentRate !== "" && absentRate !== null) ? parseFloat(absentRate) : null
       }
     });
 

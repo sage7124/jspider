@@ -6887,6 +6887,9 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [editingTrainee, setEditingTrainee] = useState<any | null>(null);
   const [editBaseSalary, setEditBaseSalary] = useState('');
   const [editTrainingFee, setEditTrainingFee] = useState('');
+  const [editPersonalLateRate, setEditPersonalLateRate] = useState('');
+  const [editPersonalEarlyRate, setEditPersonalEarlyRate] = useState('');
+  const [editPersonalAbsentRate, setEditPersonalAbsentRate] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Fetch trainees list
@@ -6958,7 +6961,10 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
       const token = localStorage.getItem('token');
       await axios.put(`${API}/admin/trainees/${editingTrainee.id}/salary`, {
         baseSalary: parseFloat(editBaseSalary) || 0,
-        trainingFee: parseFloat(editTrainingFee) || 0
+        trainingFee: parseFloat(editTrainingFee) || 0,
+        lateRate: editPersonalLateRate !== '' ? parseFloat(editPersonalLateRate) : null,
+        earlyRate: editPersonalEarlyRate !== '' ? parseFloat(editPersonalEarlyRate) : null,
+        absentRate: editPersonalAbsentRate !== '' ? parseFloat(editPersonalAbsentRate) : null
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -7122,6 +7128,9 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                               setEditingTrainee(t);
                               setEditBaseSalary(String(t.professionalFee || 0));
                               setEditTrainingFee(String(t.trainingFee || 0));
+                              setEditPersonalLateRate(t.personalLateRate !== null && t.personalLateRate !== undefined ? String(t.personalLateRate) : '');
+                              setEditPersonalEarlyRate(t.personalEarlyRate !== null && t.personalEarlyRate !== undefined ? String(t.personalEarlyRate) : '');
+                              setEditPersonalAbsentRate(t.personalAbsentRate !== null && t.personalAbsentRate !== undefined ? String(t.personalAbsentRate) : '');
                             }}
                             className="text-amber-400 hover:text-amber-200 transition-colors"
                             title="Edit Salary Settings"
@@ -7148,7 +7157,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         {/* Inline Dialog popup for editing salary */}
         {editingTrainee && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
-            <div className="bg-slate-900 border border-slate-700 text-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
+            <div className="bg-slate-900 border border-slate-700 text-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center border-b border-slate-700 pb-3">
                 <h3 className="font-bold text-slate-200 flex items-center gap-2">
                   <Settings size={16} className="text-amber-400" />
@@ -7168,27 +7177,71 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
               </div>
 
               <form onSubmit={handleSaveSalary} className="space-y-4">
+                {/* ── Earnings Section ── */}
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Professional Fee (Base Salary)</label>
-                  <input 
-                    type="number" 
-                    value={editBaseSalary}
-                    onChange={(e) => setEditBaseSalary(e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1">💰 Earnings</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Professional Fee (Base Salary)</label>
+                      <input 
+                        type="number" 
+                        value={editBaseSalary}
+                        onChange={(e) => setEditBaseSalary(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Training Fee (College/Other)</label>
+                      <input 
+                        type="number" 
+                        value={editTrainingFee}
+                        onChange={(e) => setEditTrainingFee(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Training Fee (College/Other)</label>
-                  <input 
-                    type="number" 
-                    value={editTrainingFee}
-                    onChange={(e) => setEditTrainingFee(e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    required
-                  />
+
+                {/* ── Personal Deduction Rate Overrides Section ── */}
+                <div className="border-t border-slate-800 pt-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1">⚡ Personal Penalty Rate Overrides</h4>
+                  <p className="text-[9px] text-slate-500 mb-2 italic">Leave blank to use the global/common rate. Set a value to override for this person only.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Late (₹)</label>
+                      <input 
+                        type="number" 
+                        value={editPersonalLateRate}
+                        onChange={(e) => setEditPersonalLateRate(e.target.value)}
+                        placeholder="Global"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Early (₹)</label>
+                      <input 
+                        type="number" 
+                        value={editPersonalEarlyRate}
+                        onChange={(e) => setEditPersonalEarlyRate(e.target.value)}
+                        placeholder="Global"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Absent (₹)</label>
+                      <input 
+                        type="number" 
+                        value={editPersonalAbsentRate}
+                        onChange={(e) => setEditPersonalAbsentRate(e.target.value)}
+                        placeholder="Global"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
