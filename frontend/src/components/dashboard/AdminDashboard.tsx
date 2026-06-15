@@ -6892,15 +6892,32 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [editPersonalAbsentRate, setEditPersonalAbsentRate] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Global rates state
+  const [showGlobalRates, setShowGlobalRates] = useState(false);
+  const [globalLateRate, setGlobalLateRate] = useState(30);
+  const [globalEarlyRate, setGlobalEarlyRate] = useState(30);
+  const [globalAbsentRate, setGlobalAbsentRate] = useState(0);
+  const [savingGlobal, setSavingGlobal] = useState(false);
+
   // Fetch trainees list
   const fetchTraineesList = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/payslip/list?month=${month}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setTrainees(res.data);
+      const [listRes, settingsRes] = await Promise.all([
+        axios.get(`${API}/reports/payslip/list?month=${month}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API}/settings`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+      setTrainees(listRes.data);
+      if (settingsRes.data) {
+        setGlobalLateRate(settingsRes.data.lateRate !== undefined ? settingsRes.data.lateRate : 30);
+        setGlobalEarlyRate(settingsRes.data.earlyRate !== undefined ? settingsRes.data.earlyRate : 30);
+        setGlobalAbsentRate(settingsRes.data.absentRate !== undefined ? settingsRes.data.absentRate : 0);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -6980,6 +6997,27 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
   const totalSpent = trainees.reduce((sum, t) => sum + (t.netTakeHome || 0), 0);
 
+  // Save global rates
+  const handleSaveGlobalRates = async () => {
+    setSavingGlobal(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`${API}/settings`, {
+        lateRate: globalLateRate,
+        earlyRate: globalEarlyRate,
+        absentRate: globalAbsentRate
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Global deduction rates updated!');
+      fetchTraineesList(); // Refresh to recalculate with new rates
+    } catch (err) {
+      alert('Failed to update global rates');
+    } finally {
+      setSavingGlobal(false);
+    }
+  };
+
   const filteredTrainees = trainees.filter(t => 
     t.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (t.empCode && t.empCode.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -7027,7 +7065,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
               />
             </div>
 
-            {/* Actions: Excel Export & Search */}
+            {/* Actions: Excel Export & Global Rates */}
             <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/40 flex flex-col justify-center gap-2">
               <button 
                 onClick={handleExportAll}
@@ -7036,6 +7074,13 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
               >
                 <FileSpreadsheet size={14} />
                 Export Monthly Report (Excel)
+              </button>
+              <button 
+                onClick={() => setShowGlobalRates(!showGlobalRates)}
+                className={`w-full ${showGlobalRates ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-700 hover:bg-slate-600'} transition-colors py-2 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5`}
+              >
+                <Settings size={14} />
+                {showGlobalRates ? 'Hide' : 'Show'} Global Deduction Rates
               </button>
             </div>
 
@@ -7052,6 +7097,40 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
               className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
+
+          {/* Global Deduction Rates Panel */}
+          {showGlobalRates && (
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mt-3 mb-1">
+              <h4 className="text-[10px] font-black uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-1.5">
+                🌐 Global / Common Deduction Rates (applies to all employees unless overridden personally)
+              </h4>
+              <div className="grid grid-cols-4 gap-3 items-end">
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Late Arrival (₹ per instance)</label>
+                  <input type="number" value={globalLateRate} onChange={e => setGlobalLateRate(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Early Checkout (₹ per instance)</label>
+                  <input type="number" value={globalEarlyRate} onChange={e => setGlobalEarlyRate(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Absent (₹ per day, 0=auto)</label>
+                  <input type="number" value={globalAbsentRate} onChange={e => setGlobalAbsentRate(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                </div>
+                <button 
+                  onClick={handleSaveGlobalRates}
+                  disabled={savingGlobal}
+                  className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white py-1.5 px-3 rounded-lg text-xs font-bold transition-colors h-fit"
+                >
+                  {savingGlobal ? 'Saving...' : 'Save Global Rates'}
+                </button>
+              </div>
+              <p className="text-[9px] text-slate-500 mt-2 italic">* Absent Rate = 0 means deduction is calculated as (Base Salary / Days in Month) per absent day. Personal overrides on individual employees take priority over these global rates.</p>
+            </div>
+          )}
         </div>
 
         {/* Content Table */}
