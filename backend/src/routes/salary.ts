@@ -1021,41 +1021,38 @@ router.get('/admin/reports/payslip/export-all', authenticateToken, checkSalarySl
       traineesFilter.supervisors = { some: { id: req.user!.id } };
     }
 
-    const slips = await prisma.salarySlip.findMany({
-      where: {
-        month,
-        user: traineesFilter
-      },
-      include: {
-        user: true
-      },
-      orderBy: {
-        user: { fullName: 'asc' }
-      }
+    const trainees = await prisma.user.findMany({
+      where: traineesFilter,
+      orderBy: { fullName: 'asc' }
     });
+
+    const [year, mon] = month.split('-').map(Number);
+    const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+    const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+    const daysInMonth = new Date(year, mon, 0).getDate();
 
     const workbook = new exceljs.Workbook();
     const ws = workbook.addWorksheet(`Salary Slips ${month}`);
 
-    // Headers
+    // Headers updated for our detailed dynamic calculations
     ws.addRow([
       'Sl. No',
       'Employee Name',
       'Registration No',
       'Month',
-      'Basic Salary',
-      'HRA',
-      'Conveyance',
-      'Special Allowance',
-      'Other Allowance',
-      'Total Earnings',
-      'PF',
-      'Professional Tax',
-      'ESI',
-      'TDS',
-      'Other Deductions',
+      'Professional Fee (Basic)',
+      'Training Fee',
+      'Gross Earnings',
+      'Late Arrivals Count',
+      'Late Penalty (₹30/each)',
+      'Early Checkouts Count',
+      'Early Penalty (₹30/each)',
+      'Absent Days Count',
+      'Unexcused Leaves',
+      'Absenteeism Deduction',
+      'TDS (10%)',
       'Total Deductions',
-      'Net Salary'
+      'Net Salary (Take Home)'
     ]);
 
     // Style headers
@@ -1070,38 +1067,44 @@ router.get('/admin/reports/payslip/export-all', authenticateToken, checkSalarySl
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
-    slips.forEach((s, idx) => {
-      const totalEarnings = s.basicSalary + s.hra + s.conveyance + s.specialAllowance + s.otherAllowance;
-      const totalDeductions = s.pf + s.professionalTax + s.esi + s.tds + s.otherDeductions;
+    for (let idx = 0; idx < trainees.length; idx++) {
+      const t = trainees[idx];
+      const salData = await calculateTraineeSalaryData(t, year, mon, daysInMonth, startOfMonth, endOfMonth);
       ws.addRow([
         idx + 1,
-        s.user.fullName,
-        s.user.identifier,
-        s.month,
-        s.basicSalary,
-        s.hra,
-        s.conveyance,
-        s.specialAllowance,
-        s.otherAllowance,
-        totalEarnings,
-        s.pf,
-        s.professionalTax,
-        s.esi,
-        s.tds,
-        s.otherDeductions,
-        totalDeductions,
-        s.netSalary
+        t.fullName,
+        t.identifier,
+        month,
+        salData.professionalFee,
+        salData.trainingFee,
+        salData.grossEarnings,
+        salData.lateInstances,
+        salData.lateDeduction,
+        salData.earlyInstances,
+        salData.earlyDeduction,
+        salData.absentDays,
+        salData.unexcusedLeaves,
+        salData.absentDeduction,
+        salData.tdsDeduction,
+        salData.totalDeductions,
+        salData.netTakeHome
       ]);
-    });
+    }
 
     // Formatting numbers
     ws.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return;
-      for (let c = 5; c <= 17; c++) {
+      // Currency columns: 5, 6, 7, 9, 11, 14, 15, 16, 17
+      [5, 6, 7, 9, 11, 14, 15, 16, 17].forEach(c => {
         const cell = row.getCell(c);
         cell.numFmt = '"₹"#,##0';
         cell.alignment = { horizontal: 'right' };
-      }
+      });
+      // Center align count columns: 8, 10, 12, 13
+      [8, 10, 12, 13].forEach(c => {
+        const cell = row.getCell(c);
+        cell.alignment = { horizontal: 'center' };
+      });
       row.getCell(1).alignment = { horizontal: 'center' };
       row.getCell(4).alignment = { horizontal: 'center' };
     });

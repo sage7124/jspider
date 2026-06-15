@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX, UserCheck, FileSpreadsheet, Upload, Plus } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX, UserCheck, FileSpreadsheet, Upload, Plus, Settings, Search } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -6839,45 +6839,24 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const [trainees, setTrainees] = useState<any[]>([]);
-  const [slips, setSlips] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Manual form state
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [basicSalary, setBasicSalary] = useState('');
-  const [hra, setHra] = useState('');
-  const [conveyance, setConveyance] = useState('');
-  const [specialAllowance, setSpecialAllowance] = useState('');
-  const [otherAllowance, setOtherAllowance] = useState('');
-  const [pf, setPf] = useState('');
-  const [professionalTax, setProfessionalTax] = useState('');
-  const [esi, setEsi] = useState('');
-  const [tds, setTds] = useState('');
-  const [otherDeductions, setOtherDeductions] = useState('');
+  // Editing state
+  const [editingTrainee, setEditingTrainee] = useState<any | null>(null);
+  const [editBaseSalary, setEditBaseSalary] = useState('');
+  const [editTrainingFee, setEditTrainingFee] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  // Fetch trainees list for manual selector
+  // Fetch trainees list
   const fetchTraineesList = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API}/reports/payslip/list?month=${month}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTrainees(res.data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Fetch stored slips
-  const fetchStoredSlips = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/salary-slips?month=${month}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSlips(res.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -6887,91 +6866,25 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
   useEffect(() => {
     fetchTraineesList();
-    fetchStoredSlips();
   }, [month]);
 
-  // Handle manual slip save
-  const handleSaveManual = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUserId) {
-      alert("Please select a trainee");
-      return;
-    }
+  // Handle individual export
+  const handleExportIndividual = async (userId: number, fullName: string) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API}/salary-slips`, {
-        userId: parseInt(selectedUserId),
-        month,
-        basicSalary: parseFloat(basicSalary) || 0,
-        hra: parseFloat(hra) || 0,
-        conveyance: parseFloat(conveyance) || 0,
-        specialAllowance: parseFloat(specialAllowance) || 0,
-        otherAllowance: parseFloat(otherAllowance) || 0,
-        pf: parseFloat(pf) || 0,
-        professionalTax: parseFloat(professionalTax) || 0,
-        esi: parseFloat(esi) || 0,
-        tds: parseFloat(tds) || 0,
-        otherDeductions: parseFloat(otherDeductions) || 0
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
+      const res = await axios.get(`${API}/reports/payslip/export/${userId}?month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
       });
-      alert("Salary slip saved successfully!");
-      fetchStoredSlips();
-      // Reset manual form except trainee/month
-      setBasicSalary('');
-      setHra('');
-      setConveyance('');
-      setSpecialAllowance('');
-      setOtherAllowance('');
-      setPf('');
-      setProfessionalTax('');
-      setEsi('');
-      setTds('');
-      setOtherDeductions('');
-    } catch (e: any) {
-      alert(e.response?.data?.error || "Failed to save salary slip");
-    }
-  };
-
-  // Handle bulk upload
-  const handleBulkUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!uploadFile) {
-      alert("Please select an Excel file to upload");
-      return;
-    }
-    const formData = new FormData();
-    formData.append('file', uploadFile);
-    formData.append('month', month);
-
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post(`${API}/salary-slips/upload`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      alert(res.data.message || "Upload successful!");
-      setUploadFile(null);
-      fetchStoredSlips();
-    } catch (e: any) {
-      alert(e.response?.data?.error || "Bulk upload failed");
-    }
-  };
-
-  // Handle delete slip
-  const handleDeleteSlip = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this salary slip?")) return;
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API}/salary-slips/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      alert("Salary slip deleted!");
-      fetchStoredSlips();
-    } catch (e: any) {
-      alert(e.response?.data?.error || "Failed to delete salary slip");
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `PaySlip_${fullName.replace(/\s+/g, '_')}_${month}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert("Download failed");
     }
   };
 
@@ -6995,41 +6908,35 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
     }
   };
 
-  // Handle individual export
-  const handleExportIndividual = async (userId: number, fullName: string) => {
+  // Save updated salary variables
+  const handleSaveSalary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTrainee) return;
+    setSaving(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/payslip/export/${userId}?month=${month}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob'
+      await axios.put(`${API}/admin/trainees/${editingTrainee.id}/salary`, {
+        baseSalary: parseFloat(editBaseSalary) || 0,
+        trainingFee: parseFloat(editTrainingFee) || 0
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `PaySlip_${fullName.replace(/\s+/g, '_')}_${month}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (e) {
-      alert("Download failed");
+      alert("Salary settings updated successfully!");
+      setEditingTrainee(null);
+      fetchTraineesList();
+    } catch (err: any) {
+      alert(err.response?.data?.error || "Failed to update salary settings");
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Calculated net salary for manual entry preview
-  const previewNetSalary = () => {
-    const basic = parseFloat(basicSalary) || 0;
-    const hraVal = parseFloat(hra) || 0;
-    const conv = parseFloat(conveyance) || 0;
-    const spec = parseFloat(specialAllowance) || 0;
-    const othAllow = parseFloat(otherAllowance) || 0;
-    const pfVal = parseFloat(pf) || 0;
-    const ptVal = parseFloat(professionalTax) || 0;
-    const esiVal = parseFloat(esi) || 0;
-    const tdsVal = parseFloat(tds) || 0;
-    const othDed = parseFloat(otherDeductions) || 0;
+  const totalSpent = trainees.reduce((sum, t) => sum + (t.netTakeHome || 0), 0);
 
-    return (basic + hraVal + conv + spec + othAllow) - (pfVal + ptVal + esiVal + tdsVal + othDed);
-  };
+  const filteredTrainees = trainees.filter(t => 
+    t.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (t.empCode && t.empCode.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -7040,8 +6947,8 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
           <div className="flex items-center gap-3">
             <span className="text-2xl">💵</span>
             <div>
-              <h2 className="text-xl font-bold tracking-wide text-emerald-400">Salary Slips Management</h2>
-              <p className="text-xs text-slate-400">Add, upload, view and download monthly payroll statements</p>
+              <h2 className="text-xl font-bold tracking-wide text-emerald-400">Salary Slips & Payroll Management</h2>
+              <p className="text-xs text-slate-400">View real-time auto-generated payroll statements and configure employee base parameters</p>
             </div>
           </div>
           <button 
@@ -7052,275 +6959,211 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
           </button>
         </div>
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 bg-slate-950/20">
-          
-          {/* Left Panel: Configuration & Actions */}
-          <div className="lg:col-span-5 space-y-6">
+        {/* Top Control Bar & Stats */}
+        <div className="px-6 pt-6 pb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             
-            {/* Month Filter card */}
-            <div className="p-5 rounded-xl border border-slate-700/60 bg-slate-800/40 shadow-sm">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Select Month</label>
+            {/* Stat: Total Spent */}
+            <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col justify-center shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Spent / Net Payout (This Month)</span>
+              <div className="text-2xl font-extrabold text-emerald-400 mt-1">₹ {totalSpent.toLocaleString('en-IN')}</div>
+            </div>
+
+            {/* Selector: Select Month */}
+            <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/40 flex flex-col justify-center">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Select Month</label>
               <input 
                 type="month" 
                 value={month} 
                 onChange={(e) => setMonth(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-white font-medium"
+                className="bg-slate-950 border border-slate-700 rounded-lg py-1 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-white font-medium text-xs w-full"
               />
             </div>
 
-            {/* Bulk Upload panel */}
-            <div className="p-5 rounded-xl border border-slate-700/60 bg-slate-800/40 shadow-sm space-y-3">
-              <h3 className="text-sm font-bold text-slate-300 flex items-center gap-2">
-                <Upload size={16} className="text-emerald-400" />
-                Bulk Upload Salary Slips (Excel)
-              </h3>
-              <p className="text-xs text-slate-400">
-                Excel columns should contain: <code className="text-emerald-400 bg-slate-950 px-1 rounded">Registration No</code>, Basic Salary, HRA, Conveyance, Special Allowance, Other Allowance, PF, Professional Tax, ESI, TDS, Other Deductions.
-              </p>
-              
-              <form onSubmit={handleBulkUpload} className="space-y-3 pt-1">
-                <input 
-                  type="file" 
-                  accept=".xlsx,.xls"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                  className="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-white hover:file:bg-slate-600 cursor-pointer"
-                />
-                <button 
-                  type="submit" 
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 transition-colors py-2 rounded-lg font-semibold text-xs flex justify-center items-center gap-2 shadow-lg"
-                >
-                  <Upload size={14} />
-                  Process Upload
-                </button>
-              </form>
-            </div>
-
-            {/* Manual Form panel */}
-            <form onSubmit={handleSaveManual} className="p-5 rounded-xl border border-slate-700/60 bg-slate-800/40 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-slate-300 flex items-center gap-2">
-                <Plus size={16} className="text-emerald-400" />
-                Manually Add / Update Slip
-              </h3>
-              
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Trainee / Employee</label>
-                  <select 
-                    value={selectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 text-white"
-                  >
-                    <option value="">-- Select Employee --</option>
-                    {trainees.map(t => (
-                      <option key={t.id} value={t.id}>{t.fullName} ({t.empCode || t.id})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Basic Salary</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={basicSalary}
-                      onChange={(e) => setBasicSalary(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">HRA</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={hra}
-                      onChange={(e) => setHra(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Conveyance</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={conveyance}
-                      onChange={(e) => setConveyance(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Special Allowance</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={specialAllowance}
-                      onChange={(e) => setSpecialAllowance(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Other Allowance</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={otherAllowance}
-                      onChange={(e) => setOtherAllowance(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">PF Deduction</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={pf}
-                      onChange={(e) => setPf(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Professional Tax</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={professionalTax}
-                      onChange={(e) => setProfessionalTax(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">ESI Deduction</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={esi}
-                      onChange={(e) => setEsi(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">TDS</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={tds}
-                      onChange={(e) => setTds(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Other Deductions</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={otherDeductions}
-                      onChange={(e) => setOtherDeductions(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Net Salary Preview */}
-              <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-800 flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-400">Net Salary Preview:</span>
-                <span className="font-extrabold text-emerald-400 text-sm">₹ {previewNetSalary().toLocaleString('en-IN')}</span>
-              </div>
-
-              <button 
-                type="submit" 
-                className="w-full bg-emerald-600 hover:bg-emerald-700 transition-colors py-2 rounded-lg font-semibold text-xs flex justify-center items-center gap-2 shadow-lg"
-              >
-                <Plus size={14} />
-                Save Salary Slip
-              </button>
-            </form>
-          </div>
-
-          {/* Right Panel: Stored Slips List Table */}
-          <div className="lg:col-span-7 flex flex-col border border-slate-700/60 rounded-xl bg-slate-800/20 shadow-sm overflow-hidden h-[60vh] lg:h-auto">
-            
-            {/* Table Controls */}
-            <div className="p-4 border-b border-slate-700 bg-slate-800/40 flex flex-col sm:flex-row justify-between items-center gap-3">
-              <div>
-                <h3 className="text-sm font-bold text-slate-200">Generated Payroll Slips ({slips.length})</h3>
-                <p className="text-xs text-slate-400">Current showing slips for {month}</p>
-              </div>
+            {/* Actions: Excel Export & Search */}
+            <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/40 flex flex-col justify-center gap-2">
               <button 
                 onClick={handleExportAll}
-                disabled={slips.length === 0}
-                className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-colors py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md"
+                disabled={trainees.length === 0}
+                className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-colors py-2 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md"
               >
                 <FileSpreadsheet size={14} />
                 Export Monthly Report (Excel)
               </button>
             </div>
 
-            {/* Table View */}
-            <div className="flex-1 overflow-auto">
-              {loading ? (
-                <div className="h-full flex justify-center items-center text-xs text-slate-400">Loading slips...</div>
-              ) : slips.length === 0 ? (
-                <div className="h-full flex flex-col justify-center items-center text-xs text-slate-500 py-12">
-                  <span className="text-4xl mb-2">📭</span>
-                  <span>No salary slips uploaded for this month.</span>
-                </div>
-              ) : (
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-900 text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-800">
-                      <th className="py-3 px-4">Employee</th>
-                      <th className="py-3 px-4 text-right">Basic</th>
-                      <th className="py-3 px-4 text-right">TDS / PF</th>
-                      <th className="py-3 px-4 text-right">Net Takehome</th>
-                      <th className="py-3 px-4 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {slips.map(s => (
-                      <tr key={s.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-slate-200">{s.user.fullName}</div>
-                          <div className="text-[10px] text-slate-400">{s.user.identifier}</div>
-                        </td>
-                        <td className="py-3 px-4 text-right text-slate-300">
-                          ₹{s.basicSalary.toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-3 px-4 text-right text-slate-400">
-                          ₹{s.tds.toLocaleString('en-IN')} / ₹{s.pf.toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-3 px-4 text-right text-emerald-400 font-bold">
-                          ₹{s.netSalary.toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex justify-center items-center gap-2.5">
-                            <button 
-                              onClick={() => handleExportIndividual(s.userId, s.user.fullName)}
-                              className="text-teal-400 hover:text-teal-200 transition-colors"
-                              title="Download Payslip"
-                            >
-                              <Download size={15} />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteSlip(s.id)}
-                              className="text-red-400 hover:text-red-300 transition-colors"
-                              title="Delete Slip"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            
           </div>
 
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Search employee by name or registration number..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
         </div>
+
+        {/* Content Table */}
+        <div className="flex-1 overflow-auto px-6 pb-6">
+          <div className="border border-slate-700/60 rounded-xl bg-slate-800/20 overflow-hidden">
+            {loading ? (
+              <div className="h-48 flex justify-center items-center text-xs text-slate-400">
+                <div className="flex flex-col items-center gap-2">
+                  <span className="text-2xl animate-spin">🔄</span>
+                  <span>Calculating payroll statistics...</span>
+                </div>
+              </div>
+            ) : filteredTrainees.length === 0 ? (
+              <div className="h-48 flex flex-col justify-center items-center text-xs text-slate-500">
+                <span className="text-4xl mb-2">📭</span>
+                <span>No employees matching the criteria found.</span>
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-slate-400 uppercase font-semibold text-[9px] tracking-wider border-b border-slate-800">
+                    <th className="py-3 px-4">Employee / Teacher</th>
+                    <th className="py-3 px-4 text-right">Professional Fee</th>
+                    <th className="py-3 px-4 text-right">Training Fee</th>
+                    <th className="py-3 px-4 text-center">Late Penalty</th>
+                    <th className="py-3 px-4 text-center">Early Penalty</th>
+                    <th className="py-3 px-4 text-center">Absent Penalty</th>
+                    <th className="py-3 px-4 text-right">TDS (10%)</th>
+                    <th className="py-3 px-4 text-right font-bold border-l border-slate-800">Net Takehome</th>
+                    <th className="py-3 px-4 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredTrainees.map(t => (
+                    <tr key={t.id} className="hover:bg-slate-800/20 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-200">{t.fullName}</div>
+                        <div className="text-[10px] text-slate-400">{t.empCode || t.id}</div>
+                      </td>
+                      <td className="py-3 px-4 text-right text-slate-300">
+                        ₹{(t.professionalFee || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-right text-slate-300">
+                        ₹{(t.trainingFee || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-slate-300 font-medium">{t.lateInstances} times</span>
+                        {t.lateDeduction > 0 && <span className="text-red-400 text-[10px] block">-₹{t.lateDeduction}</span>}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-slate-300 font-medium">{t.earlyInstances} times</span>
+                        {t.earlyDeduction > 0 && <span className="text-red-400 text-[10px] block">-₹{t.earlyDeduction}</span>}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="text-slate-300 font-medium">{t.absentDays} days</span>
+                        {t.absentDeduction > 0 && <span className="text-red-400 text-[10px] block">-₹{t.absentDeduction} ({t.unexcusedLeaves} unexcused)</span>}
+                      </td>
+                      <td className="py-3 px-4 text-right text-slate-400">
+                        ₹{(t.tdsDeduction || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-right text-emerald-400 font-extrabold text-sm border-l border-slate-800">
+                        ₹{(t.netTakeHome || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex justify-center items-center gap-3">
+                          <button 
+                            onClick={() => {
+                              setEditingTrainee(t);
+                              setEditBaseSalary(String(t.professionalFee || 0));
+                              setEditTrainingFee(String(t.trainingFee || 0));
+                            }}
+                            className="text-amber-400 hover:text-amber-200 transition-colors"
+                            title="Edit Salary Settings"
+                          >
+                            <Settings size={15} />
+                          </button>
+                          <button 
+                            onClick={() => handleExportIndividual(t.id, t.fullName)}
+                            className="text-teal-400 hover:text-teal-200 transition-colors"
+                            title="Download Pay Slip"
+                          >
+                            <Download size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Inline Dialog popup for editing salary */}
+        {editingTrainee && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
+            <div className="bg-slate-900 border border-slate-700 text-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 className="font-bold text-slate-200 flex items-center gap-2">
+                  <Settings size={16} className="text-amber-400" />
+                  Configure Salary Settings
+                </h3>
+                <button 
+                  onClick={() => setEditingTrainee(null)}
+                  className="p-1 rounded-full hover:bg-slate-700 text-slate-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-400">Configure salary settings for:</p>
+                <div className="font-bold text-sm text-white mt-0.5">{editingTrainee.fullName}</div>
+              </div>
+
+              <form onSubmit={handleSaveSalary} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Professional Fee (Base Salary)</label>
+                  <input 
+                    type="number" 
+                    value={editBaseSalary}
+                    onChange={(e) => setEditBaseSalary(e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Training Fee (College/Other)</label>
+                  <input 
+                    type="number" 
+                    value={editTrainingFee}
+                    onChange={(e) => setEditTrainingFee(e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                  <button 
+                    type="button"
+                    onClick={() => setEditingTrainee(null)}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-3 rounded-lg text-xs font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={saving}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white py-1.5 px-3 rounded-lg text-xs font-semibold"
+                  >
+                    {saving ? "Saving..." : "Save Settings"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
