@@ -1475,7 +1475,12 @@ router.get('/settings', async (req: AuthRequest, res) => {
 
 router.put('/settings', async (req: AuthRequest, res) => {
   try {
-    const { totalHolidaysQuota, lat, lng, radius, lat2, lng2, radius2, lateRate, earlyRate, absentRate } = req.body;
+    const { 
+      totalHolidaysQuota, lat, lng, radius, lat2, lng2, radius2, 
+      lateRate, lateDeductionType, lateIntervalValue,
+      earlyRate, earlyDeductionType, earlyIntervalValue,
+      absentRate 
+    } = req.body;
     
     // Get existing settings to preserve values
     const existing = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
@@ -1491,7 +1496,11 @@ router.put('/settings', async (req: AuthRequest, res) => {
         lng2: lng2 !== undefined ? lng2 : existing?.lng2,
         radius2: radius2 !== undefined ? radius2 : existing?.radius2,
         lateRate: lateRate !== undefined ? lateRate : existing?.lateRate,
+        lateDeductionType: lateDeductionType !== undefined ? lateDeductionType : existing?.lateDeductionType,
+        lateIntervalValue: lateIntervalValue !== undefined ? Number(lateIntervalValue) : existing?.lateIntervalValue,
         earlyRate: earlyRate !== undefined ? earlyRate : existing?.earlyRate,
+        earlyDeductionType: earlyDeductionType !== undefined ? earlyDeductionType : existing?.earlyDeductionType,
+        earlyIntervalValue: earlyIntervalValue !== undefined ? Number(earlyIntervalValue) : existing?.earlyIntervalValue,
         absentRate: absentRate !== undefined ? absentRate : existing?.absentRate
       },
       create: { 
@@ -1504,7 +1513,11 @@ router.put('/settings', async (req: AuthRequest, res) => {
         lng2: lng2 || 77.5946,
         radius2: radius2 || 500,
         lateRate: lateRate !== undefined ? lateRate : 30.0,
+        lateDeductionType: lateDeductionType || "instance",
+        lateIntervalValue: lateIntervalValue !== undefined ? Number(lateIntervalValue) : 15,
         earlyRate: earlyRate !== undefined ? earlyRate : 30.0,
+        earlyDeductionType: earlyDeductionType || "instance",
+        earlyIntervalValue: earlyIntervalValue !== undefined ? Number(earlyIntervalValue) : 15,
         absentRate: absentRate !== undefined ? absentRate : 0.0
       }
     });

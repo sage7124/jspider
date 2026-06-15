@@ -178,7 +178,11 @@ model InstituteSettings {
   radius2        Int      @default(500) // Meters
   totalHolidaysQuota Int    @default(0)
   lateRate       Float    @default(30.0)
+  lateDeductionType  String   @default("instance") // "instance", "minute", "hour", "interval"
+  lateIntervalValue  Int      @default(15)
   earlyRate      Float    @default(30.0)
+  earlyDeductionType String   @default("instance") // "instance", "minute", "hour", "interval"
+  earlyIntervalValue Int      @default(15)
   absentRate     Float    @default(0.0) // 0.0 means calculate dynamically based on daily rate (baseSalary / daysInMonth)
   updatedAt      DateTime @updatedAt
 }

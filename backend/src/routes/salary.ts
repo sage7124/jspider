@@ -97,8 +97,60 @@ export const calculateTraineeSalaryData = async (
   const absentRateSetting = trainee.absentRate !== null && trainee.absentRate !== undefined ? trainee.absentRate : (settings?.absentRate !== undefined ? settings.absentRate : 0.0);
   const eligibleCLs = 1;
 
-  const lateDeduction = lateInstances * lateRate;
-  const earlyDeduction = earlyInstances * earlyRate;
+  const lateDeductionType = settings?.lateDeductionType || "instance";
+  const lateIntervalValue = Math.max(1, settings?.lateIntervalValue || 15);
+  const earlyDeductionType = settings?.earlyDeductionType || "instance";
+  const earlyIntervalValue = Math.max(1, settings?.earlyIntervalValue || 15);
+
+  const totalLateMinutes = (report as any).totalLateMinutes || 0;
+  const totalEarlyMinutes = (report as any).totalEarlyMinutes || 0;
+
+  // Helper to parse "Xh Ym" or "Ym" or "0m" into total minutes
+  const parseMinutes = (str: string): number => {
+    if (!str || str === '0m' || str === '--' || str === 'ABSENT' || str === 'MISSING OUT') return 0;
+    let minutes = 0;
+    const hourMatch = str.match(/(\d+)h/);
+    const minMatch = str.match(/(\d+)m/);
+    if (hourMatch) minutes += parseInt(hourMatch[1]) * 60;
+    if (minMatch) minutes += parseInt(minMatch[1]);
+    return minutes;
+  };
+
+  let lateDeduction = 0;
+  if (lateDeductionType === 'instance') {
+    lateDeduction = lateInstances * lateRate;
+  } else if (lateDeductionType === 'minute') {
+    lateDeduction = totalLateMinutes * lateRate;
+  } else if (lateDeductionType === 'hour') {
+    lateDeduction = (totalLateMinutes / 60) * lateRate;
+  } else if (lateDeductionType === 'interval') {
+    report.rows.forEach(r => {
+      const dayLateMins = parseMinutes(r.late);
+      if (dayLateMins > 0) {
+        lateDeduction += Math.ceil(dayLateMins / lateIntervalValue) * lateRate;
+      }
+    });
+  }
+
+  let earlyDeduction = 0;
+  if (earlyDeductionType === 'instance') {
+    earlyDeduction = earlyInstances * earlyRate;
+  } else if (earlyDeductionType === 'minute') {
+    earlyDeduction = totalEarlyMinutes * earlyRate;
+  } else if (earlyDeductionType === 'hour') {
+    earlyDeduction = (totalEarlyMinutes / 60) * earlyRate;
+  } else if (earlyDeductionType === 'interval') {
+    report.rows.forEach(r => {
+      const dayEarlyMins = parseMinutes(r.earlyDeparture);
+      if (dayEarlyMins > 0) {
+        earlyDeduction += Math.ceil(dayEarlyMins / earlyIntervalValue) * earlyRate;
+      }
+    });
+  }
+
+  // Round deductions to nearest integer to avoid decimal precision issues in display
+  lateDeduction = Math.round(lateDeduction);
+  earlyDeduction = Math.round(earlyDeduction);
   
   // Absent calculation:
   // C/F (ULD) = B/F (ULD) - Absent + CL = 0 - absentDays + 1
@@ -118,9 +170,6 @@ export const calculateTraineeSalaryData = async (
 
   const totalDeductions = lateDeduction + earlyDeduction + absentDeduction + tdsDeduction;
   const netTakeHome = Math.max(0, grossEarnings - totalDeductions);
-
-  const totalLateMinutes = (report as any).totalLateMinutes || 0;
-  const totalEarlyMinutes = (report as any).totalEarlyMinutes || 0;
 
   return {
     professionalFee: baseSalary,
@@ -1151,6 +1200,53 @@ router.get('/admin/reports/payslip/export-all', authenticateToken, checkSalarySl
     res.end();
   } catch (error) {
     console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/salary-slips/my-slip
+router.get('/salary-slips/my-slip', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { month } = req.query;
+    if (!month || typeof month !== 'string') {
+      return res.status(400).json({ error: 'Month is required (format: YYYY-MM)' });
+    }
+
+    const userId = req.user!.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { slots: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const [year, mon] = month.split('-').map(Number);
+    const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+    const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+    const daysInMonth = new Date(year, mon, 0).getDate();
+
+    const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+
+    const salData = await calculateTraineeSalaryData(user, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
+
+    res.json({
+      user: {
+        fullName: user.fullName,
+        identifier: user.identifier,
+        role: user.role,
+        email: user.email,
+        bankName: user.bankName,
+        bankAccountNo: user.bankAccountNo,
+        bankIfscCode: user.bankIfscCode,
+        bankBranchName: user.bankBranchName,
+      },
+      month,
+      salaryData: salData
+    });
+  } catch (error) {
+    console.error('Error fetching own salary slip:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
