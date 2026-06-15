@@ -54,6 +54,8 @@ model User {
   permanentAddress       String?
   educationCompleted     String?
   subClassification      String?
+  baseSalary             Float        @default(0.0)
+  trainingFee            Float        @default(0.0)
   
   permissions            String       @default("RESET_PASSWORD,DIRECT_LEAVE,DOWNLOAD_REPORT")
   
@@ -76,6 +78,7 @@ model User {
   hasLeft                Boolean      @default(false)
   disableLogs            DisableLog[] @relation("UserDisableLogs")
   disabledByLogs         DisableLog[] @relation("AdminDisableLogs")
+  salarySlips            SalarySlip[]
 }
 
 model LeaveRequest {
@@ -310,3 +313,26 @@ model DisableLog {
   disabledById Int
   disabledBy   User      @relation("AdminDisableLogs", fields: [disabledById], references: [id], onDelete: Cascade)
 }
+
+model SalarySlip {
+  id               Int      @id @default(autoincrement())
+  userId           Int
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month            String   // Format: "YYYY-MM"
+  basicSalary      Float    @default(0.0)
+  hra              Float    @default(0.0)
+  conveyance       Float    @default(0.0)
+  specialAllowance Float    @default(0.0)
+  otherAllowance   Float    @default(0.0)
+  pf               Float    @default(0.0)
+  professionalTax  Float    @default(0.0)
+  esi              Float    @default(0.0)
+  tds              Float    @default(0.0)
+  otherDeductions  Float    @default(0.0)
+  netSalary        Float    @default(0.0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, month])
+}
+
