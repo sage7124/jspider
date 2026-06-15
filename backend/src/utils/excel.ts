@@ -314,6 +314,8 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       earlyDeparture: `${Math.floor(totalEarlyMinutes / 60)}h ${totalEarlyMinutes % 60}m`,
       extraWork: `${Math.floor(totalExtraMinutes / 60)}h ${totalExtraMinutes % 60}m`
     },
+    totalLateMinutes,
+    totalEarlyMinutes,
     assignedSlotNos,
     hasExtraSlots,
     hasSlot1: assignedSlotNos.includes(1),

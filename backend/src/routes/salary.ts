@@ -14,7 +14,8 @@ export const calculateTraineeSalaryData = async (
   mon: number,
   daysInMonth: number,
   startOfMonth: Date,
-  endOfMonth: Date
+  endOfMonth: Date,
+  passedSettings?: any
 ) => {
   // Fetch trainee's attendances, holidays, and approved leaves for this month
   const attendances = await prisma.attendance.findMany({
@@ -85,12 +86,15 @@ export const calculateTraineeSalaryData = async (
     }
   });
 
+  const settings = passedSettings || await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+
   const baseSalary = trainee.baseSalary || 0.0;
   const trainingFee = trainee.trainingFee || 0.0;
 
   // Deduction values
-  const lateRate = 30.0;
-  const earlyRate = 30.0;
+  const lateRate = settings?.lateRate !== undefined ? settings.lateRate : 30.0;
+  const earlyRate = settings?.earlyRate !== undefined ? settings.earlyRate : 30.0;
+  const absentRateSetting = settings?.absentRate !== undefined ? settings.absentRate : 0.0;
   const eligibleCLs = 1;
 
   const lateDeduction = lateInstances * lateRate;
@@ -103,7 +107,9 @@ export const calculateTraineeSalaryData = async (
   const unexcusedLeaves = cfLeaves < 0 ? Math.abs(cfLeaves) : 0;
 
   const dailyRate = daysInMonth > 0 ? (baseSalary / daysInMonth) : 0.0;
-  const absentDeduction = Math.round(dailyRate * unexcusedLeaves);
+  const absentDeduction = absentRateSetting > 0 
+    ? Math.round(absentRateSetting * unexcusedLeaves)
+    : Math.round(dailyRate * unexcusedLeaves);
 
   // TDS calculation: 10% of net earnings before tax
   const grossEarnings = baseSalary + trainingFee;
@@ -113,13 +119,18 @@ export const calculateTraineeSalaryData = async (
   const totalDeductions = lateDeduction + earlyDeduction + absentDeduction + tdsDeduction;
   const netTakeHome = Math.max(0, grossEarnings - totalDeductions);
 
+  const totalLateMinutes = (report as any).totalLateMinutes || 0;
+  const totalEarlyMinutes = (report as any).totalEarlyMinutes || 0;
+
   return {
     professionalFee: baseSalary,
     trainingFee,
     grossEarnings,
     lateInstances,
+    totalLateMinutes,
     lateDeduction,
     earlyInstances,
+    totalEarlyMinutes,
     earlyDeduction,
     absentDays,
     eligibleCLs,
@@ -195,9 +206,10 @@ router.get('/admin/reports/payslip/list', authenticateToken, checkSalarySlipsAcc
       orderBy: { fullName: 'asc' }
     });
 
+    const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
     const result = [];
     for (const t of trainees) {
-      const salData = await calculateTraineeSalaryData(t, year, mon, daysInMonth, startOfMonth, endOfMonth);
+      const salData = await calculateTraineeSalaryData(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
       result.push({
         id: t.id,
         fullName: t.fullName,
@@ -248,7 +260,8 @@ router.get('/admin/reports/payslip/export/:userId', authenticateToken, checkSala
     const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
     const daysInMonth = new Date(year, mon, 0).getDate();
 
-    const salData = await calculateTraineeSalaryData(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth);
+    const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+    const salData = await calculateTraineeSalaryData(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
 
     const storedSlip = await prisma.salarySlip.findUnique({
       where: {
@@ -1067,9 +1080,11 @@ router.get('/admin/reports/payslip/export-all', authenticateToken, checkSalarySl
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
     });
 
+    const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+
     for (let idx = 0; idx < trainees.length; idx++) {
       const t = trainees[idx];
-      const salData = await calculateTraineeSalaryData(t, year, mon, daysInMonth, startOfMonth, endOfMonth);
+      const salData = await calculateTraineeSalaryData(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
       ws.addRow([
         idx + 1,
         t.fullName,
@@ -1078,9 +1093,9 @@ router.get('/admin/reports/payslip/export-all', authenticateToken, checkSalarySl
         salData.professionalFee,
         salData.trainingFee,
         salData.grossEarnings,
-        salData.lateInstances,
+        `${salData.lateInstances} times (${salData.totalLateMinutes}m)`,
         salData.lateDeduction,
-        salData.earlyInstances,
+        `${salData.earlyInstances} times (${salData.totalEarlyMinutes}m)`,
         salData.earlyDeduction,
         salData.absentDays,
         salData.unexcusedLeaves,

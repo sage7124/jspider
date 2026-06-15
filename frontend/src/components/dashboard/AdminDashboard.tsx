@@ -2639,10 +2639,13 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
   );
 };
 
-// ── Holiday Management Modal ──────────────────────────────────────────────────
+// ── Holiday & System Settings Management Modal ────────────────────────────────
 const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; canManage: boolean }) => {
   const [holidays, setHolidays] = useState<any[]>([]);
   const [quota, setQuota] = useState(0);
+  const [lateRate, setLateRate] = useState(30);
+  const [earlyRate, setEarlyRate] = useState(30);
+  const [absentRate, setAbsentRate] = useState(0);
   const [newDate, setNewDate] = useState('');
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -2661,6 +2664,9 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
       ]);
       setHolidays(hRes.data);
       setQuota(sRes.data?.totalHolidaysQuota || 0);
+      setLateRate(sRes.data?.lateRate !== undefined ? sRes.data.lateRate : 30);
+      setEarlyRate(sRes.data?.earlyRate !== undefined ? sRes.data.earlyRate : 30);
+      setAbsentRate(sRes.data?.absentRate !== undefined ? sRes.data.absentRate : 0);
     } catch (err) {
       console.error(err);
     } finally {
@@ -2695,51 +2701,52 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
     }
   };
 
-  const handleUpdateQuota = async () => {
+  const handleUpdateSettings = async () => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`${API}/settings`, { totalHolidaysQuota: quota }, { headers: { Authorization: `Bearer ${token}` } });
-      alert('Holiday quota updated');
+      await axios.put(`${API}/settings`, { 
+        totalHolidaysQuota: quota,
+        lateRate,
+        earlyRate,
+        absentRate
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      alert('System settings updated successfully');
     } catch (err) {
       console.error('Update Quota Error:', err);
-      alert('Failed to update quota');
+      alert('Failed to update settings');
     }
   };
 
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl p-6 relative flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl p-6 relative flex flex-col max-h-[95vh]">
         <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
-        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-          <Calendar className="text-pink-600" /> Holiday Management
+        <h2 className="text-xl font-bold mb-5 flex items-center gap-2">
+          <Calendar className="text-pink-600" /> System Settings & Holiday Management
         </h2>
 
-        <div className={`grid ${canManage ? 'md:grid-cols-2' : 'grid-cols-1'} gap-8 mb-8`}>
-          <div className="bg-pink-50 p-4 rounded-lg border border-pink-100">
-            <h3 className="text-sm font-bold text-pink-700 mb-4 uppercase tracking-wider">Holiday Quota</h3>
-            <div className="flex gap-2">
-              <input type="number" value={quota} onChange={e => setQuota(parseInt(e.target.value) || 0)} disabled={!canManage}
-                className="flex-1 border border-pink-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-pink-500 outline-none disabled:bg-gray-100 disabled:text-gray-500" />
-              {canManage && (
-                <button onClick={handleUpdateQuota} className="bg-pink-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-pink-700 transition-colors">
-                  Set Quota
-                </button>
-              )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="bg-pink-50 p-4 rounded-lg border border-pink-100 flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-black text-pink-700 mb-2 uppercase tracking-wider">Holiday Quota</h3>
+              <div className="flex gap-2">
+                <input type="number" value={quota} onChange={e => setQuota(parseInt(e.target.value) || 0)} disabled={!canManage}
+                  className="flex-1 border border-pink-200 rounded px-3 py-1.5 text-xs focus:ring-2 focus:ring-pink-500 outline-none disabled:bg-gray-100 disabled:text-gray-500" />
+              </div>
+              <p className="text-[9px] text-pink-600 mt-1 italic">Total holidays allowed for this session</p>
             </div>
-            <p className="text-[10px] text-pink-600 mt-2 italic font-medium">Total holidays allowed for this session</p>
           </div>
 
           {canManage && (
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <h3 className="text-sm font-bold text-gray-700 mb-4 uppercase tracking-wider">Add New Holiday</h3>
-              <div className="space-y-2">
+              <h3 className="text-xs font-black text-gray-700 mb-2 uppercase tracking-wider">Add New Holiday</h3>
+              <div className="space-y-1.5">
                 <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  className="w-full border border-gray-300 rounded px-3 py-1 text-xs focus:ring-2 focus:ring-blue-500 outline-none" />
                 <input type="text" placeholder="Holiday Name (e.g., Diwali)" value={newName} onChange={e => setNewName(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  className="w-full border border-gray-300 rounded px-3 py-1 text-xs focus:ring-2 focus:ring-blue-500 outline-none" />
                 <button onClick={handleAddHoliday} disabled={saving}
-                  className="w-full bg-blue-600 text-white py-1.5 rounded text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
+                  className="w-full bg-blue-600 text-white py-1 rounded text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
                   {saving ? 'Adding...' : 'Add Holiday'}
                 </button>
               </div>
@@ -2747,38 +2754,72 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-700">Scheduled Holidays ({holidays.length})</h3>
-            <span className="text-xs font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded">
+        {/* Deduction Rates card */}
+        <div className="bg-emerald-50/50 p-4 rounded-lg border border-emerald-100/60 mb-4">
+          <h3 className="text-xs font-black text-emerald-800 mb-3 uppercase tracking-wider flex items-center gap-1.5">
+            💸 Deduction & Penalty Rates Configuration
+          </h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Late Arrival (₹)</label>
+              <input type="number" value={lateRate} onChange={e => setLateRate(parseFloat(e.target.value) || 0)} disabled={!canManage}
+                className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Early Checkout (₹)</label>
+              <input type="number" value={earlyRate} onChange={e => setEarlyRate(parseFloat(e.target.value) || 0)} disabled={!canManage}
+                className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Absent Rate (₹)</label>
+              <input type="number" value={absentRate} onChange={e => setAbsentRate(parseFloat(e.target.value) || 0)} disabled={!canManage}
+                className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+            </div>
+          </div>
+          <div className="flex justify-between items-center mt-3 pt-2 border-t border-emerald-100">
+            <p className="text-[9px] text-emerald-700 italic">
+              * Enter 0 in Absent Rate to use dynamic daily base salary rate calculation (Base / Days).
+            </p>
+            {canManage && (
+              <button onClick={handleUpdateSettings} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1 rounded text-xs font-bold transition-colors">
+                Save System Settings
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto min-h-[150px]">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-bold text-gray-700 text-xs">Scheduled Holidays ({holidays.length})</h3>
+            <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
               Remaining: {Math.max(0, quota - holidays.length)}
             </span>
           </div>
-          {loading ? <p className="text-center py-10 text-gray-400">Loading...</p> : (
-            <table className="w-full text-sm text-left">
+          {loading ? <p className="text-center py-5 text-gray-400 text-xs">Loading...</p> : (
+            <table className="w-full text-xs text-left">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-4 py-3 font-semibold text-gray-600">Date</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600">Day</th>
-                  <th className="px-4 py-3 font-semibold text-gray-600">Holiday Name</th>
-                  {canManage && <th className="px-4 py-3 text-right">Action</th>}
+                  <th className="px-3 py-2 font-semibold text-gray-600">Date</th>
+                  <th className="px-3 py-2 font-semibold text-gray-600">Day</th>
+                  <th className="px-3 py-2 font-semibold text-gray-600">Holiday Name</th>
+                  {canManage && <th className="px-3 py-2 text-right">Action</th>}
                 </tr>
               </thead>
               <tbody>
                 {holidays.length === 0 ? (
-                  <tr><td colSpan={canManage ? 4 : 3} className="px-4 py-10 text-center text-gray-400">No holidays scheduled</td></tr>
+                  <tr><td colSpan={canManage ? 4 : 3} className="px-3 py-5 text-center text-gray-400">No holidays scheduled</td></tr>
                 ) : (
                   holidays.map((h) => {
                     const d = new Date(h.date);
                     return (
                       <tr key={h.id} className="border-b hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium">{d.toLocaleDateString()}</td>
-                        <td className="px-4 py-3 text-gray-500">{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</td>
-                        <td className="px-4 py-3 font-bold">{h.name}</td>
+                        <td className="px-3 py-2 font-medium">{d.toLocaleDateString()}</td>
+                        <td className="px-3 py-2 text-gray-500">{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</td>
+                        <td className="px-3 py-2 font-bold">{h.name}</td>
                         {canManage && (
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-3 py-2 text-right">
                             <button onClick={() => handleDeleteHoliday(h.id)} className="text-red-500 hover:text-red-700 p-1">
-                              <Trash2 size={16} />
+                              <Trash2 size={14} />
                             </button>
                           </td>
                         )}
@@ -7052,10 +7093,16 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="text-slate-300 font-medium">{t.lateInstances} times</span>
+                        {t.totalLateMinutes > 0 && (
+                          <span className="text-slate-400 text-[10px] block">({t.totalLateMinutes}m late)</span>
+                        )}
                         {t.lateDeduction > 0 && <span className="text-red-400 text-[10px] block">-₹{t.lateDeduction}</span>}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="text-slate-300 font-medium">{t.earlyInstances} times</span>
+                        {t.totalEarlyMinutes > 0 && (
+                          <span className="text-slate-400 text-[10px] block">({t.totalEarlyMinutes}m early)</span>
+                        )}
                         {t.earlyDeduction > 0 && <span className="text-red-400 text-[10px] block">-₹{t.earlyDeduction}</span>}
                       </td>
                       <td className="py-3 px-4 text-center">

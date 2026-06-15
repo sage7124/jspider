@@ -1475,7 +1475,7 @@ router.get('/settings', async (req: AuthRequest, res) => {
 
 router.put('/settings', async (req: AuthRequest, res) => {
   try {
-    const { totalHolidaysQuota, lat, lng, radius, lat2, lng2, radius2 } = req.body;
+    const { totalHolidaysQuota, lat, lng, radius, lat2, lng2, radius2, lateRate, earlyRate, absentRate } = req.body;
     
     // Get existing settings to preserve values
     const existing = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
@@ -1489,7 +1489,10 @@ router.put('/settings', async (req: AuthRequest, res) => {
         radius: radius !== undefined ? radius : existing?.radius,
         lat2: lat2 !== undefined ? lat2 : existing?.lat2,
         lng2: lng2 !== undefined ? lng2 : existing?.lng2,
-        radius2: radius2 !== undefined ? radius2 : existing?.radius2
+        radius2: radius2 !== undefined ? radius2 : existing?.radius2,
+        lateRate: lateRate !== undefined ? lateRate : existing?.lateRate,
+        earlyRate: earlyRate !== undefined ? earlyRate : existing?.earlyRate,
+        absentRate: absentRate !== undefined ? absentRate : existing?.absentRate
       },
       create: { 
         id: 1,
@@ -1499,7 +1502,10 @@ router.put('/settings', async (req: AuthRequest, res) => {
         radius: radius || 500,
         lat2: lat2 || 12.9716,
         lng2: lng2 || 77.5946,
-        radius2: radius2 || 500
+        radius2: radius2 || 500,
+        lateRate: lateRate !== undefined ? lateRate : 30.0,
+        earlyRate: earlyRate !== undefined ? earlyRate : 30.0,
+        absentRate: absentRate !== undefined ? absentRate : 0.0
       }
     });
     res.json(settings);
