@@ -11,6 +11,7 @@ const cors_1 = __importDefault(require("cors"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const attendance_1 = __importDefault(require("./routes/attendance"));
 const admin_1 = __importDefault(require("./routes/admin"));
+const salary_1 = __importDefault(require("./routes/salary"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5000;
 app.use((0, cors_1.default)());
@@ -19,6 +20,7 @@ app.use(express_1.default.json());
 app.use('/api/auth', auth_1.default);
 app.use('/api/attendance', attendance_1.default);
 app.use('/api/admin', admin_1.default);
+app.use('/api', salary_1.default);
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', environment: process.env.NODE_ENV });
 });

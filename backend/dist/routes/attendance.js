@@ -165,27 +165,40 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
             console.log(`[Punch] Trusted Master Kiosk detected (${isKioskDevice.name}).`);
         }
         // 🚀 Dynamic Geofence Check for INFINITE LOCATIONS
-        if (branches.length === 0) {
-            // Fallback to basic check if someone deleted all branches
-            return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Please contact Admin.' });
-        }
-        const validBranch = branches.find(branch => {
-            const distance = (0, geolib_1.getDistance)({ latitude: lat, longitude: lng }, { latitude: branch.lat, longitude: branch.lng });
-            return distance <= branch.radius;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const collegeVisitLog = await prisma.breakLog.findFirst({
+            where: {
+                userId,
+                date: today,
+                OR: [
+                    { bookletNo: { not: null } },
+                    { collegeName: { not: null } }
+                ]
+            }
         });
-        if (!validBranch) {
-            return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
+        let punchedBranchName = 'COLLEGE_VISIT';
+        if (!collegeVisitLog) {
+            if (branches.length === 0) {
+                // Fallback to basic check if someone deleted all branches
+                return res.status(403).json({ error: 'Institute geolocation boundaries are not set. Please contact Admin.' });
+            }
+            const validBranch = branches.find(branch => {
+                const distance = (0, geolib_1.getDistance)({ latitude: lat, longitude: lng }, { latitude: branch.lat, longitude: branch.lng });
+                return distance <= branch.radius;
+            });
+            if (!validBranch) {
+                return res.status(403).json({ error: 'You are outside all permitted institute branch premises.' });
+            }
+            const baseBranchCode = validBranch.branchCode || validBranch.name;
+            punchedBranchName = isKioskDevice ? `${baseBranchCode}, MOBILE` : baseBranchCode;
         }
-        const baseBranchCode = validBranch.branchCode || validBranch.name;
-        const punchedBranchName = isKioskDevice ? `${baseBranchCode}, MOBILE` : baseBranchCode;
         // 2. QR Token validation removed as requested by user
         /*
         if (!qrToken || qrToken.length < 5) {
           return res.status(400).json({ error: 'Invalid QR Code' });
         }
         */
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
         const now = new Date();
         const existing = await prisma.attendance.findUnique({
             where: { userId_date: { userId, date: today } }
@@ -320,6 +333,9 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
                 if (!existing?.inTime1) {
                     dataUpdate.inTime1 = now;
                     dataUpdate.inBranch1 = punchedBranchName;
+                    if (!existing?.realInTime1) {
+                        dataUpdate.realInTime1 = now;
+                    }
                 }
                 else {
                     dataUpdate.outTime1 = null;
@@ -330,6 +346,9 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
                 if (!existing?.inTime2) {
                     dataUpdate.inTime2 = now;
                     dataUpdate.inBranch2 = punchedBranchName;
+                    if (!existing?.realInTime2) {
+                        dataUpdate.realInTime2 = now;
+                    }
                 }
                 else {
                     dataUpdate.outTime2 = null;
@@ -340,6 +359,9 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
                 if (!existing?.inTime3) {
                     dataUpdate.inTime3 = now;
                     dataUpdate.inBranch3 = punchedBranchName;
+                    if (!existing?.realInTime3) {
+                        dataUpdate.realInTime3 = now;
+                    }
                 }
                 else {
                     dataUpdate.outTime3 = null;
@@ -349,6 +371,9 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
             if (activeSlotNo === 4) {
                 if (!existing?.inTime4) {
                     dataUpdate.inTime4 = now;
+                    if (!existing?.realInTime4) {
+                        dataUpdate.realInTime4 = now;
+                    }
                 }
                 else {
                     dataUpdate.outTime4 = null;
@@ -357,6 +382,9 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
             if (activeSlotNo === 5) {
                 if (!existing?.inTime5) {
                     dataUpdate.inTime5 = now;
+                    if (!existing?.realInTime5) {
+                        dataUpdate.realInTime5 = now;
+                    }
                 }
                 else {
                     dataUpdate.outTime5 = null;
@@ -372,20 +400,25 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
             if (activeSlotNo === 1) {
                 dataCreate.inTime1 = now;
                 dataCreate.inBranch1 = punchedBranchName;
+                dataCreate.realInTime1 = now;
             }
             if (activeSlotNo === 2) {
                 dataCreate.inTime2 = now;
                 dataCreate.inBranch2 = punchedBranchName;
+                dataCreate.realInTime2 = now;
             }
             if (activeSlotNo === 3) {
                 dataCreate.inTime3 = now;
                 dataCreate.inBranch3 = punchedBranchName;
+                dataCreate.realInTime3 = now;
             }
             if (activeSlotNo === 4) {
                 dataCreate.inTime4 = now;
+                dataCreate.realInTime4 = now;
             }
             if (activeSlotNo === 5) {
                 dataCreate.inTime5 = now;
+                dataCreate.realInTime5 = now;
             }
             await prisma.attendance.upsert({
                 where: { userId_date: { userId, date: today } },
@@ -404,20 +437,35 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
             if (activeSlotNo === 1) {
                 dataUpdate.outTime1 = now;
                 dataUpdate.outBranch1 = punchedBranchName;
+                if (!existing?.realOutTime1) {
+                    dataUpdate.realOutTime1 = now;
+                }
             }
             if (activeSlotNo === 2) {
                 dataUpdate.outTime2 = now;
                 dataUpdate.outBranch2 = punchedBranchName;
+                if (!existing?.realOutTime2) {
+                    dataUpdate.realOutTime2 = now;
+                }
             }
             if (activeSlotNo === 3) {
                 dataUpdate.outTime3 = now;
                 dataUpdate.outBranch3 = punchedBranchName;
+                if (!existing?.realOutTime3) {
+                    dataUpdate.realOutTime3 = now;
+                }
             }
             if (activeSlotNo === 4) {
                 dataUpdate.outTime4 = now;
+                if (!existing?.realOutTime4) {
+                    dataUpdate.realOutTime4 = now;
+                }
             }
             if (activeSlotNo === 5) {
                 dataUpdate.outTime5 = now;
+                if (!existing?.realOutTime5) {
+                    dataUpdate.realOutTime5 = now;
+                }
             }
             await prisma.attendance.update({
                 where: { userId_date: { userId, date: today } },

@@ -1212,6 +1212,30 @@ router.post('/force-logout/:id', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+router.get('/attendance-manual/:traineeId', async (req, res) => {
+    try {
+        const { traineeId } = req.params;
+        const { date } = req.query;
+        if (!date || typeof date !== 'string') {
+            return res.status(400).json({ error: 'Date is required' });
+        }
+        const targetDate = new Date(date);
+        targetDate.setHours(0, 0, 0, 0);
+        const attendance = await prisma.attendance.findUnique({
+            where: {
+                userId_date: {
+                    userId: Number(traineeId),
+                    date: targetDate
+                }
+            }
+        });
+        res.json(attendance || null);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 router.put('/attendance-manual/:traineeId', async (req, res) => {
     try {
         const { traineeId } = req.params;
@@ -2300,7 +2324,31 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
         else if (type === 'NORMAL') {
             filteredLogs = breakLogs.filter(b => !b.reason || !b.reason.startsWith('College Visit:'));
         }
+        const userIds = filteredLogs.map(b => b.userId);
+        const attendances = await prisma.attendance.findMany({
+            where: {
+                date: targetDate,
+                userId: { in: userIds }
+            }
+        });
         const result = filteredLogs.map(b => {
+            const att = attendances.find(a => a.userId === b.userId);
+            let punchIn = '--';
+            let punchOut = '--';
+            let punchDuration = '--';
+            if (att && att.inTime) {
+                punchIn = new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            if (att && att.outTime) {
+                punchOut = new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            if (att && att.inTime && att.outTime) {
+                const diffMs = new Date(att.outTime).getTime() - new Date(att.inTime).getTime();
+                const mins = Math.round(diffMs / 60000);
+                if (mins > 0) {
+                    punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
+                }
+            }
             const duration = b.breakIn
                 ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
                 : null;
@@ -2321,6 +2369,9 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
                     ? new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     : 'On Break',
                 duration: duration !== null ? `${duration} mins (${durationHrs} hrs)` : 'On Break',
+                punchIn,
+                punchOut,
+                punchDuration,
                 reason: b.reason || '--',
                 status: b.status,
                 // Structured fields for college visits
@@ -2420,6 +2471,13 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
             });
             targetUsersList = Array.from(uniqueUsersMap.values());
         }
+        const targetUserIds = targetUsersList.map(u => u.id);
+        const monthlyAttendances = await prisma.attendance.findMany({
+            where: {
+                date: { gte: startOfMonth, lte: endOfMonth },
+                userId: { in: targetUserIds }
+            }
+        });
         const workbook = new exceljs.Workbook();
         workbook.creator = 'Attendance System';
         if (targetUsersList.length === 0) {
@@ -2452,9 +2510,9 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         { key: 'fromTime', width: 15 },
                         { key: 'toTime', width: 15 },
                         { key: 'numberOfHours', width: 15 },
-                        { key: 'breakOut', width: 20 },
-                        { key: 'breakIn', width: 20 },
-                        { key: 'duration', width: 15 }
+                        { key: 'punchIn', width: 20 },
+                        { key: 'punchOut', width: 20 },
+                        { key: 'punchDuration', width: 15 }
                     ];
                 }
                 else {
@@ -2508,9 +2566,9 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         'From Time',
                         'To Time',
                         'No of hours',
-                        'Break Out Time',
-                        'Break In Time',
-                        'Duration'
+                        'Punch In Time',
+                        'Punch Out Time',
+                        'Punch Duration'
                     ];
                 }
                 else {
@@ -2536,6 +2594,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                 });
                 // Filter logs for this specific user
                 const userBreaks = filteredBreakLogs.filter(b => b.userId === user.id);
+                const userAttendances = monthlyAttendances.filter(a => a.userId === user.id);
                 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 let monthlyTotalMins = 0;
                 let monthlyTotalHours = 0;
@@ -2546,6 +2605,31 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                     const dateStr = `${day}/${mon}/${year}`;
                     // Format stable local timezone-immune date keys for comparison
                     const localDateKey = `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const dayAtt = userAttendances.find(a => {
+                        const aDate = new Date(a.date.getTime() + (5.5 * 60 * 60 * 1000));
+                        const aYear = aDate.getUTCFullYear();
+                        const aMonth = String(aDate.getUTCMonth() + 1).padStart(2, '0');
+                        const aDay = String(aDate.getUTCDate()).padStart(2, '0');
+                        return `${aYear}-${aMonth}-${aDay}` === localDateKey;
+                    });
+                    let punchInVal = '--';
+                    let punchOutVal = '--';
+                    let punchDurationVal = '--';
+                    let dailyPunchMins = 0;
+                    if (dayAtt && dayAtt.inTime) {
+                        punchInVal = new Date(dayAtt.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                    if (dayAtt && dayAtt.outTime) {
+                        punchOutVal = new Date(dayAtt.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                    if (dayAtt && dayAtt.inTime && dayAtt.outTime) {
+                        const diffMs = new Date(dayAtt.outTime).getTime() - new Date(dayAtt.inTime).getTime();
+                        dailyPunchMins = Math.round(diffMs / 60000);
+                        if (dailyPunchMins > 0) {
+                            const actualHrs = (dailyPunchMins / 60).toFixed(2);
+                            punchDurationVal = `${dailyPunchMins} mins (${actualHrs} hrs)`;
+                        }
+                    }
                     const dayBreaks = userBreaks.filter(b => {
                         const bDate = new Date(b.date.getTime() + (5.5 * 60 * 60 * 1000));
                         const bYear = bDate.getUTCFullYear();
@@ -2645,36 +2729,15 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         }
                     }
                     const rowData = type === 'COLLEGE_VISIT'
-                        ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, breakOutVal, breakInVal, '']
+                        ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, punchInVal, punchOutVal, punchDurationVal]
                         : [dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal];
                     const row = ws.addRow(rowData);
                     const durationColIndex = type === 'COLLEGE_VISIT' ? 13 : 5;
-                    if (dayBreaks.length > 0) {
-                        let totalMins = 0;
-                        let isOnBreak = false;
-                        dayBreaks.forEach((b) => {
-                            if (b.breakIn) {
-                                const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
-                                const mins = Math.round(diffMs / 60000);
-                                if (mins > 0)
-                                    totalMins += mins;
+                    if (type === 'COLLEGE_VISIT') {
+                        if (dayBreaks.length > 0) {
+                            if (dailyPunchMins > 0) {
+                                monthlyTotalMins += dailyPunchMins;
                             }
-                            else {
-                                isOnBreak = true;
-                            }
-                        });
-                        if (isOnBreak) {
-                            row.getCell(durationColIndex).value = 'On Break';
-                        }
-                        else if (totalMins > 0) {
-                            const actualHrs = (totalMins / 60).toFixed(2);
-                            row.getCell(durationColIndex).value = `${totalMins} mins (${actualHrs} hrs)`;
-                            monthlyTotalMins += totalMins;
-                        }
-                        else {
-                            row.getCell(durationColIndex).value = '--';
-                        }
-                        if (type === 'COLLEGE_VISIT') {
                             if (dayBreaks.length > 1) {
                                 row.getCell(10).value = numberOfHoursVal;
                             }
@@ -2693,11 +2756,39 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                                 row.getCell(10).value = '--';
                             }
                         }
+                        else {
+                            row.getCell(10).value = '--';
+                        }
                     }
                     else {
-                        row.getCell(durationColIndex).value = '--';
-                        if (type === 'COLLEGE_VISIT') {
-                            row.getCell(10).value = '--';
+                        if (dayBreaks.length > 0) {
+                            let totalMins = 0;
+                            let isOnBreak = false;
+                            dayBreaks.forEach((b) => {
+                                if (b.breakIn) {
+                                    const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
+                                    const mins = Math.round(diffMs / 60000);
+                                    if (mins > 0)
+                                        totalMins += mins;
+                                }
+                                else {
+                                    isOnBreak = true;
+                                }
+                            });
+                            if (isOnBreak) {
+                                row.getCell(durationColIndex).value = 'On Break';
+                            }
+                            else if (totalMins > 0) {
+                                const actualHrs = (totalMins / 60).toFixed(2);
+                                row.getCell(durationColIndex).value = `${totalMins} mins (${actualHrs} hrs)`;
+                                monthlyTotalMins += totalMins;
+                            }
+                            else {
+                                row.getCell(durationColIndex).value = '--';
+                            }
+                        }
+                        else {
+                            row.getCell(durationColIndex).value = '--';
                         }
                     }
                     row.eachCell((cell, colNumber) => {

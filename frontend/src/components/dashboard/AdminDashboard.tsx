@@ -1379,7 +1379,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
                           const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                           try {
                             const token = localStorage.getItem('token');
-                            const res = await axios.get(`${API}/admin/reports/payslip/export/${t.id}?month=${currentMonth}`, {
+                            const res = await axios.get(`${API}/reports/payslip/export/${t.id}?month=${currentMonth}`, {
                               headers: { Authorization: `Bearer ${token}` },
                               responseType: 'blob',
                             });
@@ -6856,14 +6856,11 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [tds, setTds] = useState('');
   const [otherDeductions, setOtherDeductions] = useState('');
 
-  // API base URL helper
-  const API = '/api';
-
   // Fetch trainees list for manual selector
   const fetchTraineesList = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/admin/reports/payslip/list?month=${month}`, {
+      const res = await axios.get(`${API}/reports/payslip/list?month=${month}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTrainees(res.data);
@@ -6877,7 +6874,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/admin/salary-slips?month=${month}`, {
+      const res = await axios.get(`${API}/salary-slips?month=${month}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSlips(res.data);
@@ -6902,7 +6899,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
     }
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API}/admin/salary-slips`, {
+      await axios.post(`${API}/salary-slips`, {
         userId: parseInt(selectedUserId),
         month,
         basicSalary: parseFloat(basicSalary) || 0,
@@ -6949,7 +6946,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post(`${API}/admin/salary-slips/upload`, formData, {
+      const res = await axios.post(`${API}/salary-slips/upload`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -6968,7 +6965,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
     if (!window.confirm("Are you sure you want to delete this salary slip?")) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${API}/admin/salary-slips/${id}`, {
+      await axios.delete(`${API}/salary-slips/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert("Salary slip deleted!");
@@ -6982,7 +6979,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const handleExportAll = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/admin/reports/payslip/export-all?month=${month}`, {
+      const res = await axios.get(`${API}/reports/payslip/export-all?month=${month}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -7002,7 +6999,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const handleExportIndividual = async (userId: number, fullName: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/admin/reports/payslip/export/${userId}?month=${month}`, {
+      const res = await axios.get(`${API}/reports/payslip/export/${userId}?month=${month}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
