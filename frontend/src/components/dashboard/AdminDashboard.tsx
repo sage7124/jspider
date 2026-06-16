@@ -1410,12 +1410,12 @@ const handlePrintPayslip = (t: any, month: string) => {
           <button class="btn-print" onclick="window.print()">Print Payslip / Save PDF</button>
         </div>
         <div class="payslip-container">
-          <div class="watermark">JSPIDER</div>
+          <div class="watermark">NICT</div>
           
           <table class="header-table">
             <tr>
               <td>
-                <h1 class="logo-text">JSPIDER</h1>
+                <h1 class="logo-text">NICT</h1>
                 <div class="logo-sub">Institute Payroll System</div>
               </td>
               <td class="title-section">
@@ -7599,12 +7599,12 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
       slipsHtml += `
         <div class="payslip-container">
-          <div class="watermark">JSPIDER</div>
+          <div class="watermark">NICT</div>
           
           <table class="header-table">
             <tr>
               <td>
-                <h1 class="logo-text">JSPIDER</h1>
+                <h1 class="logo-text">NICT</h1>
                 <div class="logo-sub">Institute Payroll System</div>
               </td>
               <td class="title-section">
@@ -8980,12 +8980,12 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
             <button class="btn-print" onclick="window.print()">Print Payslip / Save PDF</button>
           </div>
           <div class="payslip-container">
-            <div class="watermark">JSPIDER</div>
+            <div class="watermark">NICT</div>
             
             <table class="header-table">
               <tr>
                 <td>
-                  <h1 class="logo-text">JSPIDER</h1>
+                  <h1 class="logo-text">NICT</h1>
                   <div class="logo-sub">Institute Payroll System</div>
                 </td>
                 <td class="title-section">
@@ -9206,7 +9206,7 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
             <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 max-w-3xl mx-auto shadow-lg space-y-6">
               {/* Slip header */}
               <div className="border-b border-slate-800 pb-4 text-center">
-                <h3 className="text-xl font-bold text-emerald-400">JSPIDERS / NICT</h3>
+                <h3 className="text-xl font-bold text-emerald-400">NICT</h3>
                 <p className="text-sm text-slate-400 mt-1 uppercase tracking-wider font-semibold">Salary Slip</p>
               </div>
 
