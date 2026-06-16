@@ -3,7 +3,10 @@ declare const router: import("express-serve-static-core").Router;
 export declare const calculateTraineeSalaryData: (trainee: any, year: number, mon: number, daysInMonth: number, startOfMonth: Date, endOfMonth: Date, passedSettings?: any) => Promise<{
     professionalFee: any;
     basicSalary: any;
-    trainingFee: any;
+    trainingFee: number;
+    collegeVisitHours: number;
+    collegeVisitRate: any;
+    collegeVisitEarnings: number;
     grossEarnings: any;
     lateInstances: number;
     totalLateMinutes: any;
@@ -44,6 +47,7 @@ export declare const calculateTraineeSalaryData: (trainee: any, year: number, mo
     otherCenterClassEarnings: number;
     personalExtraClassRate: any;
     personalOtherCenterClassRate: any;
+    personalCollegeVisitRate: any;
 }>;
 export declare function generateIndividualPayslipSheet(ws: exceljs.Worksheet, trainee: any, salData: any, storedSlip: any, month: string, year: number, mon: number): void;
 export default router;
