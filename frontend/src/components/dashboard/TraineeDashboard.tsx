@@ -3814,22 +3814,22 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
                       <span class="item-name">Basic Salary</span>
                       <span class="item-value">\u20b9${data.salaryData.basicSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    ${data.salaryData.trainingFee > 0 ? `
+                    ${(data.salaryData.collegeVisitEarnings || 0) > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">Training Fee</span>
-                      <span class="item-value">\u20b9${data.salaryData.trainingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span class="item-name">College Visits (${(data.salaryData.collegeVisitHours || 0).toFixed(2)}h × ₹${data.salaryData.collegeVisitRate || 0}/h)</span>
+                      <span class="item-value">\u20b9${(data.salaryData.collegeVisitEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
-                    ${data.salaryData.extraClassEarnings > 0 ? `
+                    ${(data.salaryData.extraClassEarnings || 0) > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">Extra Classes (${data.salaryData.extraClassesCount} cls, ${data.salaryData.extraClassesHours.toFixed(1)}h)</span>
-                      <span class="item-value">\u20b9${data.salaryData.extraClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span class="item-name">Extra Classes (${(data.salaryData.extraClassesHours || 0).toFixed(2)}h × ₹${data.salaryData.extraClassRate || 0}/h)</span>
+                      <span class="item-value">\u20b9${(data.salaryData.extraClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
-                    ${data.salaryData.otherCenterClassEarnings > 0 ? `
+                    ${(data.salaryData.otherCenterClassEarnings || 0) > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">Other Center Classes (${data.salaryData.otherCenterClassesCount} cls, ${data.salaryData.otherCenterClassesHours.toFixed(1)}h)</span>
-                      <span class="item-value">\u20b9${data.salaryData.otherCenterClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span class="item-name">Other Center Classes (${(data.salaryData.otherCenterClassesHours || 0).toFixed(2)}h × ₹${data.salaryData.otherCenterClassRate || 0}/h)</span>
+                      <span class="item-value">\u20b9${(data.salaryData.otherCenterClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
                     ${data.salaryData.additions > 0 ? `
@@ -4018,10 +4018,37 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
                           <td className="p-3">Basic Salary</td>
                           <td className="p-3 text-right">₹{data.salaryData.professionalFee.toFixed(2)}</td>
                         </tr>
-                        {data.salaryData.trainingFee > 0 && (
+                        {(data.salaryData.collegeVisitEarnings || 0) > 0 && (
                           <tr>
-                            <td className="p-3">Training Fee</td>
-                            <td className="p-3 text-right">₹{data.salaryData.trainingFee.toFixed(2)}</td>
+                            <td className="p-3">
+                              College Visits
+                              <span className="text-slate-500 block text-[10px]">
+                                {(data.salaryData.collegeVisitHours || 0).toFixed(2)}h × ₹{data.salaryData.collegeVisitRate || 0}/h
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">₹{(data.salaryData.collegeVisitEarnings || 0).toFixed(2)}</td>
+                          </tr>
+                        )}
+                        {(data.salaryData.extraClassEarnings || 0) > 0 && (
+                          <tr>
+                            <td className="p-3">
+                              Extra Classes
+                              <span className="text-slate-500 block text-[10px]">
+                                {(data.salaryData.extraClassesHours || 0).toFixed(2)}h × ₹{data.salaryData.extraClassRate || 0}/h
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">₹{(data.salaryData.extraClassEarnings || 0).toFixed(2)}</td>
+                          </tr>
+                        )}
+                        {(data.salaryData.otherCenterClassEarnings || 0) > 0 && (
+                          <tr>
+                            <td className="p-3">
+                              Other Center Classes
+                              <span className="text-slate-500 block text-[10px]">
+                                {(data.salaryData.otherCenterClassesHours || 0).toFixed(2)}h × ₹{data.salaryData.otherCenterClassRate || 0}/h
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">₹{(data.salaryData.otherCenterClassEarnings || 0).toFixed(2)}</td>
                           </tr>
                         )}
                         {data.salaryData.otherAdditions > 0 && (

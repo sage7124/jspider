@@ -1454,22 +1454,22 @@ const handlePrintPayslip = (t: any, month: string) => {
                     <span class="item-name">Basic / Professional Fee</span>
                     <span class="item-value">₹${(t.professionalFee || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
-                  ${t.trainingFee > 0 ? `
+                  ${(t.collegeVisitEarnings || 0) > 0 ? `
                   <div class="item-row">
-                    <span class="item-name">Training Fee</span>
-                    <span class="item-value">₹${t.trainingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span class="item-name">College Visits (${(t.collegeVisitHours || 0).toFixed(2)}h × ₹${t.collegeVisitRate || 0}/h)</span>
+                    <span class="item-value">₹${(t.collegeVisitEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                   ` : ''}
-                  ${t.extraClassEarnings > 0 ? `
+                  ${(t.extraClassEarnings || 0) > 0 ? `
                   <div class="item-row">
-                    <span class="item-name">Extra Classes (${t.extraClassesCount} cls, ${t.extraClassesHours.toFixed(1)}h)</span>
-                    <span class="item-value">₹${t.extraClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span class="item-name">Extra Classes (${(t.extraClassesHours || 0).toFixed(2)}h × ₹${t.extraClassRate || 0}/h)</span>
+                    <span class="item-value">₹${(t.extraClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                   ` : ''}
-                  ${t.otherCenterClassEarnings > 0 ? `
+                  ${(t.otherCenterClassEarnings || 0) > 0 ? `
                   <div class="item-row">
-                    <span class="item-name">Other Center Classes (${t.otherCenterClassesCount} cls, ${t.otherCenterClassesHours.toFixed(1)}h)</span>
-                    <span class="item-value">₹${t.otherCenterClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span class="item-name">Other Center Classes (${(t.otherCenterClassesHours || 0).toFixed(2)}h × ₹${t.otherCenterClassRate || 0}/h)</span>
+                    <span class="item-value">₹${(t.otherCenterClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                   ` : ''}
                   ${t.otherAdditions > 0 ? `
@@ -7433,12 +7433,12 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   // Editing state
   const [editingTrainee, setEditingTrainee] = useState<any | null>(null);
   const [editBaseSalary, setEditBaseSalary] = useState('');
-  const [editTrainingFee, setEditTrainingFee] = useState('');
   const [editPersonalLateRate, setEditPersonalLateRate] = useState('');
   const [editPersonalEarlyRate, setEditPersonalEarlyRate] = useState('');
   const [editPersonalAbsentRate, setEditPersonalAbsentRate] = useState('');
   const [editPersonalExtraClassRate, setEditPersonalExtraClassRate] = useState('');
   const [editPersonalOtherCenterClassRate, setEditPersonalOtherCenterClassRate] = useState('');
+  const [editPersonalCollegeVisitRate, setEditPersonalCollegeVisitRate] = useState('');
   const [editTdsOverridePercent, setEditTdsOverridePercent] = useState('');
   const [editOtherAdditions, setEditOtherAdditions] = useState('');
   const [editOtherDeductions, setEditOtherDeductions] = useState('');
@@ -7459,6 +7459,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [globalAbsentRate, setGlobalAbsentRate] = useState(0);
   const [globalExtraClassRate, setGlobalExtraClassRate] = useState(0);
   const [globalOtherCenterClassRate, setGlobalOtherCenterClassRate] = useState(0);
+  const [globalCollegeVisitRate, setGlobalCollegeVisitRate] = useState(0);
   const [savingGlobal, setSavingGlobal] = useState(false);
 
   // Fetch trainees list
@@ -7485,6 +7486,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         setGlobalAbsentRate(settingsRes.data.absentRate !== undefined ? settingsRes.data.absentRate : 0);
         setGlobalExtraClassRate(settingsRes.data.extraClassRate !== undefined ? settingsRes.data.extraClassRate : 0);
         setGlobalOtherCenterClassRate(settingsRes.data.otherCenterClassRate !== undefined ? settingsRes.data.otherCenterClassRate : 0);
+        setGlobalCollegeVisitRate(settingsRes.data.collegeVisitRate !== undefined ? settingsRes.data.collegeVisitRate : 0);
       }
     } catch (e) {
       console.error(e);
@@ -7643,22 +7645,22 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                     <span class="item-name">Basic / Professional Fee</span>
                     <span class="item-value">₹${(t.professionalFee || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
-                  ${t.trainingFee > 0 ? `
+                  ${(t.collegeVisitEarnings || 0) > 0 ? `
                   <div class="item-row">
-                    <span class="item-name">Training Fee</span>
-                    <span class="item-value">₹${t.trainingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span class="item-name">College Visits (${(t.collegeVisitHours || 0).toFixed(2)}h × ₹${t.collegeVisitRate || 0}/h)</span>
+                    <span class="item-value">₹${(t.collegeVisitEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                   ` : ''}
-                  ${t.extraClassEarnings > 0 ? `
+                  ${(t.extraClassEarnings || 0) > 0 ? `
                   <div class="item-row">
-                    <span class="item-name">Extra Classes (${t.extraClassesCount} cls, ${t.extraClassesHours.toFixed(1)}h)</span>
-                    <span class="item-value">₹${t.extraClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span class="item-name">Extra Classes (${t.extraClassesHours.toFixed(2)}h × ₹${t.extraClassRate || 0}/h)</span>
+                    <span class="item-value">₹${(t.extraClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                   ` : ''}
-                  ${t.otherCenterClassEarnings > 0 ? `
+                  ${(t.otherCenterClassEarnings || 0) > 0 ? `
                   <div class="item-row">
-                    <span class="item-name">Other Center Classes (${t.otherCenterClassesCount} cls, ${t.otherCenterClassesHours.toFixed(1)}h)</span>
-                    <span class="item-value">₹${t.otherCenterClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    <span class="item-name">Other Center Classes (${t.otherCenterClassesHours.toFixed(2)}h × ₹${t.otherCenterClassRate || 0}/h)</span>
+                    <span class="item-value">₹${(t.otherCenterClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
                   ` : ''}
                   ${t.otherAdditions > 0 ? `
@@ -8015,12 +8017,12 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
       const token = localStorage.getItem('token');
       await axios.put(`${API}/trainees/${editingTrainee.id}/salary`, {
         baseSalary: parseFloat(editBaseSalary) || 0,
-        trainingFee: parseFloat(editTrainingFee) || 0,
         lateRate: editPersonalLateRate !== '' ? parseFloat(editPersonalLateRate) : null,
         earlyRate: editPersonalEarlyRate !== '' ? parseFloat(editPersonalEarlyRate) : null,
         absentRate: editPersonalAbsentRate !== '' ? parseFloat(editPersonalAbsentRate) : null,
         extraClassRate: editPersonalExtraClassRate !== '' ? parseFloat(editPersonalExtraClassRate) : null,
         otherCenterClassRate: editPersonalOtherCenterClassRate !== '' ? parseFloat(editPersonalOtherCenterClassRate) : null,
+        collegeVisitRate: editPersonalCollegeVisitRate !== '' ? parseFloat(editPersonalCollegeVisitRate) : null,
         tdsRate: editTdsOverridePercent !== '' ? parseFloat(editTdsOverridePercent) : null,
         otherAdditions: editOtherAdditions !== '' ? parseFloat(editOtherAdditions) : 0,
         otherDeductions: editOtherDeductions !== '' ? parseFloat(editOtherDeductions) : 0,
@@ -8057,7 +8059,8 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         earlyIntervalValue: globalEarlyIntervalValue,
         absentRate: globalAbsentRate,
         extraClassRate: globalExtraClassRate,
-        otherCenterClassRate: globalOtherCenterClassRate
+        otherCenterClassRate: globalOtherCenterClassRate,
+        collegeVisitRate: globalCollegeVisitRate
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -8228,9 +8231,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
                   </div>
                   <div>
-                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Other Center Rate (₹/hour)</label>
+                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Other Center Class Rate (₹/hour)</label>
                     <input type="number" value={globalOtherCenterClassRate} onChange={e => setGlobalOtherCenterClassRate(parseFloat(e.target.value) || 0)}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                  </div>
+                  <div>
+                    <label className="block text-[8px] font-bold text-teal-400 uppercase mb-1">🏛️ College Visit Rate (₹/hour)</label>
+                    <input type="number" value={globalCollegeVisitRate} onChange={e => setGlobalCollegeVisitRate(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-950 border border-teal-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-teal-500" />
                   </div>
                 </div>
 
@@ -8279,7 +8287,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   <tr className="bg-slate-900 text-slate-400 uppercase font-semibold text-[9px] tracking-wider border-b border-slate-800">
                     <th className="py-3 px-4">Employee / Teacher</th>
                     <th className="py-3 px-4 text-right">Professional Fee</th>
-                    <th className="py-3 px-4 text-right">Training Fee</th>
+                    <th className="py-3 px-4 text-center">College Visits</th>
                     <th className="py-3 px-4 text-center">Extra Classes</th>
                     <th className="py-3 px-4 text-center">Other Center Classes</th>
                     <th className="py-3 px-4 text-center">Late Penalty</th>
@@ -8298,21 +8306,33 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       </td>
                       <td className="py-3 px-4 text-right text-slate-300">
                         ₹{(t.professionalFee || 0).toLocaleString('en-IN')}
-                      </td>
-                      <td className="py-3 px-4 text-right text-slate-300">
-                        ₹{(t.trainingFee || 0).toLocaleString('en-IN')}
+                        <span className="text-slate-500 text-[9px] block">TDS base</span>
                       </td>
                       <td className="py-3 px-4 text-center text-slate-300">
-                        <span className="font-medium">{t.extraClassesCount || 0} classes</span>
-                        {(t.extraClassesHours || 0) > 0 && (
-                          <span className="text-slate-400 text-[10px] block">({t.extraClassesHours.toFixed(1)}h)</span>
-                        )}
+                        {(t.collegeVisitHours || 0) > 0 ? (
+                          <>
+                            <span className="font-medium text-teal-400">{(t.collegeVisitHours || 0).toFixed(1)}h × ₹{t.collegeVisitRate || 0}/h</span>
+                            <span className="text-emerald-400 text-[10px] block font-bold">= ₹{(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</span>
+                          </>
+                        ) : <span className="text-slate-600">—</span>}
                       </td>
                       <td className="py-3 px-4 text-center text-slate-300">
-                        <span className="font-medium">{t.otherCenterClassesCount || 0} classes</span>
-                        {(t.otherCenterClassesHours || 0) > 0 && (
-                          <span className="text-slate-400 text-[10px] block">({t.otherCenterClassesHours.toFixed(1)}h)</span>
-                        )}
+                        {(t.extraClassesHours || 0) > 0 ? (
+                          <>
+                            <span className="font-medium text-blue-400">{(t.extraClassesHours || 0).toFixed(1)}h × ₹{t.extraClassRate || 0}/h</span>
+                            <span className="text-emerald-400 text-[10px] block font-bold">= ₹{(t.extraClassEarnings || 0).toLocaleString('en-IN')}</span>
+                            <span className="text-slate-500 text-[9px] block">({t.extraClassesCount || 0} classes)</span>
+                          </>
+                        ) : <span className="text-slate-600">—</span>}
+                      </td>
+                      <td className="py-3 px-4 text-center text-slate-300">
+                        {(t.otherCenterClassesHours || 0) > 0 ? (
+                          <>
+                            <span className="font-medium text-purple-400">{(t.otherCenterClassesHours || 0).toFixed(1)}h × ₹{t.otherCenterClassRate || 0}/h</span>
+                            <span className="text-emerald-400 text-[10px] block font-bold">= ₹{(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</span>
+                            <span className="text-slate-500 text-[9px] block">({t.otherCenterClassesCount || 0} classes)</span>
+                          </>
+                        ) : <span className="text-slate-600">—</span>}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="text-slate-300 font-medium">{t.lateInstances} times</span>
@@ -8345,12 +8365,12 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                             onClick={() => {
                               setEditingTrainee(t);
                               setEditBaseSalary(String(t.professionalFee || 0));
-                              setEditTrainingFee(String(t.trainingFee || 0));
                               setEditPersonalLateRate(t.personalLateRate !== null && t.personalLateRate !== undefined ? String(t.personalLateRate) : '');
                               setEditPersonalEarlyRate(t.personalEarlyRate !== null && t.personalEarlyRate !== undefined ? String(t.personalEarlyRate) : '');
                               setEditPersonalAbsentRate(t.personalAbsentRate !== null && t.personalAbsentRate !== undefined ? String(t.personalAbsentRate) : '');
                               setEditPersonalExtraClassRate(t.personalExtraClassRate !== null && t.personalExtraClassRate !== undefined ? String(t.personalExtraClassRate) : '');
                               setEditPersonalOtherCenterClassRate(t.personalOtherCenterClassRate !== null && t.personalOtherCenterClassRate !== undefined ? String(t.personalOtherCenterClassRate) : '');
+                              setEditPersonalCollegeVisitRate(t.personalCollegeVisitRate !== null && t.personalCollegeVisitRate !== undefined ? String(t.personalCollegeVisitRate) : '');
                               setEditTdsOverridePercent(t.personalTdsRate !== null && t.personalTdsRate !== undefined ? String(t.personalTdsRate) : '');
                               setEditOtherAdditions(String(t.otherAdditions || 0));
                               setEditOtherDeductions(String(t.otherDeductions || 0));
@@ -8417,7 +8437,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1">💰 Earnings</h4>
                   <div className="space-y-2">
                     <div>
-                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Professional Fee (Base Salary)</label>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Professional Fee / Base Salary (₹)</label>
                       <input 
                         type="number" 
                         value={editBaseSalary}
@@ -8427,17 +8447,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                         required
                       />
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Training Fee (College/Other)</label>
-                      <input 
-                        type="number" 
-                        value={editTrainingFee}
-                        onChange={(e) => setEditTrainingFee(e.target.value)}
-                        placeholder="0"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        required
-                      />
-                    </div>
+                    <p className="text-[9px] text-slate-500 italic">⚠️ TDS is deducted from Professional Fee only. College Visit, Extra Classes &amp; Other Center Classes are added on top.</p>
                   </div>
                 </div>
 
@@ -8481,11 +8491,11 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
                 {/* ── Personal Class Rate Overrides Section ── */}
                 <div className="border-t border-slate-800 pt-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1">✨ Personal Class Rate Overrides</h4>
-                  <p className="text-[9px] text-slate-500 mb-2 italic">Leave blank to use the global/common rate. Set a value to override for this person only.</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1">✨ Personal Class Rate Overrides (₹/hr)</h4>
+                  <p className="text-[9px] text-slate-500 mb-2 italic">Leave blank to use the global rate. Set a value to override for this person only.</p>
+                  <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Extra Class (₹/hr)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Extra Class</label>
                       <input 
                         type="number" 
                         value={editPersonalExtraClassRate}
@@ -8495,13 +8505,23 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Other Center Class (₹/hr)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Other Center</label>
                       <input 
                         type="number" 
                         value={editPersonalOtherCenterClassRate}
                         onChange={(e) => setEditPersonalOtherCenterClassRate(e.target.value)}
                         placeholder="Global"
                         className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-teal-400 mb-1">🏛️ College Visit</label>
+                      <input 
+                        type="number" 
+                        value={editPersonalCollegeVisitRate}
+                        onChange={(e) => setEditPersonalCollegeVisitRate(e.target.value)}
+                        placeholder="Global"
+                        className="w-full bg-slate-950 border border-teal-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                       />
                     </div>
                   </div>
@@ -9036,22 +9056,22 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
                       <span class="item-name">Basic Salary</span>
                       <span class="item-value">₹${data.salaryData.basicSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    ${data.salaryData.trainingFee > 0 ? `
+                    ${(data.salaryData.collegeVisitEarnings || 0) > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">Training Fee</span>
-                      <span class="item-value">₹${data.salaryData.trainingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span class="item-name">College Visits (${(data.salaryData.collegeVisitHours || 0).toFixed(2)}h × ₹${data.salaryData.collegeVisitRate || 0}/h)</span>
+                      <span class="item-value">₹${(data.salaryData.collegeVisitEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
-                    ${data.salaryData.extraClassEarnings > 0 ? `
+                    ${(data.salaryData.extraClassEarnings || 0) > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">Extra Classes (${data.salaryData.extraClassesCount} cls, ${data.salaryData.extraClassesHours.toFixed(1)}h)</span>
-                      <span class="item-value">₹${data.salaryData.extraClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span class="item-name">Extra Classes (${(data.salaryData.extraClassesHours || 0).toFixed(2)}h × ₹${data.salaryData.extraClassRate || 0}/h)</span>
+                      <span class="item-value">₹${(data.salaryData.extraClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
-                    ${data.salaryData.otherCenterClassEarnings > 0 ? `
+                    ${(data.salaryData.otherCenterClassEarnings || 0) > 0 ? `
                     <div class="item-row">
-                      <span class="item-name">Other Center Classes (${data.salaryData.otherCenterClassesCount} cls, ${data.salaryData.otherCenterClassesHours.toFixed(1)}h)</span>
-                      <span class="item-value">₹${data.salaryData.otherCenterClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span class="item-name">Other Center Classes (${(data.salaryData.otherCenterClassesHours || 0).toFixed(2)}h × ₹${data.salaryData.otherCenterClassRate || 0}/h)</span>
+                      <span class="item-value">₹${(data.salaryData.otherCenterClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     ` : ''}
                     ${data.salaryData.additions > 0 ? `
@@ -9240,10 +9260,37 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
                           <td className="p-3">Basic Salary</td>
                           <td className="p-3 text-right">₹{data.salaryData.professionalFee.toFixed(2)}</td>
                         </tr>
-                        {data.salaryData.trainingFee > 0 && (
+                        {(data.salaryData.collegeVisitEarnings || 0) > 0 && (
                           <tr>
-                            <td className="p-3">Training Fee</td>
-                            <td className="p-3 text-right">₹{data.salaryData.trainingFee.toFixed(2)}</td>
+                            <td className="p-3">
+                              College Visits
+                              <span className="text-slate-500 block text-[10px]">
+                                {(data.salaryData.collegeVisitHours || 0).toFixed(2)}h × ₹{data.salaryData.collegeVisitRate || 0}/h
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">₹{(data.salaryData.collegeVisitEarnings || 0).toFixed(2)}</td>
+                          </tr>
+                        )}
+                        {(data.salaryData.extraClassEarnings || 0) > 0 && (
+                          <tr>
+                            <td className="p-3">
+                              Extra Classes
+                              <span className="text-slate-500 block text-[10px]">
+                                {(data.salaryData.extraClassesHours || 0).toFixed(2)}h × ₹{data.salaryData.extraClassRate || 0}/h
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">₹{(data.salaryData.extraClassEarnings || 0).toFixed(2)}</td>
+                          </tr>
+                        )}
+                        {(data.salaryData.otherCenterClassEarnings || 0) > 0 && (
+                          <tr>
+                            <td className="p-3">
+                              Other Center Classes
+                              <span className="text-slate-500 block text-[10px]">
+                                {(data.salaryData.otherCenterClassesHours || 0).toFixed(2)}h × ₹{data.salaryData.otherCenterClassRate || 0}/h
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">₹{(data.salaryData.otherCenterClassEarnings || 0).toFixed(2)}</td>
                           </tr>
                         )}
                         {data.salaryData.otherAdditions > 0 && (

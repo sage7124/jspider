@@ -61,6 +61,7 @@ model User {
   absentRate             Float?
   extraClassRate         Float?
   otherCenterClassRate   Float?
+  collegeVisitRate       Float?
   tdsRate                Float?
   otherAdditions         Float        @default(0.0)
   otherDeductions        Float        @default(0.0)
@@ -195,6 +196,7 @@ model InstituteSettings {
   absentRate     Float    @default(0.0) // 0.0 means calculate dynamically based on daily rate (baseSalary / daysInMonth)
   extraClassRate Float    @default(0.0)
   otherCenterClassRate Float @default(0.0)
+  collegeVisitRate Float  @default(0.0)
   updatedAt      DateTime @updatedAt
 }
 
