@@ -1,3 +1,4 @@
+import * as exceljs from 'exceljs';
 declare const router: import("express-serve-static-core").Router;
 export declare const calculateTraineeSalaryData: (trainee: any, year: number, mon: number, daysInMonth: number, startOfMonth: Date, endOfMonth: Date, passedSettings?: any) => Promise<{
     professionalFee: any;
@@ -44,5 +45,6 @@ export declare const calculateTraineeSalaryData: (trainee: any, year: number, mo
     personalExtraClassRate: any;
     personalOtherCenterClassRate: any;
 }>;
+export declare function generateIndividualPayslipSheet(ws: exceljs.Worksheet, trainee: any, salData: any, storedSlip: any, month: string, year: number, mon: number): void;
 export default router;
 //# sourceMappingURL=salary.d.ts.map

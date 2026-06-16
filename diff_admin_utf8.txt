@@ -1,0 +1,835 @@
+﻿diff --git a/frontend/src/components/dashboard/AdminDashboard.tsx b/frontend/src/components/dashboard/AdminDashboard.tsx
+index 6e583ac..7f84930 100644
+--- a/frontend/src/components/dashboard/AdminDashboard.tsx
++++ b/frontend/src/components/dashboard/AdminDashboard.tsx
+@@ -13,13 +13,88 @@ const FilePreview = ({ url, label }: { url: string; label: string }) => {
+ 
+   const isPdf = url.startsWith('data:application/pdf') || url.toLowerCase().includes('.pdf');
+ 
++  const handleDownload = () => {
++    if (isPdf) {
++      const link = document.createElement('a');
++      link.href = url;
++      link.setAttribute('download', `${label.replace(/\s+/g, '_')}.pdf`);
++      link.target = '_blank';
++      document.body.appendChild(link);
++      link.click();
++      link.remove();
++    } else {
++      const printWindow = window.open('', '_blank');
++      if (!printWindow) {
++        alert("Please allow popups to download/print this document.");
++        return;
++      }
++      printWindow.document.write(`
++        <html>
++          <head>
++            <title>${label}</title>
++            <style>
++              @page {
++                size: auto;
++                margin: 10mm;
++              }
++              body {
++                margin: 0;
++                display: flex;
++                justify-content: center;
++                align-items: center;
++                height: 100vh;
++                background-color: white;
++              }
++              img {
++                max-width: 100%;
++                max-height: 100%;
++                object-fit: contain;
++              }
++              @media print {
++                body {
++                  margin: 0;
++                }
++                img {
++                  max-width: 100%;
++                  max-height: 100%;
++                }
++              }
++            </style>
++          </head>
++          <body>
++            <img src="${url}" />
++            <script>
++              window.onload = () => {
++                setTimeout(() => {
++                  window.print();
++                  window.close();
++                }, 500);
++              };
++            </script>
++          </body>
++        </html>
++      `);
++      printWindow.document.close();
++    }
++  };
++
+   return (
+     <div className="mt-2 border rounded-lg overflow-hidden bg-white shadow-sm max-w-xs transition-all hover:shadow-md">
+       <div className="bg-gray-100 px-3 py-1.5 text-[10px] font-bold text-gray-500 uppercase border-b flex justify-between items-center">
+         <span>{label} Preview</span>
+-        <a href={url} target="_blank" rel="noreferrer" className="text-purple-600 hover:underline">
+-          ≡ƒæü∩╕Å Open
+-        </a>
++        <div className="flex gap-2">
++          <a href={url} target="_blank" rel="noreferrer" className="text-purple-600 hover:underline">
++            ≡ƒæü∩╕Å Open
++          </a>
++          <span className="text-gray-300">|</span>
++          <button 
++            type="button" 
++            onClick={handleDownload} 
++            className="text-purple-600 hover:underline bg-transparent border-none cursor-pointer p-0 font-bold"
++          >
++            Γ¼ç∩╕Å PDF
++          </button>
++        </div>
+       </div>
+       <div className="p-2 flex justify-center items-center bg-gray-50/50 min-h-[100px]">
+         {isPdf ? (
+@@ -1400,25 +1475,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
+                           const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                           try {
+                             const token = localStorage.getItem('token');
+-                            const res = await axios.get(`${API}/reports/payslip/export/${t.id}?month=${currentMonth}`, {
+-                              headers: { Authorization: `Bearer ${token}` },
+-                              responseType: 'blob',
++                            const res = await axios.get(`${API}/reports/payslip/single/${t.id}?month=${currentMonth}`, {
++                              headers: { Authorization: `Bearer ${token}` }
+                             });
+-                            const url = window.URL.createObjectURL(new Blob([res.data]));
+-                            const link = document.createElement('a');
+-                            link.href = url;
+-                            link.setAttribute('download', `PaySlip_${t.name.replace(/\s+/g, '_')}_${currentMonth}.xlsx`);
+-                            document.body.appendChild(link);
+-                            link.click();
+-                            link.remove();
++                            handlePrintPayslip(res.data);
+                           } catch (e) {
+-                            alert(`Download failed for ${t.name}`);
++                            alert(`Failed to print pay slip for ${t.name}`);
+                           }
+                         }} 
+-                        className="text-emerald-700 hover:text-emerald-950 transition-colors" 
+-                        title="Download Pay Slip"
++                        className="text-indigo-600 hover:text-indigo-800 transition-colors" 
++                        title="Print Pay Slip (PDF)"
+                       >
+-                        <FileSpreadsheet size={16} />
++                        <Printer size={16} />
+                       </button>
+                     )}
+                     {hasPermission('EDIT_USER') && (
+@@ -6917,6 +6985,8 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+   const [editPersonalLateRate, setEditPersonalLateRate] = useState('');
+   const [editPersonalEarlyRate, setEditPersonalEarlyRate] = useState('');
+   const [editPersonalAbsentRate, setEditPersonalAbsentRate] = useState('');
++  const [editPersonalExtraClassRate, setEditPersonalExtraClassRate] = useState('');
++  const [editPersonalOtherCenterClassRate, setEditPersonalOtherCenterClassRate] = useState('');
+   const [editTdsOverridePercent, setEditTdsOverridePercent] = useState('');
+   const [editOtherAdditions, setEditOtherAdditions] = useState('');
+   const [editOtherDeductions, setEditOtherDeductions] = useState('');
+@@ -6935,6 +7005,8 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+   const [globalEarlyDeductionType, setGlobalEarlyDeductionType] = useState('instance');
+   const [globalEarlyIntervalValue, setGlobalEarlyIntervalValue] = useState(15);
+   const [globalAbsentRate, setGlobalAbsentRate] = useState(0);
++  const [globalExtraClassRate, setGlobalExtraClassRate] = useState(0);
++  const [globalOtherCenterClassRate, setGlobalOtherCenterClassRate] = useState(0);
+   const [savingGlobal, setSavingGlobal] = useState(false);
+ 
+   // Fetch trainees list
+@@ -6959,6 +7031,8 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+         setGlobalEarlyDeductionType(settingsRes.data.earlyDeductionType !== undefined ? settingsRes.data.earlyDeductionType : 'instance');
+         setGlobalEarlyIntervalValue(settingsRes.data.earlyIntervalValue !== undefined ? settingsRes.data.earlyIntervalValue : 15);
+         setGlobalAbsentRate(settingsRes.data.absentRate !== undefined ? settingsRes.data.absentRate : 0);
++        setGlobalExtraClassRate(settingsRes.data.extraClassRate !== undefined ? settingsRes.data.extraClassRate : 0);
++        setGlobalOtherCenterClassRate(settingsRes.data.otherCenterClassRate !== undefined ? settingsRes.data.otherCenterClassRate : 0);
+       }
+     } catch (e) {
+       console.error(e);
+@@ -7011,6 +7085,473 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+     }
+   };
+ 
++  // Handle printing/PDF of all payslips in bulk
++  const handlePrintAllPayslips = () => {
++    if (filteredTrainees.length === 0) return;
++
++    // Generate simple number to words in English (Indian numbering system)
++    const inWords = (num: number): string => {
++      const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
++      const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
++      
++      if ((num = Math.floor(num)) === 0) return 'zero';
++      
++      const g = (n: number): string => {
++        if (n < 20) return a[n];
++        const digit = n % 10;
++        return b[Math.floor(n / 10)] + (digit !== 0 ? '-' + a[digit] : '');
++      };
++      
++      const convert = (n: number): string => {
++        let str = '';
++        if (n >= 10000000) {
++          str += convert(Math.floor(n / 10000000)) + ' crore ';
++          n %= 10000000;
++        }
++        if (n >= 100000) {
++          str += convert(Math.floor(n / 100000)) + ' lakh ';
++          n %= 100000;
++        }
++        if (n >= 1000) {
++          str += convert(Math.floor(n / 1000)) + ' thousand ';
++          n %= 1000;
++        }
++        if (n >= 100) {
++          str += g(Math.floor(n / 100)) + ' hundred ';
++          n %= 100;
++        }
++        if (n > 0) {
++          if (str !== '') str += 'and ';
++          str += g(n);
++        }
++        return str;
++      };
++      
++      const res = convert(num).trim();
++      return res.charAt(0).toUpperCase() + res.slice(1) + ' Rupees Only';
++    };
++
++    const formattedMonth = new Date(month + '-02').toLocaleString('default', { month: 'long', year: 'numeric' });
++    const printWindow = window.open('', '_blank');
++    if (!printWindow) {
++      alert("Please allow popups to download/print the payslips.");
++      return;
++    }
++
++    let slipsHtml = '';
++    for (const t of filteredTrainees) {
++      const grossEarnings = t.grossEarnings || 0;
++      const grossDeductions = t.totalDeductions || 0;
++      const netTakeHome = t.netTakeHome || 0;
++      const empCodeStr = t.empCode || t.id.substring(0, 8).toUpperCase();
++
++      slipsHtml += `
++        <div class="payslip-container">
++          <div class="watermark">JSPIDER</div>
++          
++          <table class="header-table">
++            <tr>
++              <td>
++                <h1 class="logo-text">JSPIDER</h1>
++                <div class="logo-sub">Institute Payroll System</div>
++              </td>
++              <td class="title-section">
++                <h2 class="payslip-title">Salary Slip</h2>
++                <div class="payslip-period">For the month of ${formattedMonth}</div>
++              </td>
++            </tr>
++          </table>
++
++          <table class="emp-info-table">
++            <tr>
++              <td class="info-label">Employee Name</td>
++              <td class="info-value">${t.fullName}</td>
++              <td class="info-label">Employee Code</td>
++              <td class="info-value">${empCodeStr}</td>
++            </tr>
++            <tr>
++              <td class="info-label">Designation</td>
++              <td class="info-value">Trainer / Teacher</td>
++              <td class="info-label">Department</td>
++              <td class="info-value">Academics</td>
++            </tr>
++          </table>
++
++          <table class="main-table">
++            <thead>
++              <tr>
++                <th class="col-50 border-right">Earnings Breakup</th>
++                <th class="col-50">Deductions Breakup</th>
++              </tr>
++            </thead>
++            <tbody>
++              <tr>
++                <td class="col-50 border-right">
++                  <div class="item-row">
++                    <span class="item-name">Basic / Professional Fee</span>
++                    <span class="item-value">Γé╣${(t.professionalFee || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ${t.trainingFee > 0 ? `
++                  <div class="item-row">
++                    <span class="item-name">Training Fee</span>
++                    <span class="item-value">Γé╣${t.trainingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ` : ''}
++                  ${t.extraClassEarnings > 0 ? `
++                  <div class="item-row">
++                    <span class="item-name">Extra Classes (${t.extraClassesCount} cls, ${t.extraClassesHours.toFixed(1)}h)</span>
++                    <span class="item-value">Γé╣${t.extraClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ` : ''}
++                  ${t.otherCenterClassEarnings > 0 ? `
++                  <div class="item-row">
++                    <span class="item-name">Other Center Classes (${t.otherCenterClassesCount} cls, ${t.otherCenterClassesHours.toFixed(1)}h)</span>
++                    <span class="item-value">Γé╣${t.otherCenterClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ` : ''}
++                  ${t.otherAdditions > 0 ? `
++                  <div class="item-row">
++                    <span class="item-name">Arrears/Additions</span>
++                    <span class="item-value">Γé╣${t.otherAdditions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ` : ''}
++                </td>
++                <td class="col-50">
++                  ${t.lateDeduction > 0 ? `
++                  <div class="item-row">
++                    <span class="item-name">Late Arrival Penalty (${t.lateInstances} times, ${t.totalLateMinutes} mins)</span>
++                    <span class="item-value deduction">Γé╣${t.lateDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ` : ''}
++                  ${t.earlyDeduction > 0 ? `
++                  <div class="item-row">
++                    <span class="item-name">Early Departure Penalty (${t.earlyInstances} times, ${t.totalEarlyMinutes} mins)</span>
++                    <span class="item-value deduction">Γé╣${t.earlyDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ` : ''}
++                  ${t.absentDeduction > 0 ? `
++                  <div class="item-row">
++                    <span class="item-name">Absence Deduction (${t.absentDays} days)</span>
++                    <span class="item-value deduction">Γé╣${t.absentDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ` : ''}
++                  ${t.otherDeductions > 0 ? `
++                  <div class="item-row">
++                    <span class="item-name">Other Deductions</span>
++                    <span class="item-value deduction">Γé╣${t.otherDeductions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ` : ''}
++                  ${t.tdsDeduction > 0 ? `
++                  <div class="item-row">
++                    <span class="item-name">TDS Deduction (${t.tdsPercentage}%)</span>
++                    <span class="item-value deduction">Γé╣${t.tdsDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                  ` : ''}
++                  ${t.totalDeductions === 0 ? `
++                  <div class="item-row">
++                    <span class="item-name" style="color: #94a3b8; font-style: italic;">No deductions this month</span>
++                    <span class="item-value">Γé╣0.00</span>
++                  </div>
++                  ` : ''}
++                </td>
++              </tr>
++              <tr>
++                <td class="col-50 border-right">
++                  <div class="total-row">
++                    <span>Gross Earnings</span>
++                    <span>Γé╣${grossEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                </td>
++                <td class="col-50">
++                  <div class="total-row">
++                    <span>Total Deductions</span>
++                    <span style="color: #dc2626;">Γé╣${grossDeductions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                  </div>
++                </td>
++              </tr>
++            </tbody>
++          </table>
++
++          <div class="net-box">
++            <span class="net-label">Net Take-Home Salary</span>
++            <span class="net-amount">Γé╣${netTakeHome.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++          </div>
++
++          <div class="words-row">
++            <strong>Amount in Words:</strong> ${inWords(netTakeHome)}
++          </div>
++
++          <table class="footer-section">
++            <tr>
++              <td>
++                <div class="signature-line"></div>
++                <div class="signature-title">Authorized Signatory</div>
++              </td>
++              <td>
++                <div class="signature-line"></div>
++                <div class="signature-title">Employee Signature</div>
++              </td>
++            </tr>
++          </table>
++        </div>
++      `;
++    }
++
++    printWindow.document.write(`
++      <html>
++        <head>
++          <title>SalarySlips_\${month}</title>
++          <style>
++            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
++            body {
++              font-family: 'Inter', sans-serif;
++              color: #1e293b;
++              margin: 0;
++              padding: 20px;
++              font-size: 13px;
++              line-height: 1.5;
++              background-color: #ffffff;
++            }
++            .payslip-container {
++              max-width: 800px;
++              margin: 0 auto 40px auto;
++              border: 1px solid #e2e8f0;
++              padding: 30px;
++              border-radius: 8px;
++              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
++              position: relative;
++              page-break-after: always;
++            }
++            .payslip-container:last-child {
++              page-break-after: avoid;
++            }
++            .watermark {
++              position: absolute;
++              top: 50%;
++              left: 50%;
++              transform: translate(-50%, -50%) rotate(-30deg);
++              font-size: 80px;
++              font-weight: 800;
++              color: rgba(226, 232, 240, 0.3);
++              white-space: nowrap;
++              user-select: none;
++              pointer-events: none;
++              letter-spacing: 5px;
++            }
++            .header-table {
++              width: 100%;
++              border-collapse: collapse;
++              margin-bottom: 25px;
++            }
++            .logo-text {
++              font-size: 24px;
++              font-weight: 800;
++              color: #f59e0b;
++              letter-spacing: -0.5px;
++              margin: 0;
++            }
++            .logo-sub {
++              font-size: 10px;
++              font-weight: 600;
++              color: #64748b;
++              text-transform: uppercase;
++              letter-spacing: 1.5px;
++              margin-top: 2px;
++            }
++            .title-section {
++              text-align: right;
++            }
++            .payslip-title {
++              font-size: 18px;
++              font-weight: 700;
++              color: #0f172a;
++              margin: 0;
++            }
++            .payslip-period {
++              font-size: 12px;
++              color: #64748b;
++              margin-top: 4px;
++              font-weight: 500;
++            }
++            .emp-info-table {
++              width: 100%;
++              border-collapse: collapse;
++              margin-bottom: 25px;
++              background-color: #f8fafc;
++              border: 1px solid #e2e8f0;
++              border-radius: 6px;
++            }
++            .emp-info-table td {
++              padding: 10px 15px;
++              border-bottom: 1px solid #f1f5f9;
++            }
++            .emp-info-table tr:last-child td {
++              border-bottom: none;
++            }
++            .info-label {
++              font-weight: 600;
++              color: #64748b;
++              font-size: 11px;
++              text-transform: uppercase;
++              width: 25%;
++            }
++            .info-value {
++              font-weight: 500;
++              color: #0f172a;
++              width: 25%;
++            }
++            .main-table {
++              width: 100%;
++              border-collapse: collapse;
++              margin-bottom: 25px;
++              border: 1px solid #cbd5e1;
++            }
++            .main-table th {
++              background-color: #0f172a;
++              color: #ffffff;
++              font-weight: 600;
++              text-transform: uppercase;
++              font-size: 11px;
++              letter-spacing: 0.5px;
++              padding: 10px 15px;
++              text-align: left;
++            }
++            .main-table td {
++              padding: 12px 15px;
++              border-bottom: 1px solid #e2e8f0;
++              vertical-align: top;
++            }
++            .main-table tr:last-child td {
++              border-bottom: none;
++            }
++            .col-50 {
++              width: 50%;
++            }
++            .border-right {
++              border-right: 1px solid #cbd5e1;
++            }
++            .item-row {
++              display: flex;
++              justify-content: space-between;
++              margin-bottom: 8px;
++            }
++            .item-name {
++              color: #475569;
++            }
++            .item-value {
++              font-weight: 600;
++              color: #0f172a;
++            }
++            .item-value.deduction {
++              color: #dc2626;
++            }
++            .total-row {
++              display: flex;
++              justify-content: space-between;
++              font-weight: 700;
++              border-top: 1px dashed #cbd5e1;
++              padding-top: 10px;
++              margin-top: 10px;
++            }
++            .net-box {
++              background-color: #ecfdf5;
++              border: 1px solid #a7f3d0;
++              padding: 15px;
++              border-radius: 6px;
++              margin-bottom: 35px;
++              display: flex;
++              justify-content: space-between;
++              align-items: center;
++            }
++            .net-label {
++              font-size: 14px;
++              font-weight: 700;
++              color: #065f46;
++            }
++            .net-amount {
++              font-size: 20px;
++              font-weight: 800;
++              color: #047857;
++            }
++            .words-row {
++              font-size: 11px;
++              color: #64748b;
++              font-style: italic;
++              margin-top: -25px;
++              margin-bottom: 35px;
++              padding-left: 5px;
++            }
++            .footer-section {
++              margin-top: 50px;
++              width: 100%;
++              border-collapse: collapse;
++            }
++            .footer-section td {
++              text-align: center;
++              width: 50%;
++            }
++            .signature-line {
++              width: 200px;
++              border-bottom: 1px solid #94a3b8;
++              margin: 0 auto 10px auto;
++            }
++            .signature-title {
++              font-size: 11px;
++              font-weight: 600;
++              color: #64748b;
++              text-transform: uppercase;
++            }
++            .print-btn-container {
++              text-align: center;
++              margin-bottom: 20px;
++            }
++            .btn-print {
++              background-color: #0f172a;
++              color: white;
++              border: none;
++              padding: 10px 20px;
++              font-size: 14px;
++              font-weight: 600;
++              border-radius: 6px;
++              cursor: pointer;
++              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
++              transition: background-color 0.2s;
++            }
++            .btn-print:hover {
++              background-color: #1e293b;
++            }
++            @media print {
++              .print-btn-container {
++                display: none;
++              }
++              body {
++                padding: 0;
++              }
++              .payslip-container {
++                border: none;
++                box-shadow: none;
++                padding: 0;
++                margin: 0;
++              }
++            }
++          </style>
++        </head>
++        <body>
++          <div class="print-btn-container">
++            <button class="btn-print" onclick="window.print()">Print All Payslips / Save PDF</button>
++          </div>
++          \${slipsHtml}
++          <script>
++            window.addEventListener('DOMContentLoaded', () => {
++              setTimeout(() => { window.print(); }, 500);
++            });
++          </script>
++        </body>
++      </html>
++    \`);
++    printWindow.document.close();
++  };
++
+   // Handle printing/PDF of payslip
+   const handlePrintPayslip = (t: any) => {
+     // Generate simple number to words in English (Indian numbering system)
+@@ -7355,6 +7896,18 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+                       <span class="item-value">Γé╣${t.trainingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                     </div>
+                     ` : ''}
++                    ${t.extraClassEarnings > 0 ? `
++                    <div class="item-row">
++                      <span class="item-name">Extra Classes (${t.extraClassesCount} cls, ${t.extraClassesHours.toFixed(1)}h)</span>
++                      <span class="item-value">Γé╣${t.extraClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                    </div>
++                    ` : ''}
++                    ${t.otherCenterClassEarnings > 0 ? `
++                    <div class="item-row">
++                      <span class="item-name">Other Center Classes (${t.otherCenterClassesCount} cls, ${t.otherCenterClassesHours.toFixed(1)}h)</span>
++                      <span class="item-value">Γé╣${t.otherCenterClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                    </div>
++                    ` : ''}
+                     ${t.otherAdditions > 0 ? `
+                     <div class="item-row">
+                       <span class="item-name">Arrears/Additions</span>
+@@ -7464,6 +8017,8 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+         lateRate: editPersonalLateRate !== '' ? parseFloat(editPersonalLateRate) : null,
+         earlyRate: editPersonalEarlyRate !== '' ? parseFloat(editPersonalEarlyRate) : null,
+         absentRate: editPersonalAbsentRate !== '' ? parseFloat(editPersonalAbsentRate) : null,
++        extraClassRate: editPersonalExtraClassRate !== '' ? parseFloat(editPersonalExtraClassRate) : null,
++        otherCenterClassRate: editPersonalOtherCenterClassRate !== '' ? parseFloat(editPersonalOtherCenterClassRate) : null,
+         tdsRate: editTdsOverridePercent !== '' ? parseFloat(editTdsOverridePercent) : null,
+         otherAdditions: editOtherAdditions !== '' ? parseFloat(editOtherAdditions) : 0,
+         otherDeductions: editOtherDeductions !== '' ? parseFloat(editOtherDeductions) : 0,
+@@ -7498,11 +8053,13 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+         earlyRate: globalEarlyRate,
+         earlyDeductionType: globalEarlyDeductionType,
+         earlyIntervalValue: globalEarlyIntervalValue,
+-        absentRate: globalAbsentRate
++        absentRate: globalAbsentRate,
++        extraClassRate: globalExtraClassRate,
++        otherCenterClassRate: globalOtherCenterClassRate
+       }, {
+         headers: { Authorization: `Bearer ${token}` }
+       });
+-      alert('Global deduction settings updated!');
++      alert('Global payroll and rate settings updated!');
+       fetchTraineesList(); // Refresh to recalculate with new rates
+     } catch (err) {
+       alert('Failed to update global rates');
+@@ -7558,19 +8115,27 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+               />
+             </div>
+ 
+-            {/* Actions: Excel Export & Global Rates */}
++            {/* Actions: Excel Export, PDF Export & Global Rates */}
+             <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/40 flex flex-col justify-center gap-2">
+               <button 
+                 onClick={handleExportAll}
+-                disabled={trainees.length === 0}
+-                className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-colors py-2 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md"
++                disabled={filteredTrainees.length === 0}
++                className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-colors py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md"
+               >
+                 <FileSpreadsheet size={14} />
+                 Export Monthly Report (Excel)
+               </button>
++              <button 
++                onClick={handlePrintAllPayslips}
++                disabled={filteredTrainees.length === 0}
++                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md"
++              >
++                <FileDown size={14} />
++                Download All Payslips (PDF)
++              </button>
+               <button 
+                 onClick={() => setShowGlobalRates(!showGlobalRates)}
+-                className={`w-full ${showGlobalRates ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-700 hover:bg-slate-600'} transition-colors py-2 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5`}
++                className={`w-full ${showGlobalRates ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-700 hover:bg-slate-600'} transition-colors py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5`}
+               >
+                 <Settings size={14} />
+                 {showGlobalRates ? 'Hide' : 'Show'} Global Deduction Rates
+@@ -7595,9 +8160,9 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+           {showGlobalRates && (
+             <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mt-3 mb-1">
+               <h4 className="text-[10px] font-black uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-1.5">
+-                ≡ƒîÉ Global / Common Deduction Settings (applies to all employees unless overridden personally)
++                ≡ƒîÉ Global / Common Payroll & Rate Settings (applies to all employees unless overridden personally)
+               </h4>
+-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
++              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                 {/* Column 1: Late Arrival */}
+                 <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800/80 space-y-2.5">
+                   <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">ΓÅ░ Late Arrival</h5>
+@@ -7652,7 +8217,22 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+                   )}
+                 </div>
+ 
+-                {/* Column 3: Absent Rate & Actions */}
++                {/* Column 3: Class Rates */}
++                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800/80 space-y-2.5">
++                  <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">≡ƒÅ½ Class Rates</h5>
++                  <div>
++                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Extra Class Rate (Γé╣/hour)</label>
++                    <input type="number" value={globalExtraClassRate} onChange={e => setGlobalExtraClassRate(parseFloat(e.target.value) || 0)}
++                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
++                  </div>
++                  <div>
++                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Other Center Rate (Γé╣/hour)</label>
++                    <input type="number" value={globalOtherCenterClassRate} onChange={e => setGlobalOtherCenterClassRate(parseFloat(e.target.value) || 0)}
++                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
++                  </div>
++                </div>
++
++                {/* Column 4: Absent Rate & Actions */}
+                 <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800/80 flex flex-col justify-between space-y-2.5">
+                   <div className="space-y-2.5">
+                     <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">≡ƒôà Absence</h5>
+@@ -7767,6 +8347,8 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+                               setEditPersonalLateRate(t.personalLateRate !== null && t.personalLateRate !== undefined ? String(t.personalLateRate) : '');
+                               setEditPersonalEarlyRate(t.personalEarlyRate !== null && t.personalEarlyRate !== undefined ? String(t.personalEarlyRate) : '');
+                               setEditPersonalAbsentRate(t.personalAbsentRate !== null && t.personalAbsentRate !== undefined ? String(t.personalAbsentRate) : '');
++                              setEditPersonalExtraClassRate(t.personalExtraClassRate !== null && t.personalExtraClassRate !== undefined ? String(t.personalExtraClassRate) : '');
++                              setEditPersonalOtherCenterClassRate(t.personalOtherCenterClassRate !== null && t.personalOtherCenterClassRate !== undefined ? String(t.personalOtherCenterClassRate) : '');
+                               setEditTdsOverridePercent(t.personalTdsRate !== null && t.personalTdsRate !== undefined ? String(t.personalTdsRate) : '');
+                               setEditOtherAdditions(String(t.otherAdditions || 0));
+                               setEditOtherDeductions(String(t.otherDeductions || 0));
+@@ -7780,17 +8362,18 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+                           >
+                             <Settings size={15} />
+                           </button>
++
+                           <button 
+-                            onClick={() => handleExportIndividual(t.id, t.fullName)}
+-                            className="text-teal-400 hover:text-teal-200 transition-colors"
+-                            title="Download Pay Slip (Excel)"
++                            onClick={() => handlePrintPayslip(t)}
++                            className="text-red-400 hover:text-red-200 transition-colors"
++                            title="Download Pay Slip (PDF)"
+                           >
+-                            <Download size={15} />
++                            <FileDown size={15} />
+                           </button>
+                           <button 
+                             onClick={() => handlePrintPayslip(t)}
+                             className="text-indigo-400 hover:text-indigo-200 transition-colors"
+-                            title="Print / PDF Pay Slip"
++                            title="Print Pay Slip"
+                           >
+                             <Printer size={15} />
+                           </button>
+@@ -7894,6 +8477,34 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) =>
+                   </div>
+                 </div>
+ 
++                {/* ΓöÇΓöÇ Personal Class Rate Overrides Section ΓöÇΓöÇ */}
++                <div className="border-t border-slate-800 pt-3">
++                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1">Γ£¿ Personal Class Rate Overrides</h4>
++                  <p className="text-[9px] text-slate-500 mb-2 italic">Leave blank to use the global/common rate. Set a value to override for this person only.</p>
++                  <div className="grid grid-cols-2 gap-2">
++                    <div>
++                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Extra Class (Γé╣/hr)</label>
++                      <input 
++                        type="number" 
++                        value={editPersonalExtraClassRate}
++                        onChange={(e) => setEditPersonalExtraClassRate(e.target.value)}
++                        placeholder="Global"
++                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
++                      />
++                    </div>
++                    <div>
++                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Other Center Class (Γé╣/hr)</label>
++                      <input 
++                        type="number" 
++                        value={editPersonalOtherCenterClassRate}
++                        onChange={(e) => setEditPersonalOtherCenterClassRate(e.target.value)}
++                        placeholder="Global"
++                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
++                      />
++                    </div>
++                  </div>
++                </div>
++
+                 {/* ΓöÇΓöÇ Personal Deduction Type Overrides Section ΓöÇΓöÇ */}
+                 <div className="border-t border-slate-800 pt-3 space-y-2">
+                   <h4 className="text-[10px] font-black uppercase tracking-wider text-purple-400 flex items-center gap-1">ΓÅ▒∩╕Å Deduction Type Overrides</h4>
+@@ -8423,6 +9034,24 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
+                       <span class="item-name">Basic Salary</span>
+                       <span class="item-value">Γé╣${data.salaryData.basicSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                     </div>
++                    ${data.salaryData.trainingFee > 0 ? `
++                    <div class="item-row">
++                      <span class="item-name">Training Fee</span>
++                      <span class="item-value">Γé╣${data.salaryData.trainingFee.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                    </div>
++                    ` : ''}
++                    ${data.salaryData.extraClassEarnings > 0 ? `
++                    <div class="item-row">
++                      <span class="item-name">Extra Classes (${data.salaryData.extraClassesCount} cls, ${data.salaryData.extraClassesHours.toFixed(1)}h)</span>
++                      <span class="item-value">Γé╣${data.salaryData.extraClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                    </div>
++                    ` : ''}
++                    ${data.salaryData.otherCenterClassEarnings > 0 ? `
++                    <div class="item-row">
++                      <span class="item-name">Other Center Classes (${data.salaryData.otherCenterClassesCount} cls, ${data.salaryData.otherCenterClassesHours.toFixed(1)}h)</span>
++                      <span class="item-value">Γé╣${data.salaryData.otherCenterClassEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
++                    </div>
++                    ` : ''}
+                     ${data.salaryData.additions > 0 ? `
+                     <div class="item-row">
+                       <span class="item-name">Arrears/Additions</span>

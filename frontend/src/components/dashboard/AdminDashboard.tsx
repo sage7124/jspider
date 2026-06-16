@@ -8366,9 +8366,9 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                           </button>
 
                           <button 
-                            onClick={() => handlePrintPayslip(t, month)}
-                            className="text-red-400 hover:text-red-200 transition-colors"
-                            title="Download Pay Slip (PDF)"
+                            onClick={() => handleExportIndividual(t.id, t.fullName)}
+                            className="text-teal-400 hover:text-teal-200 transition-colors"
+                            title="Download Pay Slip (Excel)"
                           >
                             <FileDown size={15} />
                           </button>

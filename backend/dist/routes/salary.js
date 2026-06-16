@@ -37,6 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calculateTraineeSalaryData = void 0;
+exports.generateIndividualPayslipSheet = generateIndividualPayslipSheet;
 const express_1 = require("express");
 const client_1 = require("@prisma/client");
 const exceljs = __importStar(require("exceljs"));
@@ -414,6 +415,392 @@ router.get('/admin/reports/payslip/single/:userId', authMiddleware_1.authenticat
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+// Helper function to generate an individual trainee's pay slip worksheet in the standard NICT layout
+function generateIndividualPayslipSheet(ws, trainee, salData, storedSlip, month, year, mon) {
+    ws.columns = [
+        { width: 28 }, // Col A: Earnings label
+        { width: 15 }, // Col B: Earnings value
+        { width: 30 }, // Col C: Deductions label
+        { width: 12 }, // Col D: Deductions instance
+        { width: 12 }, // Col E: Deductions remarks
+        { width: 15 } // Col F: Deductions amount
+    ];
+    // Align grid borders helper
+    const applyGridBorders = (startRow, endRow, startCol, endCol) => {
+        for (let r = startRow; r <= endRow; r++) {
+            const row = ws.getRow(r);
+            for (let c = startCol; c <= endCol; c++) {
+                row.getCell(c).border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            }
+        }
+    };
+    // Header Title Block
+    ws.mergeCells('A1:F1');
+    const titleCell = ws.getCell('A1');
+    titleCell.value = 'NICT Computer Education';
+    titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: '000080' } }; // navy blue
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.mergeCells('A2:F2');
+    const addressCell = ws.getCell('A2');
+    addressCell.value = '# 52, "Bhagawathi Towers", 4th Floor, 33rd Cross, Jayanagar 4th Block, Bangalore - 560 011.';
+    addressCell.font = { name: 'Calibri', size: 9, bold: false };
+    addressCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.mergeCells('A3:F3');
+    const emailCell = ws.getCell('A3');
+    emailCell.value = 'Email: info@nictcomputereducation.com';
+    emailCell.font = { name: 'Calibri', size: 9, bold: false, underline: true, color: { argb: '0000FF' } };
+    emailCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    applyGridBorders(1, 3, 1, 6);
+    // Document Title
+    ws.mergeCells('A5:F5');
+    const docTitle = ws.getCell('A5');
+    docTitle.value = 'NICT Pay Slip';
+    docTitle.font = { name: 'Calibri', size: 18, bold: true, color: { argb: '800000' } }; // maroon
+    docTitle.alignment = { horizontal: 'center', vertical: 'middle' };
+    applyGridBorders(5, 5, 1, 6);
+    // Month Selector Line
+    ws.mergeCells('A6:C6');
+    const forMonthLabel = ws.getCell('A6');
+    forMonthLabel.value = 'for the month of:';
+    forMonthLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+    forMonthLabel.font = { bold: true };
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    ws.mergeCells('D6:E6');
+    const monthVal = ws.getCell('D6');
+    monthVal.value = monthNames[mon - 1];
+    monthVal.font = { bold: true, color: { argb: '000000' } };
+    monthVal.alignment = { horizontal: 'center', vertical: 'middle' };
+    monthVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } }; // cyan / light blue
+    const yearVal = ws.getCell('F6');
+    yearVal.value = year;
+    yearVal.font = { bold: true };
+    yearVal.alignment = { horizontal: 'center', vertical: 'middle' };
+    applyGridBorders(6, 6, 1, 6);
+    // Professional Name
+    ws.mergeCells('A7:B7');
+    const nameLabel = ws.getCell('A7');
+    nameLabel.value = 'Name of the Professional:';
+    nameLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+    ws.mergeCells('C7:F7');
+    const nameVal = ws.getCell('C7');
+    nameVal.value = trainee.fullName;
+    nameVal.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '0000FF' } }; // blue
+    nameVal.alignment = { horizontal: 'center', vertical: 'middle' };
+    applyGridBorders(7, 7, 1, 6);
+    // PAN / Aadhaar line
+    const panLabel = ws.getCell('A8');
+    panLabel.value = 'PAN No:';
+    panLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+    const panVal = ws.getCell('B8');
+    panVal.value = salData.panNo;
+    panVal.font = { bold: true };
+    ws.mergeCells('C8:D8');
+    const aadhLabel = ws.getCell('C8');
+    aadhLabel.value = 'Aadhaar No:';
+    aadhLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+    ws.mergeCells('E8:F8');
+    const aadhVal = ws.getCell('E8');
+    aadhVal.value = salData.aadhaarNo;
+    aadhVal.font = { bold: true };
+    applyGridBorders(8, 8, 1, 6);
+    // Earnings / Deductions Headers
+    ws.mergeCells('A9:B9');
+    const earnHeader = ws.getCell('A9');
+    earnHeader.value = 'Earnings';
+    earnHeader.font = { bold: true, color: { argb: '800000' } }; // maroon
+    earnHeader.alignment = { horizontal: 'center' };
+    earnHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0E0E0' } };
+    ws.mergeCells('C9:F9');
+    const dedHeader = ws.getCell('C9');
+    dedHeader.value = 'Deductions';
+    dedHeader.font = { bold: true, color: { argb: '800000' } }; // maroon
+    dedHeader.alignment = { horizontal: 'center' };
+    dedHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0E0E0' } };
+    applyGridBorders(9, 9, 1, 6);
+    // Earnings & Deductions Details Rows
+    if (storedSlip) {
+        // Row 10:
+        ws.getCell('A10').value = 'Basic Salary :';
+        ws.getCell('B10').value = storedSlip.basicSalary;
+        ws.getCell('B10').numFmt = '"₹"#,##0';
+        ws.getCell('B10').alignment = { horizontal: 'right' };
+        ws.getCell('C10').value = 'Description';
+        ws.getCell('C10').font = { bold: true, size: 9 };
+        ws.getCell('D10').value = 'Instance';
+        ws.getCell('D10').font = { bold: true, size: 9 };
+        ws.getCell('D10').alignment = { horizontal: 'center' };
+        ws.getCell('E10').value = 'Remarks';
+        ws.getCell('E10').font = { bold: true, size: 9 };
+        ws.getCell('F10').value = 'Amount';
+        ws.getCell('F10').font = { bold: true, size: 9 };
+        ws.getCell('F10').alignment = { horizontal: 'right' };
+        // Row 11:
+        ws.getCell('A11').value = 'HRA :';
+        ws.getCell('B11').value = storedSlip.hra;
+        ws.getCell('B11').numFmt = '"₹"#,##0';
+        ws.getCell('B11').alignment = { horizontal: 'right' };
+        ws.getCell('C11').value = 'PF (Provident Fund) :';
+        ws.getCell('D11').value = 1;
+        ws.getCell('D11').alignment = { horizontal: 'center' };
+        ws.getCell('E11').value = '--';
+        ws.getCell('E11').alignment = { horizontal: 'center' };
+        ws.getCell('F11').value = storedSlip.pf;
+        ws.getCell('F11').numFmt = '"₹"#,##0';
+        ws.getCell('F11').alignment = { horizontal: 'right' };
+        // Row 12:
+        ws.getCell('A12').value = 'Conveyance :';
+        ws.getCell('B12').value = storedSlip.conveyance;
+        ws.getCell('B12').numFmt = '"₹"#,##0';
+        ws.getCell('B12').alignment = { horizontal: 'right' };
+        ws.getCell('C12').value = 'Professional Tax :';
+        ws.getCell('D12').value = 1;
+        ws.getCell('D12').alignment = { horizontal: 'center' };
+        ws.getCell('E12').value = '--';
+        ws.getCell('E12').alignment = { horizontal: 'center' };
+        ws.getCell('F12').value = storedSlip.professionalTax;
+        ws.getCell('F12').numFmt = '"₹"#,##0';
+        ws.getCell('F12').alignment = { horizontal: 'right' };
+        // Row 13:
+        ws.getCell('A13').value = 'Special Allowance :';
+        ws.getCell('B13').value = storedSlip.specialAllowance;
+        ws.getCell('B13').numFmt = '"₹"#,##0';
+        ws.getCell('B13').alignment = { horizontal: 'right' };
+        ws.getCell('C13').value = 'ESI :';
+        ws.getCell('D13').value = 1;
+        ws.getCell('D13').alignment = { horizontal: 'center' };
+        ws.getCell('E13').value = '--';
+        ws.getCell('E13').alignment = { horizontal: 'center' };
+        ws.getCell('F13').value = storedSlip.esi;
+        ws.getCell('F13').numFmt = '"₹"#,##0';
+        ws.getCell('F13').alignment = { horizontal: 'right' };
+        // Row 14:
+        ws.getCell('A14').value = 'Other Allowance :';
+        ws.getCell('B14').value = storedSlip.otherAllowance;
+        ws.getCell('B14').numFmt = '"₹"#,##0';
+        ws.getCell('B14').alignment = { horizontal: 'right' };
+        ws.getCell('C14').value = 'TDS :';
+        ws.getCell('D14').value = 1;
+        ws.getCell('D14').alignment = { horizontal: 'center' };
+        ws.getCell('E14').value = '--';
+        ws.getCell('E14').alignment = { horizontal: 'center' };
+        ws.getCell('F14').value = storedSlip.tds;
+        ws.getCell('F14').numFmt = '"₹"#,##0';
+        ws.getCell('F14').alignment = { horizontal: 'right' };
+        // Row 15:
+        ws.mergeCells('C15:E15');
+        ws.getCell('C15').value = 'Other Deductions :';
+        ws.getCell('F15').value = storedSlip.otherDeductions;
+        ws.getCell('F15').numFmt = '"₹"#,##0';
+        ws.getCell('F15').alignment = { horizontal: 'right' };
+        // Row 16:
+        ws.mergeCells('C16:E16');
+        ws.getCell('C16').value = '--';
+        ws.getCell('F16').value = 0;
+        ws.getCell('F16').numFmt = '"₹"#,##0';
+        ws.getCell('F16').alignment = { horizontal: 'right' };
+        applyGridBorders(10, 16, 1, 6);
+        // Row 17: Totals
+        const totalEarnings = storedSlip.basicSalary + storedSlip.hra + storedSlip.conveyance + storedSlip.specialAllowance + storedSlip.otherAllowance;
+        const totalDeductions = storedSlip.pf + storedSlip.professionalTax + storedSlip.esi + storedSlip.tds + storedSlip.otherDeductions;
+        ws.getCell('A17').value = 'Total Earnings :';
+        ws.getCell('A17').font = { bold: true, color: { argb: '800000' } };
+        ws.getCell('B17').value = totalEarnings;
+        ws.getCell('B17').font = { bold: true };
+        ws.getCell('B17').numFmt = '"₹"#,##0';
+        ws.getCell('B17').alignment = { horizontal: 'right' };
+        ws.mergeCells('C17:E17');
+        ws.getCell('C17').value = 'Total Deductions :';
+        ws.getCell('C17').font = { bold: true, color: { argb: '800000' } };
+        ws.getCell('F17').value = totalDeductions;
+        ws.getCell('F17').font = { bold: true };
+        ws.getCell('F17').numFmt = '"₹"#,##0';
+        ws.getCell('F17').alignment = { horizontal: 'right' };
+        applyGridBorders(17, 17, 1, 6);
+        // Row 18: Nett Take Home
+        ws.mergeCells('A18:B18');
+        const netLabel = ws.getCell('A18');
+        netLabel.value = 'Nett Take Home / NEFT done :';
+        netLabel.font = { bold: true };
+        netLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+        ws.mergeCells('C18:F18');
+        const netVal = ws.getCell('C18');
+        netVal.value = storedSlip.netSalary;
+        netVal.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '0000FF' } };
+        netVal.numFmt = '"₹"#,##0';
+        netVal.alignment = { horizontal: 'center', vertical: 'middle' };
+        netVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F8FF' } };
+        applyGridBorders(18, 18, 1, 6);
+    }
+    else {
+        // Row 10:
+        ws.getCell('A10').value = 'Professional Fee :';
+        ws.getCell('B10').value = salData.professionalFee;
+        ws.getCell('B10').numFmt = '"₹"#,##0';
+        ws.getCell('B10').alignment = { horizontal: 'right' };
+        ws.getCell('C10').value = 'Description';
+        ws.getCell('C10').font = { bold: true, size: 9 };
+        ws.getCell('D10').value = 'Details';
+        ws.getCell('D10').font = { bold: true, size: 9 };
+        ws.getCell('D10').alignment = { horizontal: 'center' };
+        ws.getCell('E10').value = 'Remarks';
+        ws.getCell('E10').font = { bold: true, size: 9 };
+        ws.getCell('F10').value = 'Amount';
+        ws.getCell('F10').font = { bold: true, size: 9 };
+        ws.getCell('F10').alignment = { horizontal: 'right' };
+        // Row 11:
+        ws.getCell('A11').value = 'Training at College :';
+        ws.getCell('B11').value = salData.trainingFee;
+        ws.getCell('B11').numFmt = '"₹"#,##0';
+        ws.getCell('B11').alignment = { horizontal: 'right' };
+        ws.getCell('C11').value = 'Late Arrivals :';
+        ws.getCell('D11').value = `${salData.totalLateMinutes}m (${(salData.totalLateMinutes / 60).toFixed(2)}h)`;
+        ws.getCell('D11').alignment = { horizontal: 'center' };
+        ws.getCell('E11').value = `${salData.lateInstances} times`;
+        ws.getCell('E11').alignment = { horizontal: 'center' };
+        ws.getCell('F11').value = salData.lateDeduction;
+        ws.getCell('F11').numFmt = '"₹"#,##0';
+        ws.getCell('F11').alignment = { horizontal: 'right' };
+        // Row 12: Other Additions on Left, Early Depart on Right
+        ws.getCell('A12').value = 'Other Additions :';
+        ws.getCell('B12').value = salData.otherAdditions;
+        ws.getCell('B12').numFmt = '"₹"#,##0';
+        ws.getCell('B12').alignment = { horizontal: 'right' };
+        ws.getCell('C12').value = 'Early Depart :';
+        ws.getCell('D12').value = `${salData.totalEarlyMinutes}m (${(salData.totalEarlyMinutes / 60).toFixed(2)}h)`;
+        ws.getCell('D12').alignment = { horizontal: 'center' };
+        ws.getCell('E12').value = `${salData.earlyInstances} times`;
+        ws.getCell('E12').alignment = { horizontal: 'center' };
+        ws.getCell('F12').value = salData.earlyDeduction;
+        ws.getCell('F12').numFmt = '"₹"#,##0';
+        ws.getCell('F12').alignment = { horizontal: 'right' };
+        // Row 13: Extra Classes on Left, Absent/Leave on Right
+        ws.getCell('A13').value = 'Extra Classes :';
+        ws.getCell('B13').value = `${salData.extraClassesCount} (${salData.extraClassesHours.toFixed(1)}h)`;
+        ws.getCell('B13').alignment = { horizontal: 'right' };
+        ws.getCell('C13').value = 'Absent/Leave :';
+        ws.getCell('D13').value = `abs: ${salData.absentDays} / lvs: ${salData.approvedLeavesCount}`;
+        ws.getCell('D13').alignment = { horizontal: 'center' };
+        ws.getCell('E13').value = `${salData.unexcusedLeaves} unexcused`;
+        ws.getCell('E13').alignment = { horizontal: 'center' };
+        ws.getCell('F13').value = salData.absentDeduction;
+        ws.getCell('F13').numFmt = '"₹"#,##0';
+        ws.getCell('F13').alignment = { horizontal: 'right' };
+        // Row 14: Other Center Classes on Left, Hourly on Right
+        ws.getCell('A14').value = 'Other Center Classes :';
+        ws.getCell('B14').value = `${salData.otherCenterClassesCount} (${salData.otherCenterClassesHours.toFixed(1)}h)`;
+        ws.getCell('B14').alignment = { horizontal: 'right' };
+        ws.getCell('C14').value = 'Hourly :';
+        ws.getCell('D14').value = 0;
+        ws.getCell('D14').alignment = { horizontal: 'center' };
+        ws.getCell('E14').value = '--';
+        ws.getCell('E14').alignment = { horizontal: 'center' };
+        ws.getCell('F14').value = 0;
+        ws.getCell('F14').numFmt = '"₹"#,##0';
+        ws.getCell('F14').alignment = { horizontal: 'right' };
+        // Row 15: Other Deductions
+        ws.mergeCells('C15:E15');
+        ws.getCell('C15').value = 'Other Deductions :';
+        ws.getCell('F15').value = salData.otherDeductions;
+        ws.getCell('F15').numFmt = '"₹"#,##0';
+        ws.getCell('F15').alignment = { horizontal: 'right' };
+        // Row 16: Tax Deducted at Source (TDS)
+        ws.mergeCells('C16:E16');
+        ws.getCell('C16').value = `Tax Deducted at Source (TDS, ${salData.tdsPercentage}%) :`;
+        ws.getCell('F16').value = salData.tdsDeduction;
+        ws.getCell('F16').numFmt = '"₹"#,##0';
+        ws.getCell('F16').alignment = { horizontal: 'right' };
+        applyGridBorders(10, 16, 1, 6);
+        // Row 17: Totals
+        ws.getCell('A17').value = 'Total Earnings :';
+        ws.getCell('A17').font = { bold: true, color: { argb: '800000' } };
+        ws.getCell('B17').value = salData.grossEarnings;
+        ws.getCell('B17').font = { bold: true };
+        ws.getCell('B17').numFmt = '"₹"#,##0';
+        ws.getCell('B17').alignment = { horizontal: 'right' };
+        ws.mergeCells('C17:E17');
+        ws.getCell('C17').value = 'Total Deductions :';
+        ws.getCell('C17').font = { bold: true, color: { argb: '800000' } };
+        ws.getCell('F17').value = salData.totalDeductions;
+        ws.getCell('F17').font = { bold: true };
+        ws.getCell('F17').numFmt = '"₹"#,##0';
+        ws.getCell('F17').alignment = { horizontal: 'right' };
+        applyGridBorders(17, 17, 1, 6);
+        // Row 18: Nett Take Home
+        ws.mergeCells('A18:B18');
+        const netLabel = ws.getCell('A18');
+        netLabel.value = 'Nett Take Home / NEFT done :';
+        netLabel.font = { bold: true };
+        netLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+        ws.mergeCells('C18:F18');
+        const netVal = ws.getCell('C18');
+        netVal.value = salData.netTakeHome;
+        netVal.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '0000FF' } };
+        netVal.numFmt = '"₹"#,##0';
+        netVal.alignment = { horizontal: 'center', vertical: 'middle' };
+        netVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F8FF' } }; // AliceBlue
+        applyGridBorders(18, 18, 1, 6);
+    }
+    // Row 19: Attendance Details Section Header
+    ws.mergeCells('A19:F19');
+    const attSection = ws.getCell('A19');
+    attSection.value = 'Attendance Details';
+    attSection.font = { bold: true, color: { argb: 'FFFFFF' } };
+    attSection.alignment = { horizontal: 'center', vertical: 'middle' };
+    attSection.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '800000' } }; // maroon
+    applyGridBorders(19, 19, 1, 6);
+    // Row 20: Attendance Headers
+    ws.getCell('A20').value = 'B/F (ULD)';
+    ws.getCell('A20').font = { size: 9 };
+    ws.getCell('A20').alignment = { horizontal: 'center' };
+    ws.getCell('B20').value = 'Absent';
+    ws.getCell('B20').font = { size: 9 };
+    ws.getCell('B20').alignment = { horizontal: 'center' };
+    ws.getCell('C20').value = "Eligible CL's";
+    ws.getCell('C20').font = { size: 9 };
+    ws.getCell('C20').alignment = { horizontal: 'center' };
+    ws.getCell('D20').value = 'C/F (ULD)';
+    ws.getCell('D20').font = { size: 9 };
+    ws.getCell('D20').alignment = { horizontal: 'center' };
+    ws.getCell('E20').value = 'Remarks';
+    ws.getCell('E20').font = { size: 9 };
+    ws.getCell('E20').alignment = { horizontal: 'center' };
+    ws.getCell('F20').value = 'Approval Status';
+    ws.getCell('F20').font = { size: 9 };
+    ws.getCell('F20').alignment = { horizontal: 'center' };
+    applyGridBorders(20, 20, 1, 6);
+    // Row 21: Attendance Values
+    ws.getCell('A21').value = 0;
+    ws.getCell('A21').alignment = { horizontal: 'center' };
+    ws.getCell('A21').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
+    ws.getCell('B21').value = salData.absentDays;
+    ws.getCell('B21').alignment = { horizontal: 'center' };
+    ws.getCell('B21').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
+    ws.getCell('C21').value = salData.eligibleCLs;
+    ws.getCell('C21').alignment = { horizontal: 'center' };
+    ws.getCell('D21').value = salData.cfLeaves;
+    ws.getCell('D21').alignment = { horizontal: 'center' };
+    ws.getCell('E21').value = '';
+    ws.getCell('F21').value = 'SK & KK Approved';
+    ws.getCell('F21').alignment = { horizontal: 'center' };
+    applyGridBorders(21, 21, 1, 6);
+    // Signatory
+    ws.mergeCells('A23:C23');
+    const sigName = ws.getCell('A23');
+    sigName.value = 'Kushal Pabbi';
+    sigName.font = { bold: true };
+    sigName.alignment = { horizontal: 'center' };
+    ws.mergeCells('A24:C24');
+    const sigLabel = ws.getCell('A24');
+    sigLabel.value = 'Authorised Signatory';
+    sigLabel.font = { size: 9 };
+    sigLabel.alignment = { horizontal: 'center' };
+    applyGridBorders(23, 24, 1, 3);
+}
 // 3. Export individual trainee's Pay Slip to Excel
 router.get('/admin/reports/payslip/export/:userId', authMiddleware_1.authenticateToken, checkSalarySlipsAccess, async (req, res) => {
     try {
@@ -454,389 +841,7 @@ router.get('/admin/reports/payslip/export/:userId', authMiddleware_1.authenticat
         });
         const workbook = new exceljs.Workbook();
         const ws = workbook.addWorksheet('Pay Slip');
-        ws.columns = [
-            { width: 28 }, // Col A: Earnings label
-            { width: 15 }, // Col B: Earnings value
-            { width: 30 }, // Col C: Deductions label
-            { width: 12 }, // Col D: Deductions instance
-            { width: 12 }, // Col E: Deductions remarks
-            { width: 15 } // Col F: Deductions amount
-        ];
-        // Align grid borders helper
-        const applyGridBorders = (startRow, endRow, startCol, endCol) => {
-            for (let r = startRow; r <= endRow; r++) {
-                const row = ws.getRow(r);
-                for (let c = startCol; c <= endCol; c++) {
-                    row.getCell(c).border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' }
-                    };
-                }
-            }
-        };
-        // Header Title Block
-        ws.mergeCells('A1:F1');
-        const titleCell = ws.getCell('A1');
-        titleCell.value = 'NICT Computer Education';
-        titleCell.font = { name: 'Calibri', size: 16, bold: true, color: { argb: '000080' } }; // navy blue
-        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        ws.mergeCells('A2:F2');
-        const addressCell = ws.getCell('A2');
-        addressCell.value = '# 52, "Bhagawathi Towers", 4th Floor, 33rd Cross, Jayanagar 4th Block, Bangalore - 560 011.';
-        addressCell.font = { name: 'Calibri', size: 9, bold: false };
-        addressCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        ws.mergeCells('A3:F3');
-        const emailCell = ws.getCell('A3');
-        emailCell.value = 'Email: info@nictcomputereducation.com';
-        emailCell.font = { name: 'Calibri', size: 9, bold: false, underline: true, color: { argb: '0000FF' } };
-        emailCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        applyGridBorders(1, 3, 1, 6);
-        // Document Title
-        ws.mergeCells('A5:F5');
-        const docTitle = ws.getCell('A5');
-        docTitle.value = 'NICT Pay Slip';
-        docTitle.font = { name: 'Calibri', size: 18, bold: true, color: { argb: '800000' } }; // maroon
-        docTitle.alignment = { horizontal: 'center', vertical: 'middle' };
-        applyGridBorders(5, 5, 1, 6);
-        // Month Selector Line
-        ws.mergeCells('A6:C6');
-        const forMonthLabel = ws.getCell('A6');
-        forMonthLabel.value = 'for the month of:';
-        forMonthLabel.alignment = { horizontal: 'right', vertical: 'middle' };
-        forMonthLabel.font = { bold: true };
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        ws.mergeCells('D6:E6');
-        const monthVal = ws.getCell('D6');
-        monthVal.value = monthNames[mon - 1];
-        monthVal.font = { bold: true, color: { argb: '000000' } };
-        monthVal.alignment = { horizontal: 'center', vertical: 'middle' };
-        monthVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } }; // cyan / light blue
-        const yearVal = ws.getCell('F6');
-        yearVal.value = year;
-        yearVal.font = { bold: true };
-        yearVal.alignment = { horizontal: 'center', vertical: 'middle' };
-        applyGridBorders(6, 6, 1, 6);
-        // Professional Name
-        ws.mergeCells('A7:B7');
-        const nameLabel = ws.getCell('A7');
-        nameLabel.value = 'Name of the Professional:';
-        nameLabel.alignment = { horizontal: 'right', vertical: 'middle' };
-        ws.mergeCells('C7:F7');
-        const nameVal = ws.getCell('C7');
-        nameVal.value = trainee.fullName;
-        nameVal.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '0000FF' } }; // blue
-        nameVal.alignment = { horizontal: 'center', vertical: 'middle' };
-        applyGridBorders(7, 7, 1, 6);
-        // PAN / Aadhaar line
-        const panLabel = ws.getCell('A8');
-        panLabel.value = 'PAN No:';
-        panLabel.alignment = { horizontal: 'right', vertical: 'middle' };
-        const panVal = ws.getCell('B8');
-        panVal.value = salData.panNo;
-        panVal.font = { bold: true };
-        ws.mergeCells('C8:D8');
-        const aadhLabel = ws.getCell('C8');
-        aadhLabel.value = 'Aadhaar No:';
-        aadhLabel.alignment = { horizontal: 'right', vertical: 'middle' };
-        ws.mergeCells('E8:F8');
-        const aadhVal = ws.getCell('E8');
-        aadhVal.value = salData.aadhaarNo;
-        aadhVal.font = { bold: true };
-        applyGridBorders(8, 8, 1, 6);
-        // Earnings / Deductions Headers
-        ws.mergeCells('A9:B9');
-        const earnHeader = ws.getCell('A9');
-        earnHeader.value = 'Earnings';
-        earnHeader.font = { bold: true, color: { argb: '800000' } }; // maroon
-        earnHeader.alignment = { horizontal: 'center' };
-        earnHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0E0E0' } };
-        ws.mergeCells('C9:F9');
-        const dedHeader = ws.getCell('C9');
-        dedHeader.value = 'Deductions';
-        dedHeader.font = { bold: true, color: { argb: '800000' } }; // maroon
-        dedHeader.alignment = { horizontal: 'center' };
-        dedHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0E0E0' } };
-        applyGridBorders(9, 9, 1, 6);
-        // Earnings & Deductions Details Rows
-        if (storedSlip) {
-            // Row 10:
-            ws.getCell('A10').value = 'Basic Salary :';
-            ws.getCell('B10').value = storedSlip.basicSalary;
-            ws.getCell('B10').numFmt = '"₹"#,##0';
-            ws.getCell('B10').alignment = { horizontal: 'right' };
-            ws.getCell('C10').value = 'Description';
-            ws.getCell('C10').font = { bold: true, size: 9 };
-            ws.getCell('D10').value = 'Instance';
-            ws.getCell('D10').font = { bold: true, size: 9 };
-            ws.getCell('D10').alignment = { horizontal: 'center' };
-            ws.getCell('E10').value = 'Remarks';
-            ws.getCell('E10').font = { bold: true, size: 9 };
-            ws.getCell('F10').value = 'Amount';
-            ws.getCell('F10').font = { bold: true, size: 9 };
-            ws.getCell('F10').alignment = { horizontal: 'right' };
-            // Row 11:
-            ws.getCell('A11').value = 'HRA :';
-            ws.getCell('B11').value = storedSlip.hra;
-            ws.getCell('B11').numFmt = '"₹"#,##0';
-            ws.getCell('B11').alignment = { horizontal: 'right' };
-            ws.getCell('C11').value = 'PF (Provident Fund) :';
-            ws.getCell('D11').value = 1;
-            ws.getCell('D11').alignment = { horizontal: 'center' };
-            ws.getCell('E11').value = '--';
-            ws.getCell('E11').alignment = { horizontal: 'center' };
-            ws.getCell('F11').value = storedSlip.pf;
-            ws.getCell('F11').numFmt = '"₹"#,##0';
-            ws.getCell('F11').alignment = { horizontal: 'right' };
-            // Row 12:
-            ws.getCell('A12').value = 'Conveyance :';
-            ws.getCell('B12').value = storedSlip.conveyance;
-            ws.getCell('B12').numFmt = '"₹"#,##0';
-            ws.getCell('B12').alignment = { horizontal: 'right' };
-            ws.getCell('C12').value = 'Professional Tax :';
-            ws.getCell('D12').value = 1;
-            ws.getCell('D12').alignment = { horizontal: 'center' };
-            ws.getCell('E12').value = '--';
-            ws.getCell('E12').alignment = { horizontal: 'center' };
-            ws.getCell('F12').value = storedSlip.professionalTax;
-            ws.getCell('F12').numFmt = '"₹"#,##0';
-            ws.getCell('F12').alignment = { horizontal: 'right' };
-            // Row 13:
-            ws.getCell('A13').value = 'Special Allowance :';
-            ws.getCell('B13').value = storedSlip.specialAllowance;
-            ws.getCell('B13').numFmt = '"₹"#,##0';
-            ws.getCell('B13').alignment = { horizontal: 'right' };
-            ws.getCell('C13').value = 'ESI :';
-            ws.getCell('D13').value = 1;
-            ws.getCell('D13').alignment = { horizontal: 'center' };
-            ws.getCell('E13').value = '--';
-            ws.getCell('E13').alignment = { horizontal: 'center' };
-            ws.getCell('F13').value = storedSlip.esi;
-            ws.getCell('F13').numFmt = '"₹"#,##0';
-            ws.getCell('F13').alignment = { horizontal: 'right' };
-            // Row 14:
-            ws.getCell('A14').value = 'Other Allowance :';
-            ws.getCell('B14').value = storedSlip.otherAllowance;
-            ws.getCell('B14').numFmt = '"₹"#,##0';
-            ws.getCell('B14').alignment = { horizontal: 'right' };
-            ws.getCell('C14').value = 'TDS :';
-            ws.getCell('D14').value = 1;
-            ws.getCell('D14').alignment = { horizontal: 'center' };
-            ws.getCell('E14').value = '--';
-            ws.getCell('E14').alignment = { horizontal: 'center' };
-            ws.getCell('F14').value = storedSlip.tds;
-            ws.getCell('F14').numFmt = '"₹"#,##0';
-            ws.getCell('F14').alignment = { horizontal: 'right' };
-            // Row 15:
-            ws.mergeCells('C15:E15');
-            ws.getCell('C15').value = 'Other Deductions :';
-            ws.getCell('F15').value = storedSlip.otherDeductions;
-            ws.getCell('F15').numFmt = '"₹"#,##0';
-            ws.getCell('F15').alignment = { horizontal: 'right' };
-            // Row 16:
-            ws.mergeCells('C16:E16');
-            ws.getCell('C16').value = '--';
-            ws.getCell('F16').value = 0;
-            ws.getCell('F16').numFmt = '"₹"#,##0';
-            ws.getCell('F16').alignment = { horizontal: 'right' };
-            applyGridBorders(10, 16, 1, 6);
-            // Row 17: Totals
-            const totalEarnings = storedSlip.basicSalary + storedSlip.hra + storedSlip.conveyance + storedSlip.specialAllowance + storedSlip.otherAllowance;
-            const totalDeductions = storedSlip.pf + storedSlip.professionalTax + storedSlip.esi + storedSlip.tds + storedSlip.otherDeductions;
-            ws.getCell('A17').value = 'Total Earnings :';
-            ws.getCell('A17').font = { bold: true, color: { argb: '800000' } };
-            ws.getCell('B17').value = totalEarnings;
-            ws.getCell('B17').font = { bold: true };
-            ws.getCell('B17').numFmt = '"₹"#,##0';
-            ws.getCell('B17').alignment = { horizontal: 'right' };
-            ws.mergeCells('C17:E17');
-            ws.getCell('C17').value = 'Total Deductions :';
-            ws.getCell('C17').font = { bold: true, color: { argb: '800000' } };
-            ws.getCell('F17').value = totalDeductions;
-            ws.getCell('F17').font = { bold: true };
-            ws.getCell('F17').numFmt = '"₹"#,##0';
-            ws.getCell('F17').alignment = { horizontal: 'right' };
-            applyGridBorders(17, 17, 1, 6);
-            // Row 18: Nett Take Home
-            ws.mergeCells('A18:B18');
-            const netLabel = ws.getCell('A18');
-            netLabel.value = 'Nett Take Home / NEFT done :';
-            netLabel.font = { bold: true };
-            netLabel.alignment = { horizontal: 'right', vertical: 'middle' };
-            ws.mergeCells('C18:F18');
-            const netVal = ws.getCell('C18');
-            netVal.value = storedSlip.netSalary;
-            netVal.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '0000FF' } };
-            netVal.numFmt = '"₹"#,##0';
-            netVal.alignment = { horizontal: 'center', vertical: 'middle' };
-            netVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F8FF' } };
-            applyGridBorders(18, 18, 1, 6);
-        }
-        else {
-            // Row 10:
-            ws.getCell('A10').value = 'Professional Fee :';
-            ws.getCell('B10').value = salData.professionalFee;
-            ws.getCell('B10').numFmt = '"₹"#,##0';
-            ws.getCell('B10').alignment = { horizontal: 'right' };
-            ws.getCell('C10').value = 'Description';
-            ws.getCell('C10').font = { bold: true, size: 9 };
-            ws.getCell('D10').value = 'Details';
-            ws.getCell('D10').font = { bold: true, size: 9 };
-            ws.getCell('D10').alignment = { horizontal: 'center' };
-            ws.getCell('E10').value = 'Remarks';
-            ws.getCell('E10').font = { bold: true, size: 9 };
-            ws.getCell('F10').value = 'Amount';
-            ws.getCell('F10').font = { bold: true, size: 9 };
-            ws.getCell('F10').alignment = { horizontal: 'right' };
-            // Row 11:
-            ws.getCell('A11').value = 'Training at College :';
-            ws.getCell('B11').value = salData.trainingFee;
-            ws.getCell('B11').numFmt = '"₹"#,##0';
-            ws.getCell('B11').alignment = { horizontal: 'right' };
-            ws.getCell('C11').value = 'Late Arrivals :';
-            ws.getCell('D11').value = `${salData.totalLateMinutes}m (${(salData.totalLateMinutes / 60).toFixed(2)}h)`;
-            ws.getCell('D11').alignment = { horizontal: 'center' };
-            ws.getCell('E11').value = `${salData.lateInstances} times`;
-            ws.getCell('E11').alignment = { horizontal: 'center' };
-            ws.getCell('F11').value = salData.lateDeduction;
-            ws.getCell('F11').numFmt = '"₹"#,##0';
-            ws.getCell('F11').alignment = { horizontal: 'right' };
-            // Row 12: Other Additions on Left, Early Depart on Right
-            ws.getCell('A12').value = 'Other Additions :';
-            ws.getCell('B12').value = salData.otherAdditions;
-            ws.getCell('B12').numFmt = '"₹"#,##0';
-            ws.getCell('B12').alignment = { horizontal: 'right' };
-            ws.getCell('C12').value = 'Early Depart :';
-            ws.getCell('D12').value = `${salData.totalEarlyMinutes}m (${(salData.totalEarlyMinutes / 60).toFixed(2)}h)`;
-            ws.getCell('D12').alignment = { horizontal: 'center' };
-            ws.getCell('E12').value = `${salData.earlyInstances} times`;
-            ws.getCell('E12').alignment = { horizontal: 'center' };
-            ws.getCell('F12').value = salData.earlyDeduction;
-            ws.getCell('F12').numFmt = '"₹"#,##0';
-            ws.getCell('F12').alignment = { horizontal: 'right' };
-            // Row 13: Extra Classes on Left, Absent/Leave on Right
-            ws.getCell('A13').value = 'Extra Classes :';
-            ws.getCell('B13').value = `${salData.extraClassesCount} (${salData.extraClassesHours.toFixed(1)}h)`;
-            ws.getCell('B13').alignment = { horizontal: 'right' };
-            ws.getCell('C13').value = 'Absent/Leave :';
-            ws.getCell('D13').value = `abs: ${salData.absentDays} / lvs: ${salData.approvedLeavesCount}`;
-            ws.getCell('D13').alignment = { horizontal: 'center' };
-            ws.getCell('E13').value = `${salData.unexcusedLeaves} unexcused`;
-            ws.getCell('E13').alignment = { horizontal: 'center' };
-            ws.getCell('F13').value = salData.absentDeduction;
-            ws.getCell('F13').numFmt = '"₹"#,##0';
-            ws.getCell('F13').alignment = { horizontal: 'right' };
-            // Row 14: Other Center Classes on Left, Hourly on Right
-            ws.getCell('A14').value = 'Other Center Classes :';
-            ws.getCell('B14').value = `${salData.otherCenterClassesCount} (${salData.otherCenterClassesHours.toFixed(1)}h)`;
-            ws.getCell('B14').alignment = { horizontal: 'right' };
-            ws.getCell('C14').value = 'Hourly :';
-            ws.getCell('D14').value = 0;
-            ws.getCell('D14').alignment = { horizontal: 'center' };
-            ws.getCell('E14').value = '--';
-            ws.getCell('E14').alignment = { horizontal: 'center' };
-            ws.getCell('F14').value = 0;
-            ws.getCell('F14').numFmt = '"₹"#,##0';
-            ws.getCell('F14').alignment = { horizontal: 'right' };
-            // Row 15: Other Deductions
-            ws.mergeCells('C15:E15');
-            ws.getCell('C15').value = 'Other Deductions :';
-            ws.getCell('F15').value = salData.otherDeductions;
-            ws.getCell('F15').numFmt = '"₹"#,##0';
-            ws.getCell('F15').alignment = { horizontal: 'right' };
-            // Row 16: Tax Deducted at Source (TDS)
-            ws.mergeCells('C16:E16');
-            ws.getCell('C16').value = `Tax Deducted at Source (TDS, ${salData.tdsPercentage}%) :`;
-            ws.getCell('F16').value = salData.tdsDeduction;
-            ws.getCell('F16').numFmt = '"₹"#,##0';
-            ws.getCell('F16').alignment = { horizontal: 'right' };
-            applyGridBorders(10, 16, 1, 6);
-            // Row 17: Totals
-            ws.getCell('A17').value = 'Total Earnings :';
-            ws.getCell('A17').font = { bold: true, color: { argb: '800000' } };
-            ws.getCell('B17').value = salData.grossEarnings;
-            ws.getCell('B17').font = { bold: true };
-            ws.getCell('B17').numFmt = '"₹"#,##0';
-            ws.getCell('B17').alignment = { horizontal: 'right' };
-            ws.mergeCells('C17:E17');
-            ws.getCell('C17').value = 'Total Deductions :';
-            ws.getCell('C17').font = { bold: true, color: { argb: '800000' } };
-            ws.getCell('F17').value = salData.totalDeductions;
-            ws.getCell('F17').font = { bold: true };
-            ws.getCell('F17').numFmt = '"₹"#,##0';
-            ws.getCell('F17').alignment = { horizontal: 'right' };
-            applyGridBorders(17, 17, 1, 6);
-            // Row 18: Nett Take Home
-            ws.mergeCells('A18:B18');
-            const netLabel = ws.getCell('A18');
-            netLabel.value = 'Nett Take Home / NEFT done :';
-            netLabel.font = { bold: true };
-            netLabel.alignment = { horizontal: 'right', vertical: 'middle' };
-            ws.mergeCells('C18:F18');
-            const netVal = ws.getCell('C18');
-            netVal.value = salData.netTakeHome;
-            netVal.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '0000FF' } };
-            netVal.numFmt = '"₹"#,##0';
-            netVal.alignment = { horizontal: 'center', vertical: 'middle' };
-            netVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F8FF' } }; // AliceBlue
-            applyGridBorders(18, 18, 1, 6);
-        }
-        // Row 19: Attendance Details Section Header
-        ws.mergeCells('A19:F19');
-        const attSection = ws.getCell('A19');
-        attSection.value = 'Attendance Details';
-        attSection.font = { bold: true, color: { argb: 'FFFFFF' } };
-        attSection.alignment = { horizontal: 'center', vertical: 'middle' };
-        attSection.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '800000' } }; // maroon
-        applyGridBorders(19, 19, 1, 6);
-        // Row 20: Attendance Headers
-        ws.getCell('A20').value = 'B/F (ULD)';
-        ws.getCell('A20').font = { size: 9 };
-        ws.getCell('A20').alignment = { horizontal: 'center' };
-        ws.getCell('B20').value = 'Absent';
-        ws.getCell('B20').font = { size: 9 };
-        ws.getCell('B20').alignment = { horizontal: 'center' };
-        ws.getCell('C20').value = "Eligible CL's";
-        ws.getCell('C20').font = { size: 9 };
-        ws.getCell('C20').alignment = { horizontal: 'center' };
-        ws.getCell('D20').value = 'C/F (ULD)';
-        ws.getCell('D20').font = { size: 9 };
-        ws.getCell('D20').alignment = { horizontal: 'center' };
-        ws.getCell('E20').value = 'Remarks';
-        ws.getCell('E20').font = { size: 9 };
-        ws.getCell('E20').alignment = { horizontal: 'center' };
-        ws.getCell('F20').value = 'Approval Status';
-        ws.getCell('F20').font = { size: 9 };
-        ws.getCell('F20').alignment = { horizontal: 'center' };
-        applyGridBorders(20, 20, 1, 6);
-        // Row 21: Attendance Values
-        ws.getCell('A21').value = 0;
-        ws.getCell('A21').alignment = { horizontal: 'center' };
-        ws.getCell('A21').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
-        ws.getCell('B21').value = salData.absentDays;
-        ws.getCell('B21').alignment = { horizontal: 'center' };
-        ws.getCell('B21').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
-        ws.getCell('C21').value = salData.eligibleCLs;
-        ws.getCell('C21').alignment = { horizontal: 'center' };
-        ws.getCell('D21').value = salData.cfLeaves;
-        ws.getCell('D21').alignment = { horizontal: 'center' };
-        ws.getCell('E21').value = '';
-        ws.getCell('F21').value = 'SK & KK Approved';
-        ws.getCell('F21').alignment = { horizontal: 'center' };
-        applyGridBorders(21, 21, 1, 6);
-        // Signatory
-        ws.mergeCells('A23:C23');
-        const sigName = ws.getCell('A23');
-        sigName.value = 'Kushal Pabbi';
-        sigName.font = { bold: true };
-        sigName.alignment = { horizontal: 'center' };
-        ws.mergeCells('A24:C24');
-        const sigLabel = ws.getCell('A24');
-        sigLabel.value = 'Authorised Signatory';
-        sigLabel.font = { size: 9 };
-        sigLabel.alignment = { horizontal: 'center' };
-        applyGridBorders(23, 24, 1, 3);
+        generateIndividualPayslipSheet(ws, trainee, salData, storedSlip, month, year, mon);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=PaySlip_${trainee.fullName.replace(/\s+/g, '_')}_${month}.xlsx`);
         await workbook.xlsx.write(res);
@@ -1138,7 +1143,7 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
         const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
         const daysInMonth = new Date(year, mon, 0).getDate();
         const workbook = new exceljs.Workbook();
-        const ws = workbook.addWorksheet(`Salary Slips ${month}`);
+        const ws = workbook.addWorksheet('Summary');
         // Headers updated for our detailed dynamic calculations
         ws.addRow([
             'Sl. No',
@@ -1240,6 +1245,40 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
             });
             col.width = maxLen + 3;
         });
+        // Helper to sanitize sheet names for Excel constraints
+        const sanitizeSheetName = (name) => {
+            let sanitized = name.replace(/[\\/?*\[\]]/g, '');
+            if (sanitized.length > 31) {
+                sanitized = sanitized.substring(0, 31);
+            }
+            return sanitized || 'Sheet';
+        };
+        const addedNames = new Set();
+        const getUniqueSheetName = (name) => {
+            let sanitized = sanitizeSheetName(name);
+            let uniqueName = sanitized;
+            let counter = 1;
+            while (addedNames.has(uniqueName.toLowerCase())) {
+                const suffix = ` (${counter})`;
+                const allowedLength = 31 - suffix.length;
+                uniqueName = sanitized.substring(0, allowedLength) + suffix;
+                counter++;
+            }
+            addedNames.add(uniqueName.toLowerCase());
+            return uniqueName;
+        };
+        // Add separate sheet for each teacher
+        for (const t of trainees) {
+            const uniqueName = getUniqueSheetName(t.fullName);
+            const teacherWs = workbook.addWorksheet(uniqueName);
+            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
+            const storedSlip = await prisma.salarySlip.findUnique({
+                where: {
+                    userId_month: { userId: t.id, month }
+                }
+            });
+            generateIndividualPayslipSheet(teacherWs, t, salData, storedSlip, month, year, mon);
+        }
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=SalarySlips_Report_${month}.xlsx`);
         await workbook.xlsx.write(res);
@@ -1271,6 +1310,11 @@ router.get('/salary-slips/my-slip', authMiddleware_1.authenticateToken, async (r
         const daysInMonth = new Date(year, mon, 0).getDate();
         const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
         const salData = await (0, exports.calculateTraineeSalaryData)(user, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
+        const storedSlip = await prisma.salarySlip.findUnique({
+            where: {
+                userId_month: { userId, month }
+            }
+        });
         res.json({
             user: {
                 fullName: user.fullName,
@@ -1283,7 +1327,8 @@ router.get('/salary-slips/my-slip', authMiddleware_1.authenticateToken, async (r
                 bankBranchName: user.bankBranchName,
             },
             month,
-            salaryData: salData
+            salaryData: salData,
+            storedSlip
         });
     }
     catch (error) {
