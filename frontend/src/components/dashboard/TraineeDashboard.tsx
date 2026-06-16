@@ -70,13 +70,88 @@ const FilePreview = ({ url, label }: { url: string; label: string }) => {
 
   const isPdf = url.startsWith('data:application/pdf') || url.toLowerCase().includes('.pdf');
 
+  const handleDownload = () => {
+    if (isPdf) {
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${label.replace(/\s+/g, '_')}.pdf`);
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } else {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert("Please allow popups to download/print this document.");
+        return;
+      }
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>${label}</title>
+            <style>
+              @page {
+                size: auto;
+                margin: 10mm;
+              }
+              body {
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background-color: white;
+              }
+              img {
+                max-width: 100%;
+                max-height: 100%;
+                object-fit: contain;
+              }
+              @media print {
+                body {
+                  margin: 0;
+                }
+                img {
+                  max-width: 100%;
+                  max-height: 100%;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <img src="${url}" />
+            <script>
+              window.onload = () => {
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 500);
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
+
   return (
     <div className="mt-2 border rounded-lg overflow-hidden bg-white shadow-sm max-w-xs transition-all hover:shadow-md">
       <div className="bg-gray-100 px-3 py-1.5 text-[10px] font-bold text-gray-500 uppercase border-b flex justify-between items-center">
         <span>{label} Preview</span>
-        <a href={url} target="_blank" rel="noreferrer" className="text-purple-600 hover:underline">
-          👁️ Open
-        </a>
+        <div className="flex gap-2">
+          <a href={url} target="_blank" rel="noreferrer" className="text-purple-600 hover:underline">
+            👁️ Open
+          </a>
+          <span className="text-gray-300">|</span>
+          <button 
+            type="button" 
+            onClick={handleDownload} 
+            className="text-purple-600 hover:underline bg-transparent border-none cursor-pointer p-0 font-bold"
+          >
+            ⬇️ PDF
+          </button>
+        </div>
       </div>
       <div className="p-2 flex justify-center items-center bg-gray-50/50 min-h-[100px]">
         {isPdf ? (

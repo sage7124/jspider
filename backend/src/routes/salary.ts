@@ -132,6 +132,13 @@ export const calculateTraineeSalaryData = async (
   const baseSalary = trainee.baseSalary || 0.0;
   const trainingFee = trainee.trainingFee || 0.0;
 
+  // Extra class and other center class rates
+  const extraClassRate = trainee.extraClassRate !== null && trainee.extraClassRate !== undefined ? trainee.extraClassRate : (settings?.extraClassRate !== undefined ? settings.extraClassRate : 0.0);
+  const otherCenterClassRate = trainee.otherCenterClassRate !== null && trainee.otherCenterClassRate !== undefined ? trainee.otherCenterClassRate : (settings?.otherCenterClassRate !== undefined ? settings.otherCenterClassRate : 0.0);
+
+  const extraClassEarnings = Math.round(extraClassesHours * extraClassRate);
+  const otherCenterClassEarnings = Math.round(otherCenterClassesHours * otherCenterClassRate);
+
   // Deduction values
   const lateRate = trainee.lateRate !== null && trainee.lateRate !== undefined ? trainee.lateRate : (settings?.lateRate !== undefined ? settings.lateRate : 30.0);
   const earlyRate = trainee.earlyRate !== null && trainee.earlyRate !== undefined ? trainee.earlyRate : (settings?.earlyRate !== undefined ? settings.earlyRate : 30.0);
@@ -211,7 +218,7 @@ export const calculateTraineeSalaryData = async (
 
   // TDS calculation: custom rate if present, else default 10%
   const tdsPercentage = trainee.tdsRate !== null && trainee.tdsRate !== undefined ? trainee.tdsRate : 10.0;
-  const grossEarnings = baseSalary + trainingFee + otherAdditions;
+  const grossEarnings = baseSalary + trainingFee + otherAdditions + extraClassEarnings + otherCenterClassEarnings;
   const netBeforeTax = Math.max(0, grossEarnings - lateDeduction - earlyDeduction - absentDeduction - otherDeductions);
   const tdsDeduction = Math.round(netBeforeTax * (tdsPercentage / 100.0));
 
@@ -220,6 +227,7 @@ export const calculateTraineeSalaryData = async (
 
   return {
     professionalFee: baseSalary,
+    basicSalary: baseSalary,
     trainingFee,
     grossEarnings,
     lateInstances,
@@ -242,6 +250,7 @@ export const calculateTraineeSalaryData = async (
     panNo: trainee.panNumber || '--',
     aadhaarNo: trainee.aadhaarNumber || '--',
     otherAdditions,
+    additions: otherAdditions,
     otherDeductions,
     personalTdsRate: trainee.tdsRate,
     personalLateDeductionType: trainee.lateDeductionType,
@@ -253,7 +262,13 @@ export const calculateTraineeSalaryData = async (
     otherCenterClassesCount,
     otherCenterClassesHours,
     approvedLeavesCount,
-    tdsPercentage
+    tdsPercentage,
+    extraClassRate,
+    otherCenterClassRate,
+    extraClassEarnings,
+    otherCenterClassEarnings,
+    personalExtraClassRate: trainee.extraClassRate,
+    personalOtherCenterClassRate: trainee.otherCenterClassRate
   };
 };
 
@@ -284,6 +299,8 @@ router.put('/admin/trainees/:id/salary', authenticateToken, checkSalarySlipsAcce
       lateRate,
       earlyRate,
       absentRate,
+      extraClassRate,
+      otherCenterClassRate,
       tdsRate,
       otherAdditions,
       otherDeductions,
@@ -301,6 +318,8 @@ router.put('/admin/trainees/:id/salary', authenticateToken, checkSalarySlipsAcce
         lateRate: (lateRate !== undefined && lateRate !== "" && lateRate !== null) ? parseFloat(lateRate) : null,
         earlyRate: (earlyRate !== undefined && earlyRate !== "" && earlyRate !== null) ? parseFloat(earlyRate) : null,
         absentRate: (absentRate !== undefined && absentRate !== "" && absentRate !== null) ? parseFloat(absentRate) : null,
+        extraClassRate: (extraClassRate !== undefined && extraClassRate !== "" && extraClassRate !== null) ? parseFloat(extraClassRate) : null,
+        otherCenterClassRate: (otherCenterClassRate !== undefined && otherCenterClassRate !== "" && otherCenterClassRate !== null) ? parseFloat(otherCenterClassRate) : null,
         tdsRate: (tdsRate !== undefined && tdsRate !== "" && tdsRate !== null) ? parseFloat(tdsRate) : null,
         otherAdditions: (otherAdditions !== undefined && otherAdditions !== "" && otherAdditions !== null) ? parseFloat(otherAdditions) : 0.0,
         otherDeductions: (otherDeductions !== undefined && otherDeductions !== "" && otherDeductions !== null) ? parseFloat(otherDeductions) : 0.0,
@@ -355,6 +374,56 @@ router.get('/admin/reports/payslip/list', authenticateToken, checkSalarySlipsAcc
     }
 
     res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Fetch single trainee's computed salary data for print/PDF
+router.get('/admin/reports/payslip/single/:userId', authenticateToken, checkSalarySlipsAccess, async (req: AuthRequest, res) => {
+  try {
+    const userId = parseInt(req.params.userId as string);
+    const { month } = req.query; // format "YYYY-MM"
+    if (!month || typeof month !== 'string') {
+      return res.status(400).json({ error: 'Month is required' });
+    }
+
+    const trainee = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { slots: true }
+    });
+    if (!trainee) {
+      return res.status(404).json({ error: 'Trainee not found' });
+    }
+
+    // Verify supervisor ownership
+    if (req.user!.role === 'SUPERVISOR') {
+      const isAssigned = await prisma.user.findFirst({
+        where: {
+          id: userId,
+          supervisors: { some: { id: req.user!.id } }
+        }
+      });
+      if (!isAssigned) {
+        return res.status(403).json({ error: 'Access denied: trainee not assigned to supervisor' });
+      }
+    }
+
+    const [year, mon] = month.split('-').map(Number);
+    const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+    const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+    const daysInMonth = new Date(year, mon, 0).getDate();
+
+    const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+    const salData = await calculateTraineeSalaryData(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
+
+    res.json({
+      id: trainee.id,
+      fullName: trainee.fullName,
+      empCode: trainee.identifier,
+      ...salData
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });

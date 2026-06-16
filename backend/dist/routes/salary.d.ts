@@ -1,11 +1,14 @@
 declare const router: import("express-serve-static-core").Router;
-export declare const calculateTraineeSalaryData: (trainee: any, year: number, mon: number, daysInMonth: number, startOfMonth: Date, endOfMonth: Date) => Promise<{
+export declare const calculateTraineeSalaryData: (trainee: any, year: number, mon: number, daysInMonth: number, startOfMonth: Date, endOfMonth: Date, passedSettings?: any) => Promise<{
     professionalFee: any;
+    basicSalary: any;
     trainingFee: any;
     grossEarnings: any;
     lateInstances: number;
+    totalLateMinutes: any;
     lateDeduction: number;
     earlyInstances: number;
+    totalEarlyMinutes: any;
     earlyDeduction: number;
     absentDays: number;
     eligibleCLs: number;
@@ -13,10 +16,33 @@ export declare const calculateTraineeSalaryData: (trainee: any, year: number, mo
     unexcusedLeaves: number;
     absentDeduction: number;
     tdsDeduction: number;
-    totalDeductions: number;
+    totalDeductions: any;
     netTakeHome: number;
+    personalLateRate: any;
+    personalEarlyRate: any;
+    personalAbsentRate: any;
     panNo: any;
     aadhaarNo: any;
+    otherAdditions: any;
+    additions: any;
+    otherDeductions: any;
+    personalTdsRate: any;
+    personalLateDeductionType: any;
+    personalEarlyDeductionType: any;
+    personalLateIntervalValue: any;
+    personalEarlyIntervalValue: any;
+    extraClassesCount: number;
+    extraClassesHours: number;
+    otherCenterClassesCount: number;
+    otherCenterClassesHours: number;
+    approvedLeavesCount: number;
+    tdsPercentage: any;
+    extraClassRate: any;
+    otherCenterClassRate: any;
+    extraClassEarnings: number;
+    otherCenterClassEarnings: number;
+    personalExtraClassRate: any;
+    personalOtherCenterClassRate: any;
 }>;
 export default router;
 //# sourceMappingURL=salary.d.ts.map

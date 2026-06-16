@@ -45,7 +45,7 @@ const excel_1 = require("../utils/excel");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
 // Helper function to calculate all payslip parameters for a trainee
-const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, startOfMonth, endOfMonth) => {
+const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, passedSettings) => {
     // Fetch trainee's attendances, holidays, and approved leaves for this month
     const attendances = await prisma.attendance.findMany({
         where: {
@@ -66,6 +66,42 @@ const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, start
             endDate: { gte: startOfMonth }
         }
     });
+    // Fetch count and hours of APPROVED extra classes and other center classes
+    const extraClasses = await prisma.extraClassLog.findMany({
+        where: {
+            userId: trainee.id,
+            status: 'APPROVED',
+            date: { gte: startOfMonth, lte: endOfMonth }
+        }
+    });
+    const otherCenterClasses = await prisma.otherCenterClassLog.findMany({
+        where: {
+            userId: trainee.id,
+            status: 'APPROVED',
+            date: { gte: startOfMonth, lte: endOfMonth }
+        }
+    });
+    const extraClassesCount = extraClasses.length;
+    const extraClassesHours = extraClasses.reduce((sum, item) => sum + (item.duration || 0.0), 0.0);
+    const otherCenterClassesCount = otherCenterClasses.length;
+    const otherCenterClassesHours = otherCenterClasses.reduce((sum, item) => sum + (item.duration || 0.0), 0.0);
+    // Calculate approved leaves count for the selected month day-by-day
+    let approvedLeavesCount = 0;
+    for (let dIndex = 1; dIndex <= daysInMonth; dIndex++) {
+        const currentDate = new Date(year, mon - 1, dIndex);
+        const leave = leaves.find(l => {
+            const dObj = new Date(Date.UTC(year, mon - 1, dIndex, 12, 0, 0));
+            const start = new Date(new Date(l.startDate).getTime() + (5.5 * 60 * 60 * 1000));
+            start.setUTCHours(0, 0, 0, 0);
+            const end = new Date(new Date(l.endDate).getTime() + (5.5 * 60 * 60 * 1000));
+            end.setUTCHours(23, 59, 59, 999);
+            const dTime = dObj.getTime();
+            return dTime >= start.getTime() && dTime <= end.getTime() && l.status === 'APPROVED';
+        });
+        if (leave) {
+            approvedLeavesCount++;
+        }
+    }
     // Compute report rows using the utility
     const report = (0, excel_1.getTraineeReportData)(trainee, attendances, year, mon, daysInMonth, holidays, leaves);
     let lateInstances = 0;
@@ -110,34 +146,107 @@ const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, start
             }
         }
     });
+    const settings = passedSettings || await prisma.instituteSettings.findUnique({ where: { id: 1 } });
     const baseSalary = trainee.baseSalary || 0.0;
     const trainingFee = trainee.trainingFee || 0.0;
+    // Extra class and other center class rates
+    const extraClassRate = trainee.extraClassRate !== null && trainee.extraClassRate !== undefined ? trainee.extraClassRate : (settings?.extraClassRate !== undefined ? settings.extraClassRate : 0.0);
+    const otherCenterClassRate = trainee.otherCenterClassRate !== null && trainee.otherCenterClassRate !== undefined ? trainee.otherCenterClassRate : (settings?.otherCenterClassRate !== undefined ? settings.otherCenterClassRate : 0.0);
+    const extraClassEarnings = Math.round(extraClassesHours * extraClassRate);
+    const otherCenterClassEarnings = Math.round(otherCenterClassesHours * otherCenterClassRate);
     // Deduction values
-    const lateRate = 30.0;
-    const earlyRate = 30.0;
+    const lateRate = trainee.lateRate !== null && trainee.lateRate !== undefined ? trainee.lateRate : (settings?.lateRate !== undefined ? settings.lateRate : 30.0);
+    const earlyRate = trainee.earlyRate !== null && trainee.earlyRate !== undefined ? trainee.earlyRate : (settings?.earlyRate !== undefined ? settings.earlyRate : 30.0);
+    const absentRateSetting = trainee.absentRate !== null && trainee.absentRate !== undefined ? trainee.absentRate : (settings?.absentRate !== undefined ? settings.absentRate : 0.0);
     const eligibleCLs = 1;
-    const lateDeduction = lateInstances * lateRate;
-    const earlyDeduction = earlyInstances * earlyRate;
+    // Overrides for late/early types & intervals
+    const lateDeductionType = (trainee.lateDeductionType !== null && trainee.lateDeductionType !== undefined && trainee.lateDeductionType !== "") ? trainee.lateDeductionType : (settings?.lateDeductionType || "instance");
+    const lateIntervalValue = Math.max(1, (trainee.lateIntervalValue !== null && trainee.lateIntervalValue !== undefined) ? trainee.lateIntervalValue : (settings?.lateIntervalValue || 15));
+    const earlyDeductionType = (trainee.earlyDeductionType !== null && trainee.earlyDeductionType !== undefined && trainee.earlyDeductionType !== "") ? trainee.earlyDeductionType : (settings?.earlyDeductionType || "instance");
+    const earlyIntervalValue = Math.max(1, (trainee.earlyIntervalValue !== null && trainee.earlyIntervalValue !== undefined) ? trainee.earlyIntervalValue : (settings?.earlyIntervalValue || 15));
+    const totalLateMinutes = report.totalLateMinutes || 0;
+    const totalEarlyMinutes = report.totalEarlyMinutes || 0;
+    // Helper to parse "Xh Ym" or "Ym" or "0m" into total minutes
+    const parseMinutes = (str) => {
+        if (!str || str === '0m' || str === '--' || str === 'ABSENT' || str === 'MISSING OUT')
+            return 0;
+        let minutes = 0;
+        const hourMatch = str.match(/(\d+)h/);
+        const minMatch = str.match(/(\d+)m/);
+        if (hourMatch)
+            minutes += parseInt(hourMatch[1]) * 60;
+        if (minMatch)
+            minutes += parseInt(minMatch[1]);
+        return minutes;
+    };
+    let lateDeduction = 0;
+    if (lateDeductionType === 'instance') {
+        lateDeduction = lateInstances * lateRate;
+    }
+    else if (lateDeductionType === 'minute') {
+        lateDeduction = totalLateMinutes * lateRate;
+    }
+    else if (lateDeductionType === 'hour') {
+        lateDeduction = (totalLateMinutes / 60) * lateRate;
+    }
+    else if (lateDeductionType === 'interval') {
+        report.rows.forEach(r => {
+            const dayLateMins = parseMinutes(r.late);
+            if (dayLateMins > 0) {
+                lateDeduction += Math.ceil(dayLateMins / lateIntervalValue) * lateRate;
+            }
+        });
+    }
+    let earlyDeduction = 0;
+    if (earlyDeductionType === 'instance') {
+        earlyDeduction = earlyInstances * earlyRate;
+    }
+    else if (earlyDeductionType === 'minute') {
+        earlyDeduction = totalEarlyMinutes * earlyRate;
+    }
+    else if (earlyDeductionType === 'hour') {
+        earlyDeduction = (totalEarlyMinutes / 60) * earlyRate;
+    }
+    else if (earlyDeductionType === 'interval') {
+        report.rows.forEach(r => {
+            const dayEarlyMins = parseMinutes(r.earlyDeparture);
+            if (dayEarlyMins > 0) {
+                earlyDeduction += Math.ceil(dayEarlyMins / earlyIntervalValue) * earlyRate;
+            }
+        });
+    }
+    // Round deductions to nearest integer to avoid decimal precision issues in display
+    lateDeduction = Math.round(lateDeduction);
+    earlyDeduction = Math.round(earlyDeduction);
     // Absent calculation:
     // C/F (ULD) = B/F (ULD) - Absent + CL = 0 - absentDays + 1
     const balanceForward = 0;
     const cfLeaves = balanceForward - absentDays + eligibleCLs;
     const unexcusedLeaves = cfLeaves < 0 ? Math.abs(cfLeaves) : 0;
     const dailyRate = daysInMonth > 0 ? (baseSalary / daysInMonth) : 0.0;
-    const absentDeduction = Math.round(dailyRate * unexcusedLeaves);
-    // TDS calculation: 10% of net earnings before tax
-    const grossEarnings = baseSalary + trainingFee;
-    const netBeforeTax = Math.max(0, grossEarnings - lateDeduction - earlyDeduction - absentDeduction);
-    const tdsDeduction = Math.round(netBeforeTax * 0.10);
-    const totalDeductions = lateDeduction + earlyDeduction + absentDeduction + tdsDeduction;
+    const absentDeduction = absentRateSetting > 0
+        ? Math.round(absentRateSetting * unexcusedLeaves)
+        : Math.round(dailyRate * unexcusedLeaves);
+    // Custom additions and deductions from trainee overrides
+    const otherAdditions = trainee.otherAdditions || 0.0;
+    const otherDeductions = trainee.otherDeductions || 0.0;
+    // TDS calculation: custom rate if present, else default 10%
+    const tdsPercentage = trainee.tdsRate !== null && trainee.tdsRate !== undefined ? trainee.tdsRate : 10.0;
+    const grossEarnings = baseSalary + trainingFee + otherAdditions + extraClassEarnings + otherCenterClassEarnings;
+    const netBeforeTax = Math.max(0, grossEarnings - lateDeduction - earlyDeduction - absentDeduction - otherDeductions);
+    const tdsDeduction = Math.round(netBeforeTax * (tdsPercentage / 100.0));
+    const totalDeductions = lateDeduction + earlyDeduction + absentDeduction + tdsDeduction + otherDeductions;
     const netTakeHome = Math.max(0, grossEarnings - totalDeductions);
     return {
         professionalFee: baseSalary,
+        basicSalary: baseSalary,
         trainingFee,
         grossEarnings,
         lateInstances,
+        totalLateMinutes,
         lateDeduction,
         earlyInstances,
+        totalEarlyMinutes,
         earlyDeduction,
         absentDays,
         eligibleCLs,
@@ -147,8 +256,31 @@ const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, start
         tdsDeduction,
         totalDeductions,
         netTakeHome,
+        personalLateRate: trainee.lateRate,
+        personalEarlyRate: trainee.earlyRate,
+        personalAbsentRate: trainee.absentRate,
         panNo: trainee.panNumber || '--',
-        aadhaarNo: trainee.aadhaarNumber || '--'
+        aadhaarNo: trainee.aadhaarNumber || '--',
+        otherAdditions,
+        additions: otherAdditions,
+        otherDeductions,
+        personalTdsRate: trainee.tdsRate,
+        personalLateDeductionType: trainee.lateDeductionType,
+        personalEarlyDeductionType: trainee.earlyDeductionType,
+        personalLateIntervalValue: trainee.lateIntervalValue,
+        personalEarlyIntervalValue: trainee.earlyIntervalValue,
+        extraClassesCount,
+        extraClassesHours,
+        otherCenterClassesCount,
+        otherCenterClassesHours,
+        approvedLeavesCount,
+        tdsPercentage,
+        extraClassRate,
+        otherCenterClassRate,
+        extraClassEarnings,
+        otherCenterClassEarnings,
+        personalExtraClassRate: trainee.extraClassRate,
+        personalOtherCenterClassRate: trainee.otherCenterClassRate
     };
 };
 exports.calculateTraineeSalaryData = calculateTraineeSalaryData;
@@ -172,12 +304,24 @@ const checkSalarySlipsAccess = async (req, res, next) => {
 router.put('/admin/trainees/:id/salary', authMiddleware_1.authenticateToken, checkSalarySlipsAccess, async (req, res) => {
     try {
         const { id } = req.params;
-        const { baseSalary, trainingFee } = req.body;
+        const { baseSalary, trainingFee, lateRate, earlyRate, absentRate, extraClassRate, otherCenterClassRate, tdsRate, otherAdditions, otherDeductions, lateDeductionType, earlyDeductionType, lateIntervalValue, earlyIntervalValue } = req.body;
         const user = await prisma.user.update({
             where: { id: parseInt(id) },
             data: {
                 baseSalary: parseFloat(baseSalary) || 0.0,
-                trainingFee: parseFloat(trainingFee) || 0.0
+                trainingFee: parseFloat(trainingFee) || 0.0,
+                lateRate: (lateRate !== undefined && lateRate !== "" && lateRate !== null) ? parseFloat(lateRate) : null,
+                earlyRate: (earlyRate !== undefined && earlyRate !== "" && earlyRate !== null) ? parseFloat(earlyRate) : null,
+                absentRate: (absentRate !== undefined && absentRate !== "" && absentRate !== null) ? parseFloat(absentRate) : null,
+                extraClassRate: (extraClassRate !== undefined && extraClassRate !== "" && extraClassRate !== null) ? parseFloat(extraClassRate) : null,
+                otherCenterClassRate: (otherCenterClassRate !== undefined && otherCenterClassRate !== "" && otherCenterClassRate !== null) ? parseFloat(otherCenterClassRate) : null,
+                tdsRate: (tdsRate !== undefined && tdsRate !== "" && tdsRate !== null) ? parseFloat(tdsRate) : null,
+                otherAdditions: (otherAdditions !== undefined && otherAdditions !== "" && otherAdditions !== null) ? parseFloat(otherAdditions) : 0.0,
+                otherDeductions: (otherDeductions !== undefined && otherDeductions !== "" && otherDeductions !== null) ? parseFloat(otherDeductions) : 0.0,
+                lateDeductionType: (lateDeductionType !== undefined && lateDeductionType !== "" && lateDeductionType !== null) ? lateDeductionType : null,
+                earlyDeductionType: (earlyDeductionType !== undefined && earlyDeductionType !== "" && earlyDeductionType !== null) ? earlyDeductionType : null,
+                lateIntervalValue: (lateIntervalValue !== undefined && lateIntervalValue !== "" && lateIntervalValue !== null) ? parseInt(lateIntervalValue) : null,
+                earlyIntervalValue: (earlyIntervalValue !== undefined && earlyIntervalValue !== "" && earlyIntervalValue !== null) ? parseInt(earlyIntervalValue) : null
             }
         });
         res.json({ message: 'Salary settings updated successfully', user });
@@ -204,11 +348,13 @@ router.get('/admin/reports/payslip/list', authMiddleware_1.authenticateToken, ch
         }
         const trainees = await prisma.user.findMany({
             where: traineesFilter,
+            include: { slots: true },
             orderBy: { fullName: 'asc' }
         });
+        const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
         const result = [];
         for (const t of trainees) {
-            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth);
+            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
             result.push({
                 id: t.id,
                 fullName: t.fullName,
@@ -217,6 +363,51 @@ router.get('/admin/reports/payslip/list', authMiddleware_1.authenticateToken, ch
             });
         }
         res.json(result);
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// Fetch single trainee's computed salary data for print/PDF
+router.get('/admin/reports/payslip/single/:userId', authMiddleware_1.authenticateToken, checkSalarySlipsAccess, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId);
+        const { month } = req.query; // format "YYYY-MM"
+        if (!month || typeof month !== 'string') {
+            return res.status(400).json({ error: 'Month is required' });
+        }
+        const trainee = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { slots: true }
+        });
+        if (!trainee) {
+            return res.status(404).json({ error: 'Trainee not found' });
+        }
+        // Verify supervisor ownership
+        if (req.user.role === 'SUPERVISOR') {
+            const isAssigned = await prisma.user.findFirst({
+                where: {
+                    id: userId,
+                    supervisors: { some: { id: req.user.id } }
+                }
+            });
+            if (!isAssigned) {
+                return res.status(403).json({ error: 'Access denied: trainee not assigned to supervisor' });
+            }
+        }
+        const [year, mon] = month.split('-').map(Number);
+        const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+        const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+        const daysInMonth = new Date(year, mon, 0).getDate();
+        const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+        const salData = await (0, exports.calculateTraineeSalaryData)(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
+        res.json({
+            id: trainee.id,
+            fullName: trainee.fullName,
+            empCode: trainee.identifier,
+            ...salData
+        });
     }
     catch (error) {
         console.error(error);
@@ -254,7 +445,8 @@ router.get('/admin/reports/payslip/export/:userId', authMiddleware_1.authenticat
         const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
         const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
         const daysInMonth = new Date(year, mon, 0).getDate();
-        const salData = await (0, exports.calculateTraineeSalaryData)(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth);
+        const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+        const salData = await (0, exports.calculateTraineeSalaryData)(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
         const storedSlip = await prisma.salarySlip.findUnique({
             where: {
                 userId_month: { userId, month }
@@ -489,7 +681,7 @@ router.get('/admin/reports/payslip/export/:userId', authMiddleware_1.authenticat
             ws.getCell('B10').alignment = { horizontal: 'right' };
             ws.getCell('C10').value = 'Description';
             ws.getCell('C10').font = { bold: true, size: 9 };
-            ws.getCell('D10').value = 'Instance';
+            ws.getCell('D10').value = 'Details';
             ws.getCell('D10').font = { bold: true, size: 9 };
             ws.getCell('D10').alignment = { horizontal: 'center' };
             ws.getCell('E10').value = 'Remarks';
@@ -503,32 +695,42 @@ router.get('/admin/reports/payslip/export/:userId', authMiddleware_1.authenticat
             ws.getCell('B11').numFmt = '"₹"#,##0';
             ws.getCell('B11').alignment = { horizontal: 'right' };
             ws.getCell('C11').value = 'Late Arrivals :';
-            ws.getCell('D11').value = salData.lateInstances;
+            ws.getCell('D11').value = `${salData.totalLateMinutes}m (${(salData.totalLateMinutes / 60).toFixed(2)}h)`;
             ws.getCell('D11').alignment = { horizontal: 'center' };
-            ws.getCell('E11').value = '--';
+            ws.getCell('E11').value = `${salData.lateInstances} times`;
             ws.getCell('E11').alignment = { horizontal: 'center' };
             ws.getCell('F11').value = salData.lateDeduction;
             ws.getCell('F11').numFmt = '"₹"#,##0';
             ws.getCell('F11').alignment = { horizontal: 'right' };
-            // Row 12: Empty on Left, Early Depart on Right
+            // Row 12: Other Additions on Left, Early Depart on Right
+            ws.getCell('A12').value = 'Other Additions :';
+            ws.getCell('B12').value = salData.otherAdditions;
+            ws.getCell('B12').numFmt = '"₹"#,##0';
+            ws.getCell('B12').alignment = { horizontal: 'right' };
             ws.getCell('C12').value = 'Early Depart :';
-            ws.getCell('D12').value = salData.earlyInstances;
+            ws.getCell('D12').value = `${salData.totalEarlyMinutes}m (${(salData.totalEarlyMinutes / 60).toFixed(2)}h)`;
             ws.getCell('D12').alignment = { horizontal: 'center' };
-            ws.getCell('E12').value = '--';
+            ws.getCell('E12').value = `${salData.earlyInstances} times`;
             ws.getCell('E12').alignment = { horizontal: 'center' };
             ws.getCell('F12').value = salData.earlyDeduction;
             ws.getCell('F12').numFmt = '"₹"#,##0';
             ws.getCell('F12').alignment = { horizontal: 'right' };
-            // Row 13: Absent/Leave
+            // Row 13: Extra Classes on Left, Absent/Leave on Right
+            ws.getCell('A13').value = 'Extra Classes :';
+            ws.getCell('B13').value = `${salData.extraClassesCount} (${salData.extraClassesHours.toFixed(1)}h)`;
+            ws.getCell('B13').alignment = { horizontal: 'right' };
             ws.getCell('C13').value = 'Absent/Leave :';
-            ws.getCell('D13').value = salData.unexcusedLeaves;
+            ws.getCell('D13').value = `abs: ${salData.absentDays} / lvs: ${salData.approvedLeavesCount}`;
             ws.getCell('D13').alignment = { horizontal: 'center' };
-            ws.getCell('E13').value = '--';
+            ws.getCell('E13').value = `${salData.unexcusedLeaves} unexcused`;
             ws.getCell('E13').alignment = { horizontal: 'center' };
             ws.getCell('F13').value = salData.absentDeduction;
             ws.getCell('F13').numFmt = '"₹"#,##0';
             ws.getCell('F13').alignment = { horizontal: 'right' };
-            // Row 14: Hourly
+            // Row 14: Other Center Classes on Left, Hourly on Right
+            ws.getCell('A14').value = 'Other Center Classes :';
+            ws.getCell('B14').value = `${salData.otherCenterClassesCount} (${salData.otherCenterClassesHours.toFixed(1)}h)`;
+            ws.getCell('B14').alignment = { horizontal: 'right' };
             ws.getCell('C14').value = 'Hourly :';
             ws.getCell('D14').value = 0;
             ws.getCell('D14').alignment = { horizontal: 'center' };
@@ -537,15 +739,15 @@ router.get('/admin/reports/payslip/export/:userId', authMiddleware_1.authenticat
             ws.getCell('F14').value = 0;
             ws.getCell('F14').numFmt = '"₹"#,##0';
             ws.getCell('F14').alignment = { horizontal: 'right' };
-            // Row 15: Loan Repaid back to NICT
+            // Row 15: Other Deductions
             ws.mergeCells('C15:E15');
-            ws.getCell('C15').value = 'Loan Repaid back to NICT :';
-            ws.getCell('F15').value = 0;
+            ws.getCell('C15').value = 'Other Deductions :';
+            ws.getCell('F15').value = salData.otherDeductions;
             ws.getCell('F15').numFmt = '"₹"#,##0';
             ws.getCell('F15').alignment = { horizontal: 'right' };
             // Row 16: Tax Deducted at Source (TDS)
             ws.mergeCells('C16:E16');
-            ws.getCell('C16').value = 'Tax Deducted at Source (TDS) :';
+            ws.getCell('C16').value = `Tax Deducted at Source (TDS, ${salData.tdsPercentage}%) :`;
             ws.getCell('F16').value = salData.tdsDeduction;
             ws.getCell('F16').numFmt = '"₹"#,##0';
             ws.getCell('F16').alignment = { horizontal: 'right' };
@@ -926,39 +1128,45 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
         if (req.user.role === 'SUPERVISOR') {
             traineesFilter.supervisors = { some: { id: req.user.id } };
         }
-        const slips = await prisma.salarySlip.findMany({
-            where: {
-                month,
-                user: traineesFilter
-            },
-            include: {
-                user: true
-            },
-            orderBy: {
-                user: { fullName: 'asc' }
-            }
+        const trainees = await prisma.user.findMany({
+            where: traineesFilter,
+            include: { slots: true },
+            orderBy: { fullName: 'asc' }
         });
+        const [year, mon] = month.split('-').map(Number);
+        const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+        const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+        const daysInMonth = new Date(year, mon, 0).getDate();
         const workbook = new exceljs.Workbook();
         const ws = workbook.addWorksheet(`Salary Slips ${month}`);
-        // Headers
+        // Headers updated for our detailed dynamic calculations
         ws.addRow([
             'Sl. No',
             'Employee Name',
             'Registration No',
             'Month',
-            'Basic Salary',
-            'HRA',
-            'Conveyance',
-            'Special Allowance',
-            'Other Allowance',
-            'Total Earnings',
-            'PF',
-            'Professional Tax',
-            'ESI',
-            'TDS',
+            'Professional Fee (Basic)',
+            'Training Fee',
+            'Other Additions',
+            'Gross Earnings',
+            'Late Arrival Total (Mins)',
+            'Late Arrival Total (Hrs)',
+            'Late Penalty',
+            'Early Checkout Total (Mins)',
+            'Early Checkout Total (Hrs)',
+            'Early Penalty',
+            'Absent Days',
+            'Approved Leaves',
+            'Unexcused Leaves',
+            'Absenteeism Deduction',
+            'Extra Classes Conducted (Count)',
+            'Extra Classes Hours',
+            'Other Center Classes Conducted (Count)',
+            'Other Center Classes Hours',
             'Other Deductions',
+            'TDS',
             'Total Deductions',
-            'Net Salary'
+            'Net Salary (Take Home)'
         ]);
         // Style headers
         const headerRow = ws.getRow(1);
@@ -971,40 +1179,54 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
             };
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
-        slips.forEach((s, idx) => {
-            const totalEarnings = s.basicSalary + s.hra + s.conveyance + s.specialAllowance + s.otherAllowance;
-            const totalDeductions = s.pf + s.professionalTax + s.esi + s.tds + s.otherDeductions;
+        const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+        for (let idx = 0; idx < trainees.length; idx++) {
+            const t = trainees[idx];
+            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
             ws.addRow([
                 idx + 1,
-                s.user.fullName,
-                s.user.identifier,
-                s.month,
-                s.basicSalary,
-                s.hra,
-                s.conveyance,
-                s.specialAllowance,
-                s.otherAllowance,
-                totalEarnings,
-                s.pf,
-                s.professionalTax,
-                s.esi,
-                s.tds,
-                s.otherDeductions,
-                totalDeductions,
-                s.netSalary
+                t.fullName,
+                t.identifier,
+                month,
+                salData.professionalFee,
+                salData.trainingFee,
+                salData.otherAdditions,
+                salData.grossEarnings,
+                salData.totalLateMinutes,
+                parseFloat((salData.totalLateMinutes / 60).toFixed(2)),
+                salData.lateDeduction,
+                salData.totalEarlyMinutes,
+                parseFloat((salData.totalEarlyMinutes / 60).toFixed(2)),
+                salData.earlyDeduction,
+                salData.absentDays,
+                salData.approvedLeavesCount,
+                salData.unexcusedLeaves,
+                salData.absentDeduction,
+                salData.extraClassesCount,
+                parseFloat(salData.extraClassesHours.toFixed(2)),
+                salData.otherCenterClassesCount,
+                parseFloat(salData.otherCenterClassesHours.toFixed(2)),
+                salData.otherDeductions,
+                salData.tdsDeduction,
+                salData.totalDeductions,
+                salData.netTakeHome
             ]);
-        });
+        }
         // Formatting numbers
         ws.eachRow((row, rowNumber) => {
             if (rowNumber === 1)
                 return;
-            for (let c = 5; c <= 17; c++) {
+            // Currency columns
+            [5, 6, 7, 8, 11, 14, 18, 23, 24, 25, 26].forEach(c => {
                 const cell = row.getCell(c);
                 cell.numFmt = '"₹"#,##0';
                 cell.alignment = { horizontal: 'right' };
-            }
-            row.getCell(1).alignment = { horizontal: 'center' };
-            row.getCell(4).alignment = { horizontal: 'center' };
+            });
+            // Center align columns
+            [1, 4, 9, 10, 12, 13, 15, 16, 17, 19, 20, 21, 22].forEach(c => {
+                const cell = row.getCell(c);
+                cell.alignment = { horizontal: 'center' };
+            });
         });
         // Autofit columns
         ws.columns.forEach((col) => {
@@ -1025,6 +1247,47 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
     }
     catch (error) {
         console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// GET /api/salary-slips/my-slip
+router.get('/salary-slips/my-slip', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const { month } = req.query;
+        if (!month || typeof month !== 'string') {
+            return res.status(400).json({ error: 'Month is required (format: YYYY-MM)' });
+        }
+        const userId = req.user.id;
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { slots: true }
+        });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        const [year, mon] = month.split('-').map(Number);
+        const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+        const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+        const daysInMonth = new Date(year, mon, 0).getDate();
+        const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+        const salData = await (0, exports.calculateTraineeSalaryData)(user, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
+        res.json({
+            user: {
+                fullName: user.fullName,
+                identifier: user.identifier,
+                role: user.role,
+                email: user.email,
+                bankName: user.bankName,
+                bankAccountNo: user.bankAccountNo,
+                bankIfscCode: user.bankIfscCode,
+                bankBranchName: user.bankBranchName,
+            },
+            month,
+            salaryData: salData
+        });
+    }
+    catch (error) {
+        console.error('Error fetching own salary slip:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

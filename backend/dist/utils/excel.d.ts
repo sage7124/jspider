@@ -6,6 +6,8 @@ export declare const getTraineeReportData: (user: any, attendances: any[], year:
         earlyDeparture: string;
         extraWork: string;
     };
+    totalLateMinutes: number;
+    totalEarlyMinutes: number;
     assignedSlotNos: number[];
     hasExtraSlots: boolean;
     hasSlot1: boolean;
