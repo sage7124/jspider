@@ -59,6 +59,8 @@ model User {
   lateRate               Float?
   earlyRate              Float?
   absentRate             Float?
+  extraClassRate         Float?
+  otherCenterClassRate   Float?
   tdsRate                Float?
   otherAdditions         Float        @default(0.0)
   otherDeductions        Float        @default(0.0)
@@ -191,6 +193,8 @@ model InstituteSettings {
   earlyDeductionType String   @default("instance") // "instance", "minute", "hour", "interval"
   earlyIntervalValue Int      @default(15)
   absentRate     Float    @default(0.0) // 0.0 means calculate dynamically based on daily rate (baseSalary / daysInMonth)
+  extraClassRate Float    @default(0.0)
+  otherCenterClassRate Float @default(0.0)
   updatedAt      DateTime @updatedAt
 }
 

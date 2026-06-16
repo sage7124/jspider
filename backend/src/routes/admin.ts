@@ -1479,7 +1479,7 @@ router.put('/settings', async (req: AuthRequest, res) => {
       totalHolidaysQuota, lat, lng, radius, lat2, lng2, radius2, 
       lateRate, lateDeductionType, lateIntervalValue,
       earlyRate, earlyDeductionType, earlyIntervalValue,
-      absentRate 
+      absentRate, extraClassRate, otherCenterClassRate
     } = req.body;
     
     // Get existing settings to preserve values
@@ -1501,7 +1501,9 @@ router.put('/settings', async (req: AuthRequest, res) => {
         earlyRate: earlyRate !== undefined ? earlyRate : existing?.earlyRate,
         earlyDeductionType: earlyDeductionType !== undefined ? earlyDeductionType : existing?.earlyDeductionType,
         earlyIntervalValue: earlyIntervalValue !== undefined ? Number(earlyIntervalValue) : existing?.earlyIntervalValue,
-        absentRate: absentRate !== undefined ? absentRate : existing?.absentRate
+        absentRate: absentRate !== undefined ? absentRate : existing?.absentRate,
+        extraClassRate: extraClassRate !== undefined ? Number(extraClassRate) : existing?.extraClassRate,
+        otherCenterClassRate: otherCenterClassRate !== undefined ? Number(otherCenterClassRate) : existing?.otherCenterClassRate
       },
       create: { 
         id: 1,
@@ -1518,7 +1520,9 @@ router.put('/settings', async (req: AuthRequest, res) => {
         earlyRate: earlyRate !== undefined ? earlyRate : 30.0,
         earlyDeductionType: earlyDeductionType || "instance",
         earlyIntervalValue: earlyIntervalValue !== undefined ? Number(earlyIntervalValue) : 15,
-        absentRate: absentRate !== undefined ? absentRate : 0.0
+        absentRate: absentRate !== undefined ? absentRate : 0.0,
+        extraClassRate: extraClassRate !== undefined ? Number(extraClassRate) : 0.0,
+        otherCenterClassRate: otherCenterClassRate !== undefined ? Number(otherCenterClassRate) : 0.0
       }
     });
     res.json(settings);
