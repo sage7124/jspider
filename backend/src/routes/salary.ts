@@ -511,9 +511,8 @@ export function generateIndividualPayslipSheet(
 
   ws.mergeCells('A2:F2');
   const addressCell = ws.getCell('A2');
-  addressCell.value = '# 52, "Bhagawathi Towers", 4th Floor, 33rd Cross, Jayanagar 4th Block, Bangalore - 560 011.';
-  addressCell.font = { name: 'Calibri', size: 9, bold: false };
-  addressCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  addressCell.value = '';
+  ws.getRow(2).height = 0;
 
   ws.mergeCells('A3:F3');
   const emailCell = ws.getCell('A3');
@@ -984,7 +983,8 @@ router.get('/admin/reports/payslip/export/:userId', authenticateToken, checkSala
     });
 
     const workbook = new exceljs.Workbook();
-    const ws = workbook.addWorksheet('Pay Slip');
+    const sanitizedSheetName = trainee.fullName.replace(/[\\/?:*\[\]]/g, '').substring(0, 31) || 'Pay Slip';
+    const ws = workbook.addWorksheet(sanitizedSheetName);
 
     generateIndividualPayslipSheet(ws, trainee, salData, storedSlip, month, year, mon);
 
