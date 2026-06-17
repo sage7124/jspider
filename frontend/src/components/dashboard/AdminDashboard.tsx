@@ -6251,11 +6251,11 @@ const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
             </div>
 
             {/* Logs Table */}
-            <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+            <div className="flex-1 overflow-auto min-h-[300px] border border-gray-150 rounded-lg">
               {loading ? (
                 <p className="text-center py-10 text-gray-400">Loading logs...</p>
               ) : (
-                <table className="w-full text-xs text-left">
+                <table className="w-full min-w-[1100px] text-xs text-left">
                   <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b sticky top-0 z-10">
                     <tr>
                       <th className="px-4 py-3">Teacher</th>
@@ -6842,11 +6842,11 @@ const OtherCenterClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => 
             </div>
 
             {/* Logs Table */}
-            <div className="flex-1 overflow-y-auto min-h-[300px] border border-gray-150 rounded-lg">
+            <div className="flex-1 overflow-auto min-h-[300px] border border-gray-150 rounded-lg">
               {loading ? (
                 <p className="text-center py-10 text-gray-400">Loading logs...</p>
               ) : (
-                <table className="w-full text-xs text-left">
+                <table className="w-full min-w-[1100px] text-xs text-left">
                   <thead className="bg-[#f8fafc] text-gray-700 font-bold border-b sticky top-0 z-10">
                     <tr>
                       <th className="px-4 py-3">Teacher</th>
@@ -7621,6 +7621,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [trainees, setTrainees] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [previewTrainee, setPreviewTrainee] = useState<any | null>(null);
 
   // Editing state
   const [editingTrainee, setEditingTrainee] = useState<any | null>(null);
@@ -8193,6 +8194,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                           </button>
 
                           <button 
+                            onClick={() => setPreviewTrainee(t)}
+                            className="text-emerald-400 hover:text-emerald-200 transition-colors"
+                            title="Preview Pay Slip"
+                          >
+                            <Eye size={15} />
+                          </button>
+
+                          <button 
                             onClick={() => handleExportIndividual(t.id, t.fullName)}
                             className="text-teal-400 hover:text-teal-200 transition-colors"
                             title="Download Pay Slip (Excel)"
@@ -8475,6 +8484,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
           </div>
         )}
 
+        {previewTrainee && (
+          <AdminTraineePayslipPreviewModal 
+            userId={previewTrainee.id}
+            month={month}
+            onClose={() => setPreviewTrainee(null)}
+          />
+        )}
+
       </div>
     </div>
   );
@@ -8605,7 +8622,7 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white text-gray-900 rounded-lg shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white text-gray-900 rounded-lg shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header Bar */}
         <div className="flex justify-between items-center bg-blue-700 text-white px-6 py-4">
           <h2 className="text-lg font-bold tracking-wide">📄 My Pay Slip</h2>
@@ -8904,6 +8921,441 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
           ) : (
             <div className="text-center py-16 text-gray-500 text-base font-medium w-full">
               No payslip details available for this month.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Admin Trainee Payslip Preview Modal ───────────────────────────────────────
+interface AdminTraineePayslipPreviewModalProps {
+  userId: number;
+  month: string;
+  onClose: () => void;
+}
+
+const AdminTraineePayslipPreviewModal = ({ userId, month, onClose }: AdminTraineePayslipPreviewModalProps) => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPayslip = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/payslip/single/${userId}?month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setData(res.data);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.error || 'Failed to fetch payslip details.');
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePrintMyPayslip = () => {
+    if (!data) return;
+
+    const inWords = (num: number): string => {
+      const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+      const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+      
+      if ((num = Math.floor(num)) === 0) return 'zero';
+      
+      const g = (n: number): string => {
+        if (n < 20) return a[n];
+        const digit = n % 10;
+        return b[Math.floor(n / 10)] + (digit !== 0 ? '-' + a[digit] : '');
+      };
+      
+      const convert = (n: number): string => {
+        let str = '';
+        if (n >= 10000000) {
+          str += convert(Math.floor(n / 10000000)) + ' crore ';
+          n %= 10000000;
+        }
+        if (n >= 100000) {
+          str += convert(Math.floor(n / 100000)) + ' lakh ';
+          n %= 100000;
+        }
+        if (n >= 1000) {
+          str += convert(Math.floor(n / 1000)) + ' thousand ';
+          n %= 1000;
+        }
+        if (n >= 100) {
+          str += g(Math.floor(n / 100)) + ' hundred ';
+          n %= 100;
+        }
+        if (n > 0) {
+          if (str !== '') str += 'and ';
+          str += g(n);
+        }
+        return str;
+      };
+      
+      const res = convert(num).trim();
+      return res.charAt(0).toUpperCase() + res.slice(1) + ' Rupees Only';
+    };
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to download/print the payslip.");
+      return;
+    }
+
+    const tMapped = { ...data.user, ...data.salaryData };
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Payslip_${data.user.fullName}_${month}</title>
+          <style>${sharedPayslipStyles}</style>
+        </head>
+        <body>
+          <div class="print-btn-container">
+            <button class="btn-print" onclick="window.print()">Print Payslip / Save PDF</button>
+          </div>
+          ${generateIndividualPayslipHtmlString(tMapped, month, inWords)}
+          <script>
+            window.addEventListener('DOMContentLoaded', () => {
+              setTimeout(() => { window.print(); }, 500);
+            });
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  useEffect(() => {
+    fetchPayslip();
+  }, [userId, month]);
+
+  const grossEarnings = data?.storedSlip
+    ? (data.storedSlip.basicSalary + data.storedSlip.hra + data.storedSlip.conveyance + data.storedSlip.specialAllowance + data.storedSlip.otherAllowance)
+    : (data?.salaryData?.grossEarnings || 0);
+
+  const grossDeductions = data?.storedSlip
+    ? (data.storedSlip.pf + data.storedSlip.professionalTax + data.storedSlip.esi + data.storedSlip.tds + data.storedSlip.otherDeductions)
+    : (data?.salaryData?.totalDeductions || 0);
+
+  const netTakeHome = data?.storedSlip
+    ? data.storedSlip.netSalary
+    : (data?.salaryData?.netTakeHome || 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4">
+      <div className="bg-white text-gray-900 rounded-lg shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header Bar */}
+        <div className="flex justify-between items-center bg-blue-700 text-white px-6 py-4">
+          <h2 className="text-lg font-bold tracking-wide">📄 Pay Slip Preview</h2>
+          <button onClick={onClose} className="text-white/80 hover:text-white text-2xl font-bold leading-none">&times;</button>
+        </div>
+
+        {/* Toolbar */}
+        <div className="px-6 py-3 bg-blue-50 border-b border-blue-200 flex flex-wrap gap-4 items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-gray-700">Month: <span className="font-bold text-blue-900">{month}</span></span>
+          </div>
+          {data && (
+            <button
+              onClick={handlePrintMyPayslip}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow"
+            >
+              <FileDown size={18} />
+              Print Pay Slip (PDF)
+            </button>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto flex-1 bg-gray-100 flex justify-center">
+          {loading ? (
+            <div className="flex justify-center items-center py-16 w-full">
+              <div className="animate-spin rounded-full h-10 w-10 border-t-3 border-b-3 border-blue-600"></div>
+            </div>
+          ) : error ? (
+            <div className="bg-red-50 border-2 border-red-300 text-red-700 p-5 rounded-lg text-center font-semibold text-base w-full">
+              ⚠️ {error}
+            </div>
+          ) : data ? (
+            <div className="bg-white text-gray-900 border border-gray-300 p-8 shadow-md rounded-md w-full max-w-[800px] font-sans relative my-4">
+              {/* Watermark */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 text-7xl font-extrabold text-gray-200/20 select-none pointer-events-none tracking-widest">
+                NICT
+              </div>
+
+              {/* Header Table */}
+              <div className="border border-gray-300 p-4 text-center relative">
+                <h2 className="text-2xl font-bold text-blue-900 tracking-wide m-0">NICT Computer Education</h2>
+                <p className="text-xs text-gray-600 mt-1"># 52, "Bhagawathi Towers", 4th Floor, 33rd Cross, Jayanagar 4th Block, Bangalore - 560 011.</p>
+                <p className="text-xs text-blue-600 underline m-0">Email: info@nictcomputereducation.com</p>
+              </div>
+
+              {/* Document Title */}
+              <div className="border-x border-b border-gray-300 py-3 text-center bg-gray-50">
+                <h3 className="text-xl font-extrabold text-red-900 tracking-wider uppercase m-0">NICT Pay Slip</h3>
+              </div>
+
+              {/* Month Line */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-sm font-semibold">
+                <div className="col-span-3 py-2 px-3 text-right bg-gray-50 border-r border-gray-300">
+                  for the month of:
+                </div>
+                <div className="col-span-2 py-2 px-3 text-center bg-cyan-100 text-cyan-900 font-bold border-r border-gray-300">
+                  {(() => {
+                    const [y, m] = month.split('-');
+                    return new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
+                  })()}
+                </div>
+                <div className="col-span-1 py-2 px-3 text-center bg-gray-50">
+                  {month.split('-')[0]}
+                </div>
+              </div>
+
+              {/* Employee Name Line */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-sm font-semibold">
+                <div className="col-span-2 py-2 px-3 text-right bg-gray-50 border-r border-gray-300">
+                  Name of the Professional:
+                </div>
+                <div className="col-span-4 py-2 px-3 text-center text-blue-700 font-extrabold">
+                  {data.user.fullName}
+                </div>
+              </div>
+
+              {/* PAN / Aadhaar line */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-xs font-semibold">
+                <div className="col-span-1 py-2 px-2 text-right bg-gray-50 border-r border-gray-300">
+                  PAN No:
+                </div>
+                <div className="col-span-2 py-2 px-3 text-left border-r border-gray-300">
+                  {data.storedSlip ? (data.storedSlip.pan || '--') : (data.salaryData.panNo || '--')}
+                </div>
+                <div className="col-span-1 py-2 px-2 text-right bg-gray-50 border-r border-gray-300">
+                  Aadhaar No:
+                </div>
+                <div className="col-span-2 py-2 px-3 text-left">
+                  {data.storedSlip ? (data.storedSlip.aadhaar || '--') : (data.salaryData.aadhaarNo || '--')}
+                </div>
+              </div>
+
+              {/* Main Table: Earnings & Deductions Side-by-Side */}
+              <div className="grid grid-cols-2 text-xs">
+                {/* Left: Earnings */}
+                <div className="border-l border-b border-gray-300 flex flex-col">
+                  <div className="bg-gray-100 text-red-900 font-extrabold py-2 text-center border-b border-r border-gray-300 uppercase tracking-wide">
+                    Earnings
+                  </div>
+                  <div className="flex-1">
+                    {data.storedSlip ? (
+                      <>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700 font-medium">Basic Salary :</span>
+                          <span className="font-bold text-gray-950">₹{data.storedSlip.basicSalary.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">HRA :</span>
+                          <span className="font-bold">₹{data.storedSlip.hra.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">Conveyance :</span>
+                          <span className="font-bold">₹{data.storedSlip.conveyance.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">Special Allowance :</span>
+                          <span className="font-bold">₹{data.storedSlip.specialAllowance.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">Other Allowance :</span>
+                          <span className="font-bold">₹{data.storedSlip.otherAllowance.toLocaleString('en-IN')}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700 font-medium">Professional Fee (Basic) :</span>
+                          <span className="font-bold text-gray-950">₹{data.salaryData.professionalFee.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">College Visits :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">({(data.salaryData.collegeVisitHours || 0).toFixed(2)}h @ ₹{data.salaryData.collegeVisitRate}/h)</span>
+                          </div>
+                          <span className="font-bold">₹{data.salaryData.collegeVisitEarnings.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">Other Additions :</span>
+                          <span className="font-bold">₹{data.salaryData.otherAdditions.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Extra Classes :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">({(data.salaryData.extraClassesHours || 0).toFixed(2)}h @ ₹{data.salaryData.extraClassRate}/h)</span>
+                          </div>
+                          <span className="font-bold">₹{data.salaryData.extraClassEarnings.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Other Center Classes :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">({(data.salaryData.otherCenterClassesHours || 0).toFixed(2)}h @ ₹{data.salaryData.otherCenterClassRate}/h)</span>
+                          </div>
+                          <span className="font-bold">₹{data.salaryData.otherCenterClassEarnings.toLocaleString('en-IN')}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Deductions */}
+                <div className="border-r border-b border-gray-300 flex flex-col">
+                  <div className="bg-gray-100 text-red-900 font-extrabold py-2 text-center border-b border-gray-300 uppercase tracking-wide">
+                    Deductions
+                  </div>
+                  <div className="flex-1">
+                    {data.storedSlip ? (
+                      <>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">PF (Provident Fund) :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.pf.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">Professional Tax :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.professionalTax.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">ESI :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.esi.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">TDS :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.tds.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">Other Deductions :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.otherDeductions.toLocaleString('en-IN')}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Late Arrivals :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">{data.salaryData.totalLateMinutes}m ({(data.salaryData.totalLateMinutes / 60).toFixed(2)}h), {data.salaryData.lateInstances} times</span>
+                          </div>
+                          <span className="font-bold text-red-700">₹{data.salaryData.lateDeduction.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Early Depart :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">{data.salaryData.totalEarlyMinutes}m ({(data.salaryData.totalEarlyMinutes / 60).toFixed(2)}h), {data.salaryData.earlyInstances} times</span>
+                          </div>
+                          <span className="font-bold text-red-700">₹{data.salaryData.earlyDeduction.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Absence Deduction :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">{data.salaryData.absentDays} days, {data.salaryData.unexcusedLeaves} unexcused</span>
+                          </div>
+                          <span className="font-bold text-red-700">₹{data.salaryData.absentDeduction.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Approved Leaves :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">{data.salaryData.approvedLeavesCount} days, Paid</span>
+                          </div>
+                          <span className="font-bold">₹0</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">Other Deductions :</span>
+                          <span className="font-bold text-red-700">₹{data.salaryData.otherDeductions.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">TDS Deduction :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium font-medium">({data.salaryData.tdsPercentage}%)</span>
+                          </div>
+                          <span className="font-bold text-red-700">₹{data.salaryData.tdsDeduction.toLocaleString('en-IN')}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Totals Row */}
+              <div className="grid grid-cols-2 text-xs border-x border-b border-gray-300 font-extrabold">
+                <div className="flex justify-between py-3 px-3 border-r border-gray-300 bg-gray-50 text-red-900">
+                  <span>Total Earnings (A) :</span>
+                  <span>₹{grossEarnings.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between py-3 px-3 bg-gray-50 text-red-900">
+                  <span>Total Deductions (B) :</span>
+                  <span>₹{grossDeductions.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* Nett Take Home */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-sm font-extrabold py-3 px-3 bg-blue-50">
+                <div className="col-span-3 text-right text-gray-700 pr-3 self-center">
+                  Nett Take Home / NEFT done :
+                </div>
+                <div className="col-span-3 text-center text-blue-700 text-base">
+                  ₹{netTakeHome.toLocaleString('en-IN')}
+                </div>
+              </div>
+
+              {/* Attendance Details Header */}
+              <div className="border-x border-b border-gray-300 bg-red-900 text-white font-extrabold text-xs py-2 text-center uppercase tracking-wider">
+                Attendance Details
+              </div>
+
+              {/* Attendance Details Grid */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-[11px] text-center font-bold">
+                <div className="bg-gray-50 border-r border-gray-300 py-2">B/F (ULD)</div>
+                <div className="bg-gray-50 border-r border-gray-300 py-2">Absent</div>
+                <div className="bg-gray-50 border-r border-gray-300 py-2">Leaves Taken</div>
+                <div className="bg-gray-50 border-r border-gray-300 py-2">Eligible CL's</div>
+                <div className="bg-gray-50 border-r border-gray-300 py-2">C/F (ULD)</div>
+                <div className="bg-gray-50 py-2">Approval Status</div>
+              </div>
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-xs text-center font-bold">
+                <div className="bg-cyan-100 border-r border-gray-300 py-2">0</div>
+                <div className="bg-cyan-100 border-r border-gray-300 py-2">
+                  {data.storedSlip ? '--' : data.salaryData.absentDays}
+                </div>
+                <div className="bg-cyan-100 border-r border-gray-300 py-2">
+                  {data.storedSlip ? '--' : data.salaryData.approvedLeavesCount}
+                </div>
+                <div className="border-r border-gray-300 py-2">
+                  {data.storedSlip ? '--' : data.salaryData.eligibleCLs}
+                </div>
+                <div className="border-r border-gray-300 py-2">
+                  {data.storedSlip ? '--' : data.salaryData.cfLeaves}
+                </div>
+                <div className="py-2 text-gray-700 text-[10px]">SK & KK Approved</div>
+              </div>
+
+              {/* Signatures */}
+              <div className="grid grid-cols-2 mt-8 text-xs font-bold pt-12">
+                <div className="text-center">
+                  <div className="w-48 border-b border-gray-400 mx-auto mb-1"></div>
+                  <span className="text-gray-500 uppercase tracking-wider text-[10px]">Kushal Pabbi (Authorised Signatory)</span>
+                </div>
+                <div className="text-center">
+                  <div className="w-48 border-b border-gray-400 mx-auto mb-1"></div>
+                  <span className="text-gray-500 uppercase tracking-wider text-[10px]">Employee Signature</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-16 text-gray-500 text-base font-medium w-full">
+              No payslip data available for this month.
             </div>
           )}
         </div>

@@ -4163,7 +4163,7 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white text-gray-900 rounded-lg shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white text-gray-900 rounded-lg shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header Bar */}
         <div className="flex justify-between items-center bg-blue-700 text-white px-6 py-4">
           <h2 className="text-lg font-bold tracking-wide">📄 My Pay Slip</h2>

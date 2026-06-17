@@ -438,11 +438,29 @@ router.get('/admin/reports/payslip/single/:userId', authenticateToken, checkSala
     const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
     const salData = await calculateTraineeSalaryData(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
 
+    const storedSlip = await prisma.salarySlip.findUnique({
+      where: {
+        userId_month: { userId, month }
+      }
+    });
+
     res.json({
       id: trainee.id,
       fullName: trainee.fullName,
       empCode: trainee.identifier,
-      ...salData
+      user: {
+        fullName: trainee.fullName,
+        identifier: trainee.identifier,
+        role: trainee.role,
+        email: trainee.email,
+        bankName: trainee.bankName,
+        bankAccountNo: trainee.bankAccountNo,
+        bankIfscCode: trainee.bankIfscCode,
+        bankBranchName: trainee.bankBranchName,
+      },
+      ...salData,
+      salaryData: salData,
+      storedSlip
     });
   } catch (error) {
     console.error(error);
@@ -461,11 +479,11 @@ export function generateIndividualPayslipSheet(
   mon: number
 ) {
   ws.columns = [
-    { width: 28 }, // Col A: Earnings label
+    { width: 45 }, // Col A: Earnings label
     { width: 15 }, // Col B: Earnings value
-    { width: 30 }, // Col C: Deductions label
-    { width: 12 }, // Col D: Deductions instance
-    { width: 12 }, // Col E: Deductions remarks
+    { width: 38 }, // Col C: Deductions label
+    { width: 22 }, // Col D: Deductions instance
+    { width: 18 }, // Col E: Deductions remarks
     { width: 15 }  // Col F: Deductions amount
   ];
 
