@@ -1879,12 +1879,43 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
       </div>
 
       {/* 6-Column Grid Table */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .payslip-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          font-size: 11px !important;
+          font-family: 'Calibri', 'Arial', sans-serif !important;
+          position: relative !important;
+          z-index: 1 !important;
+        }
+        .payslip-table th, .payslip-table td {
+          border: 1px solid #cbd5e1 !important;
+          padding: 8px 10px !important;
+          vertical-align: middle !important;
+          line-height: normal !important;
+        }
+        .payslip-table th {
+          background-color: #f1f5f9 !important;
+          color: #800000 !important;
+          font-weight: 800 !important;
+          text-transform: uppercase !important;
+          text-align: center !important;
+        }
+        .payslip-table td span {
+          display: block !important;
+          font-size: 9px !important;
+          color: #64748b !important;
+          margin-top: 2px !important;
+          line-height: normal !important;
+          font-weight: 500 !important;
+        }
+      `}} />
       <div className="relative z-10 mt-0">
-        <table className="w-full border-collapse text-xs border-x border-b border-gray-300">
+        <table className="payslip-table">
           <thead>
             <tr>
-              <th colSpan={2} className="bg-slate-100 text-[#800000] font-extrabold uppercase text-center border-b border-r border-gray-300 py-2 px-2.5">Earnings</th>
-              <th colSpan={4} className="bg-slate-100 text-[#800000] font-extrabold uppercase text-center border-b border-gray-300 py-2 px-2.5">Deductions</th>
+              <th colSpan={2} style={{ borderRight: '1px solid #cbd5e1' }}>Earnings</th>
+              <th colSpan={4}>Deductions</th>
             </tr>
           </thead>
           <tbody>
