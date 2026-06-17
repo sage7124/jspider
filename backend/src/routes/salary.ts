@@ -739,7 +739,7 @@ export function generateIndividualPayslipSheet(
     
     // Row 11:
     ws.getCell('A11').value = `College Visits (${salData.collegeVisitHours.toFixed(2)}h @ ₹${salData.collegeVisitRate}/h) :`;
-    ws.getCell('B11').value = { formula: `=${salData.collegeVisitHours}*${salData.collegeVisitRate}` };
+    ws.getCell('B11').value = { formula: `=${salData.collegeVisitHours}*${salData.collegeVisitRate}`, result: salData.collegeVisitEarnings };
     ws.getCell('B11').numFmt = '"₹"#,##0';
     ws.getCell('B11').alignment = { horizontal: 'right' };
 
@@ -767,14 +767,14 @@ export function generateIndividualPayslipSheet(
     ws.getCell('F12').numFmt = '"₹"#,##0';
     ws.getCell('F12').alignment = { horizontal: 'right' };
 
-    // Row 13: Extra Classes on Left, Absent/Leave on Right
+    // Row 13: Extra Classes on Left, Absence Deduction on Right
     ws.getCell('A13').value = `Extra Classes (${salData.extraClassesHours.toFixed(2)}h @ ₹${salData.extraClassRate}/h) :`;
-    ws.getCell('B13').value = { formula: `=${salData.extraClassesHours}*${salData.extraClassRate}` };
+    ws.getCell('B13').value = { formula: `=${salData.extraClassesHours}*${salData.extraClassRate}`, result: salData.extraClassEarnings };
     ws.getCell('B13').numFmt = '"₹"#,##0';
     ws.getCell('B13').alignment = { horizontal: 'right' };
 
-    ws.getCell('C13').value = 'Absent/Leave :';
-    ws.getCell('D13').value = `abs: ${salData.absentDays} / lvs: ${salData.approvedLeavesCount}`;
+    ws.getCell('C13').value = 'Absence Deduction :';
+    ws.getCell('D13').value = `${salData.absentDays} days`;
     ws.getCell('D13').alignment = { horizontal: 'center' };
     ws.getCell('E13').value = `${salData.unexcusedLeaves} unexcused`;
     ws.getCell('E13').alignment = { horizontal: 'center' };
@@ -782,16 +782,16 @@ export function generateIndividualPayslipSheet(
     ws.getCell('F13').numFmt = '"₹"#,##0';
     ws.getCell('F13').alignment = { horizontal: 'right' };
 
-    // Row 14: Other Center Classes on Left, Hourly on Right
+    // Row 14: Other Center Classes on Left, Approved Leaves on Right
     ws.getCell('A14').value = `Other Center Classes (${salData.otherCenterClassesHours.toFixed(2)}h @ ₹${salData.otherCenterClassRate}/h) :`;
-    ws.getCell('B14').value = { formula: `=${salData.otherCenterClassesHours}*${salData.otherCenterClassRate}` };
+    ws.getCell('B14').value = { formula: `=${salData.otherCenterClassesHours}*${salData.otherCenterClassRate}`, result: salData.otherCenterClassEarnings };
     ws.getCell('B14').numFmt = '"₹"#,##0';
     ws.getCell('B14').alignment = { horizontal: 'right' };
 
-    ws.getCell('C14').value = 'Hourly :';
-    ws.getCell('D14').value = 0;
+    ws.getCell('C14').value = 'Approved Leaves :';
+    ws.getCell('D14').value = `${salData.approvedLeavesCount} days`;
     ws.getCell('D14').alignment = { horizontal: 'center' };
-    ws.getCell('E14').value = '--';
+    ws.getCell('E14').value = 'Paid';
     ws.getCell('E14').alignment = { horizontal: 'center' };
     ws.getCell('F14').value = 0;
     ws.getCell('F14').numFmt = '"₹"#,##0';
@@ -807,7 +807,7 @@ export function generateIndividualPayslipSheet(
     // Row 16: Tax Deducted at Source (TDS)
     ws.mergeCells('C16:E16');
     ws.getCell('C16').value = `Tax Deducted at Source (TDS, ${salData.tdsPercentage}%) :`;
-    ws.getCell('F16').value = { formula: `=ROUND(B10*${salData.tdsPercentage}/100,0)` };
+    ws.getCell('F16').value = { formula: `=ROUND(B10*${salData.tdsPercentage}/100,0)`, result: salData.tdsDeduction };
     ws.getCell('F16').numFmt = '"₹"#,##0';
     ws.getCell('F16').alignment = { horizontal: 'right' };
 
@@ -816,7 +816,7 @@ export function generateIndividualPayslipSheet(
     // Row 17: Totals
     ws.getCell('A17').value = 'Total Earnings :';
     ws.getCell('A17').font = { bold: true, color: { argb: '800000' } };
-    ws.getCell('B17').value = { formula: '=SUM(B10:B14)' };
+    ws.getCell('B17').value = { formula: '=SUM(B10:B14)', result: salData.grossEarnings };
     ws.getCell('B17').font = { bold: true };
     ws.getCell('B17').numFmt = '"₹"#,##0';
     ws.getCell('B17').alignment = { horizontal: 'right' };
@@ -824,7 +824,7 @@ export function generateIndividualPayslipSheet(
     ws.mergeCells('C17:E17');
     ws.getCell('C17').value = 'Total Deductions :';
     ws.getCell('C17').font = { bold: true, color: { argb: '800000' } };
-    ws.getCell('F17').value = { formula: '=SUM(F11:F16)' };
+    ws.getCell('F17').value = { formula: '=SUM(F11:F16)', result: salData.totalDeductions };
     ws.getCell('F17').font = { bold: true };
     ws.getCell('F17').numFmt = '"₹"#,##0';
     ws.getCell('F17').alignment = { horizontal: 'right' };
@@ -840,7 +840,7 @@ export function generateIndividualPayslipSheet(
 
     ws.mergeCells('C18:F18');
     const netVal = ws.getCell('C18');
-    netVal.value = { formula: '=B17-F17' };
+    netVal.value = { formula: '=B17-F17', result: salData.netTakeHome };
     netVal.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '0000FF' } };
     netVal.numFmt = '"₹"#,##0';
     netVal.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -866,13 +866,13 @@ export function generateIndividualPayslipSheet(
   ws.getCell('B20').value = 'Absent';
   ws.getCell('B20').font = { size: 9 };
   ws.getCell('B20').alignment = { horizontal: 'center' };
-  ws.getCell('C20').value = "Eligible CL's";
+  ws.getCell('C20').value = 'Leaves Taken';
   ws.getCell('C20').font = { size: 9 };
   ws.getCell('C20').alignment = { horizontal: 'center' };
-  ws.getCell('D20').value = 'C/F (ULD)';
+  ws.getCell('D20').value = "Eligible CL's";
   ws.getCell('D20').font = { size: 9 };
   ws.getCell('D20').alignment = { horizontal: 'center' };
-  ws.getCell('E20').value = 'Remarks';
+  ws.getCell('E20').value = 'C/F (ULD)';
   ws.getCell('E20').font = { size: 9 };
   ws.getCell('E20').alignment = { horizontal: 'center' };
   ws.getCell('F20').value = 'Approval Status';
@@ -890,13 +890,15 @@ export function generateIndividualPayslipSheet(
   ws.getCell('B21').alignment = { horizontal: 'center' };
   ws.getCell('B21').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
 
-  ws.getCell('C21').value = salData.eligibleCLs;
+  ws.getCell('C21').value = salData.approvedLeavesCount;
   ws.getCell('C21').alignment = { horizontal: 'center' };
+  ws.getCell('C21').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
 
-  ws.getCell('D21').value = salData.cfLeaves;
+  ws.getCell('D21').value = salData.eligibleCLs;
   ws.getCell('D21').alignment = { horizontal: 'center' };
 
-  ws.getCell('E21').value = '';
+  ws.getCell('E21').value = salData.cfLeaves;
+  ws.getCell('E21').alignment = { horizontal: 'center' };
 
   ws.getCell('F21').value = 'SK & KK Approved';
   ws.getCell('F21').alignment = { horizontal: 'center' };

@@ -3528,207 +3528,358 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
         <head>
           <title>Payslip_${data.user.fullName}_${selectedMonth}</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
             body {
-              font-family: 'Inter', sans-serif;
-              color: #1e293b;
+              font-family: 'Calibri', 'Arial', sans-serif;
+              color: #000;
               margin: 0;
-              padding: 40px;
-              font-size: 13px;
-              line-height: 1.5;
-              background-color: #ffffff;
+              padding: 20px;
+              background-color: #fff;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
-            .payslip-container {
+            .payslip-card {
+              width: 100%;
               max-width: 800px;
               margin: 0 auto;
-              border: 1px solid #e2e8f0;
-              padding: 30px;
-              border-radius: 8px;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+              border: 1px solid #cbd5e1;
+              padding: 20px;
               position: relative;
+              box-sizing: border-box;
             }
             .watermark {
               position: absolute;
               top: 50%;
               left: 50%;
-              transform: translate(-50%, -50%) rotate(-30deg);
+              transform: translate(-50%, -50%) rotate(-12deg);
               font-size: 80px;
-              font-weight: 800;
-              color: rgba(226, 232, 240, 0.3);
-              white-space: nowrap;
-              user-select: none;
+              font-weight: 900;
+              color: rgba(226, 232, 240, 0.25);
               pointer-events: none;
+              z-index: 0;
               letter-spacing: 5px;
             }
-            .header-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 25px;
-            }
-            .logo-text {
-              font-size: 24px;
-              font-weight: 800;
-              color: #f59e0b;
-              letter-spacing: -0.5px;
-              margin: 0;
-            }
-            .logo-sub {
-              font-size: 10px;
-              font-weight: 600;
-              color: #64748b;
-              text-transform: uppercase;
-              letter-spacing: 1.5px;
-              margin-top: 2px;
-            }
-            .title-section {
-              text-align: right;
-            }
-            .payslip-title {
-              font-size: 18px;
-              font-weight: 700;
-              color: #0f172a;
-              margin: 0;
-            }
-            .payslip-period {
-              font-size: 12px;
-              color: #64748b;
-              margin-top: 4px;
-              font-weight: 500;
-            }
-            .emp-info-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 25px;
-              background-color: #f8fafc;
-              border: 1px solid #e2e8f0;
-              border-radius: 6px;
-            }
-            .emp-info-table td {
-              padding: 10px 15px;
-              border-bottom: 1px solid #f1f5f9;
-            }
-            .emp-info-table tr:last-child td {
-              border-bottom: none;
-            }
-            .info-label {
-              font-weight: 600;
-              color: #64748b;
-              font-size: 11px;
-              text-transform: uppercase;
-              width: 25%;
-            }
-            .info-value {
-              font-weight: 500;
-              color: #0f172a;
-              width: 25%;
-            }
-            .main-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 25px;
+            .header-box {
               border: 1px solid #cbd5e1;
+              padding: 12px;
+              text-align: center;
+              position: relative;
+              z-index: 1;
             }
-            .main-table th {
-              background-color: #0f172a;
-              color: #ffffff;
-              font-weight: 600;
-              text-transform: uppercase;
+            .header-box h2 {
+              font-size: 26px;
+              color: #1e3b8a;
+              margin: 0;
+              font-weight: 700;
+            }
+            .header-box p {
               font-size: 11px;
-              letter-spacing: 0.5px;
-              padding: 10px 15px;
+              color: #475569;
+              margin: 4px 0 0 0;
+            }
+            .header-box a {
+              color: #2563eb;
+              text-decoration: underline;
+              font-size: 11px;
+            }
+            .title-box {
+              border-left: 1px solid #cbd5e1;
+              border-right: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              padding: 8px;
+              text-align: center;
+              background-color: #f8fafc;
+              position: relative;
+              z-index: 1;
+            }
+            .title-box h3 {
+              font-size: 20px;
+              color: #800000;
+              margin: 0;
+              font-weight: 800;
+              letter-spacing: 1px;
+            }
+            .grid-row {
+              display: grid;
+              grid-template-columns: repeat(6, 1fr);
+              border-left: 1px solid #cbd5e1;
+              border-right: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              font-size: 12px;
+              font-weight: 600;
+              align-items: center;
+              position: relative;
+              z-index: 1;
+            }
+            .grid-cell-label {
+              grid-column: span 3;
+              padding: 8px 12px;
+              text-align: right;
+              background-color: #f8fafc;
+              border-right: 1px solid #cbd5e1;
+            }
+            .grid-cell-month {
+              grid-column: span 2;
+              padding: 8px;
+              text-align: center;
+              background-color: #cffafe;
+              color: #083344;
+              font-weight: 700;
+              border-right: 1px solid #cbd5e1;
+            }
+            .grid-cell-year {
+              grid-column: span 1;
+              padding: 8px;
+              text-align: center;
+              background-color: #f8fafc;
+            }
+            .grid-cell-prof-label {
+              grid-column: span 2;
+              padding: 8px 12px;
+              text-align: right;
+              background-color: #f8fafc;
+              border-right: 1px solid #cbd5e1;
+            }
+            .grid-cell-prof-value {
+              grid-column: span 4;
+              padding: 8px 12px;
+              text-align: center;
+              color: #1d4ed8;
+              font-weight: 800;
+            }
+            .grid-cell-pan-label {
+              grid-column: span 1;
+              padding: 8px;
+              text-align: right;
+              background-color: #f8fafc;
+              border-right: 1px solid #cbd5e1;
+            }
+            .grid-cell-pan-value {
+              grid-column: span 2;
+              padding: 8px 12px;
+              text-align: left;
+              border-right: 1px solid #cbd5e1;
+            }
+            .grid-cell-aadhaar-label {
+              grid-column: span 1;
+              padding: 8px;
+              text-align: right;
+              background-color: #f8fafc;
+              border-right: 1px solid #cbd5e1;
+            }
+            .grid-cell-aadhaar-value {
+              grid-column: span 2;
+              padding: 8px 12px;
               text-align: left;
             }
-            .main-table td {
-              padding: 12px 15px;
-              border-bottom: 1px solid #e2e8f0;
-              vertical-align: top;
+            .side-tables {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              font-size: 11px;
+              position: relative;
+              z-index: 1;
             }
-            .main-table tr:last-child td {
-              border-bottom: none;
+            .earnings-table {
+              border-left: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              display: flex;
+              flex-direction: column;
             }
-            .col-50 {
-              width: 50%;
+            .deductions-table {
+              border-left: 1px solid #cbd5e1;
+              border-right: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              display: flex;
+              flex-direction: column;
             }
-            .border-right {
+            .table-header {
+              background-color: #f1f5f9;
+              color: #800000;
+              font-weight: 800;
+              padding: 8px;
+              text-align: center;
+              border-bottom: 1px solid #cbd5e1;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .earnings-table .table-header {
               border-right: 1px solid #cbd5e1;
             }
             .item-row {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 8px;
+              padding: 8px 12px;
+              border-bottom: 1px solid #cbd5e1;
+              align-items: center;
+              min-height: 38px;
+              box-sizing: border-box;
             }
-            .item-name {
-              color: #475569;
+            .earnings-table .item-row {
+              border-right: 1px solid #cbd5e1;
             }
-            .item-value {
+            .item-label {
+              color: #334155;
               font-weight: 600;
+            }
+            .item-subtext {
+              font-size: 9px;
+              color: #64748b;
+              display: block;
+              font-weight: 500;
+              margin-top: 1px;
+            }
+            .item-val {
+              font-weight: 700;
               color: #0f172a;
             }
-            .item-value.deduction {
-              color: #dc2626;
+            .deductions-table .item-val.red-val {
+              color: #b91c1c;
             }
-            .total-row {
+            .totals-row {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              border-left: 1px solid #cbd5e1;
+              border-right: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              font-size: 11px;
+              font-weight: 800;
+              position: relative;
+              z-index: 1;
+            }
+            .total-earnings-box {
               display: flex;
               justify-content: space-between;
-              font-weight: 700;
-              border-top: 1px dashed #cbd5e1;
-              padding-top: 10px;
-              margin-top: 10px;
+              padding: 10px 12px;
+              background-color: #f8fafc;
+              color: #800000;
+              border-right: 1px solid #cbd5e1;
             }
-            .net-box {
-              background-color: #ecfdf5;
-              border: 1px solid #a7f3d0;
-              padding: 15px;
-              border-radius: 6px;
-              margin-bottom: 35px;
+            .total-deductions-box {
               display: flex;
               justify-content: space-between;
+              padding: 10px 12px;
+              background-color: #f8fafc;
+              color: #800000;
+            }
+            .net-row {
+              display: grid;
+              grid-template-columns: repeat(6, 1fr);
+              border-left: 1px solid #cbd5e1;
+              border-right: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              font-size: 13px;
+              font-weight: 800;
+              padding: 10px;
+              background-color: #f0f9ff;
               align-items: center;
+              position: relative;
+              z-index: 1;
             }
             .net-label {
-              font-size: 14px;
-              font-weight: 700;
-              color: #065f46;
+              grid-column: span 3;
+              text-align: right;
+              padding-right: 12px;
+              color: #475569;
             }
-            .net-amount {
-              font-size: 20px;
-              font-weight: 800;
-              color: #047857;
-            }
-            .words-row {
-              font-size: 11px;
-              color: #64748b;
-              font-style: italic;
-              margin-top: -25px;
-              margin-bottom: 35px;
-              padding-left: 5px;
-            }
-            .footer-section {
-              margin-top: 50px;
-              width: 100%;
-              border-collapse: collapse;
-            }
-            .footer-section td {
+            .net-val {
+              grid-column: span 3;
               text-align: center;
-              width: 50%;
+              color: #1d4ed8;
+              font-size: 16px;
             }
-            .signature-line {
-              width: 200px;
-              border-bottom: 1px solid #94a3b8;
-              margin: 0 auto 10px auto;
+            .words-box {
+              border-left: 1px solid #cbd5e1;
+              border-right: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              padding: 8px 12px;
+              font-size: 10px;
+              color: #475569;
+              position: relative;
+              z-index: 1;
             }
-            .signature-title {
+            .att-header {
+              border-left: 1px solid #cbd5e1;
+              border-right: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              background-color: #800000;
+              color: #fff;
+              font-weight: 800;
               font-size: 11px;
-              font-weight: 600;
+              padding: 6px;
+              text-align: center;
+              text-transform: uppercase;
+              position: relative;
+              z-index: 1;
+            }
+            .att-grid-header {
+              display: grid;
+              grid-template-columns: repeat(6, 1fr);
+              border-left: 1px solid #cbd5e1;
+              border-right: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              font-size: 10px;
+              font-weight: 700;
+              text-align: center;
+              background-color: #f8fafc;
+              position: relative;
+              z-index: 1;
+            }
+            .att-grid-header div {
+              padding: 6px 4px;
+            }
+            .att-grid-header div:not(:last-child) {
+              border-right: 1px solid #cbd5e1;
+            }
+            .att-grid-values {
+              display: grid;
+              grid-template-columns: repeat(6, 1fr);
+              border-left: 1px solid #cbd5e1;
+              border-right: 1px solid #cbd5e1;
+              border-bottom: 1px solid #cbd5e1;
+              font-size: 11px;
+              font-weight: 700;
+              text-align: center;
+              position: relative;
+              z-index: 1;
+            }
+            .att-grid-values div {
+              padding: 8px 4px;
+            }
+            .att-grid-values div:not(:last-child) {
+              border-right: 1px solid #cbd5e1;
+            }
+            .cyan-bg {
+              background-color: #e0f7fa;
+            }
+            .sig-row {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              margin-top: 40px;
+              padding-top: 30px;
+              font-size: 11px;
+              font-weight: 700;
+              position: relative;
+              z-index: 1;
+            }
+            .sig-box {
+              text-align: center;
+            }
+            .sig-line {
+              width: 180px;
+              border-bottom: 1px solid #94a3b8;
+              margin: 0 auto 6px auto;
+            }
+            .sig-title {
               color: #64748b;
               text-transform: uppercase;
+              font-size: 9px;
+              letter-spacing: 0.5px;
             }
             .print-btn-container {
               text-align: center;
               margin-bottom: 20px;
             }
             .btn-print {
-              background-color: #0f172a;
+              background-color: #1e3b8a;
               color: white;
               border: none;
               padding: 10px 20px;
@@ -3737,22 +3888,17 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
               border-radius: 6px;
               cursor: pointer;
               box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-              transition: background-color 0.2s;
-            }
-            .btn-print:hover {
-              background-color: #1e293b;
             }
             @media print {
-              .print-btn-container {
-                display: none;
-              }
               body {
                 padding: 0;
               }
-              .payslip-container {
-                border: none;
-                box-shadow: none;
-                padding: 0;
+              .print-btn-container {
+                display: none;
+              }
+              .payslip-card {
+                border: 1px solid #cbd5e1 !important;
+                box-shadow: none !important;
               }
             }
           </style>
@@ -3761,211 +3907,232 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
           <div class="print-btn-container">
             <button class="btn-print" onclick="window.print()">Print Payslip / Save PDF</button>
           </div>
-          <div class="payslip-container">
+          <div class="payslip-card">
             <div class="watermark">NICT</div>
             
-            <table class="header-table">
-              <tr>
-                <td>
-                  <h1 class="logo-text">NICT</h1>
-                  <div class="logo-sub">Institute Payroll System</div>
-                </td>
-                <td class="title-section">
-                  <h2 class="payslip-title">Salary Slip</h2>
-                  <div class="payslip-period">For the month of ${formattedMonth}</div>
-                </td>
-              </tr>
-            </table>
-
-            <table class="emp-info-table">
-              <tr>
-                <td class="info-label">Employee Name</td>
-                <td class="info-value">${data.user.fullName}</td>
-                <td class="info-label">Employee ID</td>
-                <td class="info-value">${data.user.identifier}</td>
-              </tr>
-              <tr>
-                <td class="info-label">Designation</td>
-                <td class="info-value">${data.user.role}</td>
-                <td class="info-label">Email</td>
-                <td class="info-value">${data.user.email}</td>
-              </tr>
-              <tr>
-                <td class="info-label">Bank Name</td>
-                <td class="info-value">${data.user.bankName || 'N/A'}</td>
-                <td class="info-label">Account Number</td>
-                <td class="info-value">${data.user.bankAccountNo || 'N/A'}</td>
-              </tr>
-              <tr>
-                <td class="info-label">IFSC Code</td>
-                <td class="info-value">${data.user.bankIfscCode || 'N/A'}</td>
-                <td class="info-label">Branch</td>
-                <td class="info-value">${data.user.bankBranchName || 'N/A'}</td>
-              </tr>
-            </table>
-
-            <table class="main-table">
-              <thead>
-                <tr>
-                  <th class="col-50 border-right">Earnings Breakup</th>
-                  <th class="col-50">Deductions Breakup</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="col-50 border-right">
-                    ${data.storedSlip ? `
-                    <div class="item-row">
-                      <span class="item-name">Basic Salary</span>
-                      <span class="item-value">₹${data.storedSlip.basicSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div class="item-row">
-                      <span class="item-name">HRA</span>
-                      <span class="item-value">₹${data.storedSlip.hra.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div class="item-row">
-                      <span class="item-name">Conveyance</span>
-                      <span class="item-value">₹${data.storedSlip.conveyance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div class="item-row">
-                      <span class="item-name">Special Allowance</span>
-                      <span class="item-value">₹${data.storedSlip.specialAllowance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div class="item-row">
-                      <span class="item-name">Other Allowance</span>
-                      <span class="item-value">₹${data.storedSlip.otherAllowance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : `
-                    <div class="item-row">
-                      <span class="item-name">Basic Salary</span>
-                      <span class="item-value">₹${data.salaryData.basicSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ${(data.salaryData.collegeVisitEarnings || 0) > 0 ? `
-                    <div class="item-row">
-                      <span class="item-name">College Visits (${(data.salaryData.collegeVisitHours || 0).toFixed(2)}h × ₹${data.salaryData.collegeVisitRate || 0}/h)</span>
-                      <span class="item-value">₹${(data.salaryData.collegeVisitEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : ''}
-                    ${(data.salaryData.extraClassEarnings || 0) > 0 ? `
-                    <div class="item-row">
-                      <span class="item-name">Extra Classes (${(data.salaryData.extraClassesHours || 0).toFixed(2)}h × ₹${data.salaryData.extraClassRate || 0}/h)</span>
-                      <span class="item-value">₹${(data.salaryData.extraClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : ''}
-                    ${(data.salaryData.otherCenterClassEarnings || 0) > 0 ? `
-                    <div class="item-row">
-                      <span class="item-name">Other Center Classes (${(data.salaryData.otherCenterClassesHours || 0).toFixed(2)}h × ₹${data.salaryData.otherCenterClassRate || 0}/h)</span>
-                      <span class="item-value">₹${(data.salaryData.otherCenterClassEarnings || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : ''}
-                    ${data.salaryData.additions > 0 ? `
-                    <div class="item-row">
-                      <span class="item-name">Arrears/Additions</span>
-                      <span class="item-value">₹${data.salaryData.additions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : ''}
-                    `}
-                  </td>
-                  <td class="col-50">
-                    ${data.storedSlip ? `
-                    <div class="item-row">
-                      <span class="item-name">PF (Provident Fund)</span>
-                      <span class="item-value deduction">₹${data.storedSlip.pf.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div class="item-row">
-                      <span class="item-name">Professional Tax</span>
-                      <span class="item-value deduction">₹${data.storedSlip.professionalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div class="item-row">
-                      <span class="item-name">ESI</span>
-                      <span class="item-value deduction">₹${data.storedSlip.esi.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div class="item-row">
-                      <span class="item-name">TDS</span>
-                      <span class="item-value deduction">₹${data.storedSlip.tds.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div class="item-row">
-                      <span class="item-name">Other Deductions</span>
-                      <span class="item-value deduction">₹${data.storedSlip.otherDeductions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : `
-                    ${data.salaryData.lateDeduction > 0 ? `
-                    <div class="item-row">
-                      <span class="item-name">Late Arrival Penalty (${data.salaryData.lateInstances} times, ${data.salaryData.totalLateMinutes} mins)</span>
-                      <span class="item-value deduction">₹${data.salaryData.lateDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : ''}
-                    ${data.salaryData.earlyDeduction > 0 ? `
-                    <div class="item-row">
-                      <span class="item-name">Early Departure Penalty (${data.salaryData.earlyInstances} times, ${data.salaryData.totalEarlyMinutes} mins)</span>
-                      <span class="item-value deduction">₹${data.salaryData.earlyDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : ''}
-                    ${data.salaryData.absentDeduction > 0 ? `
-                    <div class="item-row">
-                      <span class="item-name">Absence Deduction (${data.salaryData.absentDays} days)</span>
-                      <span class="item-value deduction">₹${data.salaryData.absentDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : ''}
-                    ${data.salaryData.otherDeductions > 0 ? `
-                    <div class="item-row">
-                      <span class="item-name">Other Deductions</span>
-                      <span class="item-value deduction">₹${data.salaryData.otherDeductions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : ''}
-                    ${data.salaryData.tdsDeduction > 0 ? `
-                    <div class="item-row">
-                      <span class="item-name">TDS Deduction (${data.salaryData.tdsPercentage}%)</span>
-                      <span class="item-value deduction">₹${data.salaryData.tdsDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    ` : ''}
-                    ${data.salaryData.totalDeductions === 0 ? `
-                    <div class="item-row">
-                      <span class="item-name" style="color: #94a3b8; font-style: italic;">No deductions this month</span>
-                      <span class="item-value">₹0.00</span>
-                    </div>
-                    ` : ''}
-                    `}
-                  </td>
-                </tr>
-                <tr>
-                  <td class="col-50 border-right">
-                    <div class="total-row">
-                      <span>Gross Earnings</span>
-                      <span>₹${grossEarnings.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  </td>
-                  <td class="col-50">
-                    <div class="total-row">
-                      <span>Total Deductions</span>
-                      <span style="color: #dc2626;">₹${grossDeductions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            <div class="net-box">
-              <span class="net-label">Net Payable Salary</span>
-              <span class="net-amount">₹${netTakeHome.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            <div class="header-box">
+              <h2>NICT Computer Education</h2>
+              <p># 52, "Bhagawathi Towers", 4th Floor, 33rd Cross, Jayanagar 4th Block, Bangalore - 560 011.</p>
+              <p><a href="mailto:info@nictcomputereducation.com">info@nictcomputereducation.com</a></p>
             </div>
 
-            <div class="words-row">
+            <div class="title-box">
+              <h3>NICT Pay Slip</h3>
+            </div>
+
+            <div class="grid-row">
+              <div class="grid-cell-label">for the month of:</div>
+              <div class="grid-cell-month">
+                ${(() => {
+                  const [y, m] = selectedMonth.split('-');
+                  return new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
+                })()}
+              </div>
+              <div class="grid-cell-year">${selectedMonth.split('-')[0]}</div>
+            </div>
+
+            <div class="grid-row">
+              <div class="grid-cell-prof-label">Name of the Professional:</div>
+              <div class="grid-cell-prof-value">${data.user.fullName}</div>
+            </div>
+
+            <div class="grid-row">
+              <div class="grid-cell-pan-label">PAN No:</div>
+              <div class="grid-cell-pan-value">
+                ${data.storedSlip ? (data.storedSlip.pan || '--') : (data.salaryData.panNo || '--')}
+              </div>
+              <div class="grid-cell-pan-label" style="border-left: 1px solid #cbd5e1;">Aadhaar No:</div>
+              <div class="grid-cell-pan-value" style="border-right: none;">
+                ${data.storedSlip ? (data.storedSlip.aadhaar || '--') : (data.salaryData.aadhaarNo || '--')}
+              </div>
+            </div>
+
+            <div class="side-tables">
+              <!-- Left Column: Earnings -->
+              <div class="earnings-table">
+                <div class="table-header">Earnings</div>
+                
+                ${data.storedSlip ? `
+                  <div class="item-row">
+                    <span class="item-label">Basic Salary :</span>
+                    <span class="item-val">₹${data.storedSlip.basicSalary.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div class="item-row">
+                    <span class="item-label">HRA :</span>
+                    <span class="item-val">₹${data.storedSlip.hra.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div class="item-row">
+                    <span class="item-label">Conveyance :</span>
+                    <span class="item-val">₹${data.storedSlip.conveyance.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div class="item-row">
+                    <span class="item-label">Special Allowance :</span>
+                    <span class="item-val">₹${data.storedSlip.specialAllowance.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div class="item-row">
+                    <span class="item-label">Other Allowance :</span>
+                    <span class="item-val">₹${data.storedSlip.otherAllowance.toLocaleString('en-IN')}</span>
+                  </div>
+                ` : `
+                  <div class="item-row">
+                    <span class="item-label">Professional Fee (Basic) :</span>
+                    <span class="item-val">₹${data.salaryData.professionalFee.toLocaleString('en-IN')}</span>
+                  </div>
+                  
+                  <div class="item-row">
+                    <div>
+                      <span class="item-label">College Visits :</span>
+                      <span class="item-subtext">(${(data.salaryData.collegeVisitHours || 0).toFixed(2)}h @ ₹${data.salaryData.collegeVisitRate}/h)</span>
+                    </div>
+                    <span class="item-val">₹${data.salaryData.collegeVisitEarnings.toLocaleString('en-IN')}</span>
+                  </div>
+                  
+                  <div class="item-row">
+                    <span class="item-label">Other Additions :</span>
+                    <span class="item-val">₹${data.salaryData.otherAdditions.toLocaleString('en-IN')}</span>
+                  </div>
+                  
+                  <div class="item-row">
+                    <div>
+                      <span class="item-label">Extra Classes :</span>
+                      <span class="item-subtext">(${(data.salaryData.extraClassesHours || 0).toFixed(2)}h @ ₹${data.salaryData.extraClassRate}/h)</span>
+                    </div>
+                    <span class="item-val">₹${data.salaryData.extraClassEarnings.toLocaleString('en-IN')}</span>
+                  </div>
+                  
+                  <div class="item-row" style="border-bottom: none;">
+                    <div>
+                      <span class="item-label">Other Center Classes :</span>
+                      <span class="item-subtext">(${(data.salaryData.otherCenterClassesHours || 0).toFixed(2)}h @ ₹${data.salaryData.otherCenterClassRate}/h)</span>
+                    </div>
+                    <span class="item-val">₹${data.salaryData.otherCenterClassEarnings.toLocaleString('en-IN')}</span>
+                  </div>
+                `}
+              </div>
+
+              <!-- Right Column: Deductions -->
+              <div class="deductions-table">
+                <div class="table-header">Deductions</div>
+                
+                ${data.storedSlip ? `
+                  <div class="item-row">
+                    <span class="item-label">PF (Provident Fund) :</span>
+                    <span class="item-val red-val">₹${data.storedSlip.pf.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div class="item-row">
+                    <span class="item-label">Professional Tax :</span>
+                    <span class="item-val red-val">₹${data.storedSlip.professionalTax.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div class="item-row">
+                    <span class="item-label">ESI :</span>
+                    <span class="item-val red-val">₹${data.storedSlip.esi.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div class="item-row">
+                    <span class="item-label">TDS :</span>
+                    <span class="item-val red-val">₹${data.storedSlip.tds.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div class="item-row" style="border-bottom: none;">
+                    <span class="item-label">Other Deductions :</span>
+                    <span class="item-val red-val">₹${data.storedSlip.otherDeductions.toLocaleString('en-IN')}</span>
+                  </div>
+                ` : `
+                  <div class="item-row">
+                    <div>
+                      <span class="item-label">Late Arrivals :</span>
+                      <span class="item-subtext">${data.salaryData.totalLateMinutes}m (${(data.salaryData.totalLateMinutes / 60).toFixed(2)}h), ${data.salaryData.lateInstances} times</span>
+                    </div>
+                    <span class="item-val red-val">₹${data.salaryData.lateDeduction.toLocaleString('en-IN')}</span>
+                  </div>
+                  
+                  <div class="item-row">
+                    <div>
+                      <span class="item-label">Early Depart :</span>
+                      <span class="item-subtext">${data.salaryData.totalEarlyMinutes}m (${(data.salaryData.totalEarlyMinutes / 60).toFixed(2)}h), ${data.salaryData.earlyInstances} times</span>
+                    </div>
+                    <span class="item-val red-val">₹${data.salaryData.earlyDeduction.toLocaleString('en-IN')}</span>
+                  </div>
+                  
+                  <div class="item-row">
+                    <div>
+                      <span class="item-label">Absence Deduction :</span>
+                      <span class="item-subtext">${data.salaryData.absentDays} days, ${data.salaryData.unexcusedLeaves} unexcused</span>
+                    </div>
+                    <span class="item-val red-val">₹${data.salaryData.absentDeduction.toLocaleString('en-IN')}</span>
+                  </div>
+
+                  <div class="item-row">
+                    <div>
+                      <span class="item-label">Approved Leaves :</span>
+                      <span class="item-subtext">${data.salaryData.approvedLeavesCount} days, Paid</span>
+                    </div>
+                    <span class="item-val">₹0</span>
+                  </div>
+                  
+                  <div class="item-row">
+                    <span class="item-label">Other Deductions :</span>
+                    <span class="item-val red-val">₹${data.salaryData.otherDeductions.toLocaleString('en-IN')}</span>
+                  </div>
+                  
+                  <div class="item-row" style="border-bottom: none;">
+                    <div>
+                      <span class="item-label">Tax Deducted at Source (TDS, ${data.salaryData.tdsPercentage}%) :</span>
+                    </div>
+                    <span class="item-val red-val">₹${data.salaryData.tdsDeduction.toLocaleString('en-IN')}</span>
+                  </div>
+                `}
+              </div>
+            </div>
+
+            <div class="totals-row">
+              <div class="total-earnings-box">
+                <span>Total Earnings :</span>
+                <span>₹${grossEarnings.toLocaleString('en-IN')}</span>
+              </div>
+              <div class="total-deductions-box">
+                <span>Total Deductions :</span>
+                <span>₹${grossDeductions.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            <div class="net-row">
+              <div class="net-label">Nett Take Home / NEFT done :</div>
+              <div class="net-val">₹${netTakeHome.toLocaleString('en-IN')}</div>
+            </div>
+
+            <div class="words-box">
               <strong>Amount in Words:</strong> ${inWords(netTakeHome)}
             </div>
 
-            <table class="footer-section">
-              <tr>
-                <td>
-                  <div class="signature-line"></div>
-                  <div class="signature-title">Authorized Signatory</div>
-                </td>
-                <td>
-                  <div class="signature-line"></div>
-                  <div class="signature-title">Employee Signature</div>
-                </td>
-              </tr>
-            </table>
+            <div class="att-header">Attendance Details</div>
+            
+            <div class="att-grid-header">
+              <div>B/F (ULD)</div>
+              <div>Absent</div>
+              <div>Leaves Taken</div>
+              <div>Eligible CL's</div>
+              <div>C/F (ULD)</div>
+              <div>Approval Status</div>
+            </div>
+            
+            <div class="att-grid-values">
+              <div class="cyan-bg">0</div>
+              <div class="cyan-bg">${data.storedSlip ? '--' : data.salaryData.absentDays}</div>
+              <div class="cyan-bg">${data.storedSlip ? '--' : data.salaryData.approvedLeavesCount}</div>
+              <div>${data.storedSlip ? '--' : data.salaryData.eligibleCLs}</div>
+              <div>${data.storedSlip ? '--' : data.salaryData.cfLeaves}</div>
+              <div style="font-size: 10px; color: #475569;">SK & KK Approved</div>
+            </div>
+
+            <div class="sig-row">
+              <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-title">Kushal Pabbi (Authorised Signatory)</div>
+              </div>
+              <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-title">Employee Signature</div>
+              </div>
+            </div>
           </div>
           <script>
             window.addEventListener('DOMContentLoaded', () => {
@@ -3977,11 +4144,22 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
     `);
     printWindow.document.close();
   };
-  };
 
   useEffect(() => {
     fetchPayslip();
   }, [selectedMonth]);
+
+  const grossEarnings = data?.storedSlip
+    ? (data.storedSlip.basicSalary + data.storedSlip.hra + data.storedSlip.conveyance + data.storedSlip.specialAllowance + data.storedSlip.otherAllowance)
+    : (data?.salaryData?.grossEarnings || 0);
+
+  const grossDeductions = data?.storedSlip
+    ? (data.storedSlip.pf + data.storedSlip.professionalTax + data.storedSlip.esi + data.storedSlip.tds + data.storedSlip.otherDeductions)
+    : (data?.salaryData?.totalDeductions || 0);
+
+  const netTakeHome = data?.storedSlip
+    ? data.storedSlip.netSalary
+    : (data?.salaryData?.netTakeHome || 0);
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
@@ -4015,301 +4193,286 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1 bg-gray-50">
+        <div className="p-6 overflow-y-auto flex-1 bg-gray-100 flex justify-center">
           {loading ? (
-            <div className="flex justify-center items-center py-16">
+            <div className="flex justify-center items-center py-16 w-full">
               <div className="animate-spin rounded-full h-10 w-10 border-t-3 border-b-3 border-blue-600"></div>
             </div>
           ) : error ? (
-            <div className="bg-red-50 border-2 border-red-300 text-red-700 p-5 rounded-lg text-center font-semibold text-base">
+            <div className="bg-red-50 border-2 border-red-300 text-red-700 p-5 rounded-lg text-center font-semibold text-base w-full">
               ⚠️ {error}
             </div>
           ) : data ? (
-            <div className="border-2 border-gray-300 rounded-lg overflow-hidden bg-white">
-              {/* Company Header */}
-              <div className="bg-blue-700 text-white text-center py-4 border-b-2 border-blue-800">
-                <h3 className="text-xl font-extrabold tracking-wide">NICT Computer Education</h3>
-                <p className="text-blue-200 text-xs mt-1">#52, "Bhagawathi Towers", 4th Floor, 33rd Cross, Jayanagar 4th Block, Bangalore - 560 011</p>
+            <div className="bg-white text-gray-900 border border-gray-300 p-8 shadow-md rounded-md w-full max-w-[800px] font-sans relative my-4">
+              {/* Watermark */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 text-7xl font-extrabold text-gray-200/20 select-none pointer-events-none tracking-widest">
+                NICT
               </div>
 
-              {/* Pay Slip Title */}
-              <div className="bg-blue-50 border-b-2 border-gray-300 py-3 text-center">
-                <h4 className="text-lg font-bold text-blue-800">PAY SLIP — {(() => {
-                  const [y, m] = selectedMonth.split('-');
-                  return `${new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' })} ${y}`;
-                })()}</h4>
+              {/* Header Table */}
+              <div className="border border-gray-300 p-4 text-center relative">
+                <h2 className="text-2xl font-bold text-blue-900 tracking-wide m-0">NICT Computer Education</h2>
+                <p className="text-xs text-gray-600 mt-1"># 52, "Bhagawathi Towers", 4th Floor, 33rd Cross, Jayanagar 4th Block, Bangalore - 560 011.</p>
+                <p className="text-xs text-blue-600 underline m-0">Email: info@nictcomputereducation.com</p>
               </div>
 
-              {/* Employee Info Table */}
-              <table className="w-full text-sm border-collapse">
-                <tbody>
-                  <tr className="border-b border-gray-200">
-                    <td className="px-4 py-2.5 font-semibold text-gray-500 bg-gray-50 w-1/4 border-r border-gray-200">Name</td>
-                    <td className="px-4 py-2.5 font-bold text-gray-900 w-1/4 border-r border-gray-200">{data.user.fullName}</td>
-                    <td className="px-4 py-2.5 font-semibold text-gray-500 bg-gray-50 w-1/4 border-r border-gray-200">Employee ID</td>
-                    <td className="px-4 py-2.5 font-bold text-gray-900 w-1/4">{data.user.identifier}</td>
-                  </tr>
-                  <tr className="border-b border-gray-200">
-                    <td className="px-4 py-2.5 font-semibold text-gray-500 bg-gray-50 border-r border-gray-200">Email</td>
-                    <td className="px-4 py-2.5 text-gray-800 border-r border-gray-200">{data.user.email || '—'}</td>
-                    <td className="px-4 py-2.5 font-semibold text-gray-500 bg-gray-50 border-r border-gray-200">Role</td>
-                    <td className="px-4 py-2.5 text-gray-800">{data.user.role}</td>
-                  </tr>
-                  <tr className="border-b border-gray-200">
-                    <td className="px-4 py-2.5 font-semibold text-gray-500 bg-gray-50 border-r border-gray-200">Bank</td>
-                    <td className="px-4 py-2.5 text-gray-800 border-r border-gray-200">{data.user.bankName || '—'}</td>
-                    <td className="px-4 py-2.5 font-semibold text-gray-500 bg-gray-50 border-r border-gray-200">Account No.</td>
-                    <td className="px-4 py-2.5 text-gray-800">{data.user.bankAccountNo || '—'}</td>
-                  </tr>
-                  <tr className="border-b-2 border-gray-300">
-                    <td className="px-4 py-2.5 font-semibold text-gray-500 bg-gray-50 border-r border-gray-200">IFSC Code</td>
-                    <td className="px-4 py-2.5 text-gray-800 border-r border-gray-200">{data.user.bankIfscCode || '—'}</td>
-                    <td className="px-4 py-2.5 font-semibold text-gray-500 bg-gray-50 border-r border-gray-200">Branch</td>
-                    <td className="px-4 py-2.5 text-gray-800">{data.user.bankBranchName || '—'}</td>
-                  </tr>
-                </tbody>
-              </table>
+              {/* Document Title */}
+              <div className="border-x border-b border-gray-300 py-3 text-center bg-gray-50">
+                <h3 className="text-xl font-extrabold text-red-900 tracking-wider uppercase m-0">NICT Pay Slip</h3>
+              </div>
 
-              {/* Earnings & Deductions — Side by Side Excel-style */}
-              <div className="grid grid-cols-2">
-                {/* LEFT: Earnings */}
-                <div className="border-r-2 border-gray-300">
-                  <div className="bg-green-600 text-white px-4 py-2.5 font-bold text-sm text-center border-b-2 border-green-700">
-                    EARNINGS
-                  </div>
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="bg-green-50 border-b border-gray-300">
-                        <th className="px-4 py-2 text-left font-bold text-green-800">Description</th>
-                        <th className="px-4 py-2 text-right font-bold text-green-800">Amount (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.storedSlip ? (
-                        <>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5 font-medium">Basic Salary</td>
-                            <td className="px-4 py-2.5 text-right font-bold">₹{data.storedSlip.basicSalary.toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5">HRA</td>
-                            <td className="px-4 py-2.5 text-right font-bold">₹{data.storedSlip.hra.toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5">Conveyance</td>
-                            <td className="px-4 py-2.5 text-right font-bold">₹{data.storedSlip.conveyance.toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5">Special Allowance</td>
-                            <td className="px-4 py-2.5 text-right font-bold">₹{data.storedSlip.specialAllowance.toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5">Other Allowance</td>
-                            <td className="px-4 py-2.5 text-right font-bold">₹{data.storedSlip.otherAllowance.toLocaleString('en-IN')}</td>
-                          </tr>
-                        </>
-                      ) : (
-                        <>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5 font-medium">Professional Fee (Base Salary)</td>
-                            <td className="px-4 py-2.5 text-right font-bold">₹{data.salaryData.professionalFee.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</td>
-                          </tr>
-                          {(data.salaryData.collegeVisitEarnings || 0) > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5">
-                                College Visits
-                                <span className="text-gray-500 text-xs block">
-                                  {(data.salaryData.collegeVisitHours || 0).toFixed(1)} hrs × ₹{data.salaryData.collegeVisitRate || 0}/hr
-                                </span>
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-bold">₹{(data.salaryData.collegeVisitEarnings || 0).toLocaleString('en-IN')}</td>
-                            </tr>
-                          )}
-                          {(data.salaryData.extraClassEarnings || 0) > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5">
-                                Extra Classes
-                                <span className="text-gray-500 text-xs block">
-                                  {(data.salaryData.extraClassesHours || 0).toFixed(1)} hrs × ₹{data.salaryData.extraClassRate || 0}/hr
-                                </span>
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-bold">₹{(data.salaryData.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
-                            </tr>
-                          )}
-                          {(data.salaryData.otherCenterClassEarnings || 0) > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5">
-                                Other Center Classes
-                                <span className="text-gray-500 text-xs block">
-                                  {(data.salaryData.otherCenterClassesHours || 0).toFixed(1)} hrs × ₹{data.salaryData.otherCenterClassRate || 0}/hr
-                                </span>
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-bold">₹{(data.salaryData.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
-                            </tr>
-                          )}
-                          {(data.salaryData.otherAdditions || 0) > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5">Arrears / Additions</td>
-                              <td className="px-4 py-2.5 text-right font-bold">₹{(data.salaryData.otherAdditions || 0).toLocaleString('en-IN')}</td>
-                            </tr>
-                          )}
-                          <tr className="border-b border-gray-200 h-8"><td></td><td></td></tr>
-                        </>
-                      )}
-                      
-                      {/* Total */}
-                      <tr className="bg-green-100 border-t-2 border-green-400">
-                        <td className="px-4 py-3 font-extrabold text-green-800">Total Earnings (A)</td>
-                        <td className="px-4 py-3 text-right font-extrabold text-green-800 text-base">
-                          ₹{(() => {
-                            if (data.storedSlip) {
-                              return (data.storedSlip.basicSalary + data.storedSlip.hra + data.storedSlip.conveyance + data.storedSlip.specialAllowance + data.storedSlip.otherAllowance).toLocaleString('en-IN');
-                            }
-                            return data.salaryData.grossEarnings.toLocaleString('en-IN', { minimumFractionDigits: 0 });
-                          })()}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+              {/* Month Line */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-sm font-semibold">
+                <div className="col-span-3 py-2 px-3 text-right bg-gray-50 border-r border-gray-300">
+                  for the month of:
                 </div>
-
-                {/* RIGHT: Deductions */}
-                <div>
-                  <div className="bg-red-600 text-white px-4 py-2.5 font-bold text-sm text-center border-b-2 border-red-700">
-                    DEDUCTIONS
-                  </div>
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="bg-red-50 border-b border-gray-300">
-                        <th className="px-4 py-2 text-left font-bold text-red-800">Description</th>
-                        <th className="px-4 py-2 text-right font-bold text-red-800">Amount (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.storedSlip ? (
-                        <>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5">PF (Provident Fund)</td>
-                            <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{data.storedSlip.pf.toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5">Professional Tax</td>
-                            <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{data.storedSlip.professionalTax.toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5">ESI</td>
-                            <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{data.storedSlip.esi.toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5">TDS</td>
-                            <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{data.storedSlip.tds.toLocaleString('en-IN')}</td>
-                          </tr>
-                          <tr className="border-b border-gray-200">
-                            <td className="px-4 py-2.5">Other Deductions</td>
-                            <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{data.storedSlip.otherDeductions.toLocaleString('en-IN')}</td>
-                          </tr>
-                        </>
-                      ) : (
-                        <>
-                          {data.salaryData.lateDeduction > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5">
-                                Late Arrival
-                                <span className="text-gray-500 text-xs block">{data.salaryData.lateInstances} times, {data.salaryData.totalLateMinutes} mins</span>
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{data.salaryData.lateDeduction.toLocaleString('en-IN')}</td>
-                            </tr>
-                          )}
-                          {data.salaryData.earlyDeduction > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5">
-                                Early Departure
-                                <span className="text-gray-500 text-xs block">{data.salaryData.earlyInstances} times, {data.salaryData.totalEarlyMinutes} mins</span>
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{data.salaryData.earlyDeduction.toLocaleString('en-IN')}</td>
-                            </tr>
-                          )}
-                          {data.salaryData.absentDeduction > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5">
-                                Absent / Leave
-                                <span className="text-gray-500 text-xs block">{data.salaryData.absentDays} days ({data.salaryData.unexcusedLeaves} unexcused)</span>
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{data.salaryData.absentDeduction.toLocaleString('en-IN')}</td>
-                            </tr>
-                          )}
-                          {(data.salaryData.otherDeductions || 0) > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5">Other Deductions</td>
-                              <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{(data.salaryData.otherDeductions || 0).toLocaleString('en-IN')}</td>
-                            </tr>
-                          )}
-                          {data.salaryData.tdsDeduction > 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5">
-                                TDS ({data.salaryData.tdsPercentage ?? 10}%)
-                                <span className="text-gray-500 text-xs block">
-                                  {data.salaryData.tdsPercentage ?? 10}% of ₹{data.salaryData.professionalFee.toLocaleString('en-IN')} (base salary)
-                                </span>
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-bold text-red-700">₹{data.salaryData.tdsDeduction.toLocaleString('en-IN')}</td>
-                            </tr>
-                          )}
-                          {data.salaryData.totalDeductions === 0 && (
-                            <tr className="border-b border-gray-200">
-                              <td className="px-4 py-2.5 text-gray-400 italic">No deductions</td>
-                              <td className="px-4 py-2.5 text-right">₹0</td>
-                            </tr>
-                          )}
-                          <tr className="border-b border-gray-200 h-8"><td></td><td></td></tr>
-                        </>
-                      )}
-
-                      {/* Total */}
-                      <tr className="bg-red-100 border-t-2 border-red-400">
-                        <td className="px-4 py-3 font-extrabold text-red-800">Total Deductions (B)</td>
-                        <td className="px-4 py-3 text-right font-extrabold text-red-800 text-base">
-                          ₹{(() => {
-                            if (data.storedSlip) {
-                              return (data.storedSlip.pf + data.storedSlip.professionalTax + data.storedSlip.esi + data.storedSlip.tds + data.storedSlip.otherDeductions).toLocaleString('en-IN');
-                            }
-                            return data.salaryData.totalDeductions.toLocaleString('en-IN', { minimumFractionDigits: 0 });
-                          })()}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="col-span-2 py-2 px-3 text-center bg-cyan-100 text-cyan-900 font-bold border-r border-gray-300">
+                  {(() => {
+                    const [y, m] = selectedMonth.split('-');
+                    return new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
+                  })()}
+                </div>
+                <div className="col-span-1 py-2 px-3 text-center bg-gray-50">
+                  {selectedMonth.split('-')[0]}
                 </div>
               </div>
 
-              {/* Net Salary Footer */}
-              <div className="bg-blue-700 text-white px-6 py-4 flex items-center justify-between border-t-2 border-blue-800">
-                <div>
-                  <div className="text-sm font-bold uppercase tracking-wider">Net Take Home (A − B)</div>
-                  <div className="text-xs text-blue-200 mt-0.5">
+              {/* Employee Name Line */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-sm font-semibold">
+                <div className="col-span-2 py-2 px-3 text-right bg-gray-50 border-r border-gray-300">
+                  Name of the Professional:
+                </div>
+                <div className="col-span-4 py-2 px-3 text-center text-blue-700 font-extrabold">
+                  {data.user.fullName}
+                </div>
+              </div>
+
+              {/* PAN / Aadhaar line */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-xs font-semibold">
+                <div className="col-span-1 py-2 px-2 text-right bg-gray-50 border-r border-gray-300">
+                  PAN No:
+                </div>
+                <div className="col-span-2 py-2 px-3 text-left border-r border-gray-300">
+                  {data.storedSlip ? (data.storedSlip.pan || '--') : (data.salaryData.panNo || '--')}
+                </div>
+                <div className="col-span-1 py-2 px-2 text-right bg-gray-50 border-r border-gray-300">
+                  Aadhaar No:
+                </div>
+                <div className="col-span-2 py-2 px-3 text-left">
+                  {data.storedSlip ? (data.storedSlip.aadhaar || '--') : (data.salaryData.aadhaarNo || '--')}
+                </div>
+              </div>
+
+              {/* Main Table: Earnings & Deductions Side-by-Side */}
+              <div className="grid grid-cols-2 text-xs">
+                {/* Left: Earnings */}
+                <div className="border-l border-b border-gray-300 flex flex-col">
+                  <div className="bg-gray-100 text-red-900 font-extrabold py-2 text-center border-b border-r border-gray-300 uppercase tracking-wide">
+                    Earnings
+                  </div>
+                  <div className="flex-1">
                     {data.storedSlip ? (
                       <>
-                        ₹{(data.storedSlip.basicSalary + data.storedSlip.hra + data.storedSlip.conveyance + data.storedSlip.specialAllowance + data.storedSlip.otherAllowance).toLocaleString('en-IN')} − ₹{(data.storedSlip.pf + data.storedSlip.professionalTax + data.storedSlip.esi + data.storedSlip.tds + data.storedSlip.otherDeductions).toLocaleString('en-IN')}
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700 font-medium">Basic Salary :</span>
+                          <span className="font-bold text-gray-950">₹{data.storedSlip.basicSalary.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">HRA :</span>
+                          <span className="font-bold">₹{data.storedSlip.hra.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">Conveyance :</span>
+                          <span className="font-bold">₹{data.storedSlip.conveyance.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">Special Allowance :</span>
+                          <span className="font-bold">₹{data.storedSlip.specialAllowance.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">Other Allowance :</span>
+                          <span className="font-bold">₹{data.storedSlip.otherAllowance.toLocaleString('en-IN')}</span>
+                        </div>
                       </>
                     ) : (
                       <>
-                        ₹{data.salaryData.grossEarnings.toLocaleString('en-IN')} − ₹{data.salaryData.totalDeductions.toLocaleString('en-IN')}
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700 font-medium">Professional Fee (Basic) :</span>
+                          <span className="font-bold text-gray-950">₹{data.salaryData.professionalFee.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">College Visits :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">({(data.salaryData.collegeVisitHours || 0).toFixed(2)}h @ ₹{data.salaryData.collegeVisitRate}/h)</span>
+                          </div>
+                          <span className="font-bold">₹{data.salaryData.collegeVisitEarnings.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200">
+                          <span className="text-gray-700">Other Additions :</span>
+                          <span className="font-bold">₹{data.salaryData.otherAdditions.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Extra Classes :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">({(data.salaryData.extraClassesHours || 0).toFixed(2)}h @ ₹{data.salaryData.extraClassRate}/h)</span>
+                          </div>
+                          <span className="font-bold">₹{data.salaryData.extraClassEarnings.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-r border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Other Center Classes :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">({(data.salaryData.otherCenterClassesHours || 0).toFixed(2)}h @ ₹{data.salaryData.otherCenterClassRate}/h)</span>
+                          </div>
+                          <span className="font-bold">₹{data.salaryData.otherCenterClassEarnings.toLocaleString('en-IN')}</span>
+                        </div>
                       </>
                     )}
                   </div>
                 </div>
-                <div className="text-2xl font-extrabold tracking-wide">
-                  ₹{(() => {
-                    if (data.storedSlip) {
-                      return data.storedSlip.netSalary.toLocaleString('en-IN');
-                    }
-                    return data.salaryData.netTakeHome.toLocaleString('en-IN', { minimumFractionDigits: 0 });
-                  })()}
+
+                {/* Right: Deductions */}
+                <div className="border-r border-b border-gray-300 flex flex-col">
+                  <div className="bg-gray-100 text-red-900 font-extrabold py-2 text-center border-b border-gray-300 uppercase tracking-wide">
+                    Deductions
+                  </div>
+                  <div className="flex-1">
+                    {data.storedSlip ? (
+                      <>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">PF (Provident Fund) :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.pf.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">Professional Tax :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.professionalTax.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">ESI :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.esi.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">TDS :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.tds.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">Other Deductions :</span>
+                          <span className="font-bold text-red-700">₹{data.storedSlip.otherDeductions.toLocaleString('en-IN')}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Late Arrivals :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">{data.salaryData.totalLateMinutes}m ({(data.salaryData.totalLateMinutes / 60).toFixed(2)}h), {data.salaryData.lateInstances} times</span>
+                          </div>
+                          <span className="font-bold text-red-700">₹{data.salaryData.lateDeduction.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Early Depart :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">{data.salaryData.totalEarlyMinutes}m ({(data.salaryData.totalEarlyMinutes / 60).toFixed(2)}h), {data.salaryData.earlyInstances} times</span>
+                          </div>
+                          <span className="font-bold text-red-700">₹{data.salaryData.earlyDeduction.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Absence Deduction :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">{data.salaryData.absentDays} days, {data.salaryData.unexcusedLeaves} unexcused</span>
+                          </div>
+                          <span className="font-bold text-red-700">₹{data.salaryData.absentDeduction.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">Approved Leaves :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium">{data.salaryData.approvedLeavesCount} days, Paid</span>
+                          </div>
+                          <span className="font-bold">₹0</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200">
+                          <span className="text-gray-700">Other Deductions :</span>
+                          <span className="font-bold text-red-700">₹{data.salaryData.otherDeductions.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between py-2.5 px-3 border-b border-gray-200 items-center">
+                          <div>
+                            <span className="text-gray-700">TDS Deduction :</span>
+                            <span className="text-gray-500 text-[10px] block font-medium font-medium">({data.salaryData.tdsPercentage}%)</span>
+                          </div>
+                          <span className="font-bold text-red-700">₹{data.salaryData.tdsDeduction.toLocaleString('en-IN')}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Totals Row */}
+              <div className="grid grid-cols-2 text-xs border-x border-b border-gray-300 font-extrabold">
+                <div className="flex justify-between py-3 px-3 border-r border-gray-300 bg-gray-50 text-red-900">
+                  <span>Total Earnings (A) :</span>
+                  <span>₹{grossEarnings.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between py-3 px-3 bg-gray-50 text-red-900">
+                  <span>Total Deductions (B) :</span>
+                  <span>₹{grossDeductions.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* Nett Take Home */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-sm font-extrabold py-3 px-3 bg-blue-50">
+                <div className="col-span-3 text-right text-gray-700 pr-3 self-center">
+                  Nett Take Home / NEFT done :
+                </div>
+                <div className="col-span-3 text-center text-blue-700 text-base">
+                  ₹{netTakeHome.toLocaleString('en-IN')}
+                </div>
+              </div>
+
+              {/* Attendance Details Header */}
+              <div className="border-x border-b border-gray-300 bg-red-900 text-white font-extrabold text-xs py-2 text-center uppercase tracking-wider">
+                Attendance Details
+              </div>
+
+              {/* Attendance Details Grid */}
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-[11px] text-center font-bold">
+                <div className="bg-gray-50 border-r border-gray-300 py-2">B/F (ULD)</div>
+                <div className="bg-gray-50 border-r border-gray-300 py-2">Absent</div>
+                <div className="bg-gray-50 border-r border-gray-300 py-2">Leaves Taken</div>
+                <div className="bg-gray-50 border-r border-gray-300 py-2">Eligible CL's</div>
+                <div className="bg-gray-50 border-r border-gray-300 py-2">C/F (ULD)</div>
+                <div className="bg-gray-50 py-2">Approval Status</div>
+              </div>
+              <div className="grid grid-cols-6 border-x border-b border-gray-300 text-xs text-center font-bold">
+                <div className="bg-cyan-100 border-r border-gray-300 py-2">0</div>
+                <div className="bg-cyan-100 border-r border-gray-300 py-2">
+                  {data.storedSlip ? '--' : data.salaryData.absentDays}
+                </div>
+                <div className="bg-cyan-100 border-r border-gray-300 py-2">
+                  {data.storedSlip ? '--' : data.salaryData.approvedLeavesCount}
+                </div>
+                <div className="border-r border-gray-300 py-2">
+                  {data.storedSlip ? '--' : data.salaryData.eligibleCLs}
+                </div>
+                <div className="border-r border-gray-300 py-2">
+                  {data.storedSlip ? '--' : data.salaryData.cfLeaves}
+                </div>
+                <div className="py-2 text-gray-700 text-[10px]">SK & KK Approved</div>
+              </div>
+
+              {/* Signatures */}
+              <div className="grid grid-cols-2 mt-8 text-xs font-bold pt-12">
+                <div className="text-center">
+                  <div className="w-48 border-b border-gray-400 mx-auto mb-1"></div>
+                  <span className="text-gray-500 uppercase tracking-wider text-[10px]">Kushal Pabbi (Authorised Signatory)</span>
+                </div>
+                <div className="text-center">
+                  <div className="w-48 border-b border-gray-400 mx-auto mb-1"></div>
+                  <span className="text-gray-500 uppercase tracking-wider text-[10px]">Employee Signature</span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="text-center py-16 text-gray-500 text-base font-medium">
+            <div className="text-center py-16 text-gray-500 text-base font-medium w-full">
               No payslip data available for this month.
             </div>
           )}
