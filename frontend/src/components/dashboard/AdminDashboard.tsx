@@ -7811,6 +7811,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
       </html>
     `);
     printWindow.document.close();
+  };
 
   // handlePrintPayslip moved to global scope for reuse
 
