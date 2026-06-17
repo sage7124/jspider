@@ -7887,21 +7887,21 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   );
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-700 text-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col relative transition-all">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white border border-gray-200 text-gray-950 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col relative transition-all">
         
         {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-700 bg-slate-800/50">
+        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50/50">
           <div className="flex items-center gap-3">
             <span className="text-2xl">💵</span>
             <div>
-              <h2 className="text-xl font-bold tracking-wide text-emerald-400">Salary Slips & Payroll Management</h2>
-              <p className="text-xs text-slate-400">View real-time auto-generated payroll statements and configure employee base parameters</p>
+              <h2 className="text-xl font-bold tracking-wide text-emerald-700">Salary Slips & Payroll Management</h2>
+              <p className="text-xs text-gray-500">View real-time auto-generated payroll statements and configure employee base parameters</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
           >
             <X size={20} />
           </button>
@@ -7912,28 +7912,28 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             
             {/* Stat: Total Spent */}
-            <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col justify-center shadow-sm">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Spent / Net Payout (This Month)</span>
-              <div className="text-2xl font-extrabold text-emerald-400 mt-1">₹ {totalSpent.toLocaleString('en-IN')}</div>
+            <div className="p-4 rounded-xl border border-emerald-150 bg-emerald-50/30 flex flex-col justify-center shadow-sm">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Total Spent / Net Payout (This Month)</span>
+              <div className="text-2xl font-extrabold text-emerald-700 mt-1">₹ {totalSpent.toLocaleString('en-IN')}</div>
             </div>
 
             {/* Selector: Select Month */}
-            <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/40 flex flex-col justify-center">
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Select Month</label>
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/30 flex flex-col justify-center">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Select Month</label>
               <input 
                 type="month" 
                 value={month} 
                 onChange={(e) => setMonth(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-lg py-1 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-white font-medium text-xs w-full"
+                className="bg-white border border-gray-300 rounded-lg py-1 px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-gray-800 font-semibold text-xs w-full"
               />
             </div>
 
             {/* Actions: Excel Export, PDF Export & Global Rates */}
-            <div className="p-4 rounded-xl border border-slate-700 bg-slate-800/40 flex flex-col justify-center gap-2">
+            <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/30 flex flex-col justify-center gap-2">
               <button 
                 onClick={handleExportAll}
                 disabled={filteredTrainees.length === 0}
-                className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-50 transition-colors py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white transition-colors py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <FileSpreadsheet size={14} />
                 Export Monthly Report (Excel)
@@ -7941,14 +7941,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
               <button 
                 onClick={handlePrintAllPayslips}
                 disabled={filteredTrainees.length === 0}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 transition-colors py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md"
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white transition-colors py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <FileDown size={14} />
                 Download All Payslips (PDF)
               </button>
               <button 
                 onClick={() => setShowGlobalRates(!showGlobalRates)}
-                className={`w-full ${showGlobalRates ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-700 hover:bg-slate-600'} transition-colors py-1.5 px-3 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5`}
+                className={`w-full ${showGlobalRates ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm font-semibold' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-250 font-semibold'} transition-colors py-1.5 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-pointer`}
               >
                 <Settings size={14} />
                 {showGlobalRates ? 'Hide' : 'Show'} Global Deduction Rates
@@ -7959,35 +7959,35 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
           {/* Search bar */}
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+            <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
             <input 
               type="text" 
               placeholder="Search employee by name or registration number..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 pl-10 pr-4 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-white border border-gray-300 rounded-lg py-2 pl-10 pr-4 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
             />
           </div>
 
           {/* Global Deduction Rates Panel */}
           {showGlobalRates && (
-            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mt-3 mb-1">
-              <h4 className="text-[10px] font-black uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-1.5">
+            <div className="bg-amber-50/30 border border-amber-200 rounded-xl p-4 mt-3 mb-1">
+              <h4 className="text-[10px] font-black uppercase tracking-wider text-amber-700 mb-3 flex items-center gap-1.5">
                 🌐 Global / Common Payroll & Rate Settings (applies to all employees unless overridden personally)
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 {/* Column 1: Late Arrival */}
-                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800/80 space-y-2.5">
-                  <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">⏰ Late Arrival</h5>
+                <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm space-y-2.5">
+                  <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">⏰ Late Arrival</h5>
                   <div>
-                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Rate (₹)</label>
+                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Rate (₹)</label>
                     <input type="number" value={globalLateRate} onChange={e => setGlobalLateRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
                   </div>
                   <div>
-                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Deduction Method</label>
+                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Deduction Method</label>
                     <select value={globalLateDeductionType} onChange={e => setGlobalLateDeductionType(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold">
                       <option value="instance">Per Instance</option>
                       <option value="minute">Per Minute</option>
                       <option value="hour">Per Hour</option>
@@ -7996,25 +7996,25 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   </div>
                   {globalLateDeductionType === 'interval' && (
                     <div>
-                      <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Interval Value (Minutes)</label>
+                      <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Interval Value (Minutes)</label>
                       <input type="number" value={globalLateIntervalValue} onChange={e => setGlobalLateIntervalValue(parseInt(e.target.value) || 15)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
                     </div>
                   )}
                 </div>
 
                 {/* Column 2: Early Checkout */}
-                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800/80 space-y-2.5">
-                  <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">🚪 Early Checkout</h5>
+                <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm space-y-2.5">
+                  <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">🚪 Early Checkout</h5>
                   <div>
-                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Rate (₹)</label>
+                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Rate (₹)</label>
                     <input type="number" value={globalEarlyRate} onChange={e => setGlobalEarlyRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
                   </div>
                   <div>
-                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Deduction Method</label>
+                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Deduction Method</label>
                     <select value={globalEarlyDeductionType} onChange={e => setGlobalEarlyDeductionType(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold">
                       <option value="instance">Per Instance</option>
                       <option value="minute">Per Minute</option>
                       <option value="hour">Per Hour</option>
@@ -8023,76 +8023,76 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   </div>
                   {globalEarlyDeductionType === 'interval' && (
                     <div>
-                      <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Interval Value (Minutes)</label>
+                      <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Interval Value (Minutes)</label>
                       <input type="number" value={globalEarlyIntervalValue} onChange={e => setGlobalEarlyIntervalValue(parseInt(e.target.value) || 15)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
                     </div>
                   )}
                 </div>
 
                 {/* Column 3: Class Rates */}
-                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800/80 space-y-2.5">
-                  <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">🏫 Class Rates</h5>
+                <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm space-y-2.5">
+                  <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">🏫 Class Rates</h5>
                   <div>
-                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Extra Class Rate (₹/hour)</label>
+                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Extra Class Rate (₹/hour)</label>
                     <input type="number" value={globalExtraClassRate} onChange={e => setGlobalExtraClassRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
                   </div>
                   <div>
-                    <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Other Center Class Rate (₹/hour)</label>
+                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Other Center Class Rate (₹/hour)</label>
                     <input type="number" value={globalOtherCenterClassRate} onChange={e => setGlobalOtherCenterClassRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
                   </div>
                   <div>
-                    <label className="block text-[8px] font-bold text-teal-400 uppercase mb-1">🏛️ College Visit Rate (₹/hour)</label>
+                    <label className="block text-[8px] font-bold text-teal-750 uppercase mb-1">🏛️ College Visit Rate (₹/hour)</label>
                     <input type="number" value={globalCollegeVisitRate} onChange={e => setGlobalCollegeVisitRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-slate-950 border border-teal-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      className="w-full bg-white border border-teal-200 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-teal-500 font-semibold" />
                   </div>
                 </div>
 
                 {/* Column 4: Absent Rate & Actions */}
-                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800/80 flex flex-col justify-between space-y-2.5">
+                <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between space-y-2.5">
                   <div className="space-y-2.5">
-                    <h5 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">📅 Absence</h5>
+                    <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">📅 Absence</h5>
                     <div>
-                      <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Absent Rate (₹/day, 0=auto)</label>
+                      <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Absent Rate (₹/day, 0=auto)</label>
                       <input type="number" value={globalAbsentRate} onChange={e => setGlobalAbsentRate(parseFloat(e.target.value) || 0)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
                     </div>
                   </div>
                   <button 
                     onClick={handleSaveGlobalRates}
                     disabled={savingGlobal}
-                    className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white py-2 px-3 rounded-lg text-xs font-bold transition-colors mt-auto"
+                    className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white py-2 px-3 rounded-lg text-xs font-bold transition-colors mt-auto shadow"
                   >
                     {savingGlobal ? 'Saving Settings...' : 'Save Settings'}
                   </button>
                 </div>
               </div>
-              <p className="text-[9px] text-slate-500 mt-2 italic">* Absent Rate = 0 means deduction is calculated as (Base Salary / Days in Month) per absent day. Personal overrides on individual employees take priority over these global rates.</p>
+              <p className="text-[9px] text-gray-400 mt-2 italic">* Absent Rate = 0 means deduction is calculated as (Base Salary / Days in Month) per absent day. Personal overrides on individual employees take priority over these global rates.</p>
             </div>
           )}
         </div>
 
         {/* Content Table */}
         <div className="flex-1 overflow-auto px-6 pb-6">
-          <div className="border border-slate-700/60 rounded-xl bg-slate-800/20 overflow-hidden">
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm">
             {loading ? (
-              <div className="h-48 flex justify-center items-center text-xs text-slate-400">
+              <div className="h-48 flex justify-center items-center text-xs text-gray-400">
                 <div className="flex flex-col items-center gap-2">
                   <span className="text-2xl animate-spin">🔄</span>
                   <span>Calculating payroll statistics...</span>
                 </div>
               </div>
             ) : filteredTrainees.length === 0 ? (
-              <div className="h-48 flex flex-col justify-center items-center text-xs text-slate-500">
+              <div className="h-48 flex flex-col justify-center items-center text-xs text-gray-400">
                 <span className="text-4xl mb-2">📭</span>
                 <span>No employees matching the criteria found.</span>
               </div>
             ) : (
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-900 text-slate-400 uppercase font-semibold text-[9px] tracking-wider border-b border-slate-800">
+                  <tr className="bg-gray-50 text-gray-500 uppercase font-bold text-[9px] tracking-wider border-b border-gray-200">
                     <th className="py-3 px-4">Employee / Teacher</th>
                     <th className="py-3 px-4 text-right">Professional Fee</th>
                     <th className="py-3 px-4 text-center">College Visits</th>
@@ -8102,69 +8102,69 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                     <th className="py-3 px-4 text-center">Early Penalty</th>
                     <th className="py-3 px-4 text-center">Absent Penalty</th>
                     <th className="py-3 px-4 text-right">TDS</th>
-                    <th className="py-3 px-4 text-right font-bold border-l border-slate-800">Net Takehome</th>
+                    <th className="py-3 px-4 text-right font-bold border-l border-gray-200">Net Takehome</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-gray-200">
                   {filteredTrainees.map(t => (
-                    <tr key={t.id} className="hover:bg-slate-800/20 transition-colors">
+                    <tr key={t.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="py-3 px-4">
-                        <div className="font-bold text-slate-200">{t.fullName}</div>
-                        <div className="text-[10px] text-slate-400">{t.empCode || t.id}</div>
+                        <div className="font-bold text-gray-900">{t.fullName}</div>
+                        <div className="text-[10px] text-gray-500">{t.empCode || t.id}</div>
                       </td>
-                      <td className="py-3 px-4 text-right text-slate-300">
+                      <td className="py-3 px-4 text-right text-gray-700">
                         ₹{(t.professionalFee || 0).toLocaleString('en-IN')}
-                        <span className="text-slate-500 text-[9px] block">TDS base</span>
+                        <span className="text-gray-400 text-[9px] block">TDS base</span>
                       </td>
-                      <td className="py-3 px-4 text-center text-slate-300">
+                      <td className="py-3 px-4 text-center text-gray-700">
                         {(t.collegeVisitHours || 0) > 0 ? (
                           <>
-                            <span className="font-medium text-teal-400">{(t.collegeVisitHours || 0).toFixed(1)}h × ₹{t.collegeVisitRate || 0}/h</span>
-                            <span className="text-emerald-400 text-[10px] block font-bold">= ₹{(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</span>
+                            <span className="font-medium text-teal-700">{(t.collegeVisitHours || 0).toFixed(1)}h × ₹{t.collegeVisitRate || 0}/h</span>
+                            <span className="text-emerald-700 text-[10px] block font-bold">= ₹{(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</span>
                           </>
-                        ) : <span className="text-slate-600">—</span>}
+                        ) : <span className="text-gray-400">—</span>}
                       </td>
-                      <td className="py-3 px-4 text-center text-slate-300">
+                      <td className="py-3 px-4 text-center text-gray-700">
                         {(t.extraClassesHours || 0) > 0 ? (
                           <>
-                            <span className="font-medium text-blue-400">{(t.extraClassesHours || 0).toFixed(1)}h × ₹{t.extraClassRate || 0}/h</span>
-                            <span className="text-emerald-400 text-[10px] block font-bold">= ₹{(t.extraClassEarnings || 0).toLocaleString('en-IN')}</span>
-                            <span className="text-slate-500 text-[9px] block">({t.extraClassesCount || 0} classes)</span>
+                            <span className="font-medium text-blue-700">{(t.extraClassesHours || 0).toFixed(1)}h × ₹{t.extraClassRate || 0}/h</span>
+                            <span className="text-emerald-700 text-[10px] block font-bold">= ₹{(t.extraClassEarnings || 0).toLocaleString('en-IN')}</span>
+                            <span className="text-gray-400 text-[9px] block">({t.extraClassesCount || 0} classes)</span>
                           </>
-                        ) : <span className="text-slate-600">—</span>}
+                        ) : <span className="text-gray-400">—</span>}
                       </td>
-                      <td className="py-3 px-4 text-center text-slate-300">
+                      <td className="py-3 px-4 text-center text-gray-700">
                         {(t.otherCenterClassesHours || 0) > 0 ? (
                           <>
-                            <span className="font-medium text-purple-400">{(t.otherCenterClassesHours || 0).toFixed(1)}h × ₹{t.otherCenterClassRate || 0}/h</span>
-                            <span className="text-emerald-400 text-[10px] block font-bold">= ₹{(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</span>
-                            <span className="text-slate-500 text-[9px] block">({t.otherCenterClassesCount || 0} classes)</span>
+                            <span className="font-medium text-purple-700">{(t.otherCenterClassesHours || 0).toFixed(1)}h × ₹{t.otherCenterClassRate || 0}/h</span>
+                            <span className="text-emerald-700 text-[10px] block font-bold">= ₹{(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</span>
+                            <span className="text-gray-400 text-[9px] block">({t.otherCenterClassesCount || 0} classes)</span>
                           </>
-                        ) : <span className="text-slate-600">—</span>}
+                        ) : <span className="text-gray-400">—</span>}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className="text-slate-300 font-medium">{t.lateInstances} times</span>
+                        <span className="text-gray-700 font-medium">{t.lateInstances} times</span>
                         {t.totalLateMinutes > 0 && (
-                          <span className="text-slate-400 text-[10px] block">({t.totalLateMinutes}m late)</span>
+                          <span className="text-gray-500 text-[10px] block">({t.totalLateMinutes}m late)</span>
                         )}
-                        {t.lateDeduction > 0 && <span className="text-red-400 text-[10px] block">-₹{t.lateDeduction}</span>}
+                        {t.lateDeduction > 0 && <span className="text-red-650 text-[10px] block">-₹{t.lateDeduction}</span>}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className="text-slate-300 font-medium">{t.earlyInstances} times</span>
+                        <span className="text-gray-700 font-medium">{t.earlyInstances} times</span>
                         {t.totalEarlyMinutes > 0 && (
-                          <span className="text-slate-400 text-[10px] block">({t.totalEarlyMinutes}m early)</span>
+                          <span className="text-gray-500 text-[10px] block">({t.totalEarlyMinutes}m early)</span>
                         )}
-                        {t.earlyDeduction > 0 && <span className="text-red-400 text-[10px] block">-₹{t.earlyDeduction}</span>}
+                        {t.earlyDeduction > 0 && <span className="text-red-650 text-[10px] block">-₹{t.earlyDeduction}</span>}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className="text-slate-300 font-medium">{t.absentDays} days</span>
-                        {t.absentDeduction > 0 && <span className="text-red-400 text-[10px] block">-₹{t.absentDeduction} ({t.unexcusedLeaves} unexcused)</span>}
+                        <span className="text-gray-700 font-medium">{t.absentDays} days</span>
+                        {t.absentDeduction > 0 && <span className="text-red-650 text-[10px] block">-₹{t.absentDeduction} ({t.unexcusedLeaves} unexcused)</span>}
                       </td>
-                      <td className="py-3 px-4 text-right text-slate-400">
+                      <td className="py-3 px-4 text-right text-gray-500">
                         ₹{(t.tdsDeduction || 0).toLocaleString('en-IN')}
-                        <span className="text-[10px] text-slate-500 block">({t.tdsPercentage}%)</span>
+                        <span className="text-[10px] text-gray-400 block">({t.tdsPercentage}%)</span>
                       </td>
-                      <td className="py-3 px-4 text-right text-emerald-400 font-extrabold text-sm border-l border-slate-800">
+                      <td className="py-3 px-4 text-right text-emerald-700 font-extrabold text-sm border-l border-gray-200">
                         ₹{(t.netTakeHome || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -8187,7 +8187,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                               setEditPersonalEarlyDeductionType(t.personalEarlyDeductionType || '');
                               setEditPersonalEarlyIntervalValue(t.personalEarlyIntervalValue !== null && t.personalEarlyIntervalValue !== undefined ? String(t.personalEarlyIntervalValue) : '');
                             }}
-                            className="text-amber-400 hover:text-amber-200 transition-colors"
+                            className="text-amber-600 hover:text-amber-800 transition-colors cursor-pointer"
                             title="Edit Salary Settings"
                           >
                             <Settings size={15} />
@@ -8195,7 +8195,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
                           <button 
                             onClick={() => setPreviewTrainee(t)}
-                            className="text-emerald-400 hover:text-emerald-200 transition-colors"
+                            className="text-emerald-600 hover:text-emerald-800 transition-colors cursor-pointer"
                             title="Preview Pay Slip"
                           >
                             <Eye size={15} />
@@ -8203,14 +8203,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
                           <button 
                             onClick={() => handleExportIndividual(t.id, t.fullName)}
-                            className="text-teal-400 hover:text-teal-200 transition-colors"
+                            className="text-teal-600 hover:text-teal-800 transition-colors cursor-pointer"
                             title="Download Pay Slip (Excel)"
                           >
                             <FileDown size={15} />
                           </button>
                           <button 
                             onClick={() => handlePrintPayslip(t, month)}
-                            className="text-indigo-400 hover:text-indigo-200 transition-colors"
+                            className="text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
                             title="Print Pay Slip"
                           >
                             <Printer size={15} />
@@ -8227,132 +8227,132 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
         {/* Inline Dialog popup for editing salary */}
         {editingTrainee && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
-            <div className="bg-slate-900 border border-slate-700 text-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center border-b border-slate-700 pb-3">
-                <h3 className="font-bold text-slate-200 flex items-center gap-2">
-                  <Settings size={16} className="text-amber-400" />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div className="bg-white border border-gray-200 text-gray-950 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center border-b border-gray-200 pb-3">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2 text-base">
+                  <Settings size={16} className="text-emerald-600" />
                   Configure Salary Settings
                 </h3>
                 <button 
                   onClick={() => setEditingTrainee(null)}
-                  className="p-1 rounded-full hover:bg-slate-700 text-slate-400 hover:text-white"
+                  className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
                 >
                   <X size={16} />
                 </button>
               </div>
 
               <div>
-                <p className="text-xs text-slate-400">Configure salary settings for:</p>
-                <div className="font-bold text-sm text-white mt-0.5">{editingTrainee.fullName}</div>
+                <p className="text-xs text-gray-500">Configure salary settings for:</p>
+                <div className="font-bold text-sm text-gray-900 mt-0.5">{editingTrainee.fullName}</div>
               </div>
 
               <form onSubmit={handleSaveSalary} className="space-y-4">
                 {/* ── Earnings Section ── */}
                 <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1">💰 Earnings</h4>
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-2 flex items-center gap-1">💰 Earnings</h4>
                   <div className="space-y-2">
                     <div>
-                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Professional Fee / Base Salary (₹)</label>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Professional Fee / Base Salary (₹)</label>
                       <input 
                         type="number" 
                         value={editBaseSalary}
                         onChange={(e) => setEditBaseSalary(e.target.value)}
                         placeholder="0"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-2 px-3 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                         required
                       />
                     </div>
-                    <p className="text-[9px] text-slate-500 italic">⚠️ TDS is deducted from Professional Fee only. College Visit, Extra Classes &amp; Other Center Classes are added on top.</p>
+                    <p className="text-[9px] text-amber-600 font-medium italic">⚠️ TDS is deducted from Professional Fee only. College Visit, Extra Classes &amp; Other Center Classes are added on top.</p>
                   </div>
                 </div>
 
                 {/* ── Personal Deduction Rate Overrides Section ── */}
-                <div className="border-t border-slate-800 pt-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-amber-400 mb-1 flex items-center gap-1">⚡ Personal Penalty Rate Overrides</h4>
-                  <p className="text-[9px] text-slate-500 mb-2 italic">Leave blank to use the global/common rate. Set a value to override for this person only.</p>
+                <div className="border-t border-gray-200 pt-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-1 flex items-center gap-1">⚡ Personal Penalty Rate Overrides</h4>
+                  <p className="text-[9px] text-gray-500 mb-2 italic">Leave blank to use the global/common rate. Set a value to override for this person only.</p>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Late (₹)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Late (₹)</label>
                       <input 
                         type="number" 
                         value={editPersonalLateRate}
                         onChange={(e) => setEditPersonalLateRate(e.target.value)}
                         placeholder="Global"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Early (₹)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Early (₹)</label>
                       <input 
                         type="number" 
                         value={editPersonalEarlyRate}
                         onChange={(e) => setEditPersonalEarlyRate(e.target.value)}
                         placeholder="Global"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Absent (₹)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Absent (₹)</label>
                       <input 
                         type="number" 
                         value={editPersonalAbsentRate}
                         onChange={(e) => setEditPersonalAbsentRate(e.target.value)}
                         placeholder="Global"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* ── Personal Class Rate Overrides Section ── */}
-                <div className="border-t border-slate-800 pt-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-400 mb-1 flex items-center gap-1">✨ Personal Class Rate Overrides (₹/hr)</h4>
-                  <p className="text-[9px] text-slate-500 mb-2 italic">Leave blank to use the global rate. Set a value to override for this person only.</p>
+                <div className="border-t border-gray-200 pt-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-1 flex items-center gap-1">✨ Personal Class Rate Overrides (₹/hr)</h4>
+                  <p className="text-[9px] text-gray-500 mb-2 italic">Leave blank to use the global rate. Set a value to override for this person only.</p>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Extra Class</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Extra Class</label>
                       <input 
                         type="number" 
                         value={editPersonalExtraClassRate}
                         onChange={(e) => setEditPersonalExtraClassRate(e.target.value)}
                         placeholder="Global"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Other Center</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Other Center</label>
                       <input 
                         type="number" 
                         value={editPersonalOtherCenterClassRate}
                         onChange={(e) => setEditPersonalOtherCenterClassRate(e.target.value)}
                         placeholder="Global"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-teal-400 mb-1">🏛️ College Visit</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-emerald-700 mb-1">🏛️ College Visit</label>
                       <input 
                         type="number" 
                         value={editPersonalCollegeVisitRate}
                         onChange={(e) => setEditPersonalCollegeVisitRate(e.target.value)}
                         placeholder="Global"
-                        className="w-full bg-slate-950 border border-teal-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* ── Personal Deduction Type Overrides Section ── */}
-                <div className="border-t border-slate-800 pt-3 space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-purple-400 flex items-center gap-1">⏱️ Deduction Type Overrides</h4>
+                <div className="border-t border-gray-200 pt-3 space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 flex items-center gap-1">⏱️ Deduction Type Overrides</h4>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Late Type</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Late Type</label>
                       <select
                         value={editPersonalLateDeductionType}
                         onChange={(e) => setEditPersonalLateDeductionType(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       >
                         <option value="">Global Default</option>
                         <option value="instance">Per Instance</option>
@@ -8362,11 +8362,11 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Early Type</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Early Type</label>
                       <select
                         value={editPersonalEarlyDeductionType}
                         onChange={(e) => setEditPersonalEarlyDeductionType(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       >
                         <option value="">Global Default</option>
                         <option value="instance">Per Instance</option>
@@ -8380,25 +8380,25 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   <div className="grid grid-cols-2 gap-2">
                     {editPersonalLateDeductionType === 'interval' && (
                       <div>
-                        <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Late Interval (Mins)</label>
+                        <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Late Interval (Mins)</label>
                         <input
                           type="number"
                           value={editPersonalLateIntervalValue}
                           onChange={(e) => setEditPersonalLateIntervalValue(e.target.value)}
                           placeholder="e.g. 15"
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                         />
                       </div>
                     )}
                     {editPersonalEarlyDeductionType === 'interval' && (
                       <div className={editPersonalLateDeductionType !== 'interval' ? 'col-start-2' : ''}>
-                        <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Early Interval (Mins)</label>
+                        <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Early Interval (Mins)</label>
                         <input
                           type="number"
                           value={editPersonalEarlyIntervalValue}
                           onChange={(e) => setEditPersonalEarlyIntervalValue(e.target.value)}
                           placeholder="e.g. 15"
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                         />
                       </div>
                     )}
@@ -8406,44 +8406,44 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                 </div>
 
                 {/* ── TDS & Other Adjustments ── */}
-                <div className="border-t border-slate-800 pt-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-sky-400 mb-2 flex items-center gap-1">📝 Adjustments & TDS</h4>
+                <div className="border-t border-gray-200 pt-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-2 flex items-center gap-1">📝 Adjustments & TDS</h4>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">TDS (%)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">TDS (%)</label>
                       <input 
                         type="number" 
                         step="0.1"
                         value={editTdsOverridePercent}
                         onChange={(e) => setEditTdsOverridePercent(e.target.value)}
                         placeholder="Global (10%)"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Additions (₹)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Additions (₹)</label>
                       <input 
                         type="number" 
                         value={editOtherAdditions}
                         onChange={(e) => setEditOtherAdditions(e.target.value)}
                         placeholder="0"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Deductions (₹)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Deductions (₹)</label>
                       <input 
                         type="number" 
                         value={editOtherDeductions}
                         onChange={(e) => setEditOtherDeductions(e.target.value)}
                         placeholder="0"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-2 border-t border-slate-800">
+                <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                   <button 
                     type="button"
                     onClick={() => {
@@ -8458,7 +8458,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       setEditPersonalEarlyDeductionType('');
                       setEditPersonalEarlyIntervalValue('');
                     }}
-                    className="text-amber-500 hover:text-amber-400 text-[10px] font-bold uppercase tracking-wider hover:underline"
+                    className="text-amber-600 hover:text-amber-700 text-[10px] font-bold uppercase tracking-wider hover:underline transition-colors"
                   >
                     Clear All Overrides
                   </button>
@@ -8466,14 +8466,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                     <button 
                       type="button"
                       onClick={() => setEditingTrainee(null)}
-                      className="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-3 rounded-lg text-xs font-semibold"
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors"
                     >
                       Cancel
                     </button>
                     <button 
                       type="submit"
                       disabled={saving}
-                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white py-1.5 px-3 rounded-lg text-xs font-semibold"
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors"
                     >
                       {saving ? "Saving..." : "Save Settings"}
                     </button>
@@ -8484,15 +8484,15 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
           </div>
         )}
 
-        {previewTrainee && (
-          <AdminTraineePayslipPreviewModal 
-            userId={previewTrainee.id}
-            month={month}
-            onClose={() => setPreviewTrainee(null)}
-          />
-        )}
-
       </div>
+
+      {previewTrainee && (
+        <AdminTraineePayslipPreviewModal 
+          userId={previewTrainee.id}
+          month={month}
+          onClose={() => setPreviewTrainee(null)}
+        />
+      )}
     </div>
   );
 };
@@ -8621,7 +8621,7 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
     : (data?.salaryData?.netTakeHome || 0);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white text-gray-900 rounded-lg shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header Bar */}
         <div className="flex justify-between items-center bg-blue-700 text-white px-6 py-4">
@@ -9050,7 +9050,7 @@ const AdminTraineePayslipPreviewModal = ({ userId, month, onClose }: AdminTraine
     : (data?.salaryData?.netTakeHome || 0);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
       <div className="bg-white text-gray-900 rounded-lg shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header Bar */}
         <div className="flex justify-between items-center bg-blue-700 text-white px-6 py-4">

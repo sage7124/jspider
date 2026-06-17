@@ -4162,7 +4162,7 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
     : (data?.salaryData?.netTakeHome || 0);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white text-gray-900 rounded-lg shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header Bar */}
         <div className="flex justify-between items-center bg-blue-700 text-white px-6 py-4">
