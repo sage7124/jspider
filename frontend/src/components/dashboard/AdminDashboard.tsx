@@ -1608,7 +1608,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
               <td class="font-bold text-right">₹${(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Absence Deduction :</td>
               <td class="text-center">${t.absentDays || 0} days</td>
-              <td class="text-center">${t.unexcusedLeaves || 0} unexcused</td>
+              <td class="text-center">Absent</td>
               <td class="font-bold text-right text-red-600">₹${(t.absentDeduction || 0).toLocaleString('en-IN')}</td>
             </tr>
             <!-- Row 14 -->
@@ -1618,18 +1618,34 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
                 <span class="subtext">(${(t.otherCenterClassesHours || 0).toFixed(2)}h @ ₹${t.otherCenterClassRate || 0}/h)</span>
               </td>
               <td class="font-bold text-right">₹${(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
+              <td class="text-gray-700">Unpaid Approved Leaves :</td>
+              <td class="text-center">${t.unpaidApprovedLeaves || 0} days</td>
+              <td class="text-center">Unpaid</td>
+              <td class="font-bold text-right text-red-600">₹${(t.unpaidApprovedLeavesDeduction || 0).toLocaleString('en-IN')}</td>
+            </tr>
+            <!-- Row 15 -->
+            <tr>
+              <td colspan="2"></td>
               <td class="text-gray-700">Approved Leaves :</td>
               <td class="text-center">${t.approvedLeavesCount || 0} days</td>
+              <td class="text-center">Leaves Taken</td>
+              <td class="font-bold text-right text-gray-600">₹0</td>
+            </tr>
+            <!-- Row 16 -->
+            <tr>
+              <td colspan="2"></td>
+              <td class="text-gray-700">Paid Leaves :</td>
+              <td class="text-center">${t.paidLeavesLimit || 0} days</td>
               <td class="text-center">Paid</td>
               <td class="font-bold text-right text-gray-600">₹0</td>
             </tr>
-            <!-- Row 15 -->
+            <!-- Row 17 -->
             <tr>
               <td colspan="2"></td>
               <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
               <td class="font-bold text-right text-red-600">₹${(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
             </tr>
-            <!-- Row 16 -->
+            <!-- Row 18 -->
             <tr>
               <td colspan="2"></td>
               <td colspan="3" class="text-gray-700 font-medium">Tax Deducted at Source (TDS, ${t.tdsPercentage || 10}%) :</td>
@@ -1659,22 +1675,20 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
 
       <div class="att-header">Attendance Details</div>
       
-      <div class="att-grid-header">
-        <div>B/F (ULD)</div>
-        <div>Absent</div>
+      <div class="att-grid-header" style="grid-template-columns: repeat(4, 1fr) 2fr;">
         <div>Leaves Taken</div>
-        <div>Eligible CL's</div>
-        <div>C/F (ULD)</div>
+        <div>Paid Leaves</div>
+        <div>Unpaid Approved Leaves</div>
+        <div>Absent Days</div>
         <div>Approval Status</div>
       </div>
       
-      <div class="att-grid-values">
-        <div class="cyan-bg">0</div>
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.absentDays || 0)}</div>
+      <div class="att-grid-values" style="grid-template-columns: repeat(4, 1fr) 2fr;">
         <div class="cyan-bg">${hasStoredSlip ? '--' : (t.approvedLeavesCount || 0)}</div>
-        <div>${hasStoredSlip ? '--' : (t.eligibleCLs || 1)}</div>
-        <div>${hasStoredSlip ? '--' : (t.cfLeaves || 0)}</div>
-        <div style="font-size: 10px; color: #475569;">SK & KK Approved</div>
+        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.paidLeavesLimit || 0)}</div>
+        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.unpaidApprovedLeaves || 0)}</div>
+        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.absentDays || 0)}</div>
+        <div style="font-size: 10px; color: #475569; padding-top: 8px;">SK & KK Approved</div>
       </div>
 
       <div class="sig-row">
@@ -2020,7 +2034,7 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Absence Deduction :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.absentDays || 0)} days</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.unexcusedLeaves || 0)} unexcused</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Absent</td>
                   <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.absentDeduction || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 {/* Row 14 */}
@@ -2030,18 +2044,34 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                     <span className="text-[9px] text-slate-500 block font-medium mt-0.5">(₹{(t.otherCenterClassRate || 0)}/h × {(t.otherCenterClassesHours || 0).toFixed(2)}h)</span>
                   </td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Unpaid Approved Leaves :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.unpaidApprovedLeaves || 0)} days</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Unpaid</td>
+                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.unpaidApprovedLeavesDeduction || 0).toLocaleString('en-IN')}</td>
+                </tr>
+                {/* Row 15 */}
+                <tr>
+                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Approved Leaves :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.approvedLeavesCount || 0)} days</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Leaves Taken</td>
+                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-slate-600">₹0</td>
+                </tr>
+                {/* Row 16 */}
+                <tr>
+                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Paid Leaves :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.paidLeavesLimit || 0)} days</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Paid</td>
                   <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-slate-600">₹0</td>
                 </tr>
-                {/* Row 15 */}
+                {/* Row 17 */}
                 <tr>
                   <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
                   <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Other Deductions :</td>
                   <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
                 </tr>
-                {/* Row 16 */}
+                {/* Row 18 */}
                 <tr>
                   <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
                   <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Tax Deducted at Source (TDS, {t.tdsPercentage || 10}%) :</td>
@@ -2078,29 +2108,27 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
       </div>
 
       {/* Attendance Grid */}
-      <div className="grid grid-cols-6 border-x border-b border-gray-300 text-[10px] text-center font-bold relative z-10 bg-slate-50">
-        <div className="border-r border-gray-300 py-1.5">B/F (ULD)</div>
-        <div className="border-r border-gray-300 py-1.5">Absent</div>
+      <div className="border-x border-b border-gray-300 text-[10px] text-center font-bold relative z-10 bg-slate-50" style={{ gridTemplateColumns: 'repeat(4, 1fr) 2fr', display: 'grid' }}>
         <div className="border-r border-gray-300 py-1.5">Leaves Taken</div>
-        <div className="border-r border-gray-300 py-1.5">Eligible CL's</div>
-        <div className="border-r border-gray-300 py-1.5">C/F (ULD)</div>
+        <div className="border-r border-gray-300 py-1.5">Paid Leaves</div>
+        <div className="border-r border-gray-300 py-1.5">Unpaid Approved Leaves</div>
+        <div className="border-r border-gray-300 py-1.5">Absent Days</div>
         <div className="py-1.5">Approval Status</div>
       </div>
-      <div className="grid grid-cols-6 border-x border-b border-gray-300 text-xs text-center font-bold relative z-10">
-        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">0</div>
-        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.absentDays || 0)}
-        </div>
+      <div className="border-x border-b border-gray-300 text-xs text-center font-bold relative z-10" style={{ gridTemplateColumns: 'repeat(4, 1fr) 2fr', display: 'grid' }}>
         <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
           {hasStoredSlip ? '--' : (t.approvedLeavesCount || 0)}
         </div>
-        <div className="border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.eligibleCLs || 1)}
+        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
+          {hasStoredSlip ? '--' : (t.paidLeavesLimit || 0)}
         </div>
-        <div className="border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.cfLeaves || 0)}
+        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
+          {hasStoredSlip ? '--' : (t.unpaidApprovedLeaves || 0)}
         </div>
-        <div className="py-2 text-slate-500 text-[10px]">SK & KK Approved</div>
+        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
+          {hasStoredSlip ? '--' : (t.absentDays || 0)}
+        </div>
+        <div className="py-2 text-slate-500 text-[10px] flex items-center justify-center">SK & KK Approved</div>
       </div>
 
       {/* Signatures */}
@@ -3738,7 +3766,7 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
   const [quota, setQuota] = useState(0);
   const [lateRate, setLateRate] = useState(30);
   const [earlyRate, setEarlyRate] = useState(30);
-  const [absentRate, setAbsentRate] = useState(0);
+  const [paidLeavesLimit, setPaidLeavesLimit] = useState(0);
   const [newDate, setNewDate] = useState('');
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -3759,7 +3787,7 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
       setQuota(sRes.data?.totalHolidaysQuota || 0);
       setLateRate(sRes.data?.lateRate !== undefined ? sRes.data.lateRate : 30);
       setEarlyRate(sRes.data?.earlyRate !== undefined ? sRes.data.earlyRate : 30);
-      setAbsentRate(sRes.data?.absentRate !== undefined ? sRes.data.absentRate : 0);
+      setPaidLeavesLimit(sRes.data?.paidLeavesLimit !== undefined ? sRes.data.paidLeavesLimit : 0);
     } catch (err) {
       console.error(err);
     } finally {
@@ -3801,7 +3829,7 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
         totalHolidaysQuota: quota,
         lateRate,
         earlyRate,
-        absentRate
+        paidLeavesLimit
       }, { headers: { Authorization: `Bearer ${token}` } });
       alert('System settings updated successfully');
     } catch (err) {
@@ -3864,14 +3892,14 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
                 className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
             </div>
             <div>
-              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Absent Rate (₹)</label>
-              <input type="number" value={absentRate} onChange={e => setAbsentRate(parseFloat(e.target.value) || 0)} disabled={!canManage}
+              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Paid Leaves (Days)</label>
+              <input type="number" value={paidLeavesLimit} onChange={e => setPaidLeavesLimit(parseFloat(e.target.value) || 0)} disabled={!canManage}
                 className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
             </div>
           </div>
           <div className="flex justify-between items-center mt-3 pt-2 border-t border-emerald-100">
             <p className="text-[9px] text-emerald-700 italic">
-              * Enter 0 in Absent Rate to use dynamic daily base salary rate calculation (Base / Days).
+              * Paid Leaves limit specifies the default number of paid leaves allowed per month. Exceeding leaves are deducted as Unpaid Approved Leaves.
             </p>
             {canManage && (
               <button onClick={handleUpdateSettings} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1 rounded text-xs font-bold transition-colors">
@@ -7982,7 +8010,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [editBaseSalary, setEditBaseSalary] = useState('');
   const [editPersonalLateRate, setEditPersonalLateRate] = useState('');
   const [editPersonalEarlyRate, setEditPersonalEarlyRate] = useState('');
-  const [editPersonalAbsentRate, setEditPersonalAbsentRate] = useState('');
+  const [editPersonalPaidLeavesLimit, setEditPersonalPaidLeavesLimit] = useState('');
   const [editPersonalExtraClassRate, setEditPersonalExtraClassRate] = useState('');
   const [editPersonalOtherCenterClassRate, setEditPersonalOtherCenterClassRate] = useState('');
   const [editPersonalCollegeVisitRate, setEditPersonalCollegeVisitRate] = useState('');
@@ -8003,7 +8031,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [globalEarlyRate, setGlobalEarlyRate] = useState(30);
   const [globalEarlyDeductionType, setGlobalEarlyDeductionType] = useState('instance');
   const [globalEarlyIntervalValue, setGlobalEarlyIntervalValue] = useState(15);
-  const [globalAbsentRate, setGlobalAbsentRate] = useState(0);
+  const [globalPaidLeavesLimit, setGlobalPaidLeavesLimit] = useState(0);
   const [globalExtraClassRate, setGlobalExtraClassRate] = useState(0);
   const [globalOtherCenterClassRate, setGlobalOtherCenterClassRate] = useState(0);
   const [globalCollegeVisitRate, setGlobalCollegeVisitRate] = useState(0);
@@ -8030,7 +8058,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         setGlobalEarlyRate(settingsRes.data.earlyRate !== undefined ? settingsRes.data.earlyRate : 30);
         setGlobalEarlyDeductionType(settingsRes.data.earlyDeductionType !== undefined ? settingsRes.data.earlyDeductionType : 'instance');
         setGlobalEarlyIntervalValue(settingsRes.data.earlyIntervalValue !== undefined ? settingsRes.data.earlyIntervalValue : 15);
-        setGlobalAbsentRate(settingsRes.data.absentRate !== undefined ? settingsRes.data.absentRate : 0);
+        setGlobalPaidLeavesLimit(settingsRes.data.paidLeavesLimit !== undefined ? settingsRes.data.paidLeavesLimit : 0);
         setGlobalExtraClassRate(settingsRes.data.extraClassRate !== undefined ? settingsRes.data.extraClassRate : 0);
         setGlobalOtherCenterClassRate(settingsRes.data.otherCenterClassRate !== undefined ? settingsRes.data.otherCenterClassRate : 0);
         setGlobalCollegeVisitRate(settingsRes.data.collegeVisitRate !== undefined ? settingsRes.data.collegeVisitRate : 0);
@@ -8181,7 +8209,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         baseSalary: parseFloat(editBaseSalary) || 0,
         lateRate: editPersonalLateRate !== '' ? parseFloat(editPersonalLateRate) : null,
         earlyRate: editPersonalEarlyRate !== '' ? parseFloat(editPersonalEarlyRate) : null,
-        absentRate: editPersonalAbsentRate !== '' ? parseFloat(editPersonalAbsentRate) : null,
+        paidLeavesLimit: editPersonalPaidLeavesLimit !== '' ? parseFloat(editPersonalPaidLeavesLimit) : 0,
         extraClassRate: editPersonalExtraClassRate !== '' ? parseFloat(editPersonalExtraClassRate) : null,
         otherCenterClassRate: editPersonalOtherCenterClassRate !== '' ? parseFloat(editPersonalOtherCenterClassRate) : null,
         collegeVisitRate: editPersonalCollegeVisitRate !== '' ? parseFloat(editPersonalCollegeVisitRate) : null,
@@ -8219,7 +8247,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         earlyRate: globalEarlyRate,
         earlyDeductionType: globalEarlyDeductionType,
         earlyIntervalValue: globalEarlyIntervalValue,
-        absentRate: globalAbsentRate,
+        paidLeavesLimit: globalPaidLeavesLimit,
         extraClassRate: globalExtraClassRate,
         otherCenterClassRate: globalOtherCenterClassRate,
         collegeVisitRate: globalCollegeVisitRate
@@ -8404,13 +8432,13 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   </div>
                 </div>
 
-                {/* Column 4: Absent Rate & Actions */}
+                {/* Column 4: Paid Leaves & Actions */}
                 <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between space-y-2.5">
                   <div className="space-y-2.5">
-                    <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">📅 Absence</h5>
+                    <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">📅 Leaves</h5>
                     <div>
-                      <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Absent Rate (₹/day, 0=auto)</label>
-                      <input type="number" value={globalAbsentRate} onChange={e => setGlobalAbsentRate(parseFloat(e.target.value) || 0)}
+                      <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Paid Leaves (Days)</label>
+                      <input type="number" value={globalPaidLeavesLimit} onChange={e => setGlobalPaidLeavesLimit(parseFloat(e.target.value) || 0)}
                         className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
                     </div>
                   </div>
@@ -8423,7 +8451,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   </button>
                 </div>
               </div>
-              <p className="text-[9px] text-gray-400 mt-2 italic">* Absent Rate = 0 means deduction is calculated as (Base Salary / Days in Month) per absent day. Personal overrides on individual employees take priority over these global rates.</p>
+              <p className="text-[9px] text-gray-400 mt-2 italic">* Paid Leaves limit specifies the default number of paid leaves allowed per month. Exceeding leaves are deducted as Unpaid Approved Leaves.</p>
             </div>
           )}
         </div>
@@ -8512,7 +8540,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="text-gray-700 font-medium">{t.absentDays} days</span>
-                        {t.absentDeduction > 0 && <span className="text-red-650 text-[10px] block">-₹{t.absentDeduction} ({t.unexcusedLeaves} unexcused)</span>}
+                        {t.absentDeduction > 0 && <span className="text-red-650 text-[10px] block">-₹{t.absentDeduction}</span>}
                       </td>
                       <td className="py-3 px-4 text-right text-gray-500">
                         ₹{(t.tdsDeduction || 0).toLocaleString('en-IN')}
@@ -8529,7 +8557,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                               setEditBaseSalary(String(t.professionalFee || 0));
                               setEditPersonalLateRate(t.personalLateRate !== null && t.personalLateRate !== undefined ? String(t.personalLateRate) : '');
                               setEditPersonalEarlyRate(t.personalEarlyRate !== null && t.personalEarlyRate !== undefined ? String(t.personalEarlyRate) : '');
-                              setEditPersonalAbsentRate(t.personalAbsentRate !== null && t.personalAbsentRate !== undefined ? String(t.personalAbsentRate) : '');
+                              setEditPersonalPaidLeavesLimit(t.personalPaidLeavesLimit !== null && t.personalPaidLeavesLimit !== undefined ? String(t.personalPaidLeavesLimit) : '');
                               setEditPersonalExtraClassRate(t.personalExtraClassRate !== null && t.personalExtraClassRate !== undefined ? String(t.personalExtraClassRate) : '');
                               setEditPersonalOtherCenterClassRate(t.personalOtherCenterClassRate !== null && t.personalOtherCenterClassRate !== undefined ? String(t.personalOtherCenterClassRate) : '');
                               setEditPersonalCollegeVisitRate(t.personalCollegeVisitRate !== null && t.personalCollegeVisitRate !== undefined ? String(t.personalCollegeVisitRate) : '');
@@ -8653,16 +8681,16 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       </span>
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Absent (₹)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Paid Leaves (Days)</label>
                       <input 
                         type="number" 
-                        value={editPersonalAbsentRate}
-                        onChange={(e) => setEditPersonalAbsentRate(e.target.value)}
+                        value={editPersonalPaidLeavesLimit}
+                        onChange={(e) => setEditPersonalPaidLeavesLimit(e.target.value)}
                         placeholder="Global"
                         className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
                       <span className="text-[9px] text-gray-500 block mt-1 font-medium select-none">
-                        {editingTrainee.absentDays || 0} days ({editingTrainee.unexcusedLeaves || 0} unexcused)
+                        Leaves Taken: {editingTrainee.approvedLeavesCount || 0} days
                       </span>
                     </div>
                   </div>
@@ -8821,7 +8849,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                     onClick={() => {
                       setEditPersonalLateRate('');
                       setEditPersonalEarlyRate('');
-                      setEditPersonalAbsentRate('');
+                      setEditPersonalPaidLeavesLimit('');
                       setEditTdsOverridePercent('');
                       setEditOtherAdditions('0');
                       setEditOtherDeductions('0');

@@ -63,6 +63,7 @@ model User {
   otherCenterClassRate   Float?
   collegeVisitRate       Float?
   tdsRate                Float?
+  paidLeavesLimit        Float        @default(0.0)
   otherAdditions         Float        @default(0.0)
   otherDeductions        Float        @default(0.0)
   lateDeductionType      String?
@@ -197,6 +198,7 @@ model InstituteSettings {
   extraClassRate Float    @default(0.0)
   otherCenterClassRate Float @default(0.0)
   collegeVisitRate Float  @default(0.0)
+  paidLeavesLimit Float  @default(0.0)
   updatedAt      DateTime @updatedAt
 }
 

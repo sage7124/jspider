@@ -915,7 +915,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
               <td class="font-bold text-right">₹${(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Absence Deduction :</td>
               <td class="text-center">${t.absentDays || 0} days</td>
-              <td class="text-center">${t.unexcusedLeaves || 0} unexcused</td>
+              <td class="text-center">Absent</td>
               <td class="font-bold text-right text-red-600">₹${(t.absentDeduction || 0).toLocaleString('en-IN')}</td>
             </tr>
             <!-- Row 14 -->
@@ -925,18 +925,34 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
                 <span class="subtext">(${(t.otherCenterClassesHours || 0).toFixed(2)}h @ ₹${t.otherCenterClassRate || 0}/h)</span>
               </td>
               <td class="font-bold text-right">₹${(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
+              <td class="text-gray-700">Unpaid Approved Leaves :</td>
+              <td class="text-center">${t.unpaidApprovedLeaves || 0} days</td>
+              <td class="text-center">Unpaid</td>
+              <td class="font-bold text-right text-red-600">₹${(t.unpaidApprovedLeavesDeduction || 0).toLocaleString('en-IN')}</td>
+            </tr>
+            <!-- Row 15 -->
+            <tr>
+              <td colspan="2"></td>
               <td class="text-gray-700">Approved Leaves :</td>
               <td class="text-center">${t.approvedLeavesCount || 0} days</td>
+              <td class="text-center">Leaves Taken</td>
+              <td class="font-bold text-right text-gray-600">₹0</td>
+            </tr>
+            <!-- Row 16 -->
+            <tr>
+              <td colspan="2"></td>
+              <td class="text-gray-700">Paid Leaves :</td>
+              <td class="text-center">${t.paidLeavesLimit || 0} days</td>
               <td class="text-center">Paid</td>
               <td class="font-bold text-right text-gray-600">₹0</td>
             </tr>
-            <!-- Row 15 -->
+            <!-- Row 17 -->
             <tr>
               <td colspan="2"></td>
               <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
               <td class="font-bold text-right text-red-600">₹${(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
             </tr>
-            <!-- Row 16 -->
+            <!-- Row 18 -->
             <tr>
               <td colspan="2"></td>
               <td colspan="3" class="text-gray-700 font-medium">Tax Deducted at Source (TDS, ${t.tdsPercentage || 10}%) :</td>
@@ -966,22 +982,20 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
 
       <div class="att-header">Attendance Details</div>
       
-      <div class="att-grid-header">
-        <div>B/F (ULD)</div>
-        <div>Absent</div>
+      <div class="att-grid-header" style="grid-template-columns: repeat(4, 1fr) 2fr;">
         <div>Leaves Taken</div>
-        <div>Eligible CL's</div>
-        <div>C/F (ULD)</div>
+        <div>Paid Leaves</div>
+        <div>Unpaid Approved Leaves</div>
+        <div>Absent Days</div>
         <div>Approval Status</div>
       </div>
       
-      <div class="att-grid-values">
-        <div class="cyan-bg">0</div>
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.absentDays || 0)}</div>
+      <div class="att-grid-values" style="grid-template-columns: repeat(4, 1fr) 2fr;">
         <div class="cyan-bg">${hasStoredSlip ? '--' : (t.approvedLeavesCount || 0)}</div>
-        <div>${hasStoredSlip ? '--' : (t.eligibleCLs || 1)}</div>
-        <div>${hasStoredSlip ? '--' : (t.cfLeaves || 0)}</div>
-        <div style="font-size: 10px; color: #475569;">SK & KK Approved</div>
+        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.paidLeavesLimit || 0)}</div>
+        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.unpaidApprovedLeaves || 0)}</div>
+        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.absentDays || 0)}</div>
+        <div style="font-size: 10px; color: #475569; padding-top: 8px;">SK & KK Approved</div>
       </div>
 
       <div class="sig-row">
@@ -1255,7 +1269,7 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Absence Deduction :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.absentDays || 0)} days</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.unexcusedLeaves || 0)} unexcused</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Absent</td>
                   <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.absentDeduction || 0).toLocaleString('en-IN')}</td>
                 </tr>
                 {/* Row 14 */}
@@ -1265,18 +1279,34 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                     <span className="text-[9px] text-slate-500 block font-medium mt-0.5">(₹{(t.otherCenterClassRate || 0)}/h × {(t.otherCenterClassesHours || 0).toFixed(2)}h)</span>
                   </td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Unpaid Approved Leaves :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.unpaidApprovedLeaves || 0)} days</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Unpaid</td>
+                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.unpaidApprovedLeavesDeduction || 0).toLocaleString('en-IN')}</td>
+                </tr>
+                {/* Row 15 */}
+                <tr>
+                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Approved Leaves :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.approvedLeavesCount || 0)} days</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Leaves Taken</td>
+                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-slate-600">₹0</td>
+                </tr>
+                {/* Row 16 */}
+                <tr>
+                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Paid Leaves :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.paidLeavesLimit || 0)} days</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Paid</td>
                   <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-slate-600">₹0</td>
                 </tr>
-                {/* Row 15 */}
+                {/* Row 17 */}
                 <tr>
                   <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
                   <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Other Deductions :</td>
                   <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
                 </tr>
-                {/* Row 16 */}
+                {/* Row 18 */}
                 <tr>
                   <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
                   <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Tax Deducted at Source (TDS, {t.tdsPercentage || 10}%) :</td>
@@ -1313,29 +1343,27 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
       </div>
 
       {/* Attendance Grid */}
-      <div className="grid grid-cols-6 border-x border-b border-gray-300 text-[10px] text-center font-bold relative z-10 bg-slate-50">
-        <div className="border-r border-gray-300 py-1.5">B/F (ULD)</div>
-        <div className="border-r border-gray-300 py-1.5">Absent</div>
+      <div className="border-x border-b border-gray-300 text-[10px] text-center font-bold relative z-10 bg-slate-50" style={{ gridTemplateColumns: 'repeat(4, 1fr) 2fr', display: 'grid' }}>
         <div className="border-r border-gray-300 py-1.5">Leaves Taken</div>
-        <div className="border-r border-gray-300 py-1.5">Eligible CL's</div>
-        <div className="border-r border-gray-300 py-1.5">C/F (ULD)</div>
+        <div className="border-r border-gray-300 py-1.5">Paid Leaves</div>
+        <div className="border-r border-gray-300 py-1.5">Unpaid Approved Leaves</div>
+        <div className="border-r border-gray-300 py-1.5">Absent Days</div>
         <div className="py-1.5">Approval Status</div>
       </div>
-      <div className="grid grid-cols-6 border-x border-b border-gray-300 text-xs text-center font-bold relative z-10">
-        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">0</div>
-        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.absentDays || 0)}
-        </div>
+      <div className="border-x border-b border-gray-300 text-xs text-center font-bold relative z-10" style={{ gridTemplateColumns: 'repeat(4, 1fr) 2fr', display: 'grid' }}>
         <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
           {hasStoredSlip ? '--' : (t.approvedLeavesCount || 0)}
         </div>
-        <div className="border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.eligibleCLs || 1)}
+        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
+          {hasStoredSlip ? '--' : (t.paidLeavesLimit || 0)}
         </div>
-        <div className="border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.cfLeaves || 0)}
+        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
+          {hasStoredSlip ? '--' : (t.unpaidApprovedLeaves || 0)}
         </div>
-        <div className="py-2 text-slate-500 text-[10px]">SK & KK Approved</div>
+        <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
+          {hasStoredSlip ? '--' : (t.absentDays || 0)}
+        </div>
+        <div className="py-2 text-slate-500 text-[10px] flex items-center justify-center">SK & KK Approved</div>
       </div>
 
       {/* Signatures */}
