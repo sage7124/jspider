@@ -936,7 +936,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
               <td class="text-gray-700">Approved Leaves :</td>
               <td class="text-center">${t.approvedLeavesCount || 0} days</td>
               <td class="text-center">Leaves Taken</td>
-              <td class="font-bold text-right text-gray-600">₹0</td>
+              <td class="text-right text-gray-600"></td>
             </tr>
             <!-- Row 16 -->
             <tr>
@@ -944,7 +944,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
               <td class="text-gray-700">Paid Leaves :</td>
               <td class="text-center">${t.paidLeavesLimit || 0} days</td>
               <td class="text-center">Paid</td>
-              <td class="font-bold text-right text-gray-600">₹0</td>
+              <td class="text-right text-gray-600"></td>
             </tr>
             <!-- Row 17 -->
             <tr>
@@ -1290,7 +1290,7 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Approved Leaves :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.approvedLeavesCount || 0)} days</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Leaves Taken</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-slate-600">₹0</td>
+                  <td className="border-b border-gray-300 py-2 px-2.5 text-right text-slate-600"></td>
                 </tr>
                 {/* Row 16 */}
                 <tr>
@@ -1298,7 +1298,7 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Paid Leaves :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.paidLeavesLimit || 0)} days</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Paid</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-slate-600">₹0</td>
+                  <td className="border-b border-gray-300 py-2 px-2.5 text-right text-slate-600"></td>
                 </tr>
                 {/* Row 17 */}
                 <tr>

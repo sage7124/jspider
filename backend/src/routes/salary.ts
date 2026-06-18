@@ -829,8 +829,7 @@ export function generateIndividualPayslipSheet(
     ws.getCell('D15').alignment = { horizontal: 'center' };
     ws.getCell('E15').value = 'Leaves Taken';
     ws.getCell('E15').alignment = { horizontal: 'center' };
-    ws.getCell('F15').value = 0;
-    ws.getCell('F15').numFmt = '"₹"#,##0';
+    ws.getCell('F15').value = '';
     ws.getCell('F15').alignment = { horizontal: 'right' };
 
     // Row 16: Paid Leaves on Right
@@ -839,8 +838,7 @@ export function generateIndividualPayslipSheet(
     ws.getCell('D16').alignment = { horizontal: 'center' };
     ws.getCell('E16').value = 'Paid';
     ws.getCell('E16').alignment = { horizontal: 'center' };
-    ws.getCell('F16').value = 0;
-    ws.getCell('F16').numFmt = '"₹"#,##0';
+    ws.getCell('F16').value = '';
     ws.getCell('F16').alignment = { horizontal: 'right' };
 
     // Row 17: Other Deductions

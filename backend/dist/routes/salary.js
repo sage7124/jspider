@@ -238,9 +238,11 @@ const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, start
     const cfLeaves = balanceForward - absentDays + eligibleCLs;
     const unexcusedLeaves = cfLeaves < 0 ? Math.abs(cfLeaves) : 0;
     const dailyRate = daysInMonth > 0 ? (baseSalary / daysInMonth) : 0.0;
-    const absentDeduction = absentRateSetting > 0
-        ? Math.round(absentRateSetting * unexcusedLeaves)
-        : Math.round(dailyRate * unexcusedLeaves);
+    const absentDeduction = Math.round(absentDays * dailyRate);
+    // Paid vs Unpaid Leaves:
+    const paidLeavesLimit = trainee.paidLeavesLimit !== null && trainee.paidLeavesLimit !== undefined ? trainee.paidLeavesLimit : (settings?.paidLeavesLimit !== undefined ? settings.paidLeavesLimit : 0.0);
+    const unpaidApprovedLeaves = Math.max(0, approvedLeavesCount - paidLeavesLimit);
+    const unpaidApprovedLeavesDeduction = Math.round(unpaidApprovedLeaves * dailyRate);
     // Custom additions and deductions from trainee overrides
     const otherAdditions = trainee.otherAdditions || 0.0;
     const otherDeductions = trainee.otherDeductions || 0.0;
@@ -249,7 +251,7 @@ const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, start
     const tdsPercentage = trainee.tdsRate !== null && trainee.tdsRate !== undefined ? trainee.tdsRate : 10.0;
     const grossEarnings = baseSalary + collegeVisitEarnings + otherAdditions + extraClassEarnings + otherCenterClassEarnings;
     const tdsDeduction = Math.round(baseSalary * (tdsPercentage / 100.0));
-    const totalDeductions = lateDeduction + earlyDeduction + absentDeduction + tdsDeduction + otherDeductions;
+    const totalDeductions = lateDeduction + earlyDeduction + absentDeduction + unpaidApprovedLeavesDeduction + tdsDeduction + otherDeductions;
     const netTakeHome = Math.max(0, grossEarnings - totalDeductions);
     return {
         professionalFee: baseSalary,
@@ -270,12 +272,16 @@ const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, start
         cfLeaves,
         unexcusedLeaves,
         absentDeduction,
+        paidLeavesLimit,
+        unpaidApprovedLeaves,
+        unpaidApprovedLeavesDeduction,
         tdsDeduction,
         totalDeductions,
         netTakeHome,
         personalLateRate: trainee.lateRate,
         personalEarlyRate: trainee.earlyRate,
         personalAbsentRate: trainee.absentRate,
+        personalPaidLeavesLimit: trainee.paidLeavesLimit,
         panNo: trainee.panNumber || '--',
         aadhaarNo: trainee.aadhaarNumber || '--',
         otherAdditions,
@@ -322,7 +328,7 @@ const checkSalarySlipsAccess = async (req, res, next) => {
 router.put('/admin/trainees/:id/salary', authMiddleware_1.authenticateToken, checkSalarySlipsAccess, async (req, res) => {
     try {
         const { id } = req.params;
-        const { baseSalary, trainingFee, lateRate, earlyRate, absentRate, extraClassRate, otherCenterClassRate, collegeVisitRate, tdsRate, otherAdditions, otherDeductions, lateDeductionType, earlyDeductionType, lateIntervalValue, earlyIntervalValue } = req.body;
+        const { baseSalary, trainingFee, lateRate, earlyRate, absentRate, paidLeavesLimit, extraClassRate, otherCenterClassRate, collegeVisitRate, tdsRate, otherAdditions, otherDeductions, lateDeductionType, earlyDeductionType, lateIntervalValue, earlyIntervalValue } = req.body;
         const user = await prisma.user.update({
             where: { id: parseInt(id) },
             data: {
@@ -331,6 +337,7 @@ router.put('/admin/trainees/:id/salary', authMiddleware_1.authenticateToken, che
                 lateRate: (lateRate !== undefined && lateRate !== "" && lateRate !== null) ? parseFloat(lateRate) : null,
                 earlyRate: (earlyRate !== undefined && earlyRate !== "" && earlyRate !== null) ? parseFloat(earlyRate) : null,
                 absentRate: (absentRate !== undefined && absentRate !== "" && absentRate !== null) ? parseFloat(absentRate) : null,
+                paidLeavesLimit: (paidLeavesLimit !== undefined && paidLeavesLimit !== "" && paidLeavesLimit !== null) ? parseFloat(paidLeavesLimit) : 0.0,
                 extraClassRate: (extraClassRate !== undefined && extraClassRate !== "" && extraClassRate !== null) ? parseFloat(extraClassRate) : null,
                 otherCenterClassRate: (otherCenterClassRate !== undefined && otherCenterClassRate !== "" && otherCenterClassRate !== null) ? parseFloat(otherCenterClassRate) : null,
                 collegeVisitRate: (collegeVisitRate !== undefined && collegeVisitRate !== "" && collegeVisitRate !== null) ? parseFloat(collegeVisitRate) : null,
@@ -720,124 +727,138 @@ function generateIndividualPayslipSheet(ws, trainee, salData, storedSlip, month,
         ws.getCell('C13').value = 'Absence Deduction :';
         ws.getCell('D13').value = `${salData.absentDays} days`;
         ws.getCell('D13').alignment = { horizontal: 'center' };
-        ws.getCell('E13').value = `${salData.unexcusedLeaves} unexcused`;
+        ws.getCell('E13').value = 'Absent';
         ws.getCell('E13').alignment = { horizontal: 'center' };
         ws.getCell('F13').value = salData.absentDeduction;
         ws.getCell('F13').numFmt = '"₹"#,##0';
         ws.getCell('F13').alignment = { horizontal: 'right' };
-        // Row 14: Other Center Classes on Left, Approved Leaves on Right
+        // Row 14: Other Center Classes on Left, Unpaid Approved Leaves on Right
         ws.getCell('A14').value = `Other Center Classes (${salData.otherCenterClassesHours.toFixed(2)}h @ ₹${salData.otherCenterClassRate}/h) :`;
         ws.getCell('B14').value = { formula: `=${salData.otherCenterClassesHours}*${salData.otherCenterClassRate}`, result: salData.otherCenterClassEarnings };
         ws.getCell('B14').numFmt = '"₹"#,##0';
         ws.getCell('B14').alignment = { horizontal: 'right' };
-        ws.getCell('C14').value = 'Approved Leaves :';
-        ws.getCell('D14').value = `${salData.approvedLeavesCount} days`;
+        ws.getCell('C14').value = 'Unpaid Approved Leaves :';
+        ws.getCell('D14').value = `${salData.unpaidApprovedLeaves} days`;
         ws.getCell('D14').alignment = { horizontal: 'center' };
-        ws.getCell('E14').value = 'Paid';
+        ws.getCell('E14').value = 'Unpaid';
         ws.getCell('E14').alignment = { horizontal: 'center' };
-        ws.getCell('F14').value = 0;
+        ws.getCell('F14').value = salData.unpaidApprovedLeavesDeduction;
         ws.getCell('F14').numFmt = '"₹"#,##0';
         ws.getCell('F14').alignment = { horizontal: 'right' };
-        // Row 15: Other Deductions
-        ws.mergeCells('C15:E15');
-        ws.getCell('C15').value = 'Other Deductions :';
-        ws.getCell('F15').value = salData.otherDeductions;
-        ws.getCell('F15').numFmt = '"₹"#,##0';
+        // Row 15: Approved Leaves on Right
+        ws.getCell('C15').value = 'Approved Leaves :';
+        ws.getCell('D15').value = `${salData.approvedLeavesCount} days`;
+        ws.getCell('D15').alignment = { horizontal: 'center' };
+        ws.getCell('E15').value = 'Leaves Taken';
+        ws.getCell('E15').alignment = { horizontal: 'center' };
+        ws.getCell('F15').value = '';
         ws.getCell('F15').alignment = { horizontal: 'right' };
-        // Row 16: Tax Deducted at Source (TDS)
-        ws.mergeCells('C16:E16');
-        ws.getCell('C16').value = `Tax Deducted at Source (TDS, ${salData.tdsPercentage}%) :`;
-        ws.getCell('F16').value = { formula: `=ROUND(B10*${salData.tdsPercentage}/100,0)`, result: salData.tdsDeduction };
-        ws.getCell('F16').numFmt = '"₹"#,##0';
+        // Row 16: Paid Leaves on Right
+        ws.getCell('C16').value = 'Paid Leaves :';
+        ws.getCell('D16').value = `${salData.paidLeavesLimit} days`;
+        ws.getCell('D16').alignment = { horizontal: 'center' };
+        ws.getCell('E16').value = 'Paid';
+        ws.getCell('E16').alignment = { horizontal: 'center' };
+        ws.getCell('F16').value = '';
         ws.getCell('F16').alignment = { horizontal: 'right' };
-        applyGridBorders(10, 16, 1, 6);
-        // Row 17: Totals
-        ws.getCell('A17').value = 'Total Earnings :';
-        ws.getCell('A17').font = { bold: true, color: { argb: '800000' } };
-        ws.getCell('B17').value = { formula: '=SUM(B10:B14)', result: salData.grossEarnings };
-        ws.getCell('B17').font = { bold: true };
-        ws.getCell('B17').numFmt = '"₹"#,##0';
-        ws.getCell('B17').alignment = { horizontal: 'right' };
+        // Row 17: Other Deductions
         ws.mergeCells('C17:E17');
-        ws.getCell('C17').value = 'Total Deductions :';
-        ws.getCell('C17').font = { bold: true, color: { argb: '800000' } };
-        ws.getCell('F17').value = { formula: '=SUM(F11:F16)', result: salData.totalDeductions };
-        ws.getCell('F17').font = { bold: true };
+        ws.getCell('C17').value = 'Other Deductions :';
+        ws.getCell('F17').value = salData.otherDeductions;
         ws.getCell('F17').numFmt = '"₹"#,##0';
         ws.getCell('F17').alignment = { horizontal: 'right' };
-        applyGridBorders(17, 17, 1, 6);
-        // Row 18: Nett Take Home
-        ws.mergeCells('A18:B18');
-        const netLabel = ws.getCell('A18');
+        // Row 18: Tax Deducted at Source (TDS)
+        ws.mergeCells('C18:E18');
+        ws.getCell('C18').value = `Tax Deducted at Source (TDS, ${salData.tdsPercentage}%) :`;
+        ws.getCell('F18').value = { formula: `=ROUND(B10*${salData.tdsPercentage}/100,0)`, result: salData.tdsDeduction };
+        ws.getCell('F18').numFmt = '"₹"#,##0';
+        ws.getCell('F18').alignment = { horizontal: 'right' };
+        applyGridBorders(10, 18, 1, 6);
+        // Row 19: Totals
+        ws.getCell('A19').value = 'Total Earnings :';
+        ws.getCell('A19').font = { bold: true, color: { argb: '800000' } };
+        ws.getCell('B19').value = { formula: '=SUM(B10:B14)', result: salData.grossEarnings };
+        ws.getCell('B19').font = { bold: true };
+        ws.getCell('B19').numFmt = '"₹"#,##0';
+        ws.getCell('B19').alignment = { horizontal: 'right' };
+        ws.mergeCells('C19:E19');
+        ws.getCell('C19').value = 'Total Deductions :';
+        ws.getCell('C19').font = { bold: true, color: { argb: '800000' } };
+        ws.getCell('F19').value = { formula: '=SUM(F11:F18)', result: salData.totalDeductions };
+        ws.getCell('F19').font = { bold: true };
+        ws.getCell('F19').numFmt = '"₹"#,##0';
+        ws.getCell('F19').alignment = { horizontal: 'right' };
+        applyGridBorders(19, 19, 1, 6);
+        // Row 20: Nett Take Home
+        ws.mergeCells('A20:B20');
+        const netLabel = ws.getCell('A20');
         netLabel.value = 'Nett Take Home / NEFT done :';
         netLabel.font = { bold: true };
         netLabel.alignment = { horizontal: 'right', vertical: 'middle' };
-        ws.mergeCells('C18:F18');
-        const netVal = ws.getCell('C18');
-        netVal.value = { formula: '=B17-F17', result: salData.netTakeHome };
+        ws.mergeCells('C20:F20');
+        const netVal = ws.getCell('C20');
+        netVal.value = { formula: '=B19-F19', result: salData.netTakeHome };
         netVal.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '0000FF' } };
         netVal.numFmt = '"₹"#,##0';
         netVal.alignment = { horizontal: 'center', vertical: 'middle' };
         netVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F8FF' } }; // AliceBlue
-        applyGridBorders(18, 18, 1, 6);
+        applyGridBorders(20, 20, 1, 6);
     }
-    // Row 19: Attendance Details Section Header
-    ws.mergeCells('A19:F19');
-    const attSection = ws.getCell('A19');
+    // Row 21: Attendance Details Section Header
+    ws.mergeCells('A21:F21');
+    const attSection = ws.getCell('A21');
     attSection.value = 'Attendance Details';
     attSection.font = { bold: true, color: { argb: 'FFFFFF' } };
     attSection.alignment = { horizontal: 'center', vertical: 'middle' };
     attSection.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '800000' } }; // maroon
-    applyGridBorders(19, 19, 1, 6);
-    // Row 20: Attendance Headers
-    ws.getCell('A20').value = 'B/F (ULD)';
-    ws.getCell('A20').font = { size: 9 };
-    ws.getCell('A20').alignment = { horizontal: 'center' };
-    ws.getCell('B20').value = 'Absent';
-    ws.getCell('B20').font = { size: 9 };
-    ws.getCell('B20').alignment = { horizontal: 'center' };
-    ws.getCell('C20').value = 'Leaves Taken';
-    ws.getCell('C20').font = { size: 9 };
-    ws.getCell('C20').alignment = { horizontal: 'center' };
-    ws.getCell('D20').value = "Eligible CL's";
-    ws.getCell('D20').font = { size: 9 };
-    ws.getCell('D20').alignment = { horizontal: 'center' };
-    ws.getCell('E20').value = 'C/F (ULD)';
-    ws.getCell('E20').font = { size: 9 };
-    ws.getCell('E20').alignment = { horizontal: 'center' };
-    ws.getCell('F20').value = 'Approval Status';
-    ws.getCell('F20').font = { size: 9 };
-    ws.getCell('F20').alignment = { horizontal: 'center' };
-    applyGridBorders(20, 20, 1, 6);
-    // Row 21: Attendance Values
-    ws.getCell('A21').value = 0;
-    ws.getCell('A21').alignment = { horizontal: 'center' };
-    ws.getCell('A21').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
-    ws.getCell('B21').value = salData.absentDays;
-    ws.getCell('B21').alignment = { horizontal: 'center' };
-    ws.getCell('B21').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
-    ws.getCell('C21').value = salData.approvedLeavesCount;
-    ws.getCell('C21').alignment = { horizontal: 'center' };
-    ws.getCell('C21').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
-    ws.getCell('D21').value = salData.eligibleCLs;
-    ws.getCell('D21').alignment = { horizontal: 'center' };
-    ws.getCell('E21').value = salData.cfLeaves;
-    ws.getCell('E21').alignment = { horizontal: 'center' };
-    ws.getCell('F21').value = 'SK & KK Approved';
-    ws.getCell('F21').alignment = { horizontal: 'center' };
     applyGridBorders(21, 21, 1, 6);
+    // Row 22: Attendance Headers
+    ws.getCell('A22').value = 'Leaves Taken';
+    ws.getCell('A22').font = { size: 9 };
+    ws.getCell('A22').alignment = { horizontal: 'center' };
+    ws.getCell('B22').value = 'Paid Leaves';
+    ws.getCell('B22').font = { size: 9 };
+    ws.getCell('B22').alignment = { horizontal: 'center' };
+    ws.getCell('C22').value = 'Unpaid Approved Leaves';
+    ws.getCell('C22').font = { size: 9 };
+    ws.getCell('C22').alignment = { horizontal: 'center' };
+    ws.getCell('D22').value = 'Absent Days';
+    ws.getCell('D22').font = { size: 9 };
+    ws.getCell('D22').alignment = { horizontal: 'center' };
+    ws.mergeCells('E22:F22');
+    ws.getCell('E22').value = 'Approval Status';
+    ws.getCell('E22').font = { size: 9 };
+    ws.getCell('E22').alignment = { horizontal: 'center' };
+    applyGridBorders(22, 22, 1, 6);
+    // Row 23: Attendance Values
+    ws.getCell('A23').value = salData.approvedLeavesCount;
+    ws.getCell('A23').alignment = { horizontal: 'center' };
+    ws.getCell('A23').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
+    ws.getCell('B23').value = salData.paidLeavesLimit;
+    ws.getCell('B23').alignment = { horizontal: 'center' };
+    ws.getCell('B23').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
+    ws.getCell('C23').value = salData.unpaidApprovedLeaves;
+    ws.getCell('C23').alignment = { horizontal: 'center' };
+    ws.getCell('C23').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
+    ws.getCell('D23').value = salData.absentDays;
+    ws.getCell('D23').alignment = { horizontal: 'center' };
+    ws.getCell('D23').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
+    ws.mergeCells('E23:F23');
+    ws.getCell('E23').value = 'SK & KK Approved';
+    ws.getCell('E23').alignment = { horizontal: 'center' };
+    applyGridBorders(23, 23, 1, 6);
     // Signatory
-    ws.mergeCells('A23:C23');
-    const sigName = ws.getCell('A23');
+    ws.mergeCells('A25:C25');
+    const sigName = ws.getCell('A25');
     sigName.value = 'Kushal Pabbi';
     sigName.font = { bold: true };
     sigName.alignment = { horizontal: 'center' };
-    ws.mergeCells('A24:C24');
-    const sigLabel = ws.getCell('A24');
+    ws.mergeCells('A26:C26');
+    const sigLabel = ws.getCell('A26');
     sigLabel.value = 'Authorised Signatory';
     sigLabel.font = { size: 9 };
     sigLabel.alignment = { horizontal: 'center' };
-    applyGridBorders(23, 24, 1, 3);
+    applyGridBorders(25, 26, 1, 3);
 }
 // 3. Export individual trainee's Pay Slip to Excel
 router.get('/admin/reports/payslip/export/:userId', authMiddleware_1.authenticateToken, checkSalarySlipsAccess, async (req, res) => {
@@ -1201,8 +1222,11 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
             'Early Penalty',
             'Absent Days',
             'Approved Leaves',
+            'Paid Leaves Limit',
+            'Unpaid Approved Leaves',
             'Unexcused Leaves',
             'Absenteeism Deduction',
+            'Unpaid Leaves Deduction',
             'Extra Classes Conducted (Count)',
             'Extra Classes Hours',
             'Other Center Classes Conducted (Count)',
@@ -1244,8 +1268,11 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
                 salData.earlyDeduction,
                 salData.absentDays,
                 salData.approvedLeavesCount,
+                salData.paidLeavesLimit,
+                salData.unpaidApprovedLeaves,
                 salData.unexcusedLeaves,
                 salData.absentDeduction,
+                salData.unpaidApprovedLeavesDeduction,
                 salData.extraClassesCount,
                 parseFloat(salData.extraClassesHours.toFixed(2)),
                 salData.otherCenterClassesCount,
@@ -1261,13 +1288,13 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
             if (rowNumber === 1)
                 return;
             // Currency columns
-            [5, 6, 7, 8, 11, 14, 18, 23, 24, 25, 26].forEach(c => {
+            [5, 6, 7, 8, 11, 14, 20, 21, 26, 27, 28, 29].forEach(c => {
                 const cell = row.getCell(c);
                 cell.numFmt = '"₹"#,##0';
                 cell.alignment = { horizontal: 'right' };
             });
             // Center align columns
-            [1, 4, 9, 10, 12, 13, 15, 16, 17, 19, 20, 21, 22].forEach(c => {
+            [1, 4, 9, 10, 12, 13, 15, 16, 17, 18, 19, 22, 23, 24, 25].forEach(c => {
                 const cell = row.getCell(c);
                 cell.alignment = { horizontal: 'center' };
             });

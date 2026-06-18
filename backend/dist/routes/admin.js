@@ -1463,7 +1463,7 @@ router.get('/settings', async (req, res) => {
 });
 router.put('/settings', async (req, res) => {
     try {
-        const { totalHolidaysQuota, lat, lng, radius, lat2, lng2, radius2, lateRate, lateDeductionType, lateIntervalValue, earlyRate, earlyDeductionType, earlyIntervalValue, absentRate, extraClassRate, otherCenterClassRate, collegeVisitRate } = req.body;
+        const { totalHolidaysQuota, lat, lng, radius, lat2, lng2, radius2, lateRate, lateDeductionType, lateIntervalValue, earlyRate, earlyDeductionType, earlyIntervalValue, absentRate, extraClassRate, otherCenterClassRate, collegeVisitRate, paidLeavesLimit } = req.body;
         // Get existing settings to preserve values
         const existing = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
         const settings = await prisma.instituteSettings.upsert({
@@ -1483,6 +1483,7 @@ router.put('/settings', async (req, res) => {
                 earlyDeductionType: earlyDeductionType !== undefined ? earlyDeductionType : existing?.earlyDeductionType,
                 earlyIntervalValue: earlyIntervalValue !== undefined ? Number(earlyIntervalValue) : existing?.earlyIntervalValue,
                 absentRate: absentRate !== undefined ? absentRate : existing?.absentRate,
+                paidLeavesLimit: paidLeavesLimit !== undefined ? Number(paidLeavesLimit) : existing?.paidLeavesLimit,
                 extraClassRate: extraClassRate !== undefined ? Number(extraClassRate) : existing?.extraClassRate,
                 otherCenterClassRate: otherCenterClassRate !== undefined ? Number(otherCenterClassRate) : existing?.otherCenterClassRate,
                 collegeVisitRate: collegeVisitRate !== undefined ? Number(collegeVisitRate) : existing?.collegeVisitRate
@@ -1503,6 +1504,7 @@ router.put('/settings', async (req, res) => {
                 earlyDeductionType: earlyDeductionType || "instance",
                 earlyIntervalValue: earlyIntervalValue !== undefined ? Number(earlyIntervalValue) : 15,
                 absentRate: absentRate !== undefined ? absentRate : 0.0,
+                paidLeavesLimit: paidLeavesLimit !== undefined ? Number(paidLeavesLimit) : 0.0,
                 extraClassRate: extraClassRate !== undefined ? Number(extraClassRate) : 0.0,
                 otherCenterClassRate: otherCenterClassRate !== undefined ? Number(otherCenterClassRate) : 0.0,
                 collegeVisitRate: collegeVisitRate !== undefined ? Number(collegeVisitRate) : 0.0

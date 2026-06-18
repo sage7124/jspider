@@ -19,12 +19,16 @@ export declare const calculateTraineeSalaryData: (trainee: any, year: number, mo
     cfLeaves: number;
     unexcusedLeaves: number;
     absentDeduction: number;
+    paidLeavesLimit: any;
+    unpaidApprovedLeaves: number;
+    unpaidApprovedLeavesDeduction: number;
     tdsDeduction: number;
     totalDeductions: any;
     netTakeHome: number;
     personalLateRate: any;
     personalEarlyRate: any;
     personalAbsentRate: any;
+    personalPaidLeavesLimit: any;
     panNo: any;
     aadhaarNo: any;
     otherAdditions: any;
