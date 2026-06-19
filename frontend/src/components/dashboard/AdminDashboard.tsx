@@ -3896,22 +3896,10 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
           <h3 className="text-xs font-black text-emerald-800 mb-3 uppercase tracking-wider flex items-center gap-1.5">
             💸 Deduction & Penalty Rates Configuration
           </h3>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Late Arrival (₹)</label>
-              <input type="number" value={lateRate} onChange={e => setLateRate(parseFloat(e.target.value) || 0)} disabled={!canManage}
-                className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
-            </div>
-            <div>
-              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Early Checkout (₹)</label>
-              <input type="number" value={earlyRate} onChange={e => setEarlyRate(parseFloat(e.target.value) || 0)} disabled={!canManage}
-                className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
-            </div>
-            <div>
-              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Paid Leaves (Days)</label>
-              <input type="number" value={paidLeavesLimit} onChange={e => setPaidLeavesLimit(parseFloat(e.target.value) || 0)} disabled={!canManage}
-                className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
-            </div>
+          <div className="max-w-xs">
+            <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Paid Leaves (Days)</label>
+            <input type="number" value={paidLeavesLimit} onChange={e => setPaidLeavesLimit(parseFloat(e.target.value) || 0)} disabled={!canManage}
+              className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
           </div>
           <div className="flex justify-between items-center mt-3 pt-2 border-t border-emerald-100">
             <p className="text-[9px] text-emerald-700 italic">
@@ -8514,6 +8502,9 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                             <span className="font-medium text-purple-700">{(t.otherCenterClassesHours || 0).toFixed(1)}h × ₹{t.otherCenterClassRate || 0}/h</span>
                             <span className="text-emerald-700 text-[10px] block font-bold">= ₹{(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</span>
                             <span className="text-gray-400 text-[9px] block">({t.otherCenterClassesCount || 0} classes)</span>
+                            {t.otherCenterClassesBreakdown && (
+                              <span className="text-purple-700 text-[8px] block font-semibold mt-0.5">({t.otherCenterClassesBreakdown})</span>
+                            )}
                           </>
                         ) : <span className="text-gray-400">—</span>}
                       </td>
