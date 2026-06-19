@@ -8231,7 +8231,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         baseSalary: parseFloat(editBaseSalary) || 0,
         lateRate: editPersonalLateRate !== '' ? parseFloat(editPersonalLateRate) : null,
         earlyRate: editPersonalEarlyRate !== '' ? parseFloat(editPersonalEarlyRate) : null,
-        paidLeavesLimit: editPersonalPaidLeavesLimit !== '' ? parseFloat(editPersonalPaidLeavesLimit) : 0,
+        paidLeavesLimit: editPersonalPaidLeavesLimit !== '' ? parseFloat(editPersonalPaidLeavesLimit) : null,
         extraClassRate: editPersonalExtraClassRate !== '' ? parseFloat(editPersonalExtraClassRate) : null,
         otherCenterClassRate: editPersonalOtherCenterClassRate !== '' ? parseFloat(editPersonalOtherCenterClassRate) : null,
         collegeVisitRate: editPersonalCollegeVisitRate !== '' ? parseFloat(editPersonalCollegeVisitRate) : null,
@@ -8710,6 +8710,9 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       />
                       <span className="text-[9px] text-gray-500 block mt-1 font-medium select-none">
                         {Math.floor(editingTrainee.otherCenterClassesHours || 0)} hours {Math.round(((editingTrainee.otherCenterClassesHours || 0) % 1) * 60)} minute
+                        {editingTrainee.otherCenterClassesBreakdown && (
+                          <span className="text-[8px] text-purple-700 block font-semibold mt-0.5">({editingTrainee.otherCenterClassesBreakdown})</span>
+                        )}
                       </span>
                     </div>
                     <div>

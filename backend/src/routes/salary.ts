@@ -459,7 +459,7 @@ router.put('/admin/trainees/:id/salary', authenticateToken, checkSalarySlipsAcce
         lateRate: (lateRate !== undefined && lateRate !== "" && lateRate !== null) ? parseFloat(lateRate) : null,
         earlyRate: (earlyRate !== undefined && earlyRate !== "" && earlyRate !== null) ? parseFloat(earlyRate) : null,
         absentRate: (absentRate !== undefined && absentRate !== "" && absentRate !== null) ? parseFloat(absentRate) : null,
-        paidLeavesLimit: (paidLeavesLimit !== undefined && paidLeavesLimit !== "" && paidLeavesLimit !== null) ? parseFloat(paidLeavesLimit) : 0.0,
+        paidLeavesLimit: (paidLeavesLimit !== undefined && paidLeavesLimit !== "" && paidLeavesLimit !== null) ? parseFloat(paidLeavesLimit) : null,
         extraClassRate: (extraClassRate !== undefined && extraClassRate !== "" && extraClassRate !== null) ? parseFloat(extraClassRate) : null,
         otherCenterClassRate: (otherCenterClassRate !== undefined && otherCenterClassRate !== "" && otherCenterClassRate !== null) ? parseFloat(otherCenterClassRate) : null,
         collegeVisitRate: (collegeVisitRate !== undefined && collegeVisitRate !== "" && collegeVisitRate !== null) ? parseFloat(collegeVisitRate) : null,

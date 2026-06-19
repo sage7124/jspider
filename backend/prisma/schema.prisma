@@ -63,7 +63,7 @@ model User {
   otherCenterClassRate   Float?
   collegeVisitRate       Float?
   tdsRate                Float?
-  paidLeavesLimit        Float        @default(0.0)
+  paidLeavesLimit        Float?
   otherAdditions         Float        @default(0.0)
   otherDeductions        Float        @default(0.0)
   conveyanceAllowance    Float        @default(0.0)
