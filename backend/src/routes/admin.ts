@@ -1480,7 +1480,7 @@ router.put('/settings', async (req: AuthRequest, res) => {
       lateRate, lateDeductionType, lateIntervalValue,
       earlyRate, earlyDeductionType, earlyIntervalValue,
       absentRate, extraClassRate, otherCenterClassRate, collegeVisitRate,
-      paidLeavesLimit
+      paidLeavesLimit, workingHours, allowPayslipsView
     } = req.body;
     
     // Get existing settings to preserve values
@@ -1506,7 +1506,9 @@ router.put('/settings', async (req: AuthRequest, res) => {
         paidLeavesLimit: paidLeavesLimit !== undefined ? Number(paidLeavesLimit) : existing?.paidLeavesLimit,
         extraClassRate: extraClassRate !== undefined ? Number(extraClassRate) : existing?.extraClassRate,
         otherCenterClassRate: otherCenterClassRate !== undefined ? Number(otherCenterClassRate) : existing?.otherCenterClassRate,
-        collegeVisitRate: collegeVisitRate !== undefined ? Number(collegeVisitRate) : existing?.collegeVisitRate
+        collegeVisitRate: collegeVisitRate !== undefined ? Number(collegeVisitRate) : existing?.collegeVisitRate,
+        workingHours: workingHours !== undefined ? Number(workingHours) : existing?.workingHours,
+        allowPayslipsView: allowPayslipsView !== undefined ? Boolean(allowPayslipsView) : existing?.allowPayslipsView
       },
       create: { 
         id: 1,
@@ -1527,7 +1529,9 @@ router.put('/settings', async (req: AuthRequest, res) => {
         paidLeavesLimit: paidLeavesLimit !== undefined ? Number(paidLeavesLimit) : 0.0,
         extraClassRate: extraClassRate !== undefined ? Number(extraClassRate) : 0.0,
         otherCenterClassRate: otherCenterClassRate !== undefined ? Number(otherCenterClassRate) : 0.0,
-        collegeVisitRate: collegeVisitRate !== undefined ? Number(collegeVisitRate) : 0.0
+        collegeVisitRate: collegeVisitRate !== undefined ? Number(collegeVisitRate) : 0.0,
+        workingHours: workingHours !== undefined ? Number(workingHours) : 10.0,
+        allowPayslipsView: allowPayslipsView !== undefined ? Boolean(allowPayslipsView) : true
       }
     });
     res.json(settings);

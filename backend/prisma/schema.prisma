@@ -66,6 +66,10 @@ model User {
   paidLeavesLimit        Float        @default(0.0)
   otherAdditions         Float        @default(0.0)
   otherDeductions        Float        @default(0.0)
+  conveyanceAllowance    Float        @default(0.0)
+  foodAllowance          Float        @default(0.0)
+  workingHoursOverride   Float?
+  allowPayslipView       Boolean      @default(true)
   lateDeductionType      String?
   earlyDeductionType     String?
   lateIntervalValue      Int?
@@ -199,6 +203,8 @@ model InstituteSettings {
   otherCenterClassRate Float @default(0.0)
   collegeVisitRate Float  @default(0.0)
   paidLeavesLimit Float  @default(0.0)
+  workingHours   Float    @default(10.0)
+  allowPayslipsView Boolean @default(true)
   updatedAt      DateTime @updatedAt
 }
 
@@ -347,6 +353,7 @@ model SalarySlip {
   basicSalary      Float    @default(0.0)
   hra              Float    @default(0.0)
   conveyance       Float    @default(0.0)
+  food             Float    @default(0.0)
   specialAllowance Float    @default(0.0)
   otherAllowance   Float    @default(0.0)
   pf               Float    @default(0.0)

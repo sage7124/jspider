@@ -764,15 +764,23 @@ const sharedPayslipStyles = `
 `;
 
 const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (num: number) => string) => {
-  const grossEarnings = t.grossEarnings || 0;
-  const grossDeductions = t.totalDeductions || t.totalDeduction || 0;
-  const netTakeHome = t.netTakeHome || 0;
-
   const [y, m] = month.split('-');
   const monthName = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
 
   // Check if we are dealing with a stored slip (DB) or calculated values
   const hasStoredSlip = t.basicSalary !== undefined;
+
+  const grossEarnings = hasStoredSlip 
+    ? ((t.basicSalary || 0) + (t.hra || 0) + (t.conveyance || 0) + (t.specialAllowance || 0) + (t.otherAllowance || 0) + (t.food || 0)) 
+    : (t.grossEarnings || 0);
+
+  const grossDeductions = hasStoredSlip
+    ? ((t.pf || 0) + (t.professionalTax || 0) + (t.esi || 0) + (t.tds || 0) + (t.otherDeductions || 0))
+    : (t.totalDeductions || t.totalDeduction || 0);
+
+  const netTakeHome = hasStoredSlip
+    ? (t.netSalary || 0)
+    : (t.netTakeHome || 0);
 
   return `
     <div class="payslip-card">
@@ -865,7 +873,8 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             </tr>
             <!-- Row 15 -->
             <tr>
-              <td colspan="2"></td>
+              <td class="font-medium">Food Allowance :</td>
+              <td class="font-bold text-right">₹${(t.food || 0).toLocaleString('en-IN')}</td>
               <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
               <td class="font-bold text-right text-red-600">₹${(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
             </tr>
@@ -889,7 +898,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             <tr>
               <td class="font-medium">
                 College Visits
-                <span class="subtext">(${(t.collegeVisitHours || 0).toFixed(2)}h @ ₹${t.collegeVisitRate || 0}/h)</span>
+                <span class="subtext">(${(t.collegeVisitHours || 0).toFixed(2)}h)</span>
               </td>
               <td class="font-bold text-right">₹${(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Late Arrivals :</td>
@@ -910,7 +919,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             <tr>
               <td class="font-medium">
                 Extra Classes
-                <span class="subtext">(${(t.extraClassesHours || 0).toFixed(2)}h @ ₹${t.extraClassRate || 0}/h)</span>
+                <span class="subtext">(${(t.extraClassesHours || 0).toFixed(2)}h)</span>
               </td>
               <td class="font-bold text-right">₹${(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Absence Deduction :</td>
@@ -922,7 +931,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             <tr>
               <td class="font-medium">
                 Other Center Classes
-                <span class="subtext">(${(t.otherCenterClassesHours || 0).toFixed(2)}h @ ₹${t.otherCenterClassRate || 0}/h)</span>
+                ${t.otherCenterClassesBreakdown ? `<span class="subtext">(${t.otherCenterClassesBreakdown})</span>` : ''}
               </td>
               <td class="font-bold text-right">₹${(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Unpaid Approved Leaves :</td>
@@ -932,7 +941,8 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             </tr>
             <!-- Row 15 -->
             <tr>
-              <td colspan="2"></td>
+              <td class="font-medium">Conveyance Allowance :</td>
+              <td class="font-bold text-right">₹${(t.conveyance || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Approved Leaves :</td>
               <td class="text-center">${t.approvedLeavesCount || 0} days</td>
               <td class="text-center">Leaves Taken</td>
@@ -940,7 +950,8 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             </tr>
             <!-- Row 16 -->
             <tr>
-              <td colspan="2"></td>
+              <td class="font-medium">Food Allowance :</td>
+              <td class="font-bold text-right">₹${(t.food || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Paid Leaves :</td>
               <td class="text-center">${t.paidLeavesLimit || 0} days</td>
               <td class="text-center">Paid</td>
@@ -1010,7 +1021,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
 
 const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
   const grossEarnings = data.storedSlip
-    ? (data.storedSlip.basicSalary + data.storedSlip.hra + data.storedSlip.conveyance + data.storedSlip.specialAllowance + data.storedSlip.otherAllowance)
+    ? (data.storedSlip.basicSalary + data.storedSlip.hra + data.storedSlip.conveyance + data.storedSlip.specialAllowance + data.storedSlip.otherAllowance + (data.storedSlip.food || 0))
     : (data.salaryData?.grossEarnings || 0);
 
   const grossDeductions = data.storedSlip
@@ -1217,7 +1228,8 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 </tr>
                 {/* Row 15 */}
                 <tr>
-                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Food Allowance :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.food || 0).toLocaleString('en-IN')}</td>
                   <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Other Deductions :</td>
                   <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
                 </tr>
@@ -1243,7 +1255,7 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 <tr>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
                     College Visits
-                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">(₹{(t.collegeVisitRate || 0)}/h × {(t.collegeVisitHours || 0).toFixed(2)}h)</span>
+                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({(t.collegeVisitHours || 0).toFixed(2)}h)</span>
                   </td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Late Arrivals :</td>
@@ -1264,7 +1276,7 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 <tr>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
                     Extra Classes
-                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">(₹{(t.extraClassRate || 0)}/h × {(t.extraClassesHours || 0).toFixed(2)}h)</span>
+                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({(t.extraClassesHours || 0).toFixed(2)}h)</span>
                   </td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Absence Deduction :</td>
@@ -1276,7 +1288,9 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 <tr>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
                     Other Center Classes
-                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">(₹{(t.otherCenterClassRate || 0)}/h × {(t.otherCenterClassesHours || 0).toFixed(2)}h)</span>
+                    {t.otherCenterClassesBreakdown && (
+                      <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({t.otherCenterClassesBreakdown})</span>
+                    )}
                   </td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Unpaid Approved Leaves :</td>
@@ -1286,7 +1300,8 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 </tr>
                 {/* Row 15 */}
                 <tr>
-                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Conveyance Allowance :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.conveyance || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Approved Leaves :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.approvedLeavesCount || 0)} days</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Leaves Taken</td>
@@ -1294,7 +1309,8 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 </tr>
                 {/* Row 16 */}
                 <tr>
-                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Food Allowance :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.food || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Paid Leaves :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.paidLeavesLimit || 0)} days</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Paid</td>
@@ -4409,7 +4425,11 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
       setData(res.data);
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.error || 'Failed to fetch payslip details.');
+      if (err.response?.status === 403) {
+        setError(err.response?.data?.error || 'Payslips are currently hidden by the Administrator.');
+      } else {
+        setError(err.response?.data?.error || 'Failed to fetch payslip details.');
+      }
       setData(null);
     } finally {
       setLoading(false);

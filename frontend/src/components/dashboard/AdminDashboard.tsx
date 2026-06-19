@@ -1457,15 +1457,23 @@ const sharedPayslipStyles = `
 
 // Helper to generate the exact HTML string for a single trainee payslip
 const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (num: number) => string) => {
-  const grossEarnings = t.grossEarnings || 0;
-  const grossDeductions = t.totalDeductions || t.totalDeduction || 0;
-  const netTakeHome = t.netTakeHome || 0;
-
   const [y, m] = month.split('-');
   const monthName = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
 
   // Check if we are dealing with a stored slip (DB) or calculated values
   const hasStoredSlip = t.basicSalary !== undefined;
+
+  const grossEarnings = hasStoredSlip 
+    ? ((t.basicSalary || 0) + (t.hra || 0) + (t.conveyance || 0) + (t.specialAllowance || 0) + (t.otherAllowance || 0) + (t.food || 0)) 
+    : (t.grossEarnings || 0);
+
+  const grossDeductions = hasStoredSlip
+    ? ((t.pf || 0) + (t.professionalTax || 0) + (t.esi || 0) + (t.tds || 0) + (t.otherDeductions || 0))
+    : (t.totalDeductions || t.totalDeduction || 0);
+
+  const netTakeHome = hasStoredSlip
+    ? (t.netSalary || 0)
+    : (t.netTakeHome || 0);
 
   return `
     <div class="payslip-card">
@@ -1558,7 +1566,8 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             </tr>
             <!-- Row 15 -->
             <tr>
-              <td colspan="2"></td>
+              <td class="font-medium">Food Allowance :</td>
+              <td class="font-bold text-right">₹${(t.food || 0).toLocaleString('en-IN')}</td>
               <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
               <td class="font-bold text-right text-red-600">₹${(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
             </tr>
@@ -1582,7 +1591,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             <tr>
               <td class="font-medium">
                 College Visits
-                <span class="subtext">(${(t.collegeVisitHours || 0).toFixed(2)}h @ ₹${t.collegeVisitRate || 0}/h)</span>
+                <span class="subtext">(${(t.collegeVisitHours || 0).toFixed(2)}h)</span>
               </td>
               <td class="font-bold text-right">₹${(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Late Arrivals :</td>
@@ -1603,7 +1612,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             <tr>
               <td class="font-medium">
                 Extra Classes
-                <span class="subtext">(${(t.extraClassesHours || 0).toFixed(2)}h @ ₹${t.extraClassRate || 0}/h)</span>
+                <span class="subtext">(${(t.extraClassesHours || 0).toFixed(2)}h)</span>
               </td>
               <td class="font-bold text-right">₹${(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Absence Deduction :</td>
@@ -1615,7 +1624,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             <tr>
               <td class="font-medium">
                 Other Center Classes
-                <span class="subtext">(${(t.otherCenterClassesHours || 0).toFixed(2)}h @ ₹${t.otherCenterClassRate || 0}/h)</span>
+                ${t.otherCenterClassesBreakdown ? `<span class="subtext">(${t.otherCenterClassesBreakdown})</span>` : ''}
               </td>
               <td class="font-bold text-right">₹${(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Unpaid Approved Leaves :</td>
@@ -1625,7 +1634,8 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             </tr>
             <!-- Row 15 -->
             <tr>
-              <td colspan="2"></td>
+              <td class="font-medium">Conveyance Allowance :</td>
+              <td class="font-bold text-right">₹${(t.conveyance || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Approved Leaves :</td>
               <td class="text-center">${t.approvedLeavesCount || 0} days</td>
               <td class="text-center">Leaves Taken</td>
@@ -1633,7 +1643,8 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
             </tr>
             <!-- Row 16 -->
             <tr>
-              <td colspan="2"></td>
+              <td class="font-medium">Food Allowance :</td>
+              <td class="font-bold text-right">₹${(t.food || 0).toLocaleString('en-IN')}</td>
               <td class="text-gray-700">Paid Leaves :</td>
               <td class="text-center">${t.paidLeavesLimit || 0} days</td>
               <td class="text-center">Paid</td>
@@ -1775,7 +1786,7 @@ const handlePrintPayslip = (t: any, month: string) => {
 
 const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
   const grossEarnings = data.storedSlip
-    ? (data.storedSlip.basicSalary + data.storedSlip.hra + data.storedSlip.conveyance + data.storedSlip.specialAllowance + data.storedSlip.otherAllowance)
+    ? (data.storedSlip.basicSalary + data.storedSlip.hra + data.storedSlip.conveyance + data.storedSlip.specialAllowance + data.storedSlip.otherAllowance + (data.storedSlip.food || 0))
     : (data.salaryData?.grossEarnings || 0);
 
   const grossDeductions = data.storedSlip
@@ -1982,7 +1993,8 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 </tr>
                 {/* Row 15 */}
                 <tr>
-                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Food Allowance :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.food || 0).toLocaleString('en-IN')}</td>
                   <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Other Deductions :</td>
                   <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
                 </tr>
@@ -2008,7 +2020,7 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 <tr>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
                     College Visits
-                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">(₹{(t.collegeVisitRate || 0)}/h × {(t.collegeVisitHours || 0).toFixed(2)}h)</span>
+                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({(t.collegeVisitHours || 0).toFixed(2)}h)</span>
                   </td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Late Arrivals :</td>
@@ -2029,7 +2041,7 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 <tr>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
                     Extra Classes
-                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">(₹{(t.extraClassRate || 0)}/h × {(t.extraClassesHours || 0).toFixed(2)}h)</span>
+                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({(t.extraClassesHours || 0).toFixed(2)}h)</span>
                   </td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Absence Deduction :</td>
@@ -2041,7 +2053,9 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 <tr>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
                     Other Center Classes
-                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">(₹{(t.otherCenterClassRate || 0)}/h × {(t.otherCenterClassesHours || 0).toFixed(2)}h)</span>
+                    {t.otherCenterClassesBreakdown && (
+                      <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({t.otherCenterClassesBreakdown})</span>
+                    )}
                   </td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Unpaid Approved Leaves :</td>
@@ -2051,7 +2065,8 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 </tr>
                 {/* Row 15 */}
                 <tr>
-                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Conveyance Allowance :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.conveyance || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Approved Leaves :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.approvedLeavesCount || 0)} days</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Leaves Taken</td>
@@ -2059,7 +2074,8 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
                 </tr>
                 {/* Row 16 */}
                 <tr>
-                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Food Allowance :</td>
+                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.food || 0).toLocaleString('en-IN')}</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Paid Leaves :</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.paidLeavesLimit || 0)} days</td>
                   <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Paid</td>
@@ -8021,6 +8037,10 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [editPersonalLateIntervalValue, setEditPersonalLateIntervalValue] = useState('');
   const [editPersonalEarlyDeductionType, setEditPersonalEarlyDeductionType] = useState('');
   const [editPersonalEarlyIntervalValue, setEditPersonalEarlyIntervalValue] = useState('');
+  const [editPersonalWorkingHoursOverride, setEditPersonalWorkingHoursOverride] = useState('');
+  const [editPersonalConveyanceAllowance, setEditPersonalConveyanceAllowance] = useState('');
+  const [editPersonalFoodAllowance, setEditPersonalFoodAllowance] = useState('');
+  const [editPersonalAllowPayslipView, setEditPersonalAllowPayslipView] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Global rates state
@@ -8035,6 +8055,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [globalExtraClassRate, setGlobalExtraClassRate] = useState(0);
   const [globalOtherCenterClassRate, setGlobalOtherCenterClassRate] = useState(0);
   const [globalCollegeVisitRate, setGlobalCollegeVisitRate] = useState(0);
+  const [globalAllowPayslipsView, setGlobalAllowPayslipsView] = useState(true);
   const [savingGlobal, setSavingGlobal] = useState(false);
 
   // Fetch trainees list
@@ -8062,6 +8083,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         setGlobalExtraClassRate(settingsRes.data.extraClassRate !== undefined ? settingsRes.data.extraClassRate : 0);
         setGlobalOtherCenterClassRate(settingsRes.data.otherCenterClassRate !== undefined ? settingsRes.data.otherCenterClassRate : 0);
         setGlobalCollegeVisitRate(settingsRes.data.collegeVisitRate !== undefined ? settingsRes.data.collegeVisitRate : 0);
+        setGlobalAllowPayslipsView(settingsRes.data.allowPayslipsView !== undefined ? settingsRes.data.allowPayslipsView : true);
       }
     } catch (e) {
       console.error(e);
@@ -8219,7 +8241,11 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         lateDeductionType: editPersonalLateDeductionType !== '' ? editPersonalLateDeductionType : null,
         lateIntervalValue: editPersonalLateIntervalValue !== '' ? parseInt(editPersonalLateIntervalValue) : null,
         earlyDeductionType: editPersonalEarlyDeductionType !== '' ? editPersonalEarlyDeductionType : null,
-        earlyIntervalValue: editPersonalEarlyIntervalValue !== '' ? parseInt(editPersonalEarlyIntervalValue) : null
+        earlyIntervalValue: editPersonalEarlyIntervalValue !== '' ? parseInt(editPersonalEarlyIntervalValue) : null,
+        conveyanceAllowance: editPersonalConveyanceAllowance !== '' ? parseFloat(editPersonalConveyanceAllowance) : 0,
+        foodAllowance: editPersonalFoodAllowance !== '' ? parseFloat(editPersonalFoodAllowance) : 0,
+        workingHoursOverride: editPersonalWorkingHoursOverride !== '' ? parseFloat(editPersonalWorkingHoursOverride) : null,
+        allowPayslipView: editPersonalAllowPayslipView
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -8250,7 +8276,8 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
         paidLeavesLimit: globalPaidLeavesLimit,
         extraClassRate: globalExtraClassRate,
         otherCenterClassRate: globalOtherCenterClassRate,
-        collegeVisitRate: globalCollegeVisitRate
+        collegeVisitRate: globalCollegeVisitRate,
+        allowPayslipsView: globalAllowPayslipsView
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -8357,62 +8384,28 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
               <h4 className="text-[10px] font-black uppercase tracking-wider text-amber-700 mb-3 flex items-center gap-1.5">
                 🌐 Global / Common Payroll & Rate Settings (applies to all employees unless overridden personally)
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                {/* Column 1: Late Arrival */}
-                <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm space-y-2.5">
-                  <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">⏰ Late Arrival</h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Column 1: Teacher Payslips Visibility */}
+                <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between space-y-2.5">
                   <div>
-                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Rate (₹)</label>
-                    <input type="number" value={globalLateRate} onChange={e => setGlobalLateRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
+                    <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">🔒 Teacher Payslips Visibility</h5>
+                    <label className="relative inline-flex items-center cursor-pointer mt-3">
+                      <input 
+                        type="checkbox" 
+                        checked={globalAllowPayslipsView} 
+                        onChange={e => setGlobalAllowPayslipsView(e.target.checked)} 
+                        className="sr-only peer" 
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                      <span className="ml-2 text-xs font-bold text-gray-700">
+                        {globalAllowPayslipsView ? 'Visible to Teachers' : 'Hidden from Teachers'}
+                      </span>
+                    </label>
                   </div>
-                  <div>
-                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Deduction Method</label>
-                    <select value={globalLateDeductionType} onChange={e => setGlobalLateDeductionType(e.target.value)}
-                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold">
-                      <option value="instance">Per Instance</option>
-                      <option value="minute">Per Minute</option>
-                      <option value="hour">Per Hour</option>
-                      <option value="interval">Per Interval</option>
-                    </select>
-                  </div>
-                  {globalLateDeductionType === 'interval' && (
-                    <div>
-                      <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Interval Value (Minutes)</label>
-                      <input type="number" value={globalLateIntervalValue} onChange={e => setGlobalLateIntervalValue(parseInt(e.target.value) || 15)}
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
-                    </div>
-                  )}
+                  <p className="text-[9px] text-gray-400 mt-2">Allows or blocks payslips globally from being viewed on the Teacher dashboard.</p>
                 </div>
 
-                {/* Column 2: Early Checkout */}
-                <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm space-y-2.5">
-                  <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">🚪 Early Checkout</h5>
-                  <div>
-                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Rate (₹)</label>
-                    <input type="number" value={globalEarlyRate} onChange={e => setGlobalEarlyRate(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
-                  </div>
-                  <div>
-                    <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Deduction Method</label>
-                    <select value={globalEarlyDeductionType} onChange={e => setGlobalEarlyDeductionType(e.target.value)}
-                      className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold">
-                      <option value="instance">Per Instance</option>
-                      <option value="minute">Per Minute</option>
-                      <option value="hour">Per Hour</option>
-                      <option value="interval">Per Interval</option>
-                    </select>
-                  </div>
-                  {globalEarlyDeductionType === 'interval' && (
-                    <div>
-                      <label className="block text-[8px] font-bold text-gray-500 uppercase mb-1">Interval Value (Minutes)</label>
-                      <input type="number" value={globalEarlyIntervalValue} onChange={e => setGlobalEarlyIntervalValue(parseInt(e.target.value) || 15)}
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-808 focus:outline-none focus:ring-2 focus:ring-amber-500 font-semibold" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Column 3: Class Rates */}
+                {/* Column 2: Class Rates */}
                 <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm space-y-2.5">
                   <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">🏫 Class Rates</h5>
                   <div>
@@ -8432,7 +8425,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   </div>
                 </div>
 
-                {/* Column 4: Paid Leaves & Actions */}
+                {/* Column 3: Paid Leaves & Actions */}
                 <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between space-y-2.5">
                   <div className="space-y-2.5">
                     <h5 className="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">📅 Leaves</h5>
@@ -8568,6 +8561,10 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                               setEditPersonalLateIntervalValue(t.personalLateIntervalValue !== null && t.personalLateIntervalValue !== undefined ? String(t.personalLateIntervalValue) : '');
                               setEditPersonalEarlyDeductionType(t.personalEarlyDeductionType || '');
                               setEditPersonalEarlyIntervalValue(t.personalEarlyIntervalValue !== null && t.personalEarlyIntervalValue !== undefined ? String(t.personalEarlyIntervalValue) : '');
+                              setEditPersonalWorkingHoursOverride(t.personalWorkingHoursOverride !== null && t.personalWorkingHoursOverride !== undefined ? String(t.personalWorkingHoursOverride) : '');
+                              setEditPersonalConveyanceAllowance(t.personalConveyanceAllowance !== null && t.personalConveyanceAllowance !== undefined ? String(t.personalConveyanceAllowance) : '');
+                              setEditPersonalFoodAllowance(t.personalFoodAllowance !== null && t.personalFoodAllowance !== undefined ? String(t.personalFoodAllowance) : '');
+                              setEditPersonalAllowPayslipView(t.personalAllowPayslipView !== undefined ? Boolean(t.personalAllowPayslipView) : true);
                             }}
                             className="text-amber-600 hover:text-amber-800 transition-colors cursor-pointer"
                             title="Edit Salary Settings"
@@ -8649,35 +8646,23 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   </div>
                 </div>
 
-                {/* ── Personal Deduction Rate Overrides Section ── */}
+                {/* ── Personal Overrides Section ── */}
                 <div className="border-t border-gray-200 pt-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-1 flex items-center gap-1">⚡ Personal Penalty Rate Overrides</h4>
-                  <p className="text-[9px] text-gray-500 mb-2 italic">Leave blank to use the global/common rate. Set a value to override for this person only.</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-1 flex items-center gap-1">⚡ Personal Overrides</h4>
+                  <p className="text-[9px] text-gray-500 mb-2 italic">Set values below to override the defaults for this person.</p>
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Late (₹)</label>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Daily Working Hours Override</label>
                       <input 
                         type="number" 
-                        value={editPersonalLateRate}
-                        onChange={(e) => setEditPersonalLateRate(e.target.value)}
-                        placeholder="Global"
+                        step="0.1"
+                        value={editPersonalWorkingHoursOverride}
+                        onChange={(e) => setEditPersonalWorkingHoursOverride(e.target.value)}
+                        placeholder="Auto (Slots)"
                         className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
-                      <span className="text-[9px] text-gray-500 block mt-1 font-medium select-none">
-                        {Math.floor((editingTrainee.totalLateMinutes || 0) / 60)} hours {(editingTrainee.totalLateMinutes || 0) % 60} minute
-                      </span>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Early (₹)</label>
-                      <input 
-                        type="number" 
-                        value={editPersonalEarlyRate}
-                        onChange={(e) => setEditPersonalEarlyRate(e.target.value)}
-                        placeholder="Global"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                      <span className="text-[9px] text-gray-500 block mt-1 font-medium select-none">
-                        {Math.floor((editingTrainee.totalEarlyMinutes || 0) / 60)} hours {(editingTrainee.totalEarlyMinutes || 0) % 60} minute
+                      <span className="text-[8px] text-gray-500 block mt-1 font-medium select-none">
+                        0 = disable penalty, blank = slot timing
                       </span>
                     </div>
                     <div>
@@ -8689,7 +8674,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                         placeholder="Global"
                         className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
                       />
-                      <span className="text-[9px] text-gray-500 block mt-1 font-medium select-none">
+                      <span className="text-[8px] text-gray-500 block mt-1 font-medium select-none">
                         Leaves Taken: {editingTrainee.approvedLeavesCount || 0} days
                       </span>
                     </div>
@@ -8743,65 +8728,44 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   </div>
                 </div>
 
-                {/* ── Personal Deduction Type Overrides Section ── */}
-                <div className="border-t border-gray-200 pt-3 space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 flex items-center gap-1">⏱️ Deduction Type Overrides</h4>
-                  <div className="grid grid-cols-2 gap-2">
+                {/* ── Allowances & Visibility Section ── */}
+                <div className="border-t border-gray-200 pt-3">
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-2 flex items-center gap-1">🚗 Allowances & Visibility</h4>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Late Type</label>
-                      <select
-                        value={editPersonalLateDeductionType}
-                        onChange={(e) => setEditPersonalLateDeductionType(e.target.value)}
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      >
-                        <option value="">Global Default</option>
-                        <option value="instance">Per Instance</option>
-                        <option value="minute">Per Minute</option>
-                        <option value="hour">Per Hour</option>
-                        <option value="interval">Per Interval</option>
-                      </select>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Conveyance Allowance (₹)</label>
+                      <input 
+                        type="number" 
+                        value={editPersonalConveyanceAllowance}
+                        onChange={(e) => setEditPersonalConveyanceAllowance(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
+                      />
                     </div>
                     <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Early Type</label>
-                      <select
-                        value={editPersonalEarlyDeductionType}
-                        onChange={(e) => setEditPersonalEarlyDeductionType(e.target.value)}
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      >
-                        <option value="">Global Default</option>
-                        <option value="instance">Per Instance</option>
-                        <option value="minute">Per Minute</option>
-                        <option value="hour">Per Hour</option>
-                        <option value="interval">Per Interval</option>
-                      </select>
+                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Food Allowance (₹)</label>
+                      <input 
+                        type="number" 
+                        value={editPersonalFoodAllowance}
+                        onChange={(e) => setEditPersonalFoodAllowance(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
+                      />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {editPersonalLateDeductionType === 'interval' && (
-                      <div>
-                        <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Late Interval (Mins)</label>
-                        <input
-                          type="number"
-                          value={editPersonalLateIntervalValue}
-                          onChange={(e) => setEditPersonalLateIntervalValue(e.target.value)}
-                          placeholder="e.g. 15"
-                          className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                        />
-                      </div>
-                    )}
-                    {editPersonalEarlyDeductionType === 'interval' && (
-                      <div className={editPersonalLateDeductionType !== 'interval' ? 'col-start-2' : ''}>
-                        <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Early Interval (Mins)</label>
-                        <input
-                          type="number"
-                          value={editPersonalEarlyIntervalValue}
-                          onChange={(e) => setEditPersonalEarlyIntervalValue(e.target.value)}
-                          placeholder="e.g. 15"
-                          className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                        />
-                      </div>
-                    )}
+                  <div>
+                    <label className="relative inline-flex items-center cursor-pointer mt-1 select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={editPersonalAllowPayslipView} 
+                        onChange={e => setEditPersonalAllowPayslipView(e.target.checked)} 
+                        className="sr-only peer" 
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                      <span className="ml-2 text-xs font-bold text-gray-700">
+                        {editPersonalAllowPayslipView ? 'Allow Teacher to view Payslip' : 'Block Teacher from viewing Payslip'}
+                      </span>
+                    </label>
                   </div>
                 </div>
 
@@ -8847,16 +8811,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   <button 
                     type="button"
                     onClick={() => {
-                      setEditPersonalLateRate('');
-                      setEditPersonalEarlyRate('');
+                      setEditPersonalWorkingHoursOverride('');
+                      setEditPersonalConveyanceAllowance('0');
+                      setEditPersonalFoodAllowance('0');
+                      setEditPersonalAllowPayslipView(true);
                       setEditPersonalPaidLeavesLimit('');
                       setEditTdsOverridePercent('');
                       setEditOtherAdditions('0');
                       setEditOtherDeductions('0');
-                      setEditPersonalLateDeductionType('');
-                      setEditPersonalLateIntervalValue('');
-                      setEditPersonalEarlyDeductionType('');
-                      setEditPersonalEarlyIntervalValue('');
                     }}
                     className="text-amber-600 hover:text-amber-700 text-[10px] font-bold uppercase tracking-wider hover:underline transition-colors"
                   >

@@ -7,6 +7,121 @@ import { getTraineeReportData } from '../utils/excel';
 const router = Router();
 const prisma = new PrismaClient();
 
+// Helper function to calculate carry-forward casual leaves starting from June 2026
+async function calculateCarryForwardLeaves(
+  traineeId: number,
+  targetYear: number,
+  targetMonth: number,
+  globalDefaultLimit: number,
+  personalPaidLeavesLimit: number
+) {
+  const startYear = 2026;
+  const startMonth = 6; // June
+
+  // If the target month is before June 2026, no carry forward balance is available
+  if (targetYear < startYear || (targetYear === startYear && targetMonth < startMonth)) {
+    return {
+      previousMonthBalance: 0,
+      totalAvailable: personalPaidLeavesLimit
+    };
+  }
+
+  let currentYear = startYear;
+  let currentMonth = startMonth;
+  let accumulatedBalance = 0; // Carry-forward balance from previous months
+
+  while (
+    currentYear < targetYear ||
+    (currentYear === targetYear && currentMonth < targetMonth)
+  ) {
+    const daysInCurrentMonth = new Date(currentYear, currentMonth, 0).getDate();
+    const startOfCurrentMonth = new Date(currentYear, currentMonth - 1, 1);
+    const endOfCurrentMonth = new Date(currentYear, currentMonth - 1, daysInCurrentMonth, 23, 59, 59, 999);
+
+    // Fetch approved leave requests for this month
+    const leaves = await prisma.leaveRequest.findMany({
+      where: {
+        userId: traineeId,
+        status: 'APPROVED',
+        startDate: { lte: endOfCurrentMonth },
+        endDate: { gte: startOfCurrentMonth }
+      }
+    });
+
+    let approvedLeavesCount = 0;
+    for (let dIndex = 1; dIndex <= daysInCurrentMonth; dIndex++) {
+      const currentDate = new Date(currentYear, currentMonth - 1, dIndex);
+      const leave = leaves.find(l => {
+        const dObj = new Date(Date.UTC(currentYear, currentMonth - 1, dIndex, 12, 0, 0));
+        const start = new Date(new Date(l.startDate).getTime() + (5.5 * 60 * 60 * 1000));
+        start.setUTCHours(0, 0, 0, 0);
+        const end = new Date(new Date(l.endDate).getTime() + (5.5 * 60 * 60 * 1000));
+        end.setUTCHours(23, 59, 59, 999);
+        
+        const dTime = dObj.getTime();
+        return dTime >= start.getTime() && dTime <= end.getTime() && l.status === 'APPROVED';
+      });
+      if (leave) {
+        approvedLeavesCount++;
+      }
+    }
+
+    const currentLimit = personalPaidLeavesLimit;
+    const totalAvailable = currentLimit + accumulatedBalance;
+    const paidLeavesUsed = Math.min(approvedLeavesCount, totalAvailable);
+    accumulatedBalance = totalAvailable - paidLeavesUsed;
+
+    currentMonth++;
+    if (currentMonth > 12) {
+      currentMonth = 1;
+      currentYear++;
+    }
+  }
+
+  const targetMonthLimit = personalPaidLeavesLimit;
+  const totalAvailableForTargetMonth = targetMonthLimit + accumulatedBalance;
+
+  return {
+    previousMonthBalance: accumulatedBalance,
+    totalAvailable: totalAvailableForTargetMonth
+  };
+}
+
+// Helper to compute daily working hours based strictly on active slot timings
+function calculateDailyHoursFromSlots(slots: any[]): number {
+  if (!slots || slots.length === 0) {
+    return 0.0; // Return 0 if no slots, meaning no deductions
+  }
+
+  const parseTimeToMinutes = (timeStr: string): number => {
+    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!match) return 0;
+    let hours = parseInt(match[1]);
+    const minutes = parseInt(match[2]);
+    const ampm = match[3].toUpperCase();
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  const dayHoursMap: { [day: string]: number } = {};
+  slots.forEach(slot => {
+    const startMins = parseTimeToMinutes(slot.startTime);
+    const endMins = parseTimeToMinutes(slot.endTime);
+    let durationMins = endMins - startMins;
+    if (durationMins < 0) durationMins += 24 * 60; 
+    
+    const day = slot.dayOfWeek.toUpperCase();
+    dayHoursMap[day] = (dayHoursMap[day] || 0) + (durationMins / 60);
+  });
+
+  const days = Object.keys(dayHoursMap);
+  if (days.length === 0) return 0.0;
+
+  const totalHours = Object.values(dayHoursMap).reduce((sum, h) => sum + h, 0);
+  return totalHours / days.length; // Average scheduled hours per day
+}
+
 // Helper function to calculate all payslip parameters for a trainee
 export const calculateTraineeSalaryData = async (
   trainee: any,
@@ -96,6 +211,7 @@ export const calculateTraineeSalaryData = async (
 
   // Compute report rows using the utility
   const report = getTraineeReportData(trainee, attendances, year, mon, daysInMonth, holidays, leaves);
+  const { totalLateMinutes, totalEarlyMinutes } = report;
   
   let lateInstances = 0;
   let earlyInstances = 0;
@@ -153,94 +269,77 @@ export const calculateTraineeSalaryData = async (
   const otherCenterClassEarnings = Math.round(otherCenterClassesHours * otherCenterClassRate);
   const collegeVisitEarnings = Math.round(collegeVisitHours * collegeVisitRate);
 
-  // Deduction values
-  const lateRate = trainee.lateRate !== null && trainee.lateRate !== undefined ? trainee.lateRate : (settings?.lateRate !== undefined ? settings.lateRate : 30.0);
-  const earlyRate = trainee.earlyRate !== null && trainee.earlyRate !== undefined ? trainee.earlyRate : (settings?.earlyRate !== undefined ? settings.earlyRate : 30.0);
-  const absentRateSetting = trainee.absentRate !== null && trainee.absentRate !== undefined ? trainee.absentRate : (settings?.absentRate !== undefined ? settings.absentRate : 0.0);
-  const eligibleCLs = 1;
+  // Fetch trainee slots to calculate daily hours
+  const traineeSlots = await prisma.slot.findMany({
+    where: { userId: trainee.id }
+  });
 
-  // Overrides for late/early types & intervals
-  const lateDeductionType = (trainee.lateDeductionType !== null && trainee.lateDeductionType !== undefined && trainee.lateDeductionType !== "") ? trainee.lateDeductionType : (settings?.lateDeductionType || "instance");
-  const lateIntervalValue = Math.max(1, (trainee.lateIntervalValue !== null && trainee.lateIntervalValue !== undefined) ? trainee.lateIntervalValue : (settings?.lateIntervalValue || 15));
-  const earlyDeductionType = (trainee.earlyDeductionType !== null && trainee.earlyDeductionType !== undefined && trainee.earlyDeductionType !== "") ? trainee.earlyDeductionType : (settings?.earlyDeductionType || "instance");
-  const earlyIntervalValue = Math.max(1, (trainee.earlyIntervalValue !== null && trainee.earlyIntervalValue !== undefined) ? trainee.earlyIntervalValue : (settings?.earlyIntervalValue || 15));
+  // Calculate daily working hours H
+  let dailyHours = 0.0;
+  if (trainee.workingHoursOverride !== null && trainee.workingHoursOverride !== undefined) {
+    dailyHours = trainee.workingHoursOverride;
+  } else {
+    dailyHours = calculateDailyHoursFromSlots(traineeSlots);
+  }
 
-  const totalLateMinutes = (report as any).totalLateMinutes || 0;
-  const totalEarlyMinutes = (report as any).totalEarlyMinutes || 0;
-
-  // Helper to parse "Xh Ym" or "Ym" or "0m" into total minutes
-  const parseMinutes = (str: string): number => {
-    if (!str || str === '0m' || str === '--' || str === 'ABSENT' || str === 'MISSING OUT') return 0;
-    let minutes = 0;
-    const hourMatch = str.match(/(\d+)h/);
-    const minMatch = str.match(/(\d+)m/);
-    if (hourMatch) minutes += parseInt(hourMatch[1]) * 60;
-    if (minMatch) minutes += parseInt(minMatch[1]);
-    return minutes;
-  };
-
+  // Calculate late/early deductions per minute
   let lateDeduction = 0;
-  if (lateDeductionType === 'instance') {
-    lateDeduction = lateInstances * lateRate;
-  } else if (lateDeductionType === 'minute') {
-    lateDeduction = totalLateMinutes * lateRate;
-  } else if (lateDeductionType === 'hour') {
-    lateDeduction = (totalLateMinutes / 60) * lateRate;
-  } else if (lateDeductionType === 'interval') {
-    report.rows.forEach(r => {
-      const dayLateMins = parseMinutes(r.late);
-      if (dayLateMins > 0) {
-        lateDeduction += Math.ceil(dayLateMins / lateIntervalValue) * lateRate;
-      }
-    });
-  }
-
   let earlyDeduction = 0;
-  if (earlyDeductionType === 'instance') {
-    earlyDeduction = earlyInstances * earlyRate;
-  } else if (earlyDeductionType === 'minute') {
-    earlyDeduction = totalEarlyMinutes * earlyRate;
-  } else if (earlyDeductionType === 'hour') {
-    earlyDeduction = (totalEarlyMinutes / 60) * earlyRate;
-  } else if (earlyDeductionType === 'interval') {
-    report.rows.forEach(r => {
-      const dayEarlyMins = parseMinutes(r.earlyDeparture);
-      if (dayEarlyMins > 0) {
-        earlyDeduction += Math.ceil(dayEarlyMins / earlyIntervalValue) * earlyRate;
-      }
-    });
+  if (dailyHours > 0) {
+    const perMinuteRate = baseSalary / (daysInMonth * dailyHours * 60);
+    lateDeduction = Math.round(totalLateMinutes * perMinuteRate);
+    earlyDeduction = Math.round(totalEarlyMinutes * perMinuteRate);
   }
 
-  // Round deductions to nearest integer to avoid decimal precision issues in display
-  lateDeduction = Math.round(lateDeduction);
-  earlyDeduction = Math.round(earlyDeduction);
-  
-  // Absent calculation:
-  // C/F (ULD) = B/F (ULD) - Absent + CL = 0 - absentDays + 1
-  const balanceForward = 0;
-  const cfLeaves = balanceForward - absentDays + eligibleCLs;
-  const unexcusedLeaves = cfLeaves < 0 ? Math.abs(cfLeaves) : 0;
+  const eligibleCLs = 1;
+  const cfLeaves = 0;
+  const unexcusedLeaves = 0;
 
   const dailyRate = daysInMonth > 0 ? (baseSalary / daysInMonth) : 0.0;
   const absentDeduction = Math.round(absentDays * dailyRate);
 
-  // Paid vs Unpaid Leaves:
+  // Paid vs Unpaid Leaves with Carry-Forward
   const paidLeavesLimit = trainee.paidLeavesLimit !== null && trainee.paidLeavesLimit !== undefined ? trainee.paidLeavesLimit : (settings?.paidLeavesLimit !== undefined ? settings.paidLeavesLimit : 0.0);
-  const unpaidApprovedLeaves = Math.max(0, approvedLeavesCount - paidLeavesLimit);
+  
+  const carryForwardInfo = await calculateCarryForwardLeaves(
+    trainee.id,
+    year,
+    mon,
+    settings?.paidLeavesLimit || 0.0,
+    paidLeavesLimit
+  );
+
+  const totalAvailablePaidLeaves = carryForwardInfo.totalAvailable;
+  const unpaidApprovedLeaves = Math.max(0, approvedLeavesCount - totalAvailablePaidLeaves);
   const unpaidApprovedLeavesDeduction = Math.round(unpaidApprovedLeaves * dailyRate);
+  const paidLeavesUsed = Math.min(approvedLeavesCount, totalAvailablePaidLeaves);
+
+  // Conveyance and Food allowances
+  const conveyanceAllowance = trainee.conveyanceAllowance || 0.0;
+  const foodAllowance = trainee.foodAllowance || 0.0;
 
   // Custom additions and deductions from trainee overrides
   const otherAdditions = trainee.otherAdditions || 0.0;
   const otherDeductions = trainee.otherDeductions || 0.0;
 
-  // TDS calculation: custom rate if present, else default 10%
-  // TDS is cut from professional salary only
+  // TDS calculation: TDS taxable income excludes Conveyance and Food
   const tdsPercentage = trainee.tdsRate !== null && trainee.tdsRate !== undefined ? trainee.tdsRate : 10.0;
-  const grossEarnings = baseSalary + collegeVisitEarnings + otherAdditions + extraClassEarnings + otherCenterClassEarnings;
-  const tdsDeduction = Math.round(baseSalary * (tdsPercentage / 100.0));
+  const tdsTaxableIncome = baseSalary + collegeVisitEarnings + otherAdditions + extraClassEarnings + otherCenterClassEarnings;
+  const tdsDeduction = Math.round(tdsTaxableIncome * (tdsPercentage / 100.0));
 
+  const grossEarnings = tdsTaxableIncome + conveyanceAllowance + foodAllowance;
   const totalDeductions = lateDeduction + earlyDeduction + absentDeduction + unpaidApprovedLeavesDeduction + tdsDeduction + otherDeductions;
   const netTakeHome = Math.max(0, grossEarnings - totalDeductions);
+
+  // Group Other Center Classes by institute (centerName)
+  const centerBreakdown: { [key: string]: number } = {};
+  otherCenterClasses.forEach(item => {
+    const name = item.centerName || 'Unknown';
+    centerBreakdown[name] = (centerBreakdown[name] || 0) + (item.duration || 0.0);
+  });
+  const centerBreakdownStr = Object.entries(centerBreakdown)
+    .map(([name, hrs]) => `${name}: ${hrs.toFixed(1)}h`)
+    .join(', ');
 
   return {
     professionalFee: baseSalary,
@@ -261,7 +360,7 @@ export const calculateTraineeSalaryData = async (
     cfLeaves,
     unexcusedLeaves,
     absentDeduction,
-    paidLeavesLimit,
+    paidLeavesLimit: totalAvailablePaidLeaves, // Return carry-forward total available limit
     unpaidApprovedLeaves,
     unpaidApprovedLeavesDeduction,
     tdsDeduction,
@@ -293,7 +392,18 @@ export const calculateTraineeSalaryData = async (
     otherCenterClassEarnings,
     personalExtraClassRate: trainee.extraClassRate,
     personalOtherCenterClassRate: trainee.otherCenterClassRate,
-    personalCollegeVisitRate: trainee.collegeVisitRate
+    personalCollegeVisitRate: trainee.collegeVisitRate,
+    // New fields
+    conveyance: conveyanceAllowance,
+    food: foodAllowance,
+    workingHours: dailyHours,
+    carryForwardBalance: carryForwardInfo.previousMonthBalance,
+    paidLeavesUsed,
+    otherCenterClassesBreakdown: centerBreakdownStr,
+    personalWorkingHoursOverride: trainee.workingHoursOverride,
+    personalConveyanceAllowance: trainee.conveyanceAllowance,
+    personalFoodAllowance: trainee.foodAllowance,
+    personalAllowPayslipView: trainee.allowPayslipView
   };
 };
 
@@ -334,7 +444,11 @@ router.put('/admin/trainees/:id/salary', authenticateToken, checkSalarySlipsAcce
       lateDeductionType,
       earlyDeductionType,
       lateIntervalValue,
-      earlyIntervalValue
+      earlyIntervalValue,
+      conveyanceAllowance,
+      foodAllowance,
+      workingHoursOverride,
+      allowPayslipView
     } = req.body;
     
     const user = await prisma.user.update({
@@ -355,7 +469,11 @@ router.put('/admin/trainees/:id/salary', authenticateToken, checkSalarySlipsAcce
         lateDeductionType: (lateDeductionType !== undefined && lateDeductionType !== "" && lateDeductionType !== null) ? lateDeductionType : null,
         earlyDeductionType: (earlyDeductionType !== undefined && earlyDeductionType !== "" && earlyDeductionType !== null) ? earlyDeductionType : null,
         lateIntervalValue: (lateIntervalValue !== undefined && lateIntervalValue !== "" && lateIntervalValue !== null) ? parseInt(lateIntervalValue) : null,
-        earlyIntervalValue: (earlyIntervalValue !== undefined && earlyIntervalValue !== "" && earlyIntervalValue !== null) ? parseInt(earlyIntervalValue) : null
+        earlyIntervalValue: (earlyIntervalValue !== undefined && earlyIntervalValue !== "" && earlyIntervalValue !== null) ? parseInt(earlyIntervalValue) : null,
+        conveyanceAllowance: conveyanceAllowance !== undefined ? parseFloat(conveyanceAllowance) || 0.0 : undefined,
+        foodAllowance: foodAllowance !== undefined ? parseFloat(foodAllowance) || 0.0 : undefined,
+        workingHoursOverride: workingHoursOverride !== undefined && workingHoursOverride !== "" && workingHoursOverride !== null ? parseFloat(workingHoursOverride) : null,
+        allowPayslipView: allowPayslipView !== undefined ? Boolean(allowPayslipView) : undefined
       }
     });
 
@@ -693,6 +811,11 @@ export function generateIndividualPayslipSheet(
     ws.getCell('F14').alignment = { horizontal: 'right' };
 
     // Row 15:
+    ws.getCell('A15').value = 'Food Allowance :';
+    ws.getCell('B15').value = storedSlip.food || 0.0;
+    ws.getCell('B15').numFmt = '"₹"#,##0';
+    ws.getCell('B15').alignment = { horizontal: 'right' };
+
     ws.mergeCells('C15:E15');
     ws.getCell('C15').value = 'Other Deductions :';
     ws.getCell('F15').value = storedSlip.otherDeductions;
@@ -709,7 +832,7 @@ export function generateIndividualPayslipSheet(
     applyGridBorders(10, 16, 1, 6);
 
     // Row 17: Totals
-    const totalEarnings = storedSlip.basicSalary + storedSlip.hra + storedSlip.conveyance + storedSlip.specialAllowance + storedSlip.otherAllowance;
+    const totalEarnings = storedSlip.basicSalary + storedSlip.hra + storedSlip.conveyance + storedSlip.specialAllowance + storedSlip.otherAllowance + (storedSlip.food || 0.0);
     const totalDeductions = storedSlip.pf + storedSlip.professionalTax + storedSlip.esi + storedSlip.tds + storedSlip.otherDeductions;
 
     ws.getCell('A17').value = 'Total Earnings :';
@@ -764,7 +887,7 @@ export function generateIndividualPayslipSheet(
     ws.getCell('F10').alignment = { horizontal: 'right' };
     
     // Row 11:
-    ws.getCell('A11').value = `College Visits (${salData.collegeVisitHours.toFixed(2)}h @ ₹${salData.collegeVisitRate}/h) :`;
+    ws.getCell('A11').value = `College Visits (${salData.collegeVisitHours.toFixed(2)}h) :`;
     ws.getCell('B11').value = { formula: `=${salData.collegeVisitHours}*${salData.collegeVisitRate}`, result: salData.collegeVisitEarnings };
     ws.getCell('B11').numFmt = '"₹"#,##0';
     ws.getCell('B11').alignment = { horizontal: 'right' };
@@ -794,7 +917,7 @@ export function generateIndividualPayslipSheet(
     ws.getCell('F12').alignment = { horizontal: 'right' };
 
     // Row 13: Extra Classes on Left, Absence Deduction on Right
-    ws.getCell('A13').value = `Extra Classes (${salData.extraClassesHours.toFixed(2)}h @ ₹${salData.extraClassRate}/h) :`;
+    ws.getCell('A13').value = `Extra Classes (${salData.extraClassesHours.toFixed(2)}h) :`;
     ws.getCell('B13').value = { formula: `=${salData.extraClassesHours}*${salData.extraClassRate}`, result: salData.extraClassEarnings };
     ws.getCell('B13').numFmt = '"₹"#,##0';
     ws.getCell('B13').alignment = { horizontal: 'right' };
@@ -809,7 +932,7 @@ export function generateIndividualPayslipSheet(
     ws.getCell('F13').alignment = { horizontal: 'right' };
 
     // Row 14: Other Center Classes on Left, Unpaid Approved Leaves on Right
-    ws.getCell('A14').value = `Other Center Classes (${salData.otherCenterClassesHours.toFixed(2)}h @ ₹${salData.otherCenterClassRate}/h) :`;
+    ws.getCell('A14').value = salData.otherCenterClassesBreakdown ? `Other Center Classes (${salData.otherCenterClassesBreakdown}) :` : 'Other Center Classes :';
     ws.getCell('B14').value = { formula: `=${salData.otherCenterClassesHours}*${salData.otherCenterClassRate}`, result: salData.otherCenterClassEarnings };
     ws.getCell('B14').numFmt = '"₹"#,##0';
     ws.getCell('B14').alignment = { horizontal: 'right' };
@@ -823,7 +946,12 @@ export function generateIndividualPayslipSheet(
     ws.getCell('F14').numFmt = '"₹"#,##0';
     ws.getCell('F14').alignment = { horizontal: 'right' };
 
-    // Row 15: Approved Leaves on Right
+    // Row 15: Conveyance Allowance on Left, Approved Leaves on Right
+    ws.getCell('A15').value = 'Conveyance Allowance :';
+    ws.getCell('B15').value = salData.conveyance;
+    ws.getCell('B15').numFmt = '"₹"#,##0';
+    ws.getCell('B15').alignment = { horizontal: 'right' };
+
     ws.getCell('C15').value = 'Approved Leaves :';
     ws.getCell('D15').value = `${salData.approvedLeavesCount} days`;
     ws.getCell('D15').alignment = { horizontal: 'center' };
@@ -832,7 +960,12 @@ export function generateIndividualPayslipSheet(
     ws.getCell('F15').value = '';
     ws.getCell('F15').alignment = { horizontal: 'right' };
 
-    // Row 16: Paid Leaves on Right
+    // Row 16: Food Allowance on Left, Paid Leaves on Right
+    ws.getCell('A16').value = 'Food Allowance :';
+    ws.getCell('B16').value = salData.food;
+    ws.getCell('B16').numFmt = '"₹"#,##0';
+    ws.getCell('B16').alignment = { horizontal: 'right' };
+
     ws.getCell('C16').value = 'Paid Leaves :';
     ws.getCell('D16').value = `${salData.paidLeavesLimit} days`;
     ws.getCell('D16').alignment = { horizontal: 'center' };
@@ -851,7 +984,7 @@ export function generateIndividualPayslipSheet(
     // Row 18: Tax Deducted at Source (TDS)
     ws.mergeCells('C18:E18');
     ws.getCell('C18').value = `Tax Deducted at Source (TDS, ${salData.tdsPercentage}%) :`;
-    ws.getCell('F18').value = { formula: `=ROUND(B10*${salData.tdsPercentage}/100,0)`, result: salData.tdsDeduction };
+    ws.getCell('F18').value = { formula: `=ROUND(SUM(B10:B14)*${salData.tdsPercentage}/100,0)`, result: salData.tdsDeduction };
     ws.getCell('F18').numFmt = '"₹"#,##0';
     ws.getCell('F18').alignment = { horizontal: 'right' };
 
@@ -860,7 +993,7 @@ export function generateIndividualPayslipSheet(
     // Row 19: Totals
     ws.getCell('A19').value = 'Total Earnings :';
     ws.getCell('A19').font = { bold: true, color: { argb: '800000' } };
-    ws.getCell('B19').value = { formula: '=SUM(B10:B14)', result: salData.grossEarnings };
+    ws.getCell('B19').value = { formula: '=SUM(B10:B16)', result: salData.grossEarnings };
     ws.getCell('B19').font = { bold: true };
     ws.getCell('B19').numFmt = '"₹"#,##0';
     ws.getCell('B19').alignment = { horizontal: 'right' };
@@ -1082,7 +1215,8 @@ router.post('/admin/salary-slips', authenticateToken, checkSalarySlipsAccess, as
       professionalTax,
       esi,
       tds,
-      otherDeductions
+      otherDeductions,
+      food
     } = req.body;
 
     if (!userId || !month) {
@@ -1105,6 +1239,7 @@ router.post('/admin/salary-slips', authenticateToken, checkSalarySlipsAccess, as
     const basic = parseFloat(basicSalary) || 0.0;
     const hraVal = parseFloat(hra) || 0.0;
     const conv = parseFloat(conveyance) || 0.0;
+    const foodVal = parseFloat(food) || 0.0;
     const spec = parseFloat(specialAllowance) || 0.0;
     const othAllow = parseFloat(otherAllowance) || 0.0;
     const pfVal = parseFloat(pf) || 0.0;
@@ -1113,7 +1248,7 @@ router.post('/admin/salary-slips', authenticateToken, checkSalarySlipsAccess, as
     const tdsVal = parseFloat(tds) || 0.0;
     const othDed = parseFloat(otherDeductions) || 0.0;
 
-    const netSalary = (basic + hraVal + conv + spec + othAllow) - (pfVal + ptVal + esiVal + tdsVal + othDed);
+    const netSalary = (basic + hraVal + conv + foodVal + spec + othAllow) - (pfVal + ptVal + esiVal + tdsVal + othDed);
 
     const slip = await prisma.salarySlip.upsert({
       where: {
@@ -1123,6 +1258,7 @@ router.post('/admin/salary-slips', authenticateToken, checkSalarySlipsAccess, as
         basicSalary: basic,
         hra: hraVal,
         conveyance: conv,
+        food: foodVal,
         specialAllowance: spec,
         otherAllowance: othAllow,
         pf: pfVal,
@@ -1138,6 +1274,7 @@ router.post('/admin/salary-slips', authenticateToken, checkSalarySlipsAccess, as
         basicSalary: basic,
         hra: hraVal,
         conveyance: conv,
+        food: foodVal,
         specialAllowance: spec,
         otherAllowance: othAllow,
         pf: pfVal,
@@ -1530,6 +1667,10 @@ router.get('/salary-slips/my-slip', authenticateToken, async (req: AuthRequest, 
     const daysInMonth = new Date(year, mon, 0).getDate();
 
     const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
+
+    if (settings?.allowPayslipsView === false || user.allowPayslipView === false) {
+      return res.status(403).json({ error: 'Payslips are currently hidden by the Administrator.' });
+    }
 
     const salData = await calculateTraineeSalaryData(user, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
 
