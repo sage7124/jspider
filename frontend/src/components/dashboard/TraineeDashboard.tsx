@@ -767,20 +767,47 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
   const [y, m] = month.split('-');
   const monthName = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
 
-  // Check if we are dealing with a stored slip (DB) or calculated values
-  const hasStoredSlip = t.netSalary !== undefined;
+  const isLocked = t.netSalary !== undefined;
 
-  const grossEarnings = hasStoredSlip 
-    ? ((t.basicSalary || 0) + (t.hra || 0) + (t.conveyance || 0) + (t.specialAllowance || 0) + (t.otherAllowance || 0) + (t.food || 0)) 
-    : (t.grossEarnings || 0);
+  const basicVal = isLocked ? (t.basicSalary || 0) : (t.professionalFee || 0);
+  const conveyanceVal = isLocked ? (t.conveyance || 0) : (t.conveyance || 0);
+  const foodVal = isLocked ? (t.food || 0) : (t.food || 0);
+  const additionsVal = isLocked ? (t.otherAllowance || 0) : (t.otherAdditions || 0);
+  const deductionsVal = isLocked ? (t.otherDeductions || 0) : (t.otherDeductions || 0);
 
-  const grossDeductions = hasStoredSlip
-    ? ((t.pf || 0) + (t.professionalTax || 0) + (t.esi || 0) + (t.tds || 0) + (t.otherDeductions || 0))
-    : (t.totalDeductions || t.totalDeduction || 0);
+  const collegeVisitHours = t.collegeVisitHours || 0;
+  const collegeVisitEarnings = t.collegeVisitEarnings || 0;
 
-  const netTakeHome = hasStoredSlip
-    ? (t.netSalary || 0)
-    : (t.netTakeHome || 0);
+  const extraClassesHours = t.extraClassesHours || 0;
+  const extraClassEarnings = t.extraClassEarnings || 0;
+
+  const otherCenterClassesHours = t.otherCenterClassesHours || 0;
+  const otherCenterClassEarnings = t.otherCenterClassEarnings || 0;
+  const otherCenterClassesBreakdown = t.otherCenterClassesBreakdown || '';
+
+  const totalLateMinutes = t.totalLateMinutes || 0;
+  const lateInstances = t.lateInstances || 0;
+  const lateDeduction = t.lateDeduction || 0;
+
+  const totalEarlyMinutes = t.totalEarlyMinutes || 0;
+  const earlyInstances = t.earlyInstances || 0;
+  const earlyDeduction = t.earlyDeduction || 0;
+
+  const absentDays = t.absentDays || 0;
+  const absentDeduction = t.absentDeduction || 0;
+
+  const unpaidApprovedLeaves = t.unpaidApprovedLeaves || 0;
+  const unpaidApprovedLeavesDeduction = t.unpaidApprovedLeavesDeduction || 0;
+
+  const approvedLeavesCount = t.approvedLeavesCount || 0;
+  const paidLeavesLimit = t.paidLeavesLimit || 0;
+
+  const tdsVal = isLocked ? (t.tds || 0) : (t.tdsDeduction || 0);
+  const tdsPercentage = t.tdsPercentage || 10;
+
+  const grossEarnings = basicVal + conveyanceVal + foodVal + additionsVal + collegeVisitEarnings + extraClassEarnings + otherCenterClassEarnings;
+  const grossDeductions = deductionsVal + tdsVal + lateDeduction + earlyDeduction + absentDeduction + unpaidApprovedLeavesDeduction;
+  const netTakeHome = Math.max(0, grossEarnings - grossDeductions);
 
   return `
     <div class="payslip-card">
@@ -825,151 +852,90 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
           </tr>
         </thead>
         <tbody>
-          ${hasStoredSlip ? `
-            <!-- Row 10 -->
-            <tr>
-              <td class="font-medium">Basic Salary :</td>
-              <td class="font-bold text-right">₹${(t.basicSalary || 0).toLocaleString('en-IN')}</td>
-              <td class="font-bold bg-slate-50 text-center">Description</td>
-              <td class="font-bold bg-slate-50 text-center">Instance</td>
-              <td class="font-bold bg-slate-50 text-center">Remarks</td>
-              <td class="font-bold bg-slate-50 text-right">Amount</td>
-            </tr>
-            <!-- Row 11 -->
-            <tr>
-              <td class="font-medium">HRA :</td>
-              <td class="font-bold text-right">₹${(t.hra || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">PF (Provident Fund) :</td>
-              <td class="text-center">1</td>
-              <td class="text-center">--</td>
-              <td class="font-bold text-right text-red-600">₹${(t.pf || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 12 -->
-            <tr>
-              <td class="font-medium">Conveyance :</td>
-              <td class="font-bold text-right">₹${(t.conveyance || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Professional Tax :</td>
-              <td class="text-center">1</td>
-              <td class="text-center">--</td>
-              <td class="font-bold text-right text-red-600">₹${(t.professionalTax || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 13 -->
-            <tr>
-              <td class="font-medium">Special Allowance :</td>
-              <td class="font-bold text-right">₹${(t.specialAllowance || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">ESI :</td>
-              <td class="text-center">1</td>
-              <td class="text-center">--</td>
-              <td class="font-bold text-right text-red-600">₹${(t.esi || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 14 -->
-            <tr>
-              <td class="font-medium">Other Allowance :</td>
-              <td class="font-bold text-right">₹${(t.otherAllowance || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">TDS :</td>
-              <td class="text-center">1</td>
-              <td class="text-center">--</td>
-              <td class="font-bold text-right text-red-600">₹${(t.tds || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 15 -->
-            <tr>
-              <td class="font-medium">Food Allowance :</td>
-              <td class="font-bold text-right">₹${(t.food || 0).toLocaleString('en-IN')}</td>
-              <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
-              <td class="font-bold text-right text-red-600">₹${(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 16 -->
-            <tr>
-              <td colspan="2"></td>
-              <td colspan="3" class="text-center text-gray-400">--</td>
-              <td class="font-bold text-right text-red-600">₹0</td>
-            </tr>
-          ` : `
-            <!-- Row 10 -->
-            <tr>
-              <td class="font-medium">Professional Fee (Basic) :</td>
-              <td class="font-bold text-right">₹${(t.professionalFee || 0).toLocaleString('en-IN')}</td>
-              <td class="font-bold bg-slate-50 text-center">Description</td>
-              <td class="font-bold bg-slate-50 text-center">Details</td>
-              <td class="font-bold bg-slate-50 text-center">Remarks</td>
-              <td class="font-bold bg-slate-50 text-right">Amount</td>
-            </tr>
-            <!-- Row 11 -->
-            <tr>
-              <td class="font-medium">
-                College Visits
-                <span class="subtext">(${(t.collegeVisitHours || 0).toFixed(2)}h)</span>
-              </td>
-              <td class="font-bold text-right">₹${(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Late Arrivals :</td>
-              <td class="text-center">${t.totalLateMinutes || 0}m (${((t.totalLateMinutes || 0) / 60).toFixed(2)}h)</td>
-              <td class="text-center">${t.lateInstances || 0} times</td>
-              <td class="font-bold text-right text-red-600">₹${(t.lateDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 12 -->
-            <tr>
-              <td class="font-medium">Other Additions :</td>
-              <td class="font-bold text-right">₹${(t.otherAdditions || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Early Depart :</td>
-              <td class="text-center">${t.totalEarlyMinutes || 0}m (${((t.totalEarlyMinutes || 0) / 60).toFixed(2)}h)</td>
-              <td class="text-center">${t.earlyInstances || 0} times</td>
-              <td class="font-bold text-right text-red-600">₹${(t.earlyDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 13 -->
-            <tr>
-              <td class="font-medium">
-                Extra Classes
-                <span class="subtext">(${(t.extraClassesHours || 0).toFixed(2)}h)</span>
-              </td>
-              <td class="font-bold text-right">₹${(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Absence Deduction :</td>
-              <td class="text-center">${t.absentDays || 0} days</td>
-              <td class="text-center">Absent</td>
-              <td class="font-bold text-right text-red-600">₹${(t.absentDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 14 -->
-            <tr>
-              <td class="font-medium">
-                Other Center Classes
-                ${t.otherCenterClassesBreakdown ? `<span class="subtext">(${t.otherCenterClassesBreakdown})</span>` : ''}
-              </td>
-              <td class="font-bold text-right">₹${(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Unpaid Approved Leaves :</td>
-              <td class="text-center">${t.unpaidApprovedLeaves || 0} days</td>
-              <td class="text-center">Unpaid</td>
-              <td class="font-bold text-right text-red-600">₹${(t.unpaidApprovedLeavesDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 15 -->
-            <tr>
-              <td class="font-medium">Conveyance Allowance :</td>
-              <td class="font-bold text-right">₹${(t.conveyance || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Approved Leaves :</td>
-              <td class="text-center">${t.approvedLeavesCount || 0} days</td>
-              <td class="text-center">Leaves Taken</td>
-              <td class="text-right text-gray-600"></td>
-            </tr>
-            <!-- Row 16 -->
-            <tr>
-              <td class="font-medium">Food Allowance :</td>
-              <td class="font-bold text-right">₹${(t.food || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Paid Leaves :</td>
-              <td class="text-center">${t.paidLeavesLimit || 0} days</td>
-              <td class="text-center">Paid</td>
-              <td class="text-right text-gray-600"></td>
-            </tr>
-            <!-- Row 17 -->
-            <tr>
-              <td colspan="2"></td>
-              <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
-              <td class="font-bold text-right text-red-600">₹${(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 18 -->
-            <tr>
-              <td colspan="2"></td>
-              <td colspan="3" class="text-gray-700 font-medium">Tax Deducted at Source (TDS, ${t.tdsPercentage || 10}%) :</td>
-              <td class="font-bold text-right text-red-600">₹${(t.tdsDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-          `}
+          <!-- Row 10 -->
+          <tr>
+            <td class="font-medium">Professional Fee (Basic) :</td>
+            <td class="font-bold text-right">₹${basicVal.toLocaleString('en-IN')}</td>
+            <td class="font-bold bg-slate-50 text-center">Description</td>
+            <td class="font-bold bg-slate-50 text-center">Details</td>
+            <td class="font-bold bg-slate-50 text-center">Remarks</td>
+            <td class="font-bold bg-slate-50 text-right">Amount</td>
+          </tr>
+          <!-- Row 11 -->
+          <tr>
+            <td class="font-medium">
+              College Visits
+              <span class="subtext">(${collegeVisitHours.toFixed(2)}h)</span>
+            </td>
+            <td class="font-bold text-right">₹${collegeVisitEarnings.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Late Arrivals :</td>
+            <td class="text-center">${totalLateMinutes}m (${(totalLateMinutes / 60).toFixed(2)}h)</td>
+            <td class="text-center">${lateInstances} times</td>
+            <td class="font-bold text-right text-red-600">₹${lateDeduction.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 12 -->
+          <tr>
+            <td class="font-medium">Other Additions :</td>
+            <td class="font-bold text-right">₹${additionsVal.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Early Depart :</td>
+            <td class="text-center">${totalEarlyMinutes}m (${(totalEarlyMinutes / 60).toFixed(2)}h)</td>
+            <td class="text-center">${earlyInstances} times</td>
+            <td class="font-bold text-right text-red-600">₹${earlyDeduction.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 13 -->
+          <tr>
+            <td class="font-medium">
+              Extra Classes
+              <span class="subtext">(${extraClassesHours.toFixed(2)}h)</span>
+            </td>
+            <td class="font-bold text-right">₹${extraClassEarnings.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Absence Deduction :</td>
+            <td class="text-center">${absentDays} days</td>
+            <td class="text-center">Absent</td>
+            <td class="font-bold text-right text-red-600">₹${absentDeduction.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 14 -->
+          <tr>
+            <td class="font-medium">
+              Other Center Classes
+              ${otherCenterClassesBreakdown ? `<span class="subtext">(${otherCenterClassesBreakdown})</span>` : ''}
+            </td>
+            <td class="font-bold text-right">₹${otherCenterClassEarnings.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Unpaid Approved Leaves :</td>
+            <td class="text-center">${unpaidApprovedLeaves} days</td>
+            <td class="text-center">Unpaid</td>
+            <td class="font-bold text-right text-red-600">₹${unpaidApprovedLeavesDeduction.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 15 -->
+          <tr>
+            <td class="font-medium">Conveyance Allowance :</td>
+            <td class="font-bold text-right">₹${conveyanceVal.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Approved Leaves :</td>
+            <td class="text-center">${approvedLeavesCount} days</td>
+            <td class="text-center">Leaves Taken</td>
+            <td class="text-right text-gray-600"></td>
+          </tr>
+          <!-- Row 16 -->
+          <tr>
+            <td class="font-medium">Food Allowance :</td>
+            <td class="font-bold text-right">₹${foodVal.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Paid Leaves :</td>
+            <td class="text-center">${paidLeavesLimit} days</td>
+            <td class="text-center">Paid</td>
+            <td class="text-right text-gray-600"></td>
+          </tr>
+          <!-- Row 17 -->
+          <tr>
+            <td colspan="2"></td>
+            <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
+            <td class="font-bold text-right text-red-600">₹${deductionsVal.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 18 -->
+          <tr>
+            <td colspan="2"></td>
+            <td colspan="3" class="text-gray-700 font-medium">Tax Deducted at Source (TDS, ${tdsPercentage}%) :</td>
+            <td class="font-bold text-right text-red-600">₹${tdsVal.toLocaleString('en-IN')}</td>
+          </tr>
 
           <!-- Row 17 Totals -->
           <tr class="totals-row">
@@ -1002,10 +968,10 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
       </div>
       
       <div class="att-grid-values" style="grid-template-columns: repeat(4, 1fr) 2fr;">
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.approvedLeavesCount || 0)}</div>
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.paidLeavesLimit || 0)}</div>
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.unpaidApprovedLeaves || 0)}</div>
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.absentDays || 0)}</div>
+        <div class="cyan-bg">${approvedLeavesCount}</div>
+        <div class="cyan-bg">${paidLeavesLimit}</div>
+        <div class="cyan-bg">${unpaidApprovedLeaves}</div>
+        <div class="cyan-bg">${absentDays}</div>
         <div style="font-size: 10px; color: #475569; padding-top: 8px;">SK & KK Approved</div>
       </div>
 

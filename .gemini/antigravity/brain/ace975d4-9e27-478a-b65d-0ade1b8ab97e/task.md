@@ -1,0 +1,20 @@
+- [x] Refactor backend salary route
+  - [x] Implement `generateIndividualPayslipSheet` helper function in `salary.ts`
+  - [x] Update `/admin/reports/payslip/export/:userId` to use helper
+  - [x] Update `/admin/reports/payslip/export-all` to use helper and create separate worksheets for each teacher
+  - [x] Update `/salary-slips/my-slip` to fetch and return `storedSlip` (if exists)
+- [x] Refactor frontend admin actions
+  - [x] Modify "Download" button in admin's Salary Slips panel to call `handleExportIndividual` and download Excel
+- [x] Refactor frontend teacher portal
+  - [x] Add "💵 My Payslips" button to `TraineeDashboard.tsx`
+  - [x] Implement `MyPayslipsModal` component in `TraineeDashboard.tsx` supporting dynamic and stored layouts
+- [x] Layout Adjustments & Preview Enhancements
+  - [x] Widen Excel columns (A, C, D, E) in `generateIndividualPayslipSheet` to prevent text truncation
+  - [x] Enrich `/admin/reports/payslip/single/:userId` backend route to return `user` and `storedSlip` data
+  - [x] Add `Eye` preview action button in the Admin panel's Salary Slips table
+  - [x] Implement `AdminTraineePayslipPreviewModal` component to display individual trainee payslips on-screen in Excel-like standard design
+  - [x] Increase modal max-widths from `max-w-3xl` to `max-w-4xl` in both dashboards to prevent horizontal squishing & clipping
+  - [x] Resolve log table overflow in `ExtraClassesLogsModal` and `OtherCenterClassesLogsModal` by changing overflow-y-auto to overflow-auto and setting table min-width to 1100px
+- [x] Verification
+  - [x] Build and compile backend
+  - [x] Build and compile frontend

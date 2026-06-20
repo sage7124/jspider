@@ -1460,20 +1460,47 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
   const [y, m] = month.split('-');
   const monthName = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
 
-  // Check if we are dealing with a stored slip (DB) or calculated values
-  const hasStoredSlip = t.netSalary !== undefined;
+  const isLocked = t.netSalary !== undefined;
 
-  const grossEarnings = hasStoredSlip 
-    ? ((t.basicSalary || 0) + (t.hra || 0) + (t.conveyance || 0) + (t.specialAllowance || 0) + (t.otherAllowance || 0) + (t.food || 0)) 
-    : (t.grossEarnings || 0);
+  const basicVal = isLocked ? (t.basicSalary || 0) : (t.professionalFee || 0);
+  const conveyanceVal = isLocked ? (t.conveyance || 0) : (t.conveyance || 0);
+  const foodVal = isLocked ? (t.food || 0) : (t.food || 0);
+  const additionsVal = isLocked ? (t.otherAllowance || 0) : (t.otherAdditions || 0);
+  const deductionsVal = isLocked ? (t.otherDeductions || 0) : (t.otherDeductions || 0);
 
-  const grossDeductions = hasStoredSlip
-    ? ((t.pf || 0) + (t.professionalTax || 0) + (t.esi || 0) + (t.tds || 0) + (t.otherDeductions || 0))
-    : (t.totalDeductions || t.totalDeduction || 0);
+  const collegeVisitHours = t.collegeVisitHours || 0;
+  const collegeVisitEarnings = t.collegeVisitEarnings || 0;
 
-  const netTakeHome = hasStoredSlip
-    ? (t.netSalary || 0)
-    : (t.netTakeHome || 0);
+  const extraClassesHours = t.extraClassesHours || 0;
+  const extraClassEarnings = t.extraClassEarnings || 0;
+
+  const otherCenterClassesHours = t.otherCenterClassesHours || 0;
+  const otherCenterClassEarnings = t.otherCenterClassEarnings || 0;
+  const otherCenterClassesBreakdown = t.otherCenterClassesBreakdown || '';
+
+  const totalLateMinutes = t.totalLateMinutes || 0;
+  const lateInstances = t.lateInstances || 0;
+  const lateDeduction = t.lateDeduction || 0;
+
+  const totalEarlyMinutes = t.totalEarlyMinutes || 0;
+  const earlyInstances = t.earlyInstances || 0;
+  const earlyDeduction = t.earlyDeduction || 0;
+
+  const absentDays = t.absentDays || 0;
+  const absentDeduction = t.absentDeduction || 0;
+
+  const unpaidApprovedLeaves = t.unpaidApprovedLeaves || 0;
+  const unpaidApprovedLeavesDeduction = t.unpaidApprovedLeavesDeduction || 0;
+
+  const approvedLeavesCount = t.approvedLeavesCount || 0;
+  const paidLeavesLimit = t.paidLeavesLimit || 0;
+
+  const tdsVal = isLocked ? (t.tds || 0) : (t.tdsDeduction || 0);
+  const tdsPercentage = t.tdsPercentage || 10;
+
+  const grossEarnings = basicVal + conveyanceVal + foodVal + additionsVal + collegeVisitEarnings + extraClassEarnings + otherCenterClassEarnings;
+  const grossDeductions = deductionsVal + tdsVal + lateDeduction + earlyDeduction + absentDeduction + unpaidApprovedLeavesDeduction;
+  const netTakeHome = Math.max(0, grossEarnings - grossDeductions);
 
   return `
     <div class="payslip-card">
@@ -1518,151 +1545,90 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
           </tr>
         </thead>
         <tbody>
-          ${hasStoredSlip ? `
-            <!-- Row 10 -->
-            <tr>
-              <td class="font-medium">Basic Salary :</td>
-              <td class="font-bold text-right">₹${(t.basicSalary || 0).toLocaleString('en-IN')}</td>
-              <td class="font-bold bg-slate-50 text-center">Description</td>
-              <td class="font-bold bg-slate-50 text-center">Instance</td>
-              <td class="font-bold bg-slate-50 text-center">Remarks</td>
-              <td class="font-bold bg-slate-50 text-right">Amount</td>
-            </tr>
-            <!-- Row 11 -->
-            <tr>
-              <td class="font-medium">HRA :</td>
-              <td class="font-bold text-right">₹${(t.hra || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">PF (Provident Fund) :</td>
-              <td class="text-center">1</td>
-              <td class="text-center">--</td>
-              <td class="font-bold text-right text-red-600">₹${(t.pf || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 12 -->
-            <tr>
-              <td class="font-medium">Conveyance :</td>
-              <td class="font-bold text-right">₹${(t.conveyance || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Professional Tax :</td>
-              <td class="text-center">1</td>
-              <td class="text-center">--</td>
-              <td class="font-bold text-right text-red-600">₹${(t.professionalTax || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 13 -->
-            <tr>
-              <td class="font-medium">Special Allowance :</td>
-              <td class="font-bold text-right">₹${(t.specialAllowance || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">ESI :</td>
-              <td class="text-center">1</td>
-              <td class="text-center">--</td>
-              <td class="font-bold text-right text-red-600">₹${(t.esi || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 14 -->
-            <tr>
-              <td class="font-medium">Other Allowance :</td>
-              <td class="font-bold text-right">₹${(t.otherAllowance || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">TDS :</td>
-              <td class="text-center">1</td>
-              <td class="text-center">--</td>
-              <td class="font-bold text-right text-red-600">₹${(t.tds || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 15 -->
-            <tr>
-              <td class="font-medium">Food Allowance :</td>
-              <td class="font-bold text-right">₹${(t.food || 0).toLocaleString('en-IN')}</td>
-              <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
-              <td class="font-bold text-right text-red-600">₹${(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 16 -->
-            <tr>
-              <td colspan="2"></td>
-              <td colspan="3" class="text-center text-gray-400">--</td>
-              <td class="font-bold text-right text-red-600">₹0</td>
-            </tr>
-          ` : `
-            <!-- Row 10 -->
-            <tr>
-              <td class="font-medium">Professional Fee (Basic) :</td>
-              <td class="font-bold text-right">₹${(t.professionalFee || 0).toLocaleString('en-IN')}</td>
-              <td class="font-bold bg-slate-50 text-center">Description</td>
-              <td class="font-bold bg-slate-50 text-center">Details</td>
-              <td class="font-bold bg-slate-50 text-center">Remarks</td>
-              <td class="font-bold bg-slate-50 text-right">Amount</td>
-            </tr>
-            <!-- Row 11 -->
-            <tr>
-              <td class="font-medium">
-                College Visits
-                <span class="subtext">(${(t.collegeVisitHours || 0).toFixed(2)}h)</span>
-              </td>
-              <td class="font-bold text-right">₹${(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Late Arrivals :</td>
-              <td class="text-center">${t.totalLateMinutes || 0}m (${((t.totalLateMinutes || 0) / 60).toFixed(2)}h)</td>
-              <td class="text-center">${t.lateInstances || 0} times</td>
-              <td class="font-bold text-right text-red-600">₹${(t.lateDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 12 -->
-            <tr>
-              <td class="font-medium">Other Additions :</td>
-              <td class="font-bold text-right">₹${(t.otherAdditions || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Early Depart :</td>
-              <td class="text-center">${t.totalEarlyMinutes || 0}m (${((t.totalEarlyMinutes || 0) / 60).toFixed(2)}h)</td>
-              <td class="text-center">${t.earlyInstances || 0} times</td>
-              <td class="font-bold text-right text-red-600">₹${(t.earlyDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 13 -->
-            <tr>
-              <td class="font-medium">
-                Extra Classes
-                <span class="subtext">(${(t.extraClassesHours || 0).toFixed(2)}h)</span>
-              </td>
-              <td class="font-bold text-right">₹${(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Absence Deduction :</td>
-              <td class="text-center">${t.absentDays || 0} days</td>
-              <td class="text-center">Absent</td>
-              <td class="font-bold text-right text-red-600">₹${(t.absentDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 14 -->
-            <tr>
-              <td class="font-medium">
-                Other Center Classes
-                ${t.otherCenterClassesBreakdown ? `<span class="subtext">(${t.otherCenterClassesBreakdown})</span>` : ''}
-              </td>
-              <td class="font-bold text-right">₹${(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Unpaid Approved Leaves :</td>
-              <td class="text-center">${t.unpaidApprovedLeaves || 0} days</td>
-              <td class="text-center">Unpaid</td>
-              <td class="font-bold text-right text-red-600">₹${(t.unpaidApprovedLeavesDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 15 -->
-            <tr>
-              <td class="font-medium">Conveyance Allowance :</td>
-              <td class="font-bold text-right">₹${(t.conveyance || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Approved Leaves :</td>
-              <td class="text-center">${t.approvedLeavesCount || 0} days</td>
-              <td class="text-center">Leaves Taken</td>
-              <td class="text-right text-gray-600"></td>
-            </tr>
-            <!-- Row 16 -->
-            <tr>
-              <td class="font-medium">Food Allowance :</td>
-              <td class="font-bold text-right">₹${(t.food || 0).toLocaleString('en-IN')}</td>
-              <td class="text-gray-700">Paid Leaves :</td>
-              <td class="text-center">${t.paidLeavesLimit || 0} days</td>
-              <td class="text-center">Paid</td>
-              <td class="text-right text-gray-600"></td>
-            </tr>
-            <!-- Row 17 -->
-            <tr>
-              <td colspan="2"></td>
-              <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
-              <td class="font-bold text-right text-red-600">₹${(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
-            </tr>
-            <!-- Row 18 -->
-            <tr>
-              <td colspan="2"></td>
-              <td colspan="3" class="text-gray-700 font-medium">Tax Deducted at Source (TDS, ${t.tdsPercentage || 10}%) :</td>
-              <td class="font-bold text-right text-red-600">₹${(t.tdsDeduction || 0).toLocaleString('en-IN')}</td>
-            </tr>
-          `}
+          <!-- Row 10 -->
+          <tr>
+            <td class="font-medium">Professional Fee (Basic) :</td>
+            <td class="font-bold text-right">₹${basicVal.toLocaleString('en-IN')}</td>
+            <td class="font-bold bg-slate-50 text-center">Description</td>
+            <td class="font-bold bg-slate-50 text-center">Details</td>
+            <td class="font-bold bg-slate-50 text-center">Remarks</td>
+            <td class="font-bold bg-slate-50 text-right">Amount</td>
+          </tr>
+          <!-- Row 11 -->
+          <tr>
+            <td class="font-medium">
+              College Visits
+              <span class="subtext">(${collegeVisitHours.toFixed(2)}h)</span>
+            </td>
+            <td class="font-bold text-right">₹${collegeVisitEarnings.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Late Arrivals :</td>
+            <td class="text-center">${totalLateMinutes}m (${(totalLateMinutes / 60).toFixed(2)}h)</td>
+            <td class="text-center">${lateInstances} times</td>
+            <td class="font-bold text-right text-red-600">₹${lateDeduction.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 12 -->
+          <tr>
+            <td class="font-medium">Other Additions :</td>
+            <td class="font-bold text-right">₹${additionsVal.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Early Depart :</td>
+            <td class="text-center">${totalEarlyMinutes}m (${(totalEarlyMinutes / 60).toFixed(2)}h)</td>
+            <td class="text-center">${earlyInstances} times</td>
+            <td class="font-bold text-right text-red-600">₹${earlyDeduction.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 13 -->
+          <tr>
+            <td class="font-medium">
+              Extra Classes
+              <span class="subtext">(${extraClassesHours.toFixed(2)}h)</span>
+            </td>
+            <td class="font-bold text-right">₹${extraClassEarnings.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Absence Deduction :</td>
+            <td class="text-center">${absentDays} days</td>
+            <td class="text-center">Absent</td>
+            <td class="font-bold text-right text-red-600">₹${absentDeduction.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 14 -->
+          <tr>
+            <td class="font-medium">
+              Other Center Classes
+              ${otherCenterClassesBreakdown ? `<span class="subtext">(${otherCenterClassesBreakdown})</span>` : ''}
+            </td>
+            <td class="font-bold text-right">₹${otherCenterClassEarnings.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Unpaid Approved Leaves :</td>
+            <td class="text-center">${unpaidApprovedLeaves} days</td>
+            <td class="text-center">Unpaid</td>
+            <td class="font-bold text-right text-red-600">₹${unpaidApprovedLeavesDeduction.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 15 -->
+          <tr>
+            <td class="font-medium">Conveyance Allowance :</td>
+            <td class="font-bold text-right">₹${conveyanceVal.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Approved Leaves :</td>
+            <td class="text-center">${approvedLeavesCount} days</td>
+            <td class="text-center">Leaves Taken</td>
+            <td class="text-right text-gray-600"></td>
+          </tr>
+          <!-- Row 16 -->
+          <tr>
+            <td class="font-medium">Food Allowance :</td>
+            <td class="font-bold text-right">₹${foodVal.toLocaleString('en-IN')}</td>
+            <td class="text-gray-700">Paid Leaves :</td>
+            <td class="text-center">${paidLeavesLimit} days</td>
+            <td class="text-center">Paid</td>
+            <td class="text-right text-gray-600"></td>
+          </tr>
+          <!-- Row 17 -->
+          <tr>
+            <td colspan="2"></td>
+            <td colspan="3" class="text-gray-700 font-medium">Other Deductions :</td>
+            <td class="font-bold text-right text-red-600">₹${deductionsVal.toLocaleString('en-IN')}</td>
+          </tr>
+          <!-- Row 18 -->
+          <tr>
+            <td colspan="2"></td>
+            <td colspan="3" class="text-gray-700 font-medium">Tax Deducted at Source (TDS, ${tdsPercentage}%) :</td>
+            <td class="font-bold text-right text-red-600">₹${tdsVal.toLocaleString('en-IN')}</td>
+          </tr>
 
           <!-- Row 17 Totals -->
           <tr class="totals-row">
@@ -1695,10 +1661,10 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
       </div>
       
       <div class="att-grid-values" style="grid-template-columns: repeat(4, 1fr) 2fr;">
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.approvedLeavesCount || 0)}</div>
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.paidLeavesLimit || 0)}</div>
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.unpaidApprovedLeaves || 0)}</div>
-        <div class="cyan-bg">${hasStoredSlip ? '--' : (t.absentDays || 0)}</div>
+        <div class="cyan-bg">${approvedLeavesCount}</div>
+        <div class="cyan-bg">${paidLeavesLimit}</div>
+        <div class="cyan-bg">${unpaidApprovedLeaves}</div>
+        <div class="cyan-bg">${absentDays}</div>
         <div style="font-size: 10px; color: #475569; padding-top: 8px;">SK & KK Approved</div>
       </div>
 
@@ -1785,23 +1751,51 @@ const handlePrintPayslip = (t: any, month: string) => {
 };
 
 const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
-  const grossEarnings = data.storedSlip
-    ? (data.storedSlip.basicSalary + data.storedSlip.hra + data.storedSlip.conveyance + data.storedSlip.specialAllowance + data.storedSlip.otherAllowance + (data.storedSlip.food || 0))
-    : (data.salaryData?.grossEarnings || 0);
-
-  const grossDeductions = data.storedSlip
-    ? (data.storedSlip.pf + data.storedSlip.professionalTax + data.storedSlip.esi + data.storedSlip.tds + data.storedSlip.otherDeductions)
-    : (data.salaryData?.totalDeductions || 0);
-
-  const netTakeHome = data.storedSlip
-    ? data.storedSlip.netSalary
-    : (data.salaryData?.netTakeHome || 0);
-
   const [y, m] = month.split('-');
   const monthName = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
 
   const hasStoredSlip = data.storedSlip !== undefined && data.storedSlip !== null;
-  const t = hasStoredSlip ? data.storedSlip : data.salaryData;
+  const isLocked = hasStoredSlip;
+
+  const basicVal = isLocked ? (data.storedSlip.basicSalary || 0) : (data.salaryData?.professionalFee || 0);
+  const conveyanceVal = isLocked ? (data.storedSlip.conveyance || 0) : (data.salaryData?.conveyance || 0);
+  const foodVal = isLocked ? (data.storedSlip.food || 0) : (data.salaryData?.food || 0);
+  const additionsVal = isLocked ? (data.storedSlip.otherAllowance || 0) : (data.salaryData?.otherAdditions || 0);
+  const deductionsVal = isLocked ? (data.storedSlip.otherDeductions || 0) : (data.salaryData?.otherDeductions || 0);
+
+  const collegeVisitHours = data.salaryData?.collegeVisitHours || 0;
+  const collegeVisitEarnings = data.salaryData?.collegeVisitEarnings || 0;
+
+  const extraClassesHours = data.salaryData?.extraClassesHours || 0;
+  const extraClassEarnings = data.salaryData?.extraClassEarnings || 0;
+
+  const otherCenterClassesHours = data.salaryData?.otherCenterClassesHours || 0;
+  const otherCenterClassEarnings = data.salaryData?.otherCenterClassEarnings || 0;
+  const otherCenterClassesBreakdown = data.salaryData?.otherCenterClassesBreakdown || '';
+
+  const totalLateMinutes = data.salaryData?.totalLateMinutes || 0;
+  const lateInstances = data.salaryData?.lateInstances || 0;
+  const lateDeduction = data.salaryData?.lateDeduction || 0;
+
+  const totalEarlyMinutes = data.salaryData?.totalEarlyMinutes || 0;
+  const earlyInstances = data.salaryData?.earlyInstances || 0;
+  const earlyDeduction = data.salaryData?.earlyDeduction || 0;
+
+  const absentDays = data.salaryData?.absentDays || 0;
+  const absentDeduction = data.salaryData?.absentDeduction || 0;
+
+  const unpaidApprovedLeaves = data.salaryData?.unpaidApprovedLeaves || 0;
+  const unpaidApprovedLeavesDeduction = data.salaryData?.unpaidApprovedLeavesDeduction || 0;
+
+  const approvedLeavesCount = data.salaryData?.approvedLeavesCount || 0;
+  const paidLeavesLimit = data.salaryData?.paidLeavesLimit || 0;
+
+  const tdsVal = isLocked ? (data.storedSlip.tds || 0) : (data.salaryData?.tdsDeduction || 0);
+  const tdsPercentage = data.salaryData?.tdsPercentage || 10;
+
+  const grossEarnings = basicVal + conveyanceVal + foodVal + additionsVal + collegeVisitEarnings + extraClassEarnings + otherCenterClassEarnings;
+  const grossDeductions = deductionsVal + tdsVal + lateDeduction + earlyDeduction + absentDeduction + unpaidApprovedLeavesDeduction;
+  const netTakeHome = Math.max(0, grossEarnings - grossDeductions);
 
   const inWords = (num: number): string => {
     const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
@@ -1893,13 +1887,13 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
           PAN No:
         </div>
         <div className="col-span-2 py-2 px-3 text-left border-r border-gray-300">
-          {hasStoredSlip ? (t.pan || '--') : (t.panNo || '--')}
+          {isLocked ? (data.storedSlip.pan || '--') : (data.salaryData?.panNo || '--')}
         </div>
         <div className="col-span-1 py-2 px-2 text-right bg-gray-50 border-r border-gray-300 border-l">
           Aadhaar No:
         </div>
         <div className="col-span-2 py-2 px-3 text-left">
-          {hasStoredSlip ? (t.aadhaar || '--') : (t.aadhaarNo || '--')}
+          {isLocked ? (data.storedSlip.aadhaar || '--') : (data.salaryData?.aadhaarNo || '--')}
         </div>
       </div>
 
@@ -1944,157 +1938,92 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
             </tr>
           </thead>
           <tbody>
-            {hasStoredSlip ? (
-              <>
-                {/* Row 10 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Basic Salary :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.basicSalary || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-center text-[9px]">Description</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-center text-[9px]">Instance</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-center text-[9px]">Remarks</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-right text-[9px]">Amount</td>
-                </tr>
-                {/* Row 11 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">HRA :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.hra || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">PF (Provident Fund) :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">1</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">--</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.pf || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 12 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Conveyance :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.conveyance || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Professional Tax :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">1</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">--</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.professionalTax || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 13 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Special Allowance :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.specialAllowance || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">ESI :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">1</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">--</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.esi || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 14 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Other Allowance :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.otherAllowance || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">TDS :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">1</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">--</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.tds || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 15 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Food Allowance :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.food || 0).toLocaleString('en-IN')}</td>
-                  <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Other Deductions :</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 16 */}
-                <tr>
-                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
-                  <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-center text-slate-400">--</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹0</td>
-                </tr>
-              </>
-            ) : (
-              <>
-                {/* Row 10 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Professional Fee (Basic) :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.professionalFee || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-center text-[9px]">Description</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-center text-[9px]">Details</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-center text-[9px]">Remarks</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-right text-[9px]">Amount</td>
-                </tr>
-                {/* Row 11 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
-                    College Visits
-                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({(t.collegeVisitHours || 0).toFixed(2)}h)</span>
-                  </td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.collegeVisitEarnings || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Late Arrivals :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.totalLateMinutes || 0)}m ({((t.totalLateMinutes || 0) / 60).toFixed(2)}h)</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.lateInstances || 0)} times</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.lateDeduction || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 12 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Other Additions :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.otherAdditions || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Early Depart :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.totalEarlyMinutes || 0)}m ({((t.totalEarlyMinutes || 0) / 60).toFixed(2)}h)</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.earlyInstances || 0)} times</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.earlyDeduction || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 13 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
-                    Extra Classes
-                    <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({(t.extraClassesHours || 0).toFixed(2)}h)</span>
-                  </td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.extraClassEarnings || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Absence Deduction :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.absentDays || 0)} days</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Absent</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.absentDeduction || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 14 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
-                    Other Center Classes
-                    {t.otherCenterClassesBreakdown && (
-                      <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({t.otherCenterClassesBreakdown})</span>
-                    )}
-                  </td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.otherCenterClassEarnings || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Unpaid Approved Leaves :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.unpaidApprovedLeaves || 0)} days</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Unpaid</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.unpaidApprovedLeavesDeduction || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 15 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Conveyance Allowance :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.conveyance || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Approved Leaves :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.approvedLeavesCount || 0)} days</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Leaves Taken</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 text-right text-slate-600"></td>
-                </tr>
-                {/* Row 16 */}
-                <tr>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Food Allowance :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{(t.food || 0).toLocaleString('en-IN')}</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Paid Leaves :</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{(t.paidLeavesLimit || 0)} days</td>
-                  <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Paid</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 text-right text-slate-600"></td>
-                </tr>
-                {/* Row 17 */}
-                <tr>
-                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
-                  <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Other Deductions :</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.otherDeductions || 0).toLocaleString('en-IN')}</td>
-                </tr>
-                {/* Row 18 */}
-                <tr>
-                  <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
-                  <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Tax Deducted at Source (TDS, {t.tdsPercentage || 10}%) :</td>
-                  <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{(t.tdsDeduction || 0).toLocaleString('en-IN')}</td>
-                </tr>
-              </>
-            )}
+            {/* Row 10 */}
+            <tr>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Professional Fee (Basic) :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{basicVal.toLocaleString('en-IN')}</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-center text-[9px]">Description</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-center text-[9px]">Details</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-center text-[9px]">Remarks</td>
+              <td className="border-b border-gray-300 py-2 px-2.5 font-bold bg-slate-50 text-right text-[9px]">Amount</td>
+            </tr>
+            {/* Row 11 */}
+            <tr>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
+                College Visits
+                <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({collegeVisitHours.toFixed(2)}h)</span>
+              </td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{collegeVisitEarnings.toLocaleString('en-IN')}</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Late Arrivals :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{totalLateMinutes}m ({(totalLateMinutes / 60).toFixed(2)}h)</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{lateInstances} times</td>
+              <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{lateDeduction.toLocaleString('en-IN')}</td>
+            </tr>
+            {/* Row 12 */}
+            <tr>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Other Additions :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{additionsVal.toLocaleString('en-IN')}</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Early Depart :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{totalEarlyMinutes}m ({(totalEarlyMinutes / 60).toFixed(2)}h)</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{earlyInstances} times</td>
+              <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{earlyDeduction.toLocaleString('en-IN')}</td>
+            </tr>
+            {/* Row 13 */}
+            <tr>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
+                Extra Classes
+                <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({extraClassesHours.toFixed(2)}h)</span>
+              </td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{extraClassEarnings.toLocaleString('en-IN')}</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Absence Deduction :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{absentDays} days</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Absent</td>
+              <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{absentDeduction.toLocaleString('en-IN')}</td>
+            </tr>
+            {/* Row 14 */}
+            <tr>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">
+                Other Center Classes
+                {otherCenterClassesBreakdown && (
+                  <span className="text-[9px] text-slate-500 block font-medium mt-0.5">({otherCenterClassesBreakdown})</span>
+                )}
+              </td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{otherCenterClassEarnings.toLocaleString('en-IN')}</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Unpaid Approved Leaves :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{unpaidApprovedLeaves} days</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Unpaid</td>
+              <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{unpaidApprovedLeavesDeduction.toLocaleString('en-IN')}</td>
+            </tr>
+            {/* Row 15 */}
+            <tr>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Conveyance Allowance :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{conveyanceVal.toLocaleString('en-IN')}</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Approved Leaves :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{approvedLeavesCount} days</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Leaves Taken</td>
+              <td className="border-b border-gray-300 py-2 px-2.5 text-right text-slate-600"></td>
+            </tr>
+            {/* Row 16 */}
+            <tr>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-semibold text-slate-700">Food Allowance :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 font-bold text-right">₹{foodVal.toLocaleString('en-IN')}</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700">Paid Leaves :</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">{paidLeavesLimit} days</td>
+              <td className="border-b border-r border-gray-300 py-2 px-2.5 text-center">Paid</td>
+              <td className="border-b border-gray-300 py-2 px-2.5 text-right text-slate-600"></td>
+            </tr>
+            {/* Row 17 */}
+            <tr>
+              <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+              <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Other Deductions :</td>
+              <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{deductionsVal.toLocaleString('en-IN')}</td>
+            </tr>
+            {/* Row 18 */}
+            <tr>
+              <td colSpan={2} className="border-b border-r border-gray-300 py-2 px-2.5"></td>
+              <td colSpan={3} className="border-b border-r border-gray-300 py-2 px-2.5 text-slate-700 font-semibold">Tax Deducted at Source (TDS, {tdsPercentage}%) :</td>
+              <td className="border-b border-gray-300 py-2 px-2.5 font-bold text-right text-red-600">₹{tdsVal.toLocaleString('en-IN')}</td>
+            </tr>
 
             {/* Row 17 Totals */}
             <tr className="font-extrabold bg-slate-50">
@@ -2133,16 +2062,16 @@ const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
       </div>
       <div className="border-x border-b border-gray-300 text-xs text-center font-bold relative z-10" style={{ gridTemplateColumns: 'repeat(4, 1fr) 2fr', display: 'grid' }}>
         <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.approvedLeavesCount || 0)}
+          {approvedLeavesCount}
         </div>
         <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.paidLeavesLimit || 0)}
+          {paidLeavesLimit}
         </div>
         <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.unpaidApprovedLeaves || 0)}
+          {unpaidApprovedLeaves}
         </div>
         <div className="bg-[#e0f7fa] border-r border-gray-300 py-2">
-          {hasStoredSlip ? '--' : (t.absentDays || 0)}
+          {absentDays}
         </div>
         <div className="py-2 text-slate-500 text-[10px] flex items-center justify-center">SK & KK Approved</div>
       </div>

@@ -1,0 +1,1524 @@
+Level 1 start at Line 1: import React, { useEffect, useState } from 'react';
+Level 0 reached at Line 1 (opened at Line 1)
+Level 1 start at Line 3: import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX, UserCheck, FileSpreadsheet, Upload, Plus, Settings, Search, Printer } from 'lucide-react';
+Level 0 reached at Line 3 (opened at Line 3)
+Level 1 start at Line 4: import { QRCodeSVG } from 'qrcode.react';
+Level 0 reached at Line 4 (opened at Line 4)
+Level 1 start at Line 5: import { createClient } from '@supabase/supabase-js';
+Level 0 reached at Line 5 (opened at Line 5)
+  [Info] Definition at Line 7 (Level 0): const supabaseUrl = 'https://uzbobbzbbkqzgtjemayu.supabase.co';
+  [Info] Definition at Line 8 (Level 0): const supabaseAnonKey = 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr';
+  [Info] Definition at Line 9 (Level 0): const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  [Info] Definition at Line 11 (Level 0): const FilePreview = ({ url, label }: { url: string; label: string }) => {
+Level 1 start at Line 11: const FilePreview = ({ url, label }: { url: string; label: string }) => {
+Level 0 reached at Line 11 (opened at Line 11)
+Level 1 start at Line 11: const FilePreview = ({ url, label }: { url: string; label: string }) => {
+Level 0 reached at Line 11 (opened at Line 11)
+Level 1 start at Line 11: const FilePreview = ({ url, label }: { url: string; label: string }) => {
+  Level 1 reached at Line 12 (opened at Line 12)
+  [Info] Definition at Line 14 (Level 1): const isPdf = url.startsWith('data:application/pdf') || url.toLowerCase().includes('.pdf');
+  [Info] Definition at Line 16 (Level 1): const handleDownload = () => {
+  [Info] Definition at Line 18 (Level 3): const link = document.createElement('a');
+  [Info] Definition at Line 26 (Level 3): const printWindow = window.open('', '_blank');
+  Level 1 reached at Line 79 (opened at Line 16)
+  Level 1 reached at Line 84 (opened at Line 84)
+  Level 1 reached at Line 86 (opened at Line 86)
+  Level 1 reached at Line 92 (opened at Line 92)
+  Level 1 reached at Line 104 (opened at Line 100)
+Level 0 reached at Line 108 (opened at Line 11)
+  [Info] Definition at Line 110 (Level 0): const ChipInput = ({
+Level 1 start at Line 110: const ChipInput = ({
+Level 0 reached at Line 115 (opened at Line 110)
+Level 1 start at Line 115: }: {
+Level 0 reached at Line 120 (opened at Line 115)
+Level 1 start at Line 120: }) => {
+  [Info] Definition at Line 121 (Level 1): const [inputValue, setInputValue] = useState('');
+  [Info] Definition at Line 122 (Level 1): const items = value ? value.split(',').map(item => item.trim()).filter(Boolean) : [];
+  [Info] Definition at Line 124 (Level 1): const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  [Info] Definition at Line 127 (Level 3): const cleanVal = inputValue.trim().replace(/,/g, '');
+  [Info] Definition at Line 129 (Level 4): const newItems = [...items, cleanVal];
+  Level 1 reached at Line 134 (opened at Line 124)
+  [Info] Definition at Line 136 (Level 1): const handleBlur = () => {
+  [Info] Definition at Line 137 (Level 2): const cleanVal = inputValue.trim().replace(/,/g, '');
+  [Info] Definition at Line 139 (Level 3): const newItems = [...items, cleanVal];
+  Level 1 reached at Line 143 (opened at Line 136)
+  [Info] Definition at Line 145 (Level 1): const removeItem = (index: number) => {
+  [Info] Definition at Line 146 (Level 2): const newItems = items.filter((_, i) => i !== index);
+  Level 1 reached at Line 148 (opened at Line 145)
+  Level 1 reached at Line 170 (opened at Line 153)
+  Level 1 reached at Line 182 (opened at Line 172)
+Level 0 reached at Line 185 (opened at Line 120)
+  [Info] Definition at Line 187 (Level 0): const API = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/admin`;
+Level 0 reached at Line 187 (opened at Line 187)
+  [Info] Definition at Line 188 (Level 0): const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  [Info] Definition at Line 189 (Level 0): const DAY_MAP: Record<string, string> = {
+Level 1 start at Line 189: const DAY_MAP: Record<string, string> = {
+Level 0 reached at Line 192 (opened at Line 189)
+  [Info] Definition at Line 193 (Level 0): const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+Level 1 start at Line 193: const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+Level 0 reached at Line 193 (opened at Line 193)
+  [Info] Definition at Line 194 (Level 0): const MINS = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
+  [Info] Definition at Line 195 (Level 0): const AMPM = ['AM', 'PM'];
+  [Info] Definition at Line 196 (Level 0): const SLOT_COUNT = 5; // Allocating up to 5 dynamic slots per day
+  [Info] Definition at Line 199 (Level 0): interface Slot { day: string; start: string; end: string; slotNo: number }
+Level 1 start at Line 199: interface Slot { day: string; start: string; end: string; slotNo: number }
+Level 0 reached at Line 199 (opened at Line 199)
+  [Info] Definition at Line 200 (Level 0): interface Trainee {
+Level 1 start at Line 200: interface Trainee {
+Level 0 reached at Line 219 (opened at Line 200)
+  [Info] Definition at Line 220 (Level 0): interface LeaveRequest {
+Level 1 start at Line 220: interface LeaveRequest {
+  Level 1 reached at Line 223 (opened at Line 223)
+Level 0 reached at Line 224 (opened at Line 220)
+  [Info] Definition at Line 225 (Level 0): interface PendingNICTian {
+Level 1 start at Line 225: interface PendingNICTian {
+Level 0 reached at Line 228 (opened at Line 225)
+Level 1 start at Line 231: type TimeField = { h: string; m: string; p: string };
+Level 0 reached at Line 231 (opened at Line 231)
+Level 1 start at Line 232: type SlotRow = { from: TimeField; to: TimeField };
+Level 0 reached at Line 232 (opened at Line 232)
+  [Info] Definition at Line 235 (Level 0): function emptyField(): TimeField { return { h: '--', m: '--', p: '--' }; }
+Level 1 start at Line 235: function emptyField(): TimeField { return { h: '--', m: '--', p: '--' }; }
+  Level 1 reached at Line 235 (opened at Line 235)
+Level 0 reached at Line 235 (opened at Line 235)
+  [Info] Definition at Line 236 (Level 0): function emptyRow(): SlotRow { return { from: emptyField(), to: emptyField() }; }
+Level 1 start at Line 236: function emptyRow(): SlotRow { return { from: emptyField(), to: emptyField() }; }
+  Level 1 reached at Line 236 (opened at Line 236)
+Level 0 reached at Line 236 (opened at Line 236)
+  [Info] Definition at Line 237 (Level 0): function emptyDaySlots(): DaySlots { return Array.from({ length: SLOT_COUNT }, emptyRow); }
+Level 1 start at Line 237: function emptyDaySlots(): DaySlots { return Array.from({ length: SLOT_COUNT }, emptyRow); }
+  Level 1 reached at Line 237 (opened at Line 237)
+Level 0 reached at Line 237 (opened at Line 237)
+  [Info] Definition at Line 239 (Level 0): function parseTime(t: string): TimeField {
+Level 1 start at Line 239: function parseTime(t: string): TimeField {
+  [Info] Definition at Line 241 (Level 1): const [time, p] = t.split(' ');
+  [Info] Definition at Line 242 (Level 1): const [h, m] = time.split(':');
+  Level 1 reached at Line 243 (opened at Line 243)
+Level 0 reached at Line 244 (opened at Line 239)
+  [Info] Definition at Line 246 (Level 0): function fieldToStr(f: TimeField): string {
+Level 1 start at Line 246: function fieldToStr(f: TimeField): string {
+  Level 1 reached at Line 248 (opened at Line 248)
+  Level 1 reached at Line 248 (opened at Line 248)
+  Level 1 reached at Line 248 (opened at Line 248)
+Level 0 reached at Line 249 (opened at Line 246)
+  [Info] Definition at Line 251 (Level 0): function buildInitSlots(slots: Slot[]): Record<string, DaySlots> {
+Level 1 start at Line 251: function buildInitSlots(slots: Slot[]): Record<string, DaySlots> {
+  [Info] Definition at Line 252 (Level 1): const init: Record<string, DaySlots> = {};
+  Level 1 reached at Line 252 (opened at Line 252)
+  Level 1 reached at Line 253 (opened at Line 253)
+  [Info] Definition at Line 255 (Level 2): const fullDay = Object.entries(DAY_MAP).find(([, v]) => v === s.day)?.[0];
+  [Info] Definition at Line 257 (Level 2): const idx = (s.slotNo ?? 1) - 1;
+  Level 1 reached at Line 262 (opened at Line 254)
+Level 0 reached at Line 264 (opened at Line 251)
+  [Info] Definition at Line 266 (Level 0): function parseTimeToMinutes(timeStr: string): number | null {
+Level 1 start at Line 266: function parseTimeToMinutes(timeStr: string): number | null {
+  [Info] Definition at Line 268 (Level 1): const parts = timeStr.trim().split(/\s+/);
+  [Info] Definition at Line 270 (Level 1): const timePart = parts[0];
+  [Info] Definition at Line 271 (Level 1): const ampm = parts[1].toUpperCase();
+  [Info] Definition at Line 272 (Level 1): const timeSplit = timePart.split(':');
+  [Info] Definition at Line 275 (Level 1): const minutes = parseInt(timeSplit[1], 10);
+Level 0 reached at Line 280 (opened at Line 266)
+  [Info] Definition at Line 282 (Level 0): function calculateExtraWork(t: Trainee): string {
+Level 1 start at Line 282: function calculateExtraWork(t: Trainee): string {
+  [Info] Definition at Line 285 (Level 1): const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  [Info] Definition at Line 286 (Level 1): const todayDay = days[new Date().getDay()];
+  [Info] Definition at Line 288 (Level 1): const todaySlots = t.slots.filter(s => s.day.toUpperCase() === todayDay);
+  [Info] Definition at Line 295 (Level 2): const startMin = parseTimeToMinutes(s.start);
+  [Info] Definition at Line 296 (Level 2): const endMin = parseTimeToMinutes(s.end);
+  Level 1 reached at Line 299 (opened at Line 294)
+  [Info] Definition at Line 303 (Level 1): const actualIn = parseTimeToMinutes(t.in);
+  [Info] Definition at Line 304 (Level 1): const actualOut = parseTimeToMinutes(t.out);
+  Level 1 reached at Line 312 (opened at Line 310)
+  Level 1 reached at Line 316 (opened at Line 314)
+  [Info] Definition at Line 320 (Level 1): const hrs = Math.floor(extraMinutes / 60);
+  [Info] Definition at Line 321 (Level 1): const mins = extraMinutes % 60;
+  Level 1 reached at Line 324 (opened at Line 322)
+  Level 1 reached at Line 325 (opened at Line 325)
+Level 0 reached at Line 326 (opened at Line 282)
+  [Info] Definition at Line 328 (Level 0): function convertTo24h(hour: string, min: string, period: string): string {
+Level 1 start at Line 328: function convertTo24h(hour: string, min: string, period: string): string {
+  [Info] Definition at Line 330 (Level 1): const m = min.padStart(2, '0');
+  Level 1 reached at Line 333 (opened at Line 333)
+  Level 1 reached at Line 333 (opened at Line 333)
+Level 0 reached at Line 334 (opened at Line 328)
+  [Info] Definition at Line 336 (Level 0): function calculateDuration12h(outHour: string, outMin: string, outPeriod: string, inHour: string, inMin: string, inPeriod: string): string {
+Level 1 start at Line 336: function calculateDuration12h(outHour: string, outMin: string, outPeriod: string, inHour: string, inMin: string, inPeriod: string): string {
+  [Info] Definition at Line 337 (Level 1): const out24 = convertTo24h(outHour, outMin, outPeriod);
+  [Info] Definition at Line 338 (Level 1): const in24 = convertTo24h(inHour, inMin, inPeriod);
+  [Info] Definition at Line 339 (Level 1): const [hOut, mOut] = out24.split(':').map(Number);
+  [Info] Definition at Line 340 (Level 1): const [hIn, mIn] = in24.split(':').map(Number);
+  [Info] Definition at Line 343 (Level 1): const hrs = Math.floor(diffMin / 60);
+  [Info] Definition at Line 344 (Level 1): const mins = diffMin % 60;
+  Level 1 reached at Line 347 (opened at Line 345)
+  Level 1 reached at Line 348 (opened at Line 348)
+Level 0 reached at Line 349 (opened at Line 336)
+  [Info] Definition at Line 351 (Level 0): function getDurationInHours(outHour: string, outMin: string, outPeriod: string, inHour: string, inMin: string, inPeriod: string): number {
+Level 1 start at Line 351: function getDurationInHours(outHour: string, outMin: string, outPeriod: string, inHour: string, inMin: string, inPeriod: string): number {
+  [Info] Definition at Line 352 (Level 1): const out24 = convertTo24h(outHour, outMin, outPeriod);
+  [Info] Definition at Line 353 (Level 1): const in24 = convertTo24h(inHour, inMin, inPeriod);
+  [Info] Definition at Line 354 (Level 1): const [hOut, mOut] = out24.split(':').map(Number);
+  [Info] Definition at Line 355 (Level 1): const [hIn, mIn] = in24.split(':').map(Number);
+Level 0 reached at Line 359 (opened at Line 351)
+  [Info] Definition at Line 361 (Level 0): function parse12hTime(timeStr: string) {
+Level 1 start at Line 361: function parse12hTime(timeStr: string) {
+  Level 1 reached at Line 362 (opened at Line 362)
+  [Info] Definition at Line 363 (Level 1): const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/i);
+  Level 1 reached at Line 382 (opened at Line 364)
+  Level 1 reached at Line 383 (opened at Line 383)
+Level 0 reached at Line 384 (opened at Line 361)
+  [Info] Definition at Line 386 (Level 0): function parseInDate(inDateStr: string) {
+Level 1 start at Line 386: function parseInDate(inDateStr: string) {
+  [Info] Definition at Line 387 (Level 1): const parts = inDateStr.split('/');
+  [Info] Definition at Line 389 (Level 2): const day = parts[0].padStart(2, '0');
+  [Info] Definition at Line 390 (Level 2): const month = parts[1].padStart(2, '0');
+  [Info] Definition at Line 391 (Level 2): const year = parts[2];
+  Level 1 reached at Line 393 (opened at Line 388)
+Level 0 reached at Line 395 (opened at Line 386)
+  [Info] Definition at Line 398 (Level 0): const Sel = ({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) => (
+Level 1 start at Line 398: const Sel = ({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) => (
+Level 0 reached at Line 398 (opened at Line 398)
+Level 1 start at Line 398: const Sel = ({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) => (
+Level 0 reached at Line 398 (opened at Line 398)
+Level 1 start at Line 399: <select value={value} onChange={(e) => onChange(e.target.value)}
+Level 0 reached at Line 399 (opened at Line 399)
+Level 1 start at Line 399: <select value={value} onChange={(e) => onChange(e.target.value)}
+Level 0 reached at Line 399 (opened at Line 399)
+Level 1 start at Line 402: {options.map((o) => <option key={o} value={o}>{o}</option>)}
+  Level 1 reached at Line 402 (opened at Line 402)
+  Level 1 reached at Line 402 (opened at Line 402)
+  Level 1 reached at Line 402 (opened at Line 402)
+Level 0 reached at Line 402 (opened at Line 402)
+  [Info] Definition at Line 407 (Level 0): const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+Level 1 start at Line 407: const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+Level 0 reached at Line 407 (opened at Line 407)
+Level 1 start at Line 407: const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+Level 0 reached at Line 407 (opened at Line 407)
+Level 1 start at Line 407: const EditUserModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  [Info] Definition at Line 408 (Level 1): const [name, setName] = useState(trainee.name);
+  [Info] Definition at Line 409 (Level 1): const [mobile, setMobile] = useState(trainee.empCode);
+  [Info] Definition at Line 410 (Level 1): const [email, setEmail] = useState(trainee.email || '');
+  [Info] Definition at Line 412 (Level 1): const [leaves, setLeaves] = useState(trainee.leaveBalance || 0);
+  [Info] Definition at Line 414 (Level 1): const handleUpdate = async () => {
+  [Info] Definition at Line 416 (Level 3): const token = localStorage.getItem('token');
+  Level 1 reached at Line 430 (opened at Line 414)
+  Level 1 reached at Line 439 (opened at Line 439)
+  Level 1 reached at Line 439 (opened at Line 439)
+  Level 1 reached at Line 445 (opened at Line 445)
+  Level 1 reached at Line 446 (opened at Line 446)
+  [Info] Definition at Line 448 (Level 3): const numericVal = e.target.value.replace(/\D/g, '').slice(0, 10);
+  Level 1 reached at Line 450 (opened at Line 447)
+  Level 1 reached at Line 453 (opened at Line 453)
+  [Info] Definition at Line 459 (Level 3): const token = localStorage.getItem('token');
+  Level 1 reached at Line 462 (opened at Line 457)
+  Level 1 reached at Line 470 (opened at Line 470)
+  Level 1 reached at Line 471 (opened at Line 471)
+Level 0 reached at Line 476 (opened at Line 407)
+  [Info] Definition at Line 479 (Level 0): const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+Level 1 start at Line 479: const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+Level 0 reached at Line 479 (opened at Line 479)
+Level 1 start at Line 479: const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+Level 0 reached at Line 479 (opened at Line 479)
+Level 1 start at Line 479: const SlotsModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  [Info] Definition at Line 480 (Level 1): const [daySlots, setDaySlots] = useState<Record<string, DaySlots>>(buildInitSlots(trainee.slots));
+  [Info] Definition at Line 481 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 482 (Level 1): const [saved, setSaved] = useState(false);
+  [Info] Definition at Line 483 (Level 1): const [sourceDay, setSourceDay] = useState('Monday');
+  [Info] Definition at Line 484 (Level 1): const [targetDays, setTargetDays] = useState<string[]>([]);
+  [Info] Definition at Line 487 (Level 1): const initialMax = Math.max(3, ...trainee.slots.map(s => s.slotNo || 0));
+  [Info] Definition at Line 488 (Level 1): const [visibleSlots, setVisibleSlots] = useState(Math.min(initialMax, SLOT_COUNT));
+  [Info] Definition at Line 490 (Level 1): const update = (day: string, slotIdx: number, side: 'from' | 'to', field: keyof TimeField, val: string) => {
+  [Info] Definition at Line 492 (Level 3): const copy = JSON.parse(JSON.stringify(prev));
+  Level 1 reached at Line 496 (opened at Line 490)
+  [Info] Definition at Line 498 (Level 1): const clearDaySlots = (day: string) => {
+  [Info] Definition at Line 500 (Level 3): const copy = { ...prev };
+  Level 1 reached at Line 504 (opened at Line 498)
+  [Info] Definition at Line 506 (Level 1): const handleUpdate = async () => {
+  [Info] Definition at Line 508 (Level 2): const slots: any[] = [];
+  [Info] Definition at Line 512 (Level 4): const from = fieldToStr(row.from);
+  [Info] Definition at Line 513 (Level 4): const to = fieldToStr(row.to);
+  Level 1 reached at Line 531 (opened at Line 506)
+  Level 1 reached at Line 537 (opened at Line 537)
+  [Info] Definition at Line 541 (Level 4): const copy = JSON.parse(JSON.stringify(prev));
+  [Info] Definition at Line 542 (Level 4): const mondaySlots = copy['Monday'];
+  Level 1 reached at Line 550 (opened at Line 539)
+  Level 1 reached at Line 556 (opened at Line 556)
+  Level 1 reached at Line 564 (opened at Line 557)
+  Level 1 reached at Line 573 (opened at Line 566)
+  Level 1 reached at Line 586 (opened at Line 580)
+  Level 1 reached at Line 595 (opened at Line 590)
+  Level 1 reached at Line 631 (opened at Line 599)
+  Level 1 reached at Line 636 (opened at Line 636)
+  Level 1 reached at Line 636 (opened at Line 636)
+  Level 1 reached at Line 637 (opened at Line 637)
+  Level 1 reached at Line 638 (opened at Line 638)
+  Level 1 reached at Line 640 (opened at Line 640)
+Level 0 reached at Line 647 (opened at Line 479)
+  [Info] Definition at Line 650 (Level 0): const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+Level 1 start at Line 650: const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+Level 0 reached at Line 650 (opened at Line 650)
+Level 1 start at Line 650: const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+Level 0 reached at Line 650 (opened at Line 650)
+Level 1 start at Line 650: const ResetPasswordModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+  [Info] Definition at Line 651 (Level 1): const [done, setDone] = useState(false);
+  [Info] Definition at Line 652 (Level 1): const [newPassword, setNewPassword] = useState('');
+  [Info] Definition at Line 653 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 655 (Level 1): const handleReset = async (isManual: boolean) => {
+  [Info] Definition at Line 659 (Level 3): const token = localStorage.getItem('token');
+  Level 1 reached at Line 671 (opened at Line 655)
+  Level 1 reached at Line 676 (opened at Line 676)
+  Level 1 reached at Line 676 (opened at Line 676)
+  Level 1 reached at Line 722 (opened at Line 680)
+Level 0 reached at Line 726 (opened at Line 650)
+  [Info] Definition at Line 729 (Level 0): const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+Level 1 start at Line 729: const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+Level 0 reached at Line 729 (opened at Line 729)
+Level 1 start at Line 729: const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+Level 0 reached at Line 729 (opened at Line 729)
+Level 1 start at Line 729: const ManualPunchModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  [Info] Definition at Line 730 (Level 1): const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 731 (Level 1): const [slotNo, setSlotNo] = useState<number | null>(null);
+  [Info] Definition at Line 732 (Level 1): const [inTime, setInTime] = useState('');
+  [Info] Definition at Line 733 (Level 1): const [outTime, setOutTime] = useState('');
+  [Info] Definition at Line 734 (Level 1): const [info, setInfo] = useState('');
+  [Info] Definition at Line 735 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 736 (Level 1): const [existingAttendance, setExistingAttendance] = useState<any>(null);
+  [Info] Definition at Line 739 (Level 2): const fetchExisting = async () => {
+  [Info] Definition at Line 741 (Level 4): const token = localStorage.getItem('token');
+  [Info] Definition at Line 742 (Level 4): const res = await axios.get(`${API}/attendance-manual/${trainee.id}?date=${date}`, {
+  Level 1 reached at Line 751 (opened at Line 738)
+  [Info] Definition at Line 753 (Level 1): const formatTime12 = (isoString: string | Date | null | undefined) => {
+  [Info] Definition at Line 755 (Level 2): const dateObj = new Date(isoString);
+  Level 1 reached at Line 758 (opened at Line 753)
+  [Info] Definition at Line 760 (Level 1): const getRealTimes = () => {
+  [Info] Definition at Line 763 (Level 3): const validRealIns: Date[] = [];
+  [Info] Definition at Line 764 (Level 3): const validRealOuts: Date[] = [];
+  [Info] Definition at Line 766 (Level 4): const ri = existingAttendance[`realInTime${i}`] || existingAttendance[`inTime${i}`];
+  [Info] Definition at Line 767 (Level 4): const ro = existingAttendance[`realOutTime${i}`] || existingAttendance[`outTime${i}`];
+  [Info] Definition at Line 771 (Level 3): const realIn = validRealIns.length > 0 ? new Date(Math.min(...validRealIns.map(d => d.getTime()))) : existingAttendance.inTime;
+  [Info] Definition at Line 772 (Level 3): const realOut = validRealOuts.length > 0 ? new Date(Math.max(...validRealOuts.map(d => d.getTime()))) : existingAttendance.outTime;
+  [Info] Definition at Line 778 (Level 3): const realIn = existingAttendance[`realInTime${slotNo}`] || existingAttendance[`inTime${slotNo}`];
+  [Info] Definition at Line 779 (Level 3): const realOut = existingAttendance[`realOutTime${slotNo}`] || existingAttendance[`outTime${slotNo}`];
+  Level 1 reached at Line 785 (opened at Line 760)
+  [Info] Definition at Line 787 (Level 1): const { realIn, realOut } = getRealTimes();
+  Level 1 reached at Line 787 (opened at Line 787)
+  [Info] Definition at Line 789 (Level 1): const getLocalDay = (dateStr: string) => {
+  [Info] Definition at Line 790 (Level 2): const [y, m, d] = dateStr.split('-').map(Number);
+  Level 1 reached at Line 792 (opened at Line 789)
+  [Info] Definition at Line 794 (Level 1): const to24Hour = (time12: string) => {
+  [Info] Definition at Line 796 (Level 2): const [time, modifier] = time12.split(' ');
+  Level 1 reached at Line 801 (opened at Line 794)
+  [Info] Definition at Line 803 (Level 1): const dayOfWeek = getLocalDay(date);
+  [Info] Definition at Line 804 (Level 1): const currentDaySlots = trainee.slots.filter(s => s.day === dayOfWeek).sort((a, b) => a.slotNo - b.slotNo);
+  [Info] Definition at Line 806 (Level 1): const handleUpdate = async () => {
+  [Info] Definition at Line 809 (Level 3): const token = localStorage.getItem('token');
+  [Info] Definition at Line 810 (Level 3): const payload: any = {
+  Level 1 reached at Line 828 (opened at Line 806)
+  [Info] Definition at Line 830 (Level 1): const handleClearPunchOut = async () => {
+  [Info] Definition at Line 833 (Level 3): const token = localStorage.getItem('token');
+  Level 1 reached at Line 848 (opened at Line 830)
+  Level 1 reached at Line 853 (opened at Line 853)
+  Level 1 reached at Line 853 (opened at Line 853)
+  Level 1 reached at Line 855 (opened at Line 855)
+  Level 1 reached at Line 860 (opened at Line 860)
+  Level 1 reached at Line 862 (opened at Line 862)
+  Level 1 reached at Line 862 (opened at Line 862)
+  Level 1 reached at Line 867 (opened at Line 867)
+  Level 1 reached at Line 870 (opened at Line 870)
+  [Info] Definition at Line 872 (Level 3): const val = e.target.value;
+  [Info] Definition at Line 878 (Level 4): const sNum = Number(val);
+  [Info] Definition at Line 880 (Level 4): const sObj = currentDaySlots.find(s => s.slotNo === sNum) || trainee.slots.find(s => s.slotNo === sNum);
+  Level 1 reached at Line 889 (opened at Line 871)
+  [Info] Definition at Line 893 (Level 3): const num = activeSlot.slotNo;
+  [Info] Definition at Line 894 (Level 3): const isExtra = num > 3;
+  [Info] Definition at Line 895 (Level 3): const label = isExtra ? `🔥 Extra Slot ${num - 3}` : `Slot ${num}`;
+  [Info] Definition at Line 897 (Level 3): const timeStr = ` (${activeSlot.start} - ${activeSlot.end})`;
+  Level 1 reached at Line 901 (opened at Line 892)
+  Level 1 reached at Line 910 (opened at Line 910)
+  Level 1 reached at Line 916 (opened at Line 916)
+  Level 1 reached at Line 916 (opened at Line 916)
+  Level 1 reached at Line 918 (opened at Line 918)
+  Level 1 reached at Line 924 (opened at Line 924)
+  Level 1 reached at Line 930 (opened at Line 930)
+  Level 1 reached at Line 930 (opened at Line 930)
+  Level 1 reached at Line 932 (opened at Line 932)
+  Level 1 reached at Line 941 (opened at Line 941)
+  Level 1 reached at Line 942 (opened at Line 942)
+  Level 1 reached at Line 949 (opened at Line 949)
+  Level 1 reached at Line 949 (opened at Line 949)
+  Level 1 reached at Line 951 (opened at Line 951)
+  Level 1 reached at Line 953 (opened at Line 953)
+  Level 1 reached at Line 953 (opened at Line 953)
+  Level 1 reached at Line 955 (opened at Line 955)
+Level 0 reached at Line 961 (opened at Line 729)
+  [Info] Definition at Line 965 (Level 0): const IndividualDownloadModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+Level 1 start at Line 965: const IndividualDownloadModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+Level 0 reached at Line 965 (opened at Line 965)
+Level 1 start at Line 965: const IndividualDownloadModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+Level 0 reached at Line 965 (opened at Line 965)
+Level 1 start at Line 965: const IndividualDownloadModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+  [Info] Definition at Line 966 (Level 1): const now = new Date();
+  [Info] Definition at Line 967 (Level 1): const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  Level 1 reached at Line 967 (opened at Line 967)
+  Level 1 reached at Line 967 (opened at Line 967)
+  [Info] Definition at Line 968 (Level 1): const [downloading, setDownloading] = useState(false);
+  [Info] Definition at Line 970 (Level 1): const handleDownload = async () => {
+  [Info] Definition at Line 973 (Level 3): const token = localStorage.getItem('token');
+  [Info] Definition at Line 974 (Level 3): const res = await axios.get(`${API}/reports/individual/${trainee.id}?month=${month}`, {
+  [Info] Definition at Line 978 (Level 3): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 979 (Level 3): const link = document.createElement('a');
+  Level 1 reached at Line 991 (opened at Line 970)
+  Level 1 reached at Line 996 (opened at Line 996)
+  Level 1 reached at Line 996 (opened at Line 996)
+  Level 1 reached at Line 998 (opened at Line 998)
+  Level 1 reached at Line 1000 (opened at Line 1000)
+  Level 1 reached at Line 1000 (opened at Line 1000)
+  Level 1 reached at Line 1002 (opened at Line 1002)
+  Level 1 reached at Line 1002 (opened at Line 1002)
+  Level 1 reached at Line 1004 (opened at Line 1004)
+Level 0 reached at Line 1009 (opened at Line 965)
+  [Info] Definition at Line 1012 (Level 0): const MonthlyDownloadModal = ({ onClose }: { onClose: () => void }) => {
+Level 1 start at Line 1012: const MonthlyDownloadModal = ({ onClose }: { onClose: () => void }) => {
+Level 0 reached at Line 1012 (opened at Line 1012)
+Level 1 start at Line 1012: const MonthlyDownloadModal = ({ onClose }: { onClose: () => void }) => {
+Level 0 reached at Line 1012 (opened at Line 1012)
+Level 1 start at Line 1012: const MonthlyDownloadModal = ({ onClose }: { onClose: () => void }) => {
+  [Info] Definition at Line 1013 (Level 1): const now = new Date();
+  [Info] Definition at Line 1014 (Level 1): const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+  Level 1 reached at Line 1014 (opened at Line 1014)
+  Level 1 reached at Line 1014 (opened at Line 1014)
+  [Info] Definition at Line 1015 (Level 1): const [downloading, setDownloading] = useState(false);
+  [Info] Definition at Line 1017 (Level 1): const handleDownload = async () => {
+  [Info] Definition at Line 1020 (Level 3): const token = localStorage.getItem('token');
+  [Info] Definition at Line 1021 (Level 3): const res = await axios.get(`${API}/reports/monthly?month=${month}`, {
+  [Info] Definition at Line 1025 (Level 3): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 1026 (Level 3): const link = document.createElement('a');
+  Level 1 reached at Line 1038 (opened at Line 1017)
+  Level 1 reached at Line 1043 (opened at Line 1043)
+  Level 1 reached at Line 1043 (opened at Line 1043)
+  Level 1 reached at Line 1046 (opened at Line 1046)
+  Level 1 reached at Line 1046 (opened at Line 1046)
+  Level 1 reached at Line 1048 (opened at Line 1048)
+  Level 1 reached at Line 1048 (opened at Line 1048)
+  Level 1 reached at Line 1050 (opened at Line 1050)
+Level 0 reached at Line 1055 (opened at Line 1012)
+  [Info] Definition at Line 1058 (Level 0): const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApprove: () => void }) => {
+Level 1 start at Line 1058: const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApprove: () => void }) => {
+Level 0 reached at Line 1058 (opened at Line 1058)
+Level 1 start at Line 1058: const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApprove: () => void }) => {
+Level 0 reached at Line 1058 (opened at Line 1058)
+Level 1 start at Line 1058: const PendingApprovalsPage = ({ onBack, onApprove }: { onBack: () => void; onApprove: () => void }) => {
+  [Info] Definition at Line 1059 (Level 1): const [pending, setPending] = useState<PendingNICTian[]>([]);
+  Level 1 reached at Line 1061 (opened at Line 1061)
+  [Info] Definition at Line 1063 (Level 1): const fetchPending = async () => {
+  [Info] Definition at Line 1064 (Level 2): const token = localStorage.getItem('token');
+  [Info] Definition at Line 1065 (Level 2): const res = await axios.get(`${API}/pending`, { headers: { Authorization: `Bearer ${token}` } });
+  Level 1 reached at Line 1067 (opened at Line 1063)
+  [Info] Definition at Line 1069 (Level 1): const handleApprove = async (id: number) => {
+  [Info] Definition at Line 1070 (Level 2): const token = localStorage.getItem('token');
+  Level 1 reached at Line 1074 (opened at Line 1069)
+  Level 1 reached at Line 1079 (opened at Line 1079)
+  Level 1 reached at Line 1079 (opened at Line 1079)
+  Level 1 reached at Line 1111 (opened at Line 1094)
+Level 0 reached at Line 1117 (opened at Line 1058)
+  [Info] Definition at Line 1120 (Level 0): const sharedPayslipStyles = `
+  [Info] Definition at Line 1459 (Level 0): const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (num: number) => string) => {
+Level 1 start at Line 1459: const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (num: number) => string) => {
+  [Info] Definition at Line 1460 (Level 1): const grossEarnings = t.grossEarnings || 0;
+  [Info] Definition at Line 1461 (Level 1): const grossDeductions = t.totalDeductions || t.totalDeduction || 0;
+  [Info] Definition at Line 1462 (Level 1): const netTakeHome = t.netTakeHome || 0;
+  [Info] Definition at Line 1464 (Level 1): const [y, m] = month.split('-');
+  [Info] Definition at Line 1465 (Level 1): const monthName = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
+  Level 1 reached at Line 1465 (opened at Line 1465)
+  [Info] Definition at Line 1468 (Level 1): const hasStoredSlip = t.basicSalary !== undefined;
+  Level 1 reached at Line 1485 (opened at Line 1485)
+  Level 1 reached at Line 1486 (opened at Line 1486)
+  Level 1 reached at Line 1491 (opened at Line 1491)
+  Level 1 reached at Line 1497 (opened at Line 1497)
+  Level 1 reached at Line 1501 (opened at Line 1501)
+  Level 1 reached at Line 1638 (opened at Line 1513)
+  Level 1 reached at Line 1643 (opened at Line 1643)
+  Level 1 reached at Line 1645 (opened at Line 1645)
+  Level 1 reached at Line 1651 (opened at Line 1651)
+  Level 1 reached at Line 1657 (opened at Line 1657)
+  Level 1 reached at Line 1673 (opened at Line 1673)
+  Level 1 reached at Line 1674 (opened at Line 1674)
+  Level 1 reached at Line 1675 (opened at Line 1675)
+  Level 1 reached at Line 1676 (opened at Line 1676)
+Level 0 reached at Line 1688 (opened at Line 1459)
+  [Info] Definition at Line 1691 (Level 0): const handlePrintPayslip = (t: any, month: string) => {
+Level 1 start at Line 1691: const handlePrintPayslip = (t: any, month: string) => {
+  [Info] Definition at Line 1693 (Level 1): const inWords = (num: number): string => {
+  [Info] Definition at Line 1694 (Level 2): const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+  [Info] Definition at Line 1695 (Level 2): const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  [Info] Definition at Line 1699 (Level 2): const g = (n: number): string => {
+  [Info] Definition at Line 1701 (Level 3): const digit = n % 10;
+  [Info] Definition at Line 1705 (Level 2): const convert = (n: number): string => {
+  [Info] Definition at Line 1730 (Level 2): const res = convert(num).trim();
+  Level 1 reached at Line 1732 (opened at Line 1693)
+  [Info] Definition at Line 1734 (Level 1): const printWindow = window.open('', '_blank');
+  Level 1 reached at Line 1738 (opened at Line 1735)
+  Level 1 reached at Line 1743 (opened at Line 1743)
+  Level 1 reached at Line 1743 (opened at Line 1743)
+  Level 1 reached at Line 1744 (opened at Line 1744)
+  Level 1 reached at Line 1750 (opened at Line 1750)
+Level 0 reached at Line 1760 (opened at Line 1691)
+  [Info] Definition at Line 1762 (Level 0): const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
+Level 1 start at Line 1762: const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
+Level 0 reached at Line 1762 (opened at Line 1762)
+Level 1 start at Line 1762: const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
+Level 0 reached at Line 1762 (opened at Line 1762)
+Level 1 start at Line 1762: const OnScreenPayslipCard = ({ data, month }: { data: any; month: string }) => {
+  [Info] Definition at Line 1763 (Level 1): const grossEarnings = data.storedSlip
+  [Info] Definition at Line 1767 (Level 1): const grossDeductions = data.storedSlip
+  [Info] Definition at Line 1771 (Level 1): const netTakeHome = data.storedSlip
+  [Info] Definition at Line 1775 (Level 1): const [y, m] = month.split('-');
+  [Info] Definition at Line 1776 (Level 1): const monthName = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
+  Level 1 reached at Line 1776 (opened at Line 1776)
+  [Info] Definition at Line 1778 (Level 1): const hasStoredSlip = data.storedSlip !== undefined && data.storedSlip !== null;
+  [Info] Definition at Line 1779 (Level 1): const t = hasStoredSlip ? data.storedSlip : data.salaryData;
+  [Info] Definition at Line 1781 (Level 1): const inWords = (num: number): string => {
+  [Info] Definition at Line 1782 (Level 2): const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+  [Info] Definition at Line 1783 (Level 2): const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  [Info] Definition at Line 1787 (Level 2): const g = (n: number): string => {
+  [Info] Definition at Line 1789 (Level 3): const digit = n % 10;
+  [Info] Definition at Line 1793 (Level 2): const convert = (n: number): string => {
+  [Info] Definition at Line 1818 (Level 2): const res = convert(num).trim();
+  Level 1 reached at Line 1820 (opened at Line 1781)
+  Level 1 reached at Line 1824 (opened at Line 1824)
+  Level 1 reached at Line 1829 (opened at Line 1829)
+  Level 1 reached at Line 1837 (opened at Line 1837)
+  Level 1 reached at Line 1842 (opened at Line 1842)
+  Level 1 reached at Line 1848 (opened at Line 1848)
+  Level 1 reached at Line 1851 (opened at Line 1851)
+  Level 1 reached at Line 1855 (opened at Line 1855)
+  Level 1 reached at Line 1861 (opened at Line 1861)
+  Level 1 reached at Line 1865 (opened at Line 1865)
+  Level 1 reached at Line 1871 (opened at Line 1871)
+  Level 1 reached at Line 1877 (opened at Line 1877)
+  Level 1 reached at Line 1881 (opened at Line 1881)
+  Level 1 reached at Line 1886 (opened at Line 1886)
+  Level 1 reached at Line 1887 (opened at Line 1887)
+  Level 1 reached at Line 2020 (opened at Line 1891)
+  Level 1 reached at Line 2022 (opened at Line 2022)
+  Level 1 reached at Line 2025 (opened at Line 2025)
+  Level 1 reached at Line 2026 (opened at Line 2026)
+  Level 1 reached at Line 2027 (opened at Line 2027)
+  Level 1 reached at Line 2030 (opened at Line 2030)
+  Level 1 reached at Line 2032 (opened at Line 2032)
+  Level 1 reached at Line 2033 (opened at Line 2033)
+  Level 1 reached at Line 2033 (opened at Line 2033)
+  Level 1 reached at Line 2039 (opened at Line 2039)
+  Level 1 reached at Line 2041 (opened at Line 2041)
+  Level 1 reached at Line 2044 (opened at Line 2044)
+  Level 1 reached at Line 2049 (opened at Line 2049)
+  [Info] Definition at Line 2087 (Level 1): interface AdminDashboardProps {
+  [Info] Definition at Line 2090 (Level 1): const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
+  [Info] Definition at Line 2091 (Level 1): const [trainees, setTrainees] = useState<Trainee[]>([]);
+  [Info] Definition at Line 2092 (Level 1): const [myPermissions, setMyPermissions] = useState<string[]>([]);
+  [Info] Definition at Line 2095 (Level 1): const userData = localStorage.getItem('user');
+  [Info] Definition at Line 2098 (Level 1): const parsed = JSON.parse(userData);
+  [Info] Definition at Line 2107 (Level 1): const syncPermissions = async () => {
+  [Info] Definition at Line 2109 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 2111 (Level 1): const authApi = API.replace('/admin', '/auth');
+  [Info] Definition at Line 2112 (Level 1): const res = await axios.get(`${authApi}/profile`, {
+  [Info] Definition at Line 2116 (Level 1): const latestPerms = res.data.user.permissions.split(',');
+  [Info] Definition at Line 2119 (Level 1): const localUser = localStorage.getItem('user');
+  [Info] Definition at Line 2121 (Level 1): const parsed = JSON.parse(localUser);
+  [Info] Definition at Line 2133 (Level 1): const hasPermission = (perm: string) => {
+  [Info] Definition at Line 2137 (Level 1): const [pendingCount, setPendingCount] = useState(0);
+  [Info] Definition at Line 2138 (Level 1): const [qrToken, setQrToken] = useState('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
+  [Info] Definition at Line 2139 (Level 1): const [search, setSearch] = useState('');
+  [Info] Definition at Line 2142 (Level 1): const [view, setView] = useState<'main' | 'pending'>('main');
+  [Info] Definition at Line 2145 (Level 1): const [editUser, setEditUser] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2146 (Level 1): const [slotsUser, setSlotsUser] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2147 (Level 1): const [resetUser, setResetUser] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2148 (Level 1): const [manualPunchUser, setManualPunchUser] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2149 (Level 1): const [deleteUser, setDeleteUser] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2150 (Level 1): const [showLeaves, setShowLeaves] = useState(false);
+  [Info] Definition at Line 2151 (Level 1): const [showDownload, setShowDownload] = useState(false);
+  [Info] Definition at Line 2152 (Level 1): const [individualReport, setIndividualReport] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2153 (Level 1): const [showSettings, setShowSettings] = useState(false);
+  [Info] Definition at Line 2154 (Level 1): const [directLeaveUser, setDirectLeaveUser] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2155 (Level 1): const [viewDetailUser, setViewDetailUser] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2156 (Level 1): const [showDailyReport, setShowDailyReport] = useState(false);
+  [Info] Definition at Line 2157 (Level 1): const [showHolidays, setShowHolidays] = useState(false);
+  [Info] Definition at Line 2158 (Level 1): const [showNotices, setShowNotices] = useState(false);
+  [Info] Definition at Line 2159 (Level 1): const [showDropdownOptions, setShowDropdownOptions] = useState(false);
+  [Info] Definition at Line 2160 (Level 1): const [viewOnboardingUser, setViewOnboardingUser] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2161 (Level 1): const [disableUser, setDisableUser] = useState<Trainee | null>(null);
+  [Info] Definition at Line 2162 (Level 1): const [showMemos, setShowMemos] = useState(false);
+  [Info] Definition at Line 2163 (Level 1): const [showBreaks, setShowBreaks] = useState(false);
+  [Info] Definition at Line 2164 (Level 1): const [showCollegeVisits, setShowCollegeVisits] = useState(false);
+  [Info] Definition at Line 2165 (Level 1): const [showExtraClasses, setShowExtraClasses] = useState(false);
+  [Info] Definition at Line 2166 (Level 1): const [showOtherCenterClasses, setShowOtherCenterClasses] = useState(false);
+  [Info] Definition at Line 2167 (Level 1): const [showCancelledClasses, setShowCancelledClasses] = useState(false);
+  [Info] Definition at Line 2168 (Level 1): const [showLeftNICTians, setShowLeftNICTians] = useState(false);
+  [Info] Definition at Line 2169 (Level 1): const [showSalarySlips, setShowSalarySlips] = useState(false);
+  [Info] Definition at Line 2170 (Level 1): const [showMyPayslips, setShowMyPayslips] = useState(false);
+  [Info] Definition at Line 2172 (Level 1): const regenerateQr = () => {
+  [Info] Definition at Line 2181 (Level 1): const fetchTrainees = async () => {
+  [Info] Definition at Line 2183 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 2184 (Level 1): const res = await axios.get(`${API}/attendance?search=${search}`, { headers: { Authorization: `Bearer ${token}` } });
+  [Info] Definition at Line 2190 (Level 1): const timer = setTimeout(() => fetchTrainees(), 300);
+  [Info] Definition at Line 2194 (Level 1): const fetchPendingCount = async () => {
+  [Info] Definition at Line 2196 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 2197 (Level 1): const res = await axios.get(`${API}/pending`, { headers: { Authorization: `Bearer ${token}` } });
+  [Info] Definition at Line 2393 (Level 1): const order = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+  [Info] Definition at Line 2403 (Level 1): const isExtra = s.slotNo > 3;
+  [Info] Definition at Line 2441 (Level 1): const now = new Date();
+  [Info] Definition at Line 2442 (Level 1): const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  [Info] Definition at Line 2444 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 2445 (Level 1): const res = await axios.get(`${API}/reports/payslip/single/${t.id}?month=${currentMonth}`, {
+  [Info] Definition at Line 2471 (Level 1): const actionText = t.hasLeft ? 'Reactivate User' : 'Mark as Left Institute';
+  [Info] Definition at Line 2474 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 2484 (opened at Line 2484)
+  [Info] Definition at Line 2493 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 2494 (opened at Line 2494)
+  Level 1 reached at Line 2494 (opened at Line 2494)
+  Level 1 reached at Line 2494 (opened at Line 2494)
+  [Info] Definition at Line 2571 (Level 1): const ViewSlotsDetailModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+  [Info] Definition at Line 2633 (Level 1): const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onClose: () => void; onSave: () => void }) => {
+  [Info] Definition at Line 2634 (Level 1): const [appliedDate, setAppliedDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 2635 (Level 1): const [startDate, setStartDate] = useState('');
+  [Info] Definition at Line 2636 (Level 1): const [endDate, setEndDate] = useState('');
+  [Info] Definition at Line 2637 (Level 1): const [reason, setReason] = useState('');
+  [Info] Definition at Line 2638 (Level 1): const [remarksAlternative, setRemarksAlternative] = useState('');
+  [Info] Definition at Line 2639 (Level 1): const [remarksOfficeUse, setRemarksOfficeUse] = useState('');
+  [Info] Definition at Line 2640 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 2642 (Level 1): const handleSave = async () => {
+  [Info] Definition at Line 2646 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 2647 (opened at Line 2647)
+  Level 1 reached at Line 2649 (opened at Line 2649)
+  [Info] Definition at Line 2658 (Level 1): const getWeekdayName = (dateStr: string) => {
+  [Info] Definition at Line 2660 (Level 1): const [y, m, d] = dateStr.split('-').map(Number);
+  [Info] Definition at Line 2661 (Level 1): const dateObj = new Date(y, m - 1, d);
+  [Info] Definition at Line 2666 (Level 1): const getDaysCount = () => {
+  [Info] Definition at Line 2668 (Level 1): const start = new Date(startDate);
+  [Info] Definition at Line 2669 (Level 1): const end = new Date(endDate);
+  [Info] Definition at Line 2676 (Level 1): const scheduledDays = new Set((trainee.slots || []).map(s => s.day.toUpperCase()));
+  [Info] Definition at Line 2677 (Level 1): const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  [Info] Definition at Line 2681 (Level 1): const curDay = dMap[d.getDay()];
+  Level 1 reached at Line 2687 (opened at Line 2687)
+  Level 1 reached at Line 2687 (opened at Line 2687)
+  [Info] Definition at Line 2756 (Level 1): const DailyReportModal = ({ onClose }: { onClose: () => void }) => {
+  [Info] Definition at Line 2757 (Level 1): const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 2758 (Level 1): const [filter, setFilter] = useState('ALL');
+  [Info] Definition at Line 2759 (Level 1): const [data, setData] = useState<any[]>([]);
+  [Info] Definition at Line 2760 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 2766 (Level 1): const fetchDailyReport = async () => {
+  [Info] Definition at Line 2769 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 2770 (Level 1): const res = await axios.get(`${API}/attendance/daily?date=${date}&statusFilter=${filter}`, {
+  Level 1 reached at Line 2770 (opened at Line 2770)
+  Level 1 reached at Line 2770 (opened at Line 2770)
+  Level 1 reached at Line 2770 (opened at Line 2770)
+  Level 1 reached at Line 2771 (opened at Line 2771)
+  [Info] Definition at Line 2778 (Level 1): const getLocalDayAndDate = (dateStr: string) => {
+  [Info] Definition at Line 2780 (Level 1): const [y, m, d] = dateStr.split('-').map(Number);
+  [Info] Definition at Line 2781 (Level 1): const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date(y, m - 1, d).getDay()];
+  Level 1 reached at Line 2782 (opened at Line 2782)
+  Level 1 reached at Line 2782 (opened at Line 2782)
+  [Info] Definition at Line 2881 (Level 1): const DeleteConfirmModal = ({ trainee, onClose, onDeleted }: { trainee: Trainee; onClose: () => void; onDeleted: () => void }) => {
+  [Info] Definition at Line 2882 (Level 1): const handleDelete = async () => {
+  Level 1 reached at Line 2884 (opened at Line 2884)
+  Level 1 reached at Line 2884 (opened at Line 2884)
+  Level 1 reached at Line 2885 (opened at Line 2885)
+  [Info] Definition at Line 2911 (Level 1): const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: () => void; onProcessed: () => void; canManage: boolean }) => {
+  [Info] Definition at Line 2912 (Level 1): const [requests, setRequests] = useState<any[]>([]);
+  [Info] Definition at Line 2913 (Level 1): const [loading, setLoading] = useState(true);
+  [Info] Definition at Line 2914 (Level 1): const [editedEndDates, setEditedEndDates] = useState<Record<number, string>>({});
+  [Info] Definition at Line 2915 (Level 1): const [adminReasons, setAdminReasons] = useState<Record<number, string>>({});
+  [Info] Definition at Line 2916 (Level 1): const [search, setSearch] = useState('');
+  [Info] Definition at Line 2920 (Level 1): const fetchRequests = async () => {
+  [Info] Definition at Line 2921 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 2922 (Level 1): const res = await axios.get(`${API}/leaves/requests`, { headers: { Authorization: `Bearer ${token}` } });
+  Level 1 reached at Line 2922 (opened at Line 2922)
+  Level 1 reached at Line 2922 (opened at Line 2922)
+  [Info] Definition at Line 2927 (Level 1): const handleProcess = async (id: number, status: 'APPROVED' | 'REJECTED') => {
+  [Info] Definition at Line 2929 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 2930 (Level 1): const payload: any = { requestId: id, status };
+  Level 1 reached at Line 2937 (opened at Line 2937)
+  Level 1 reached at Line 2937 (opened at Line 2937)
+  [Info] Definition at Line 2945 (Level 1): const handleDeleteLeave = async (id: number) => {
+  [Info] Definition at Line 2948 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 2949 (opened at Line 2949)
+  Level 1 reached at Line 2949 (opened at Line 2949)
+  Level 1 reached at Line 2949 (opened at Line 2949)
+  [Info] Definition at Line 2958 (Level 1): const filteredRequests = requests.filter((r) => {
+  [Info] Definition at Line 2959 (Level 1): const term = search.toLowerCase().trim();
+  [Info] Definition at Line 2961 (Level 1): const nameMatch = r.user?.fullName?.toLowerCase().includes(term);
+  [Info] Definition at Line 2962 (Level 1): const identifierMatch = r.user?.identifier?.toLowerCase().includes(term);
+  [Info] Definition at Line 2963 (Level 1): const departmentMatch = r.user?.department?.toLowerCase().includes(term);
+  [Info] Definition at Line 2964 (Level 1): const reasonMatch = r.reason?.toLowerCase().includes(term);
+  [Info] Definition at Line 2965 (Level 1): const statusMatch = r.status?.toLowerCase().includes(term);
+  [Info] Definition at Line 3008 (Level 1): const currentEndDateStr = editedEndDates[r.id] || r.endDate.split('T')[0];
+  [Info] Definition at Line 3009 (Level 1): const currentEndDate = new Date(currentEndDateStr);
+  [Info] Definition at Line 3010 (Level 1): const startDate = new Date(r.startDate);
+  [Info] Definition at Line 3011 (Level 1): const dynamicDays = Math.ceil((currentEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  Level 1 reached at Line 3043 (opened at Line 3043)
+  Level 1 reached at Line 3058 (opened at Line 3055)
+  [Info] Definition at Line 3106 (Level 1): const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role: string; canManage: boolean }) => {
+  [Info] Definition at Line 3107 (Level 1): const [branches, setBranches] = useState<any[]>([]);
+  [Info] Definition at Line 3108 (Level 1): const [loading, setLoading] = useState(true);
+  [Info] Definition at Line 3109 (Level 1): const [newBranch, setNewBranch] = useState({ name: '', branchCode: '', lat: '', lng: '', radius: '100' });
+  [Info] Definition at Line 3110 (Level 1): const [passwords, setPasswords] = useState({ current: '', new: '' });
+  [Info] Definition at Line 3111 (Level 1): const [activeTab, setActiveTab] = useState<'gps' | 'password' | 'supervisors'>('gps');
+  [Info] Definition at Line 3112 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 3113 (Level 1): const [assigningKiosk, setAssigningKiosk] = useState<number | null>(null);
+  [Info] Definition at Line 3116 (Level 1): const [supervisors, setSupervisors] = useState<any[]>([]);
+  [Info] Definition at Line 3117 (Level 1): const [supForm, setSupForm] = useState({ fullName: '', mobile: '', password: '', email: '' });
+  [Info] Definition at Line 3118 (Level 1): const [selectedPerms, setSelectedPerms] = useState<string[]>(["RESET_PASSWORD", "DIRECT_LEAVE", "DOWNLOAD_REPORT"]);
+  [Info] Definition at Line 3119 (Level 1): const [editSupervisorId, setEditSupervisorId] = useState<number | null>(null);
+  [Info] Definition at Line 3120 (Level 1): const [allTrainees, setAllTrainees] = useState<any[]>([]);
+  [Info] Definition at Line 3121 (Level 1): const [selectedTraineeIds, setSelectedTraineeIds] = useState<number[]>([]);
+  [Info] Definition at Line 3122 (Level 1): const [traineeSearch, setTraineeSearch] = useState('');
+  [Info] Definition at Line 3123 (Level 1): const [shownPasswords, setShownPasswords] = useState<Record<number, boolean>>({});
+  [Info] Definition at Line 3124 (Level 1): const [showFormPassword, setShowFormPassword] = useState(false);
+  [Info] Definition at Line 3126 (Level 1): const resetSupForm = () => {
+  [Info] Definition at Line 3134 (Level 1): const togglePerm = (perm: string) => {
+  [Info] Definition at Line 3156 (Level 1): const fetchAllTrainees = async () => {
+  [Info] Definition at Line 3158 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 3159 (Level 1): const res = await axios.get(`${API}/attendance`, { headers: { Authorization: `Bearer ${token}` } });
+  Level 1 reached at Line 3159 (opened at Line 3159)
+  Level 1 reached at Line 3159 (opened at Line 3159)
+  [Info] Definition at Line 3164 (Level 1): const fetchSupervisors = async () => {
+  [Info] Definition at Line 3166 (Level 1): const res = await axios.get(`${API}/supervisors`, {
+  Level 1 reached at Line 3166 (opened at Line 3166)
+  Level 1 reached at Line 3167 (opened at Line 3167)
+  [Info] Definition at Line 3173 (Level 1): const handleSupervisorSubmit = async (e: React.FormEvent) => {
+  [Info] Definition at Line 3179 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 3181 (opened at Line 3181)
+  Level 1 reached at Line 3181 (opened at Line 3181)
+  Level 1 reached at Line 3182 (opened at Line 3182)
+  Level 1 reached at Line 3186 (opened at Line 3186)
+  Level 1 reached at Line 3187 (opened at Line 3187)
+  [Info] Definition at Line 3198 (Level 1): const deleteSupervisor = async (id: number) => {
+  Level 1 reached at Line 3201 (opened at Line 3201)
+  Level 1 reached at Line 3201 (opened at Line 3201)
+  Level 1 reached at Line 3202 (opened at Line 3202)
+  [Info] Definition at Line 3208 (Level 1): const fetchBranches = async () => {
+  [Info] Definition at Line 3211 (Level 1): const res = await axios.get(`${API}/branches`, {
+  Level 1 reached at Line 3211 (opened at Line 3211)
+  Level 1 reached at Line 3212 (opened at Line 3212)
+  [Info] Definition at Line 3219 (Level 1): const addBranch = async () => {
+  Level 1 reached at Line 3223 (opened at Line 3223)
+  Level 1 reached at Line 3224 (opened at Line 3224)
+  [Info] Definition at Line 3233 (Level 1): const deleteBranch = async (id: number) => {
+  Level 1 reached at Line 3236 (opened at Line 3236)
+  Level 1 reached at Line 3236 (opened at Line 3236)
+  Level 1 reached at Line 3237 (opened at Line 3237)
+  [Info] Definition at Line 3245 (Level 1): const assignCurrentAsKiosk = async (branchId: number) => {
+  [Info] Definition at Line 3253 (Level 1): const res = await axios.post(`${API}/branches/${branchId}/kiosk`, { deviceId }, {
+  Level 1 reached at Line 3253 (opened at Line 3253)
+  Level 1 reached at Line 3253 (opened at Line 3253)
+  Level 1 reached at Line 3254 (opened at Line 3254)
+  [Info] Definition at Line 3266 (Level 1): const removeKiosk = async (branchId: number) => {
+  Level 1 reached at Line 3270 (opened at Line 3270)
+  Level 1 reached at Line 3270 (opened at Line 3270)
+  Level 1 reached at Line 3271 (opened at Line 3271)
+  [Info] Definition at Line 3284 (Level 1): const loadBranchToEdit = (b: any) => {
+  [Info] Definition at Line 3290 (Level 1): const changePassword = async () => {
+  Level 1 reached at Line 3293 (opened at Line 3293)
+  Level 1 reached at Line 3294 (opened at Line 3294)
+  Level 1 reached at Line 3309 (opened at Line 3309)
+  Level 1 reached at Line 3311 (opened at Line 3311)
+  Level 1 reached at Line 3313 (opened at Line 3313)
+  Level 1 reached at Line 3330 (opened at Line 3330)
+  Level 1 reached at Line 3364 (opened at Line 3360)
+  Level 1 reached at Line 3523 (opened at Line 3523)
+  Level 1 reached at Line 3524 (opened at Line 3524)
+  [Info] Definition at Line 3605 (Level 1): const isChecked = selectedTraineeIds.includes(t.id);
+  Level 1 reached at Line 3680 (opened at Line 3680)
+  [Info] Definition at Line 3705 (Level 1): const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; canManage: boolean }) => {
+  [Info] Definition at Line 3706 (Level 1): const [holidays, setHolidays] = useState<any[]>([]);
+  [Info] Definition at Line 3707 (Level 1): const [quota, setQuota] = useState(0);
+  [Info] Definition at Line 3708 (Level 1): const [lateRate, setLateRate] = useState(30);
+  [Info] Definition at Line 3709 (Level 1): const [earlyRate, setEarlyRate] = useState(30);
+  [Info] Definition at Line 3710 (Level 1): const [absentRate, setAbsentRate] = useState(0);
+  [Info] Definition at Line 3711 (Level 1): const [newDate, setNewDate] = useState('');
+  [Info] Definition at Line 3712 (Level 1): const [newName, setNewName] = useState('');
+  [Info] Definition at Line 3713 (Level 1): const [loading, setLoading] = useState(true);
+  [Info] Definition at Line 3714 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 3720 (Level 1): const fetchData = async () => {
+  [Info] Definition at Line 3722 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 3723 (Level 1): const [hRes, sRes] = await Promise.all([
+  Level 1 reached at Line 3724 (opened at Line 3724)
+  Level 1 reached at Line 3724 (opened at Line 3724)
+  Level 1 reached at Line 3725 (opened at Line 3725)
+  Level 1 reached at Line 3725 (opened at Line 3725)
+  [Info] Definition at Line 3739 (Level 1): const handleAddHoliday = async () => {
+  [Info] Definition at Line 3743 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 3744 (opened at Line 3744)
+  Level 1 reached at Line 3744 (opened at Line 3744)
+  [Info] Definition at Line 3755 (Level 1): const handleDeleteHoliday = async (id: number) => {
+  [Info] Definition at Line 3758 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 3759 (opened at Line 3759)
+  Level 1 reached at Line 3759 (opened at Line 3759)
+  Level 1 reached at Line 3759 (opened at Line 3759)
+  [Info] Definition at Line 3766 (Level 1): const handleUpdateSettings = async () => {
+  [Info] Definition at Line 3768 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 3769 (opened at Line 3769)
+  Level 1 reached at Line 3774 (opened at Line 3774)
+  [Info] Definition at Line 3875 (Level 1): const d = new Date(h.date);
+  [Info] Definition at Line 3902 (Level 1): const ViewOnboardingProfileModal = ({ trainee, onClose }: { trainee: Trainee; onClose: () => void }) => {
+  [Info] Definition at Line 3903 (Level 1): const [profile, setProfile] = useState<any>(null);
+  [Info] Definition at Line 3904 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 3905 (Level 1): const [isEditing, setIsEditing] = useState(false);
+  [Info] Definition at Line 3906 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 3907 (Level 1): const [uploadingField, setUploadingField] = useState<string | null>(null);
+  [Info] Definition at Line 3909 (Level 1): const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'photoUrl' | 'aadhaarPhotoUrl' | 'panPhotoUrl') => {
+  [Info] Definition at Line 3910 (Level 1): const file = e.target.files?.[0];
+  [Info] Definition at Line 3920 (Level 1): const fileExt = file.name.split('.').pop();
+  [Info] Definition at Line 3921 (Level 1): const fileName = `${profile?.id || 'user'}_${fieldName}_${Date.now()}.${fileExt}`;
+  Level 1 reached at Line 3921 (opened at Line 3921)
+  Level 1 reached at Line 3921 (opened at Line 3921)
+  Level 1 reached at Line 3921 (opened at Line 3921)
+  Level 1 reached at Line 3921 (opened at Line 3921)
+  [Info] Definition at Line 3922 (Level 1): const filePath = `documents/${fileName}`;
+  Level 1 reached at Line 3922 (opened at Line 3922)
+  [Info] Definition at Line 3924 (Level 1): const { data, error } = await supabase.storage
+  [Info] Definition at Line 3933 (Level 1): const { data: { publicUrl } } = supabase.storage
+  [Info] Definition at Line 3937 (Level 1): const updatedProfile = {
+  [Info] Definition at Line 3943 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 3944 (opened at Line 3944)
+  Level 1 reached at Line 3944 (opened at Line 3944)
+  Level 1 reached at Line 3947 (opened at Line 3947)
+  Level 1 reached at Line 3952 (opened at Line 3952)
+  [Info] Definition at Line 3958 (Level 1): const educationOptions = ['Undergraduate', 'Postgraduate', 'Diploma', 'Doctorate'];
+  [Info] Definition at Line 3959 (Level 1): const classificationOptions = ['Full-time', 'Part-time', 'Contract', 'Temporary'];
+  [Info] Definition at Line 3961 (Level 1): const fetchProfile = async () => {
+  [Info] Definition at Line 3964 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 3965 (Level 1): const res = await axios.get(`${API}/user/${trainee.id}`, {
+  Level 1 reached at Line 3965 (opened at Line 3965)
+  Level 1 reached at Line 3965 (opened at Line 3965)
+  Level 1 reached at Line 3966 (opened at Line 3966)
+  [Info] Definition at Line 3976 (Level 1): const handleFieldChange = async (field: 'educationCompleted' | 'subClassification', value: string) => {
+  [Info] Definition at Line 3978 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 3981 (opened at Line 3981)
+  Level 1 reached at Line 3981 (opened at Line 3981)
+  Level 1 reached at Line 3984 (opened at Line 3984)
+  [Info] Definition at Line 3992 (Level 1): const handleSaveAll = async () => {
+  [Info] Definition at Line 3995 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 3996 (opened at Line 3996)
+  Level 1 reached at Line 3996 (opened at Line 3996)
+  Level 1 reached at Line 4019 (opened at Line 4019)
+  [Info] Definition at Line 4344 (Level 1): const DropdownOptionsModal = ({ onClose }: { onClose: () => void }) => {
+  [Info] Definition at Line 4345 (Level 1): const [options, setOptions] = useState<any[]>([]);
+  [Info] Definition at Line 4346 (Level 1): const [type, setType] = useState<'EDUCATION' | 'CLASSIFICATION'>('EDUCATION');
+  [Info] Definition at Line 4347 (Level 1): const [value, setValue] = useState('');
+  [Info] Definition at Line 4348 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 4350 (Level 1): const fetchOptions = async () => {
+  [Info] Definition at Line 4353 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 4354 (Level 1): const res = await axios.get(`${API}/options`, { headers: { Authorization: `Bearer ${token}` } });
+  Level 1 reached at Line 4354 (opened at Line 4354)
+  Level 1 reached at Line 4354 (opened at Line 4354)
+  [Info] Definition at Line 4367 (Level 1): const handleAddOption = async (e: React.FormEvent) => {
+  [Info] Definition at Line 4371 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 4372 (opened at Line 4372)
+  Level 1 reached at Line 4372 (opened at Line 4372)
+  [Info] Definition at Line 4380 (Level 1): const handleDeleteOption = async (id: number) => {
+  [Info] Definition at Line 4383 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 4384 (opened at Line 4384)
+  Level 1 reached at Line 4384 (opened at Line 4384)
+  Level 1 reached at Line 4384 (opened at Line 4384)
+  [Info] Definition at Line 4391 (Level 1): const educations = options.filter(o => o.type === 'EDUCATION');
+  [Info] Definition at Line 4392 (Level 1): const classifications = options.filter(o => o.type === 'CLASSIFICATION');
+  [Info] Definition at Line 4469 (Level 1): const NoticesModal = ({ onClose, canManage }: { onClose: () => void; canManage: boolean }) => {
+  [Info] Definition at Line 4470 (Level 1): const [notices, setNotices] = useState<any[]>([]);
+  [Info] Definition at Line 4471 (Level 1): const [trainees, setTrainees] = useState<Trainee[]>([]);
+  [Info] Definition at Line 4472 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 4474 (Level 1): const [message, setMessage] = useState('');
+  [Info] Definition at Line 4475 (Level 1): const [fromDate, setFromDate] = useState('');
+  [Info] Definition at Line 4476 (Level 1): const [toDate, setToDate] = useState('');
+  [Info] Definition at Line 4477 (Level 1): const [userId, setUserId] = useState<string>('');
+  [Info] Definition at Line 4478 (Level 1): const [targetGroup, setTargetGroup] = useState('ALL');
+  [Info] Definition at Line 4479 (Level 1): const [editNoticeId, setEditNoticeId] = useState<number | null>(null);
+  [Info] Definition at Line 4480 (Level 1): const [noticeTab, setNoticeTab] = useState<'active' | 'previous'>('active');
+  [Info] Definition at Line 4482 (Level 1): const getCombinedTarget = () => {
+  Level 1 reached at Line 4483 (opened at Line 4483)
+  Level 1 reached at Line 4484 (opened at Line 4484)
+  [Info] Definition at Line 4487 (Level 1): const handleCombinedTargetChange = (val: string) => {
+  [Info] Definition at Line 4498 (Level 1): const todayStr = new Date().toISOString().split('T')[0];
+  [Info] Definition at Line 4499 (Level 1): const activeNotices = notices.filter(n => n.toDate.split('T')[0] >= todayStr);
+  [Info] Definition at Line 4500 (Level 1): const previousNotices = notices.filter(n => n.toDate.split('T')[0] < todayStr);
+  [Info] Definition at Line 4502 (Level 1): const fetchNotices = async () => {
+  [Info] Definition at Line 4505 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 4506 (Level 1): const res = await axios.get(`${API}/notices`, { headers: { Authorization: `Bearer ${token}` } });
+  Level 1 reached at Line 4506 (opened at Line 4506)
+  Level 1 reached at Line 4506 (opened at Line 4506)
+  [Info] Definition at Line 4508 (Level 1): const userRes = await axios.get(`${API}/attendance`, { headers: { Authorization: `Bearer ${token}` } });
+  Level 1 reached at Line 4508 (opened at Line 4508)
+  Level 1 reached at Line 4508 (opened at Line 4508)
+  [Info] Definition at Line 4521 (Level 1): const handleAddNotice = async (e: React.FormEvent) => {
+  [Info] Definition at Line 4525 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 4526 (Level 1): const payload = { message, fromDate, toDate, userId: userId ? Number(userId) : null, targetGroup };
+  Level 1 reached at Line 4529 (opened at Line 4529)
+  Level 1 reached at Line 4529 (opened at Line 4529)
+  Level 1 reached at Line 4529 (opened at Line 4529)
+  Level 1 reached at Line 4531 (opened at Line 4531)
+  Level 1 reached at Line 4531 (opened at Line 4531)
+  Level 1 reached at Line 4537 (opened at Line 4537)
+  [Info] Definition at Line 4541 (Level 1): const handleEditClick = (n: any) => {
+  [Info] Definition at Line 4550 (Level 1): const handleDeleteNotice = async (id: number) => {
+  [Info] Definition at Line 4553 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 4554 (opened at Line 4554)
+  Level 1 reached at Line 4554 (opened at Line 4554)
+  Level 1 reached at Line 4554 (opened at Line 4554)
+  Level 1 reached at Line 4608 (opened at Line 4608)
+  Level 1 reached at Line 4631 (opened at Line 4631)
+  Level 1 reached at Line 4637 (opened at Line 4637)
+  Level 1 reached at Line 4649 (opened at Line 4649)
+  Level 1 reached at Line 4657 (opened at Line 4657)
+  Level 1 reached at Line 4657 (opened at Line 4657)
+  [Info] Definition at Line 4683 (Level 1): const DisableUserModal = ({ trainee, onClose }: { trainee: any; onClose: () => void }) => {
+  [Info] Definition at Line 4684 (Level 1): const [reason, setReason] = useState('');
+  [Info] Definition at Line 4685 (Level 1): const [logs, setLogs] = useState<any[]>([]);
+  [Info] Definition at Line 4686 (Level 1): const [loadingLogs, setLoadingLogs] = useState(false);
+  [Info] Definition at Line 4687 (Level 1): const [submitting, setSubmitting] = useState(false);
+  [Info] Definition at Line 4689 (Level 1): const fetchLogs = async () => {
+  [Info] Definition at Line 4692 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 4693 (Level 1): const res = await axios.get(`${API}/user/${trainee.id}/disable-logs`, {
+  Level 1 reached at Line 4693 (opened at Line 4693)
+  Level 1 reached at Line 4693 (opened at Line 4693)
+  Level 1 reached at Line 4694 (opened at Line 4694)
+  [Info] Definition at Line 4708 (Level 1): const handleDisable = async (e: React.FormEvent) => {
+  [Info] Definition at Line 4713 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 4714 (opened at Line 4714)
+  Level 1 reached at Line 4714 (opened at Line 4714)
+  Level 1 reached at Line 4715 (opened at Line 4715)
+  [Info] Definition at Line 4726 (Level 1): const handleEnable = async () => {
+  [Info] Definition at Line 4729 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 4730 (opened at Line 4730)
+  Level 1 reached at Line 4730 (opened at Line 4730)
+  Level 1 reached at Line 4731 (opened at Line 4731)
+  [Info] Definition at Line 4847 (Level 1): const MemoManagementModal = ({ onClose, role, hasPermission }: { onClose: () => void; role: string; hasPermission: (perm: string) => boolean }) => {
+  [Info] Definition at Line 4848 (Level 1): const [memos, setMemos] = useState<any[]>([]);
+  [Info] Definition at Line 4849 (Level 1): const [supervisors, setSupervisors] = useState<any[]>([]);
+  [Info] Definition at Line 4850 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 4851 (Level 1): const [content, setContent] = useState('');
+  [Info] Definition at Line 4852 (Level 1): const [recipientId, setRecipientId] = useState('');
+  [Info] Definition at Line 4853 (Level 1): const [memoTab, setMemoTab] = useState<'received' | 'send' | 'sent'>('received');
+  [Info] Definition at Line 4855 (Level 1): const currentUser = (() => {
+  [Info] Definition at Line 4857 (Level 1): const data = localStorage.getItem('user');
+  [Info] Definition at Line 4875 (Level 1): const fetchSupervisors = async () => {
+  [Info] Definition at Line 4877 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 4878 (Level 1): const res = await axios.get(`${API}/memos/recipients`, { headers: { Authorization: `Bearer ${token}` } });
+  Level 1 reached at Line 4878 (opened at Line 4878)
+  Level 1 reached at Line 4878 (opened at Line 4878)
+  [Info] Definition at Line 4885 (Level 1): const fetchSentMemos = async () => {
+  [Info] Definition at Line 4888 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 4889 (Level 1): const res = await axios.get(`${API}/memos/sent`, { headers: { Authorization: `Bearer ${token}` } });
+  Level 1 reached at Line 4889 (opened at Line 4889)
+  Level 1 reached at Line 4889 (opened at Line 4889)
+  [Info] Definition at Line 4898 (Level 1): const fetchReceivedMemos = async () => {
+  [Info] Definition at Line 4901 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 4902 (Level 1): const res = await axios.get(`${API}/memos/received`, { headers: { Authorization: `Bearer ${token}` } });
+  Level 1 reached at Line 4902 (opened at Line 4902)
+  Level 1 reached at Line 4902 (opened at Line 4902)
+  [Info] Definition at Line 4911 (Level 1): const handleSendMemo = async (e: React.FormEvent) => {
+  [Info] Definition at Line 4915 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 4916 (opened at Line 4916)
+  Level 1 reached at Line 4920 (opened at Line 4920)
+  [Info] Definition at Line 4932 (Level 1): const handleDeleteMemo = async (id: number) => {
+  [Info] Definition at Line 4935 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 4936 (opened at Line 4936)
+  Level 1 reached at Line 4936 (opened at Line 4936)
+  Level 1 reached at Line 4937 (opened at Line 4937)
+  Level 1 reached at Line 4960 (opened at Line 4960)
+  Level 1 reached at Line 4965 (opened at Line 4965)
+  Level 1 reached at Line 4969 (opened at Line 4969)
+  [Info] Definition at Line 5063 (Level 1): const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
+  [Info] Definition at Line 5064 (Level 1): const [logs, setLogs] = useState<any[]>([]);
+  [Info] Definition at Line 5065 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 5066 (Level 1): const [search, setSearch] = useState('');
+  [Info] Definition at Line 5067 (Level 1): const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 5068 (Level 1): const [exportMonth, setExportMonth] = useState(new Date().toISOString().substring(0, 7));
+  [Info] Definition at Line 5069 (Level 1): const [exporting, setExporting] = useState(false);
+  [Info] Definition at Line 5070 (Level 1): const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
+  [Info] Definition at Line 5073 (Level 1): const [showAddForm, setShowAddForm] = useState(false);
+  [Info] Definition at Line 5074 (Level 1): const [editingLog, setEditingLog] = useState<any>(null);
+  [Info] Definition at Line 5075 (Level 1): const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  [Info] Definition at Line 5076 (Level 1): const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 5077 (Level 1): const [outHour, setOutHour] = useState('10');
+  [Info] Definition at Line 5078 (Level 1): const [outMin, setOutMin] = useState('00');
+  [Info] Definition at Line 5079 (Level 1): const [outPeriod, setOutPeriod] = useState('AM');
+  [Info] Definition at Line 5080 (Level 1): const [inHour, setInHour] = useState('10');
+  [Info] Definition at Line 5081 (Level 1): const [inMin, setInMin] = useState('30');
+  [Info] Definition at Line 5082 (Level 1): const [inPeriod, setInPeriod] = useState('AM');
+  [Info] Definition at Line 5083 (Level 1): const [reason, setReason] = useState('Tea Break');
+  [Info] Definition at Line 5084 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 5091 (Level 1): const timer = setTimeout(() => {
+  [Info] Definition at Line 5097 (Level 1): const fetchLogs = async () => {
+  [Info] Definition at Line 5100 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 5101 (Level 1): const res = await axios.get(`${API}/reports/breaks?date=${date}&search=${search}&type=NORMAL`, {
+  Level 1 reached at Line 5101 (opened at Line 5101)
+  Level 1 reached at Line 5101 (opened at Line 5101)
+  Level 1 reached at Line 5101 (opened at Line 5101)
+  Level 1 reached at Line 5102 (opened at Line 5102)
+  [Info] Definition at Line 5112 (Level 1): const closeForm = () => {
+  [Info] Definition at Line 5125 (Level 1): const handleStartEdit = (b: any) => {
+  [Info] Definition at Line 5130 (Level 1): const outTime = parse12hTime(b.breakOut);
+  [Info] Definition at Line 5135 (Level 1): const inTime = parse12hTime(b.breakIn);
+  [Info] Definition at Line 5144 (Level 1): const handleAddBreak = async (e: React.FormEvent) => {
+  [Info] Definition at Line 5150 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 5151 (Level 1): const out24 = convertTo24h(outHour, outMin, outPeriod);
+  [Info] Definition at Line 5152 (Level 1): const in24 = convertTo24h(inHour, inMin, inPeriod);
+  [Info] Definition at Line 5153 (Level 1): const breakOutStr = `${logDate}T${out24}:00`;
+  Level 1 reached at Line 5153 (opened at Line 5153)
+  Level 1 reached at Line 5153 (opened at Line 5153)
+  [Info] Definition at Line 5154 (Level 1): const breakInStr = `${logDate}T${in24}:00`;
+  Level 1 reached at Line 5154 (opened at Line 5154)
+  Level 1 reached at Line 5154 (opened at Line 5154)
+  Level 1 reached at Line 5157 (opened at Line 5157)
+  Level 1 reached at Line 5157 (opened at Line 5157)
+  Level 1 reached at Line 5165 (opened at Line 5165)
+  Level 1 reached at Line 5169 (opened at Line 5169)
+  Level 1 reached at Line 5177 (opened at Line 5177)
+  [Info] Definition at Line 5191 (Level 1): const handleExport = async () => {
+  [Info] Definition at Line 5194 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 5195 (Level 1): const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}&type=NORMAL`, {
+  Level 1 reached at Line 5195 (opened at Line 5195)
+  Level 1 reached at Line 5195 (opened at Line 5195)
+  Level 1 reached at Line 5195 (opened at Line 5195)
+  Level 1 reached at Line 5196 (opened at Line 5196)
+  [Info] Definition at Line 5200 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 5201 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 5204 (opened at Line 5204)
+  Level 1 reached at Line 5206 (opened at Line 5206)
+  [Info] Definition at Line 5218 (Level 1): const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+  [Info] Definition at Line 5220 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 5221 (Level 1): const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}&type=NORMAL`, {
+  Level 1 reached at Line 5221 (opened at Line 5221)
+  Level 1 reached at Line 5221 (opened at Line 5221)
+  Level 1 reached at Line 5221 (opened at Line 5221)
+  Level 1 reached at Line 5222 (opened at Line 5222)
+  [Info] Definition at Line 5226 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 5227 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 5229 (opened at Line 5229)
+  Level 1 reached at Line 5234 (opened at Line 5234)
+  [Info] Definition at Line 5238 (Level 1): const MINS_60 = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  [Info] Definition at Line 5241 (Level 1): const groupedLogsMap = new Map<string, any>();
+  [Info] Definition at Line 5243 (Level 1): const key = log.identifier;
+  [Info] Definition at Line 5255 (Level 1): const groupedLogs = Array.from(groupedLogsMap.values());
+  [Info] Definition at Line 5257 (Level 1): const currentDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+  Level 1 reached at Line 5447 (opened at Line 5447)
+  [Info] Definition at Line 5525 (Level 1): const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
+  [Info] Definition at Line 5526 (Level 1): const [logs, setLogs] = useState<any[]>([]);
+  [Info] Definition at Line 5527 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 5528 (Level 1): const [search, setSearch] = useState('');
+  [Info] Definition at Line 5529 (Level 1): const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 5530 (Level 1): const [exportMonth, setExportMonth] = useState(new Date().toISOString().substring(0, 7));
+  [Info] Definition at Line 5531 (Level 1): const [exporting, setExporting] = useState(false);
+  [Info] Definition at Line 5532 (Level 1): const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
+  [Info] Definition at Line 5535 (Level 1): const [showAddForm, setShowAddForm] = useState(false);
+  [Info] Definition at Line 5536 (Level 1): const [editingLog, setEditingLog] = useState<any>(null);
+  [Info] Definition at Line 5537 (Level 1): const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  [Info] Definition at Line 5538 (Level 1): const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 5539 (Level 1): const [outHour, setOutHour] = useState('10');
+  [Info] Definition at Line 5540 (Level 1): const [outMin, setOutMin] = useState('00');
+  [Info] Definition at Line 5541 (Level 1): const [outPeriod, setOutPeriod] = useState('AM');
+  [Info] Definition at Line 5542 (Level 1): const [inHour, setInHour] = useState('12');
+  [Info] Definition at Line 5543 (Level 1): const [inMin, setInMin] = useState('30');
+  [Info] Definition at Line 5544 (Level 1): const [inPeriod, setInPeriod] = useState('PM');
+  [Info] Definition at Line 5545 (Level 1): const [bookletNo, setBookletNo] = useState('');
+  [Info] Definition at Line 5546 (Level 1): const [collegeName, setCollegeName] = useState('');
+  [Info] Definition at Line 5547 (Level 1): const [subject, setSubject] = useState('');
+  [Info] Definition at Line 5548 (Level 1): const [topicsCovered, setTopicsCovered] = useState('');
+  [Info] Definition at Line 5549 (Level 1): const [conveyance, setConveyance] = useState('Two Wheeler');
+  [Info] Definition at Line 5550 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 5557 (Level 1): const timer = setTimeout(() => {
+  [Info] Definition at Line 5563 (Level 1): const handleProcessBreak = async (breakLogId: number, status: 'APPROVED' | 'REJECTED') => {
+  [Info] Definition at Line 5565 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 5566 (opened at Line 5566)
+  Level 1 reached at Line 5570 (opened at Line 5570)
+  Level 1 reached at Line 5572 (opened at Line 5572)
+  [Info] Definition at Line 5579 (Level 1): const fetchLogs = async () => {
+  [Info] Definition at Line 5582 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 5583 (Level 1): const res = await axios.get(`${API}/reports/breaks?date=${date}&search=${search}&type=COLLEGE_VISIT`, {
+  Level 1 reached at Line 5583 (opened at Line 5583)
+  Level 1 reached at Line 5583 (opened at Line 5583)
+  Level 1 reached at Line 5583 (opened at Line 5583)
+  Level 1 reached at Line 5584 (opened at Line 5584)
+  [Info] Definition at Line 5594 (Level 1): const closeForm = () => {
+  [Info] Definition at Line 5611 (Level 1): const handleStartEdit = (b: any) => {
+  [Info] Definition at Line 5621 (Level 1): const outTime = parse12hTime(b.fromTime);
+  [Info] Definition at Line 5626 (Level 1): const inTime = parse12hTime(b.toTime);
+  [Info] Definition at Line 5634 (Level 1): const handleAddCollegeVisit = async (e: React.FormEvent) => {
+  [Info] Definition at Line 5640 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 5641 (Level 1): const out24 = convertTo24h(outHour, outMin, outPeriod);
+  [Info] Definition at Line 5642 (Level 1): const in24 = convertTo24h(inHour, inMin, inPeriod);
+  [Info] Definition at Line 5643 (Level 1): const breakOutStr = `${logDate}T${out24}:00`;
+  Level 1 reached at Line 5643 (opened at Line 5643)
+  Level 1 reached at Line 5643 (opened at Line 5643)
+  [Info] Definition at Line 5644 (Level 1): const breakInStr = `${logDate}T${in24}:00`;
+  Level 1 reached at Line 5644 (opened at Line 5644)
+  Level 1 reached at Line 5644 (opened at Line 5644)
+  [Info] Definition at Line 5645 (Level 1): const computedDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+  Level 1 reached at Line 5648 (opened at Line 5648)
+  Level 1 reached at Line 5648 (opened at Line 5648)
+  Level 1 reached at Line 5660 (opened at Line 5660)
+  Level 1 reached at Line 5660 (opened at Line 5660)
+  Level 1 reached at Line 5660 (opened at Line 5660)
+  Level 1 reached at Line 5661 (opened at Line 5661)
+  Level 1 reached at Line 5661 (opened at Line 5661)
+  Level 1 reached at Line 5661 (opened at Line 5661)
+  Level 1 reached at Line 5663 (opened at Line 5663)
+  Level 1 reached at Line 5667 (opened at Line 5667)
+  Level 1 reached at Line 5679 (opened at Line 5679)
+  Level 1 reached at Line 5679 (opened at Line 5679)
+  Level 1 reached at Line 5679 (opened at Line 5679)
+  Level 1 reached at Line 5680 (opened at Line 5680)
+  Level 1 reached at Line 5680 (opened at Line 5680)
+  Level 1 reached at Line 5680 (opened at Line 5680)
+  Level 1 reached at Line 5682 (opened at Line 5682)
+  [Info] Definition at Line 5696 (Level 1): const handleExport = async () => {
+  [Info] Definition at Line 5699 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 5700 (Level 1): const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}&type=COLLEGE_VISIT`, {
+  Level 1 reached at Line 5700 (opened at Line 5700)
+  Level 1 reached at Line 5700 (opened at Line 5700)
+  Level 1 reached at Line 5700 (opened at Line 5700)
+  Level 1 reached at Line 5701 (opened at Line 5701)
+  [Info] Definition at Line 5705 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 5706 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 5709 (opened at Line 5709)
+  Level 1 reached at Line 5711 (opened at Line 5711)
+  [Info] Definition at Line 5723 (Level 1): const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+  [Info] Definition at Line 5725 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 5726 (Level 1): const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}&type=COLLEGE_VISIT`, {
+  Level 1 reached at Line 5726 (opened at Line 5726)
+  Level 1 reached at Line 5726 (opened at Line 5726)
+  Level 1 reached at Line 5726 (opened at Line 5726)
+  Level 1 reached at Line 5727 (opened at Line 5727)
+  [Info] Definition at Line 5731 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 5732 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 5734 (opened at Line 5734)
+  Level 1 reached at Line 5739 (opened at Line 5739)
+  [Info] Definition at Line 5743 (Level 1): const MINS_60 = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  [Info] Definition at Line 5746 (Level 1): const groupedLogsMap = new Map<string, any>();
+  [Info] Definition at Line 5748 (Level 1): const key = log.identifier;
+  [Info] Definition at Line 5760 (Level 1): const groupedLogs = Array.from(groupedLogsMap.values());
+  [Info] Definition at Line 5762 (Level 1): const currentDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+  Level 1 reached at Line 6005 (opened at Line 6005)
+  Level 1 reached at Line 6053 (opened at Line 6053)
+  Level 1 reached at Line 6053 (opened at Line 6053)
+  Level 1 reached at Line 6067 (opened at Line 6063)
+  [Info] Definition at Line 6106 (Level 1): const total = group.breaks.reduce((acc: number, b: any) => {
+  [Info] Definition at Line 6107 (Level 1): const val = parseFloat(b.numberOfHours);
+  [Info] Definition at Line 6136 (Level 1): const ExtraClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
+  [Info] Definition at Line 6137 (Level 1): const [logs, setLogs] = useState<any[]>([]);
+  [Info] Definition at Line 6138 (Level 1): const [loading, setLoading] = useState(true);
+  [Info] Definition at Line 6139 (Level 1): const [search, setSearch] = useState('');
+  [Info] Definition at Line 6140 (Level 1): const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  [Info] Definition at Line 6141 (Level 1): const [status, setStatus] = useState('ALL'); // ALL, PENDING, APPROVED, REJECTED
+  [Info] Definition at Line 6142 (Level 1): const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
+  [Info] Definition at Line 6143 (Level 1): const [exporting, setExporting] = useState(false);
+  [Info] Definition at Line 6144 (Level 1): const [adminRemarks, setAdminRemarks] = useState<Record<number, string>>({});
+  [Info] Definition at Line 6145 (Level 1): const [processing, setProcessing] = useState<Record<number, boolean>>({});
+  [Info] Definition at Line 6148 (Level 1): const [showAddForm, setShowAddForm] = useState(false);
+  [Info] Definition at Line 6149 (Level 1): const [editingLog, setEditingLog] = useState<any>(null);
+  [Info] Definition at Line 6150 (Level 1): const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  [Info] Definition at Line 6151 (Level 1): const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 6152 (Level 1): const [subject, setSubject] = useState('');
+  [Info] Definition at Line 6153 (Level 1): const [batchNo, setBatchNo] = useState('');
+  [Info] Definition at Line 6154 (Level 1): const [noOfStudents, setNoOfStudents] = useState('0');
+  [Info] Definition at Line 6155 (Level 1): const [centerName, setCenterName] = useState('');
+  [Info] Definition at Line 6156 (Level 1): const [remarks, setRemarks] = useState('');
+  [Info] Definition at Line 6157 (Level 1): const [outHour, setOutHour] = useState('10');
+  [Info] Definition at Line 6158 (Level 1): const [outMin, setOutMin] = useState('00');
+  [Info] Definition at Line 6159 (Level 1): const [outPeriod, setOutPeriod] = useState('AM');
+  [Info] Definition at Line 6160 (Level 1): const [inHour, setInHour] = useState('11');
+  [Info] Definition at Line 6161 (Level 1): const [inMin, setInMin] = useState('30');
+  [Info] Definition at Line 6162 (Level 1): const [inPeriod, setInPeriod] = useState('AM');
+  [Info] Definition at Line 6163 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 6164 (Level 1): const [classMode, setClassMode] = useState('OFFLINE');
+  [Info] Definition at Line 6170 (Level 1): const fetchLogs = async () => {
+  [Info] Definition at Line 6173 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 6174 (Level 1): const statusParam = status === 'ALL' ? '' : status;
+  [Info] Definition at Line 6175 (Level 1): const res = await axios.get(`${API}/extra-classes?status=${statusParam}&search=${search}&month=${month}`, {
+  Level 1 reached at Line 6175 (opened at Line 6175)
+  Level 1 reached at Line 6175 (opened at Line 6175)
+  Level 1 reached at Line 6175 (opened at Line 6175)
+  Level 1 reached at Line 6175 (opened at Line 6175)
+  Level 1 reached at Line 6176 (opened at Line 6176)
+  [Info] Definition at Line 6186 (Level 1): const closeForm = () => {
+  [Info] Definition at Line 6204 (Level 1): const handleStartEdit = (b: any) => {
+  [Info] Definition at Line 6215 (Level 1): const outTime = parse12hTime(b.startTime);
+  [Info] Definition at Line 6220 (Level 1): const inTime = parse12hTime(b.endTime);
+  [Info] Definition at Line 6228 (Level 1): const handleAddExtraClass = async (e: React.FormEvent) => {
+  [Info] Definition at Line 6234 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 6235 (Level 1): const durationVal = getDurationInHours(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+  [Info] Definition at Line 6236 (Level 1): const startTimeStr = `${outHour}:${outMin} ${outPeriod}`;
+  Level 1 reached at Line 6236 (opened at Line 6236)
+  Level 1 reached at Line 6236 (opened at Line 6236)
+  Level 1 reached at Line 6236 (opened at Line 6236)
+  [Info] Definition at Line 6237 (Level 1): const endTimeStr = `${inHour}:${inMin} ${inPeriod}`;
+  Level 1 reached at Line 6237 (opened at Line 6237)
+  Level 1 reached at Line 6237 (opened at Line 6237)
+  Level 1 reached at Line 6237 (opened at Line 6237)
+  Level 1 reached at Line 6240 (opened at Line 6240)
+  Level 1 reached at Line 6240 (opened at Line 6240)
+  Level 1 reached at Line 6253 (opened at Line 6253)
+  Level 1 reached at Line 6257 (opened at Line 6257)
+  Level 1 reached at Line 6270 (opened at Line 6270)
+  [Info] Definition at Line 6284 (Level 1): const handleProcess = async (logId: number, newStatus: 'APPROVED' | 'REJECTED') => {
+  [Info] Definition at Line 6285 (Level 1): const remark = adminRemarks[logId] || '';
+  Level 1 reached at Line 6287 (opened at Line 6287)
+  [Info] Definition at Line 6292 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 6293 (opened at Line 6293)
+  Level 1 reached at Line 6298 (opened at Line 6298)
+  Level 1 reached at Line 6300 (opened at Line 6300)
+  [Info] Definition at Line 6309 (Level 1): const handleExport = async () => {
+  [Info] Definition at Line 6312 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 6313 (Level 1): const res = await axios.get(`${API}/reports/extra-classes/export?month=${exportMonth}&search=${search}`, {
+  Level 1 reached at Line 6313 (opened at Line 6313)
+  Level 1 reached at Line 6313 (opened at Line 6313)
+  Level 1 reached at Line 6313 (opened at Line 6313)
+  Level 1 reached at Line 6314 (opened at Line 6314)
+  [Info] Definition at Line 6317 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 6318 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 6320 (opened at Line 6320)
+  [Info] Definition at Line 6331 (Level 1): const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+  [Info] Definition at Line 6333 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 6334 (Level 1): const res = await axios.get(`${API}/reports/extra-classes/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}`, {
+  Level 1 reached at Line 6334 (opened at Line 6334)
+  Level 1 reached at Line 6334 (opened at Line 6334)
+  Level 1 reached at Line 6334 (opened at Line 6334)
+  Level 1 reached at Line 6335 (opened at Line 6335)
+  [Info] Definition at Line 6338 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 6339 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 6341 (opened at Line 6341)
+  Level 1 reached at Line 6341 (opened at Line 6341)
+  Level 1 reached at Line 6346 (opened at Line 6346)
+  [Info] Definition at Line 6350 (Level 1): const MINS_60 = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  [Info] Definition at Line 6351 (Level 1): const currentDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+  Level 1 reached at Line 6628 (opened at Line 6624)
+  Level 1 reached at Line 6652 (opened at Line 6652)
+  [Info] Definition at Line 6703 (Level 1): const total = logs.reduce((acc: number, log: any) => {
+  [Info] Definition at Line 6705 (Level 1): const val = parseFloat(log.duration);
+  [Info] Definition at Line 6727 (Level 1): const OtherCenterClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
+  [Info] Definition at Line 6728 (Level 1): const [logs, setLogs] = useState<any[]>([]);
+  [Info] Definition at Line 6729 (Level 1): const [loading, setLoading] = useState(true);
+  [Info] Definition at Line 6730 (Level 1): const [search, setSearch] = useState('');
+  [Info] Definition at Line 6731 (Level 1): const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  [Info] Definition at Line 6732 (Level 1): const [status, setStatus] = useState('ALL'); // ALL, PENDING, APPROVED, REJECTED
+  [Info] Definition at Line 6733 (Level 1): const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
+  [Info] Definition at Line 6734 (Level 1): const [exporting, setExporting] = useState(false);
+  [Info] Definition at Line 6735 (Level 1): const [adminRemarks, setAdminRemarks] = useState<Record<number, string>>({});
+  [Info] Definition at Line 6736 (Level 1): const [processing, setProcessing] = useState<Record<number, boolean>>({});
+  [Info] Definition at Line 6739 (Level 1): const [showAddForm, setShowAddForm] = useState(false);
+  [Info] Definition at Line 6740 (Level 1): const [editingLog, setEditingLog] = useState<any>(null);
+  [Info] Definition at Line 6741 (Level 1): const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  [Info] Definition at Line 6742 (Level 1): const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 6743 (Level 1): const [subject, setSubject] = useState('');
+  [Info] Definition at Line 6744 (Level 1): const [batchNo, setBatchNo] = useState('');
+  [Info] Definition at Line 6745 (Level 1): const [noOfStudents, setNoOfStudents] = useState('0');
+  [Info] Definition at Line 6746 (Level 1): const [centerName, setCenterName] = useState('');
+  [Info] Definition at Line 6747 (Level 1): const [remarks, setRemarks] = useState('');
+  [Info] Definition at Line 6748 (Level 1): const [outHour, setOutHour] = useState('10');
+  [Info] Definition at Line 6749 (Level 1): const [outMin, setOutMin] = useState('00');
+  [Info] Definition at Line 6750 (Level 1): const [outPeriod, setOutPeriod] = useState('AM');
+  [Info] Definition at Line 6751 (Level 1): const [inHour, setInHour] = useState('11');
+  [Info] Definition at Line 6752 (Level 1): const [inMin, setInMin] = useState('30');
+  [Info] Definition at Line 6753 (Level 1): const [inPeriod, setInPeriod] = useState('AM');
+  [Info] Definition at Line 6754 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 6755 (Level 1): const [classMode, setClassMode] = useState('OFFLINE');
+  [Info] Definition at Line 6761 (Level 1): const fetchLogs = async () => {
+  [Info] Definition at Line 6764 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 6765 (Level 1): const statusParam = status === 'ALL' ? '' : status;
+  [Info] Definition at Line 6766 (Level 1): const res = await axios.get(`${API}/other-center-classes?status=${statusParam}&search=${search}&month=${month}`, {
+  Level 1 reached at Line 6766 (opened at Line 6766)
+  Level 1 reached at Line 6766 (opened at Line 6766)
+  Level 1 reached at Line 6766 (opened at Line 6766)
+  Level 1 reached at Line 6766 (opened at Line 6766)
+  Level 1 reached at Line 6767 (opened at Line 6767)
+  [Info] Definition at Line 6777 (Level 1): const closeForm = () => {
+  [Info] Definition at Line 6795 (Level 1): const handleStartEdit = (b: any) => {
+  [Info] Definition at Line 6806 (Level 1): const outTime = parse12hTime(b.startTime);
+  [Info] Definition at Line 6811 (Level 1): const inTime = parse12hTime(b.endTime);
+  [Info] Definition at Line 6819 (Level 1): const handleAddOtherCenterClass = async (e: React.FormEvent) => {
+  [Info] Definition at Line 6825 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 6826 (Level 1): const durationVal = getDurationInHours(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+  [Info] Definition at Line 6827 (Level 1): const startTimeStr = `${outHour}:${outMin} ${outPeriod}`;
+  Level 1 reached at Line 6827 (opened at Line 6827)
+  Level 1 reached at Line 6827 (opened at Line 6827)
+  Level 1 reached at Line 6827 (opened at Line 6827)
+  [Info] Definition at Line 6828 (Level 1): const endTimeStr = `${inHour}:${inMin} ${inPeriod}`;
+  Level 1 reached at Line 6828 (opened at Line 6828)
+  Level 1 reached at Line 6828 (opened at Line 6828)
+  Level 1 reached at Line 6828 (opened at Line 6828)
+  Level 1 reached at Line 6831 (opened at Line 6831)
+  Level 1 reached at Line 6831 (opened at Line 6831)
+  Level 1 reached at Line 6844 (opened at Line 6844)
+  Level 1 reached at Line 6848 (opened at Line 6848)
+  Level 1 reached at Line 6861 (opened at Line 6861)
+  [Info] Definition at Line 6875 (Level 1): const handleProcess = async (logId: number, newStatus: 'APPROVED' | 'REJECTED') => {
+  [Info] Definition at Line 6876 (Level 1): const remark = adminRemarks[logId] || '';
+  Level 1 reached at Line 6878 (opened at Line 6878)
+  [Info] Definition at Line 6883 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 6884 (opened at Line 6884)
+  Level 1 reached at Line 6889 (opened at Line 6889)
+  Level 1 reached at Line 6891 (opened at Line 6891)
+  [Info] Definition at Line 6900 (Level 1): const handleExport = async () => {
+  [Info] Definition at Line 6903 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 6904 (Level 1): const res = await axios.get(`${API}/reports/other-center-classes/export?month=${exportMonth}&search=${search}`, {
+  Level 1 reached at Line 6904 (opened at Line 6904)
+  Level 1 reached at Line 6904 (opened at Line 6904)
+  Level 1 reached at Line 6904 (opened at Line 6904)
+  Level 1 reached at Line 6905 (opened at Line 6905)
+  [Info] Definition at Line 6908 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 6909 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 6911 (opened at Line 6911)
+  [Info] Definition at Line 6922 (Level 1): const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+  [Info] Definition at Line 6924 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 6925 (Level 1): const res = await axios.get(`${API}/reports/other-center-classes/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}`, {
+  Level 1 reached at Line 6925 (opened at Line 6925)
+  Level 1 reached at Line 6925 (opened at Line 6925)
+  Level 1 reached at Line 6925 (opened at Line 6925)
+  Level 1 reached at Line 6926 (opened at Line 6926)
+  [Info] Definition at Line 6929 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 6930 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 6932 (opened at Line 6932)
+  Level 1 reached at Line 6932 (opened at Line 6932)
+  Level 1 reached at Line 6937 (opened at Line 6937)
+  [Info] Definition at Line 6941 (Level 1): const MINS_60 = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  [Info] Definition at Line 6942 (Level 1): const currentDuration = calculateDuration12h(outHour, outMin, outPeriod, inHour, inMin, inPeriod);
+  Level 1 reached at Line 7219 (opened at Line 7215)
+  Level 1 reached at Line 7243 (opened at Line 7243)
+  [Info] Definition at Line 7294 (Level 1): const total = logs.reduce((acc: number, log: any) => {
+  [Info] Definition at Line 7296 (Level 1): const val = parseFloat(log.duration);
+  [Info] Definition at Line 7318 (Level 1): const CancelledClassesLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
+  [Info] Definition at Line 7319 (Level 1): const [logs, setLogs] = useState<any[]>([]);
+  [Info] Definition at Line 7320 (Level 1): const [loading, setLoading] = useState(true);
+  [Info] Definition at Line 7321 (Level 1): const [search, setSearch] = useState('');
+  [Info] Definition at Line 7322 (Level 1): const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  [Info] Definition at Line 7323 (Level 1): const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
+  [Info] Definition at Line 7324 (Level 1): const [exporting, setExporting] = useState(false);
+  [Info] Definition at Line 7327 (Level 1): const [showAddForm, setShowAddForm] = useState(false);
+  [Info] Definition at Line 7328 (Level 1): const [editingLog, setEditingLog] = useState<any>(null);
+  [Info] Definition at Line 7329 (Level 1): const [selectedTraineeId, setSelectedTraineeId] = useState('');
+  [Info] Definition at Line 7330 (Level 1): const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
+  [Info] Definition at Line 7331 (Level 1): const [subject, setSubject] = useState('');
+  [Info] Definition at Line 7332 (Level 1): const [batchNo, setBatchNo] = useState('');
+  [Info] Definition at Line 7333 (Level 1): const [centerName, setCenterName] = useState('');
+  [Info] Definition at Line 7334 (Level 1): const [reason, setReason] = useState('Personal Work');
+  [Info] Definition at Line 7335 (Level 1): const [customReason, setCustomReason] = useState('');
+  [Info] Definition at Line 7336 (Level 1): const [remarks, setRemarks] = useState('');
+  [Info] Definition at Line 7337 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 7339 (Level 1): const CANCELLATION_REASONS = [
+  [Info] Definition at Line 7352 (Level 1): const fetchLogs = async () => {
+  [Info] Definition at Line 7355 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 7356 (Level 1): const res = await axios.get(`${API}/classes-cancelled?search=${search}&month=${month}`, {
+  Level 1 reached at Line 7356 (opened at Line 7356)
+  Level 1 reached at Line 7356 (opened at Line 7356)
+  Level 1 reached at Line 7356 (opened at Line 7356)
+  Level 1 reached at Line 7357 (opened at Line 7357)
+  [Info] Definition at Line 7367 (Level 1): const closeForm = () => {
+  [Info] Definition at Line 7379 (Level 1): const handleStartEdit = (b: any) => {
+  [Info] Definition at Line 7400 (Level 1): const handleAddCancelledClass = async (e: React.FormEvent) => {
+  [Info] Definition at Line 7406 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 7407 (Level 1): const reasonVal = reason.startsWith('Other') ? customReason.trim() : reason;
+  Level 1 reached at Line 7411 (opened at Line 7411)
+  Level 1 reached at Line 7411 (opened at Line 7411)
+  Level 1 reached at Line 7420 (opened at Line 7420)
+  Level 1 reached at Line 7424 (opened at Line 7424)
+  Level 1 reached at Line 7433 (opened at Line 7433)
+  [Info] Definition at Line 7447 (Level 1): const handleExport = async () => {
+  [Info] Definition at Line 7450 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 7451 (Level 1): const res = await axios.get(`${API}/reports/classes-cancelled/export?month=${exportMonth}&search=${search}`, {
+  Level 1 reached at Line 7451 (opened at Line 7451)
+  Level 1 reached at Line 7451 (opened at Line 7451)
+  Level 1 reached at Line 7451 (opened at Line 7451)
+  Level 1 reached at Line 7452 (opened at Line 7452)
+  [Info] Definition at Line 7455 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 7456 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 7458 (opened at Line 7458)
+  [Info] Definition at Line 7469 (Level 1): const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+  [Info] Definition at Line 7471 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 7472 (Level 1): const res = await axios.get(`${API}/reports/classes-cancelled/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}`, {
+  Level 1 reached at Line 7472 (opened at Line 7472)
+  Level 1 reached at Line 7472 (opened at Line 7472)
+  Level 1 reached at Line 7472 (opened at Line 7472)
+  Level 1 reached at Line 7473 (opened at Line 7473)
+  [Info] Definition at Line 7476 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 7477 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 7479 (opened at Line 7479)
+  Level 1 reached at Line 7479 (opened at Line 7479)
+  Level 1 reached at Line 7484 (opened at Line 7484)
+  Level 1 reached at Line 7715 (opened at Line 7715)
+  [Info] Definition at Line 7736 (Level 1): interface LeftNICTiansModalProps {
+  [Info] Definition at Line 7751 (Level 1): const LeftNICTiansModal = ({
+  [Info] Definition at Line 7765 (Level 1): const [leftUsers, setLeftUsers] = useState<Trainee[]>([]);
+  [Info] Definition at Line 7766 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 7767 (Level 1): const [search, setSearch] = useState('');
+  [Info] Definition at Line 7769 (Level 1): const fetchLeftUsers = async () => {
+  [Info] Definition at Line 7772 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 7773 (Level 1): const res = await axios.get(`${API}/left-users`, {
+  Level 1 reached at Line 7773 (opened at Line 7773)
+  Level 1 reached at Line 7774 (opened at Line 7774)
+  [Info] Definition at Line 7788 (Level 1): const handleReactivate = async (t: Trainee) => {
+  Level 1 reached at Line 7789 (opened at Line 7789)
+  [Info] Definition at Line 7791 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 7792 (opened at Line 7792)
+  Level 1 reached at Line 7792 (opened at Line 7792)
+  Level 1 reached at Line 7793 (opened at Line 7793)
+  Level 1 reached at Line 7795 (opened at Line 7795)
+  [Info] Definition at Line 7802 (Level 1): const filteredUsers = leftUsers.filter(u => {
+  [Info] Definition at Line 7803 (Level 1): const q = search.toLowerCase();
+  Level 1 reached at Line 7905 (opened at Line 7905)
+  [Info] Definition at Line 7934 (Level 1): interface SalarySlipsModalProps {
+  [Info] Definition at Line 7939 (Level 1): const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => {
+  [Info] Definition at Line 7940 (Level 1): const [month, setMonth] = useState(() => {
+  [Info] Definition at Line 7941 (Level 1): const now = new Date();
+  Level 1 reached at Line 7942 (opened at Line 7942)
+  Level 1 reached at Line 7942 (opened at Line 7942)
+  [Info] Definition at Line 7944 (Level 1): const [trainees, setTrainees] = useState<any[]>([]);
+  [Info] Definition at Line 7945 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 7946 (Level 1): const [searchTerm, setSearchTerm] = useState('');
+  [Info] Definition at Line 7947 (Level 1): const [previewTrainee, setPreviewTrainee] = useState<any | null>(null);
+  [Info] Definition at Line 7950 (Level 1): const [editingTrainee, setEditingTrainee] = useState<any | null>(null);
+  [Info] Definition at Line 7951 (Level 1): const [editBaseSalary, setEditBaseSalary] = useState('');
+  [Info] Definition at Line 7952 (Level 1): const [editPersonalLateRate, setEditPersonalLateRate] = useState('');
+  [Info] Definition at Line 7953 (Level 1): const [editPersonalEarlyRate, setEditPersonalEarlyRate] = useState('');
+  [Info] Definition at Line 7954 (Level 1): const [editPersonalAbsentRate, setEditPersonalAbsentRate] = useState('');
+  [Info] Definition at Line 7955 (Level 1): const [editPersonalExtraClassRate, setEditPersonalExtraClassRate] = useState('');
+  [Info] Definition at Line 7956 (Level 1): const [editPersonalOtherCenterClassRate, setEditPersonalOtherCenterClassRate] = useState('');
+  [Info] Definition at Line 7957 (Level 1): const [editPersonalCollegeVisitRate, setEditPersonalCollegeVisitRate] = useState('');
+  [Info] Definition at Line 7958 (Level 1): const [editTdsOverridePercent, setEditTdsOverridePercent] = useState('');
+  [Info] Definition at Line 7959 (Level 1): const [editOtherAdditions, setEditOtherAdditions] = useState('');
+  [Info] Definition at Line 7960 (Level 1): const [editOtherDeductions, setEditOtherDeductions] = useState('');
+  [Info] Definition at Line 7961 (Level 1): const [editPersonalLateDeductionType, setEditPersonalLateDeductionType] = useState('');
+  [Info] Definition at Line 7962 (Level 1): const [editPersonalLateIntervalValue, setEditPersonalLateIntervalValue] = useState('');
+  [Info] Definition at Line 7963 (Level 1): const [editPersonalEarlyDeductionType, setEditPersonalEarlyDeductionType] = useState('');
+  [Info] Definition at Line 7964 (Level 1): const [editPersonalEarlyIntervalValue, setEditPersonalEarlyIntervalValue] = useState('');
+  [Info] Definition at Line 7965 (Level 1): const [saving, setSaving] = useState(false);
+  [Info] Definition at Line 7968 (Level 1): const [showGlobalRates, setShowGlobalRates] = useState(false);
+  [Info] Definition at Line 7969 (Level 1): const [globalLateRate, setGlobalLateRate] = useState(30);
+  [Info] Definition at Line 7970 (Level 1): const [globalLateDeductionType, setGlobalLateDeductionType] = useState('instance');
+  [Info] Definition at Line 7971 (Level 1): const [globalLateIntervalValue, setGlobalLateIntervalValue] = useState(15);
+  [Info] Definition at Line 7972 (Level 1): const [globalEarlyRate, setGlobalEarlyRate] = useState(30);
+  [Info] Definition at Line 7973 (Level 1): const [globalEarlyDeductionType, setGlobalEarlyDeductionType] = useState('instance');
+  [Info] Definition at Line 7974 (Level 1): const [globalEarlyIntervalValue, setGlobalEarlyIntervalValue] = useState(15);
+  [Info] Definition at Line 7975 (Level 1): const [globalAbsentRate, setGlobalAbsentRate] = useState(0);
+  [Info] Definition at Line 7976 (Level 1): const [globalExtraClassRate, setGlobalExtraClassRate] = useState(0);
+  [Info] Definition at Line 7977 (Level 1): const [globalOtherCenterClassRate, setGlobalOtherCenterClassRate] = useState(0);
+  [Info] Definition at Line 7978 (Level 1): const [globalCollegeVisitRate, setGlobalCollegeVisitRate] = useState(0);
+  [Info] Definition at Line 7979 (Level 1): const [savingGlobal, setSavingGlobal] = useState(false);
+  [Info] Definition at Line 7982 (Level 1): const fetchTraineesList = async () => {
+  [Info] Definition at Line 7985 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 7986 (Level 1): const [listRes, settingsRes] = await Promise.all([
+  Level 1 reached at Line 7987 (opened at Line 7987)
+  Level 1 reached at Line 7987 (opened at Line 7987)
+  Level 1 reached at Line 7988 (opened at Line 7988)
+  Level 1 reached at Line 7990 (opened at Line 7990)
+  Level 1 reached at Line 7991 (opened at Line 7991)
+  [Info] Definition at Line 8019 (Level 1): const handleExportIndividual = async (userId: number, fullName: string) => {
+  [Info] Definition at Line 8021 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 8022 (Level 1): const res = await axios.get(`${API}/reports/payslip/export/${userId}?month=${month}`, {
+  Level 1 reached at Line 8022 (opened at Line 8022)
+  Level 1 reached at Line 8022 (opened at Line 8022)
+  Level 1 reached at Line 8022 (opened at Line 8022)
+  Level 1 reached at Line 8023 (opened at Line 8023)
+  [Info] Definition at Line 8026 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 8027 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 8029 (opened at Line 8029)
+  Level 1 reached at Line 8029 (opened at Line 8029)
+  [Info] Definition at Line 8039 (Level 1): const handleExportAll = async () => {
+  [Info] Definition at Line 8041 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 8042 (Level 1): const res = await axios.get(`${API}/reports/payslip/export-all?month=${month}`, {
+  Level 1 reached at Line 8042 (opened at Line 8042)
+  Level 1 reached at Line 8042 (opened at Line 8042)
+  Level 1 reached at Line 8043 (opened at Line 8043)
+  [Info] Definition at Line 8046 (Level 1): const url = window.URL.createObjectURL(new Blob([res.data]));
+  [Info] Definition at Line 8047 (Level 1): const link = document.createElement('a');
+  Level 1 reached at Line 8049 (opened at Line 8049)
+  [Info] Definition at Line 8059 (Level 1): const handlePrintAllPayslips = () => {
+  [Info] Definition at Line 8063 (Level 1): const inWords = (num: number): string => {
+  [Info] Definition at Line 8064 (Level 1): const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+  [Info] Definition at Line 8065 (Level 1): const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  [Info] Definition at Line 8069 (Level 1): const g = (n: number): string => {
+  [Info] Definition at Line 8071 (Level 1): const digit = n % 10;
+  [Info] Definition at Line 8075 (Level 1): const convert = (n: number): string => {
+  [Info] Definition at Line 8100 (Level 1): const res = convert(num).trim();
+  [Info] Definition at Line 8104 (Level 1): const printWindow = window.open('', '_blank');
+  Level 1 reached at Line 8121 (opened at Line 8121)
+  Level 1 reached at Line 8122 (opened at Line 8122)
+  Level 1 reached at Line 8128 (opened at Line 8128)
+  Level 1 reached at Line 8132 (opened at Line 8130)
+  [Info] Definition at Line 8143 (Level 1): const handleSaveSalary = async (e: React.FormEvent) => {
+  [Info] Definition at Line 8148 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 8149 (opened at Line 8149)
+  Level 1 reached at Line 8149 (opened at Line 8149)
+  Level 1 reached at Line 8165 (opened at Line 8165)
+  [Info] Definition at Line 8177 (Level 1): const totalSpent = trainees.reduce((sum, t) => sum + (t.netTakeHome || 0), 0);
+  [Info] Definition at Line 8180 (Level 1): const handleSaveGlobalRates = async () => {
+  [Info] Definition at Line 8183 (Level 1): const token = localStorage.getItem('token');
+  Level 1 reached at Line 8184 (opened at Line 8184)
+  Level 1 reached at Line 8196 (opened at Line 8196)
+  [Info] Definition at Line 8207 (Level 1): const filteredTrainees = trainees.filter(t =>
+  Level 1 reached at Line 8274 (opened at Line 8274)
+  [Info] Definition at Line 8842 (Level 1): interface MyPayslipsModalProps {
+  [Info] Definition at Line 8846 (Level 1): const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
+  [Info] Definition at Line 8847 (Level 1): const [selectedMonth, setSelectedMonth] = useState(() => {
+  [Info] Definition at Line 8848 (Level 1): const now = new Date();
+  Level 1 reached at Line 8849 (opened at Line 8849)
+  Level 1 reached at Line 8849 (opened at Line 8849)
+  [Info] Definition at Line 8851 (Level 1): const [data, setData] = useState<any>(null);
+  [Info] Definition at Line 8852 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 8853 (Level 1): const [error, setError] = useState<string | null>(null);
+  [Info] Definition at Line 8855 (Level 1): const fetchPayslip = async () => {
+  [Info] Definition at Line 8859 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 8860 (Level 1): const baseApi = API.replace('/admin', '');
+  [Info] Definition at Line 8861 (Level 1): const res = await axios.get(`${baseApi}/salary-slips/my-slip?month=${selectedMonth}`, {
+  Level 1 reached at Line 8861 (opened at Line 8861)
+  Level 1 reached at Line 8861 (opened at Line 8861)
+  Level 1 reached at Line 8862 (opened at Line 8862)
+  [Info] Definition at Line 8874 (Level 1): const handlePrintMyPayslip = () => {
+  [Info] Definition at Line 8877 (Level 1): const inWords = (num: number): string => {
+  [Info] Definition at Line 8878 (Level 1): const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+  [Info] Definition at Line 8879 (Level 1): const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  [Info] Definition at Line 8883 (Level 1): const g = (n: number): string => {
+  [Info] Definition at Line 8885 (Level 1): const digit = n % 10;
+  [Info] Definition at Line 8889 (Level 1): const convert = (n: number): string => {
+  [Info] Definition at Line 8914 (Level 1): const res = convert(num).trim();
+  [Info] Definition at Line 8918 (Level 1): const printWindow = window.open('', '_blank');
+  [Info] Definition at Line 8924 (Level 1): const tMapped = { ...data.user, ...data.salaryData };
+  Level 1 reached at Line 8929 (opened at Line 8929)
+  Level 1 reached at Line 8929 (opened at Line 8929)
+  Level 1 reached at Line 8930 (opened at Line 8930)
+  Level 1 reached at Line 8936 (opened at Line 8936)
+  Level 1 reached at Line 8940 (opened at Line 8938)
+  [Info] Definition at Line 8952 (Level 1): const grossEarnings = data?.storedSlip
+  [Info] Definition at Line 8956 (Level 1): const grossDeductions = data?.storedSlip
+  [Info] Definition at Line 8960 (Level 1): const netTakeHome = data?.storedSlip
+  [Info] Definition at Line 9019 (Level 1): interface AdminTraineePayslipPreviewModalProps {
+  [Info] Definition at Line 9025 (Level 1): const AdminTraineePayslipPreviewModal = ({ userId, month, onClose }: AdminTraineePayslipPreviewModalProps) => {
+  [Info] Definition at Line 9026 (Level 1): const [data, setData] = useState<any>(null);
+  [Info] Definition at Line 9027 (Level 1): const [loading, setLoading] = useState(false);
+  [Info] Definition at Line 9028 (Level 1): const [error, setError] = useState<string | null>(null);
+  [Info] Definition at Line 9030 (Level 1): const fetchPayslip = async () => {
+  [Info] Definition at Line 9034 (Level 1): const token = localStorage.getItem('token');
+  [Info] Definition at Line 9035 (Level 1): const res = await axios.get(`${API}/reports/payslip/single/${userId}?month=${month}`, {
+  Level 1 reached at Line 9035 (opened at Line 9035)
+  Level 1 reached at Line 9035 (opened at Line 9035)
+  Level 1 reached at Line 9035 (opened at Line 9035)
+  Level 1 reached at Line 9036 (opened at Line 9036)
+  [Info] Definition at Line 9048 (Level 1): const handlePrintMyPayslip = () => {
+  [Info] Definition at Line 9051 (Level 1): const inWords = (num: number): string => {
+  [Info] Definition at Line 9052 (Level 1): const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+  [Info] Definition at Line 9053 (Level 1): const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+  [Info] Definition at Line 9057 (Level 1): const g = (n: number): string => {
+  [Info] Definition at Line 9059 (Level 1): const digit = n % 10;
+  [Info] Definition at Line 9063 (Level 1): const convert = (n: number): string => {
+  [Info] Definition at Line 9088 (Level 1): const res = convert(num).trim();
+  [Info] Definition at Line 9092 (Level 1): const printWindow = window.open('', '_blank');
+  [Info] Definition at Line 9098 (Level 1): const tMapped = { ...data.user, ...data.salaryData };
+  Level 1 reached at Line 9103 (opened at Line 9103)
+  Level 1 reached at Line 9103 (opened at Line 9103)
+  Level 1 reached at Line 9104 (opened at Line 9104)
+  Level 1 reached at Line 9110 (opened at Line 9110)
+  Level 1 reached at Line 9114 (opened at Line 9112)
+  [Info] Definition at Line 9126 (Level 1): const grossEarnings = data?.storedSlip
+  [Info] Definition at Line 9130 (Level 1): const grossDeductions = data?.storedSlip
+  [Info] Definition at Line 9134 (Level 1): const netTakeHome = data?.storedSlip
+  [Info] Definition at Line 9187 (Level 1): export default AdminDashboard;
+
+Final brace level: 1
