@@ -8713,10 +8713,17 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                         />
                         <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
                           Month hours: <span className="font-bold text-gray-700">{Math.floor(editingTrainee.otherCenterClassesHours || 0)}h {Math.round(((editingTrainee.otherCenterClassesHours || 0) % 1) * 60)}m</span>
-                          {editingTrainee.otherCenterClassesBreakdown && (
-                            <span className="text-[9px] text-purple-700 block font-semibold mt-0.5">({editingTrainee.otherCenterClassesBreakdown})</span>
-                          )}
                         </span>
+                        {editingTrainee.otherCenterClassesBreakdown && (
+                          <div className="mt-1.5 bg-purple-50 border border-purple-200 rounded-lg px-2.5 py-1.5">
+                            <span className="text-[9px] font-bold text-purple-800 uppercase tracking-wider block mb-1">Center-wise Breakdown</span>
+                            {editingTrainee.otherCenterClassesBreakdown.split(', ').map((entry: string, i: number) => (
+                              <div key={i} className="text-[10px] text-purple-700 font-semibold flex items-center gap-1">
+                                <span className="text-purple-400">●</span> {entry}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
@@ -9643,10 +9650,17 @@ const ManagePayslipModal = ({
                     />
                     <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
                       Month hours: <span className="font-bold text-gray-700">{Math.floor(calcData?.otherCenterClassesHours || 0)}h {Math.round(((calcData?.otherCenterClassesHours || 0) % 1) * 60)}m</span>
-                      {calcData?.otherCenterClassesBreakdown && (
-                        <span className="text-[9px] text-purple-750 block font-semibold mt-0.5">({calcData?.otherCenterClassesBreakdown})</span>
-                      )}
                     </span>
+                    {calcData?.otherCenterClassesBreakdown && (
+                      <div className="mt-1.5 bg-purple-50 border border-purple-200 rounded-lg px-2.5 py-1.5">
+                        <span className="text-[9px] font-bold text-purple-800 uppercase tracking-wider block mb-1">Center-wise Breakdown</span>
+                        {calcData.otherCenterClassesBreakdown.split(', ').map((entry: string, i: number) => (
+                          <div key={i} className="text-[10px] text-purple-700 font-semibold flex items-center gap-1">
+                            <span className="text-purple-400">●</span> {entry}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div>
