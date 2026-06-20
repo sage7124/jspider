@@ -9278,10 +9278,12 @@ const ManagePayslipModal = ({
   onSuccess: () => void;
   hasPermission: (perm: string) => boolean;
 }) => {
+  const [selectedMonth, setSelectedMonth] = useState(month);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [calcData, setCalcData] = useState<any>(null);
   const [storedSlip, setStoredSlip] = useState<any>(null);
+  const [updateBaselineSettings, setUpdateBaselineSettings] = useState(false);
 
   // Editable fields
   const [basicSalary, setBasicSalary] = useState('0');
@@ -9303,7 +9305,7 @@ const ManagePayslipModal = ({
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/payslip/single/${userId}?month=${month}`, {
+      const res = await axios.get(`${API}/reports/payslip/single/${userId}?month=${selectedMonth}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCalcData(res.data);
@@ -9342,7 +9344,7 @@ const ManagePayslipModal = ({
 
   useEffect(() => {
     fetchPayslipDetails();
-  }, [userId, month]);
+  }, [userId, selectedMonth]);
 
   // Live dynamic calculations
   const hrsExtra = parseFloat(calcData?.extraClassesHours) || 0;
@@ -9382,28 +9384,30 @@ const ManagePayslipModal = ({
     try {
       const token = localStorage.getItem('token');
       
-      // 1. Save user baseline settings in database
-      await axios.put(`${API}/trainees/${userId}/salary`, {
-        baseSalary: basicVal,
-        paidLeavesLimit: paidLeavesLimit !== '' ? parseFloat(paidLeavesLimit) : null,
-        extraClassRate: extraClassRate !== '' ? parseFloat(extraClassRate) : null,
-        otherCenterClassRate: otherCenterClassRate !== '' ? parseFloat(otherCenterClassRate) : null,
-        collegeVisitRate: collegeVisitRate !== '' ? parseFloat(collegeVisitRate) : null,
-        tdsRate: tdsRate !== '' ? parseFloat(tdsRate) : null,
-        otherAdditions: additionsVal,
-        otherDeductions: deductionsVal,
-        conveyanceAllowance: conveyanceVal,
-        foodAllowance: foodVal,
-        workingHoursOverride: workingHoursOverride !== '' ? parseFloat(workingHoursOverride) : null,
-        allowPayslipView: allowPayslipView
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 1. Conditionally save user baseline settings in database
+      if (updateBaselineSettings) {
+        await axios.put(`${API}/trainees/${userId}/salary`, {
+          baseSalary: basicVal,
+          paidLeavesLimit: paidLeavesLimit !== '' ? parseFloat(paidLeavesLimit) : null,
+          extraClassRate: extraClassRate !== '' ? parseFloat(extraClassRate) : null,
+          otherCenterClassRate: otherCenterClassRate !== '' ? parseFloat(otherCenterClassRate) : null,
+          collegeVisitRate: collegeVisitRate !== '' ? parseFloat(collegeVisitRate) : null,
+          tdsRate: tdsRate !== '' ? parseFloat(tdsRate) : null,
+          otherAdditions: additionsVal,
+          otherDeductions: deductionsVal,
+          conveyanceAllowance: conveyanceVal,
+          foodAllowance: foodVal,
+          workingHoursOverride: workingHoursOverride !== '' ? parseFloat(workingHoursOverride) : null,
+          allowPayslipView: allowPayslipView
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
 
       // 2. Save manual monthly overrides in database
       await axios.post(`${API}/admin/salary-slips`, {
         userId,
-        month,
+        month: selectedMonth,
         basicSalary: basicVal,
         hra: 0,
         conveyance: conveyanceVal,
@@ -9419,7 +9423,10 @@ const ManagePayslipModal = ({
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      alert("Salary settings and monthly overrides saved successfully!");
+      alert(updateBaselineSettings 
+        ? "Salary baseline settings and monthly overrides saved successfully!"
+        : "Monthly overrides saved and locked successfully! (Baseline settings unchanged)"
+      );
       onSuccess(); // Close modal and refresh parent
     } catch (e) {
       alert("Failed to save salary settings and overrides");
@@ -9449,14 +9456,14 @@ const ManagePayslipModal = ({
   const handleDownloadExcel = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/payslip/export/${userId}?month=${month}`, {
+      const res = await axios.get(`${API}/reports/payslip/export/${userId}?month=${selectedMonth}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `PaySlip_${name.replace(/\s+/g, '_')}_${month}.xlsx`);
+      link.setAttribute('download', `PaySlip_${name.replace(/\s+/g, '_')}_${selectedMonth}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -9470,7 +9477,7 @@ const ManagePayslipModal = ({
     const tMapped = storedSlip
       ? { ...calcData.user, ...calcData.salaryData, ...storedSlip }
       : { ...calcData.user, ...calcData.salaryData };
-    handlePrintPayslip(tMapped, month);
+    handlePrintPayslip(tMapped, selectedMonth);
   };
 
   return (
@@ -9483,7 +9490,15 @@ const ManagePayslipModal = ({
               <Banknote className="text-teal-200" size={22} />
               Manage Monthly Payslip
             </h2>
-            <p className="text-xs text-teal-100 font-medium mt-0.5">{name} — Month: {month}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-teal-100 font-medium">{name} — Month:</span>
+              <input 
+                type="month" 
+                value={selectedMonth} 
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-[#115e59] text-white border border-teal-500 rounded px-2.5 py-0.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-teal-300 cursor-pointer"
+              />
+            </div>
           </div>
           <button 
             onClick={onClose} 
@@ -9647,6 +9662,18 @@ const ManagePayslipModal = ({
                       </span>
                     </label>
                   </div>
+
+                  <div className="p-3 bg-slate-50 border rounded-lg border-gray-200 mt-4 space-y-2">
+                    <span className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      ⏱️ Late Arrivals &amp; Early Checkouts
+                    </span>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 font-medium">
+                      <div>Late Instances: <span className="font-bold text-amber-700">{calcData?.salaryData?.lateInstances || 0} times</span></div>
+                      <div>Total Late: <span className="font-bold text-amber-700">{calcData?.salaryData?.totalLateMinutes || 0} mins</span></div>
+                      <div>Early Departures: <span className="font-bold text-amber-700">{calcData?.salaryData?.earlyInstances || 0} times</span></div>
+                      <div>Total Early: <span className="font-bold text-amber-700">{calcData?.salaryData?.totalEarlyMinutes || 0} mins</span></div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -9770,27 +9797,41 @@ const ManagePayslipModal = ({
                   ₹{previewNetSalary.toLocaleString('en-IN')}
                 </span>
               </div>
-              <div className="flex gap-3">
-                {storedSlip && (
-                  <button
-                    onClick={handleUnlock}
-                    disabled={saving}
-                    className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-sm font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition-all"
-                  >
-                    Unlock / Restore Auto
-                  </button>
-                )}
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="bg-[#0f766e] hover:bg-[#115e59] text-white text-sm font-black px-6 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2"
-                >
-                  {saving ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
-                  ) : (
-                    "Save & Lock Overrides"
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg py-2 px-3 cursor-pointer shadow-sm hover:bg-slate-50 select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={updateBaselineSettings} 
+                    onChange={e => setUpdateBaselineSettings(e.target.checked)} 
+                    className="h-4 w-4 text-[#0f766e] focus:ring-[#0f766e] border-gray-300 rounded cursor-pointer"
+                  />
+                  <span className="text-xs font-extrabold text-gray-700">
+                    Update Trainee Baseline Profile
+                  </span>
+                </label>
+
+                <div className="flex gap-3">
+                  {storedSlip && (
+                    <button
+                      onClick={handleUnlock}
+                      disabled={saving}
+                      className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-sm font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition-all"
+                    >
+                      Unlock / Restore Auto
+                    </button>
                   )}
-                </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-[#0f766e] hover:bg-[#115e59] text-white text-sm font-black px-6 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2"
+                  >
+                    {saving ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
+                    ) : (
+                      "Save & Lock Overrides"
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
