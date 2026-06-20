@@ -9762,24 +9762,14 @@ const ManagePayslipModal = ({
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-4">
-                <button
-                  type="button"
-                  onClick={handleClearFields}
-                  className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-extrabold px-4 py-2.5 rounded-lg shadow-sm transition-all"
-                >
-                  Clear Fields
-                </button>
-
                 <div className="flex gap-3">
-                  {storedSlip && (
-                    <button
-                      onClick={handleUnlock}
-                      disabled={saving}
-                      className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-sm font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition-all"
-                    >
-                      Unlock / Restore Auto
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleClearFields}
+                    className="bg-red-50 hover:bg-red-100 text-red-750 border border-red-200 text-sm font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition-all"
+                  >
+                    Clear Fields
+                  </button>
                   <button
                     onClick={handleSave}
                     disabled={saving}
