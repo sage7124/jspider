@@ -8688,7 +8688,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                         />
                       </div>
                       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium italic">
-                        ⚠️ TDS is deducted from Professional Fee only. College Visit, Extra Classes &amp; Other Center Classes are added on top.
+                        ⚠️ TDS is calculated on all earnings (Professional Fee, Classes, and Additions) except Conveyance and Food allowances.
                       </div>
                     </div>
                   </div>
@@ -9405,7 +9405,7 @@ const ManagePayslipModal = ({
       }
 
       // 2. Save manual monthly overrides in database
-      await axios.post(`${API}/admin/salary-slips`, {
+      await axios.post(`${API}/salary-slips`, {
         userId,
         month: selectedMonth,
         basicSalary: basicVal,
@@ -9428,8 +9428,9 @@ const ManagePayslipModal = ({
         : "Monthly overrides saved and locked successfully! (Baseline settings unchanged)"
       );
       onSuccess(); // Close modal and refresh parent
-    } catch (e) {
-      alert("Failed to save salary settings and overrides");
+    } catch (e: any) {
+      const errMsg = e.response?.data?.error || e.response?.data?.message || e.message || "Failed to save salary settings and overrides";
+      alert(`Error: ${errMsg}`);
     } finally {
       setSaving(false);
     }
@@ -9441,13 +9442,14 @@ const ManagePayslipModal = ({
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${API}/admin/salary-slips/${storedSlip.id}`, {
+      await axios.delete(`${API}/salary-slips/${storedSlip.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert("Payslip unlocked successfully. Automatic calculations restored.");
       onSuccess();
-    } catch (e) {
-      alert("Failed to unlock payslip");
+    } catch (e: any) {
+      const errMsg = e.response?.data?.error || e.response?.data?.message || e.message || "Failed to unlock payslip";
+      alert(`Error: ${errMsg}`);
     } finally {
       setSaving(false);
     }
@@ -9601,7 +9603,7 @@ const ManagePayslipModal = ({
                     />
                   </div>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium italic">
-                    ⚠️ TDS is deducted from Professional Fee only. College Visit, Extra Classes &amp; Other Center Classes are added on top.
+                    ⚠️ TDS is calculated on all earnings (Professional Fee, Classes, and Additions) except Conveyance and Food allowances.
                   </div>
                 </div>
               </div>

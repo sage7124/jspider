@@ -451,30 +451,31 @@ router.put('/admin/trainees/:id/salary', authenticateToken, checkSalarySlipsAcce
       allowPayslipView
     } = req.body;
     
+    const updateData: any = {};
+    if (baseSalary !== undefined) updateData.baseSalary = parseFloat(baseSalary) || 0.0;
+    if (trainingFee !== undefined) updateData.trainingFee = parseFloat(trainingFee) || 0.0;
+    if (lateRate !== undefined) updateData.lateRate = (lateRate !== "" && lateRate !== null) ? parseFloat(lateRate) : null;
+    if (earlyRate !== undefined) updateData.earlyRate = (earlyRate !== "" && earlyRate !== null) ? parseFloat(earlyRate) : null;
+    if (absentRate !== undefined) updateData.absentRate = (absentRate !== "" && absentRate !== null) ? parseFloat(absentRate) : null;
+    if (paidLeavesLimit !== undefined) updateData.paidLeavesLimit = (paidLeavesLimit !== "" && paidLeavesLimit !== null) ? parseFloat(paidLeavesLimit) : null;
+    if (extraClassRate !== undefined) updateData.extraClassRate = (extraClassRate !== "" && extraClassRate !== null) ? parseFloat(extraClassRate) : null;
+    if (otherCenterClassRate !== undefined) updateData.otherCenterClassRate = (otherCenterClassRate !== "" && otherCenterClassRate !== null) ? parseFloat(otherCenterClassRate) : null;
+    if (collegeVisitRate !== undefined) updateData.collegeVisitRate = (collegeVisitRate !== "" && collegeVisitRate !== null) ? parseFloat(collegeVisitRate) : null;
+    if (tdsRate !== undefined) updateData.tdsRate = (tdsRate !== "" && tdsRate !== null) ? parseFloat(tdsRate) : null;
+    if (otherAdditions !== undefined) updateData.otherAdditions = (otherAdditions !== "" && otherAdditions !== null) ? parseFloat(otherAdditions) : 0.0;
+    if (otherDeductions !== undefined) updateData.otherDeductions = (otherDeductions !== "" && otherDeductions !== null) ? parseFloat(otherDeductions) : 0.0;
+    if (lateDeductionType !== undefined) updateData.lateDeductionType = (lateDeductionType !== "" && lateDeductionType !== null) ? lateDeductionType : null;
+    if (earlyDeductionType !== undefined) updateData.earlyDeductionType = (earlyDeductionType !== "" && earlyDeductionType !== null) ? earlyDeductionType : null;
+    if (lateIntervalValue !== undefined) updateData.lateIntervalValue = (lateIntervalValue !== "" && lateIntervalValue !== null) ? parseInt(lateIntervalValue) : null;
+    if (earlyIntervalValue !== undefined) updateData.earlyIntervalValue = (earlyIntervalValue !== "" && earlyIntervalValue !== null) ? parseInt(earlyIntervalValue) : null;
+    if (conveyanceAllowance !== undefined) updateData.conveyanceAllowance = parseFloat(conveyanceAllowance) || 0.0;
+    if (foodAllowance !== undefined) updateData.foodAllowance = parseFloat(foodAllowance) || 0.0;
+    if (workingHoursOverride !== undefined) updateData.workingHoursOverride = (workingHoursOverride !== "" && workingHoursOverride !== null) ? parseFloat(workingHoursOverride) : null;
+    if (allowPayslipView !== undefined) updateData.allowPayslipView = Boolean(allowPayslipView);
+
     const user = await prisma.user.update({
       where: { id: parseInt(id as string) },
-      data: {
-        baseSalary: parseFloat(baseSalary) || 0.0,
-        trainingFee: parseFloat(trainingFee) || 0.0,
-        lateRate: (lateRate !== undefined && lateRate !== "" && lateRate !== null) ? parseFloat(lateRate) : null,
-        earlyRate: (earlyRate !== undefined && earlyRate !== "" && earlyRate !== null) ? parseFloat(earlyRate) : null,
-        absentRate: (absentRate !== undefined && absentRate !== "" && absentRate !== null) ? parseFloat(absentRate) : null,
-        paidLeavesLimit: (paidLeavesLimit !== undefined && paidLeavesLimit !== "" && paidLeavesLimit !== null) ? parseFloat(paidLeavesLimit) : null,
-        extraClassRate: (extraClassRate !== undefined && extraClassRate !== "" && extraClassRate !== null) ? parseFloat(extraClassRate) : null,
-        otherCenterClassRate: (otherCenterClassRate !== undefined && otherCenterClassRate !== "" && otherCenterClassRate !== null) ? parseFloat(otherCenterClassRate) : null,
-        collegeVisitRate: (collegeVisitRate !== undefined && collegeVisitRate !== "" && collegeVisitRate !== null) ? parseFloat(collegeVisitRate) : null,
-        tdsRate: (tdsRate !== undefined && tdsRate !== "" && tdsRate !== null) ? parseFloat(tdsRate) : null,
-        otherAdditions: (otherAdditions !== undefined && otherAdditions !== "" && otherAdditions !== null) ? parseFloat(otherAdditions) : 0.0,
-        otherDeductions: (otherDeductions !== undefined && otherDeductions !== "" && otherDeductions !== null) ? parseFloat(otherDeductions) : 0.0,
-        lateDeductionType: (lateDeductionType !== undefined && lateDeductionType !== "" && lateDeductionType !== null) ? lateDeductionType : null,
-        earlyDeductionType: (earlyDeductionType !== undefined && earlyDeductionType !== "" && earlyDeductionType !== null) ? earlyDeductionType : null,
-        lateIntervalValue: (lateIntervalValue !== undefined && lateIntervalValue !== "" && lateIntervalValue !== null) ? parseInt(lateIntervalValue) : null,
-        earlyIntervalValue: (earlyIntervalValue !== undefined && earlyIntervalValue !== "" && earlyIntervalValue !== null) ? parseInt(earlyIntervalValue) : null,
-        conveyanceAllowance: conveyanceAllowance !== undefined ? parseFloat(conveyanceAllowance) || 0.0 : undefined,
-        foodAllowance: foodAllowance !== undefined ? parseFloat(foodAllowance) || 0.0 : undefined,
-        workingHoursOverride: workingHoursOverride !== undefined && workingHoursOverride !== "" && workingHoursOverride !== null ? parseFloat(workingHoursOverride) : null,
-        allowPayslipView: allowPayslipView !== undefined ? Boolean(allowPayslipView) : undefined
-      }
+      data: updateData
     });
 
     res.json({ message: 'Salary settings updated successfully', user });
