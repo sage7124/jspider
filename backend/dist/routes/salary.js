@@ -141,7 +141,7 @@ function calculateDailyHoursFromSlots(slots) {
     return totalHours / days.length; // Average scheduled hours per day
 }
 // Helper function to calculate all payslip parameters for a trainee
-const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, passedSettings) => {
+const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, passedSettings, overrideBaseSalary) => {
     // Fetch trainee's attendances, holidays, and approved leaves for this month
     const attendances = await prisma.attendance.findMany({
         where: {
@@ -256,7 +256,24 @@ const calculateTraineeSalaryData = async (trainee, year, mon, daysInMonth, start
         }
     });
     const settings = passedSettings || await prisma.instituteSettings.findUnique({ where: { id: 1 } });
-    const baseSalary = trainee.baseSalary || 0.0;
+    let baseSalary = trainee.baseSalary || 0.0;
+    if (overrideBaseSalary !== undefined && overrideBaseSalary !== null) {
+        baseSalary = overrideBaseSalary;
+    }
+    else {
+        const monthStr = `${year}-${String(mon).padStart(2, '0')}`;
+        const storedSlip = await prisma.salarySlip.findUnique({
+            where: {
+                userId_month: {
+                    userId: trainee.id,
+                    month: monthStr
+                }
+            }
+        });
+        if (storedSlip) {
+            baseSalary = storedSlip.basicSalary;
+        }
+    }
     // Extra class, other center class, and college visit rates
     const extraClassRate = trainee.extraClassRate !== null && trainee.extraClassRate !== undefined ? trainee.extraClassRate : (settings?.extraClassRate !== undefined ? settings.extraClassRate : 0.0);
     const otherCenterClassRate = trainee.otherCenterClassRate !== null && trainee.otherCenterClassRate !== undefined ? trainee.otherCenterClassRate : (settings?.otherCenterClassRate !== undefined ? settings.otherCenterClassRate : 0.0);
@@ -488,8 +505,8 @@ router.get('/admin/reports/payslip/list', authMiddleware_1.authenticateToken, ch
         const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
         const result = [];
         for (const t of trainees) {
-            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
             const storedSlip = slipsMap.get(t.id) || null;
+            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings, storedSlip ? storedSlip.basicSalary : undefined);
             if (storedSlip) {
                 const grossEarnings = storedSlip.basicSalary +
                     storedSlip.conveyance +
@@ -573,12 +590,12 @@ router.get('/admin/reports/payslip/single/:userId', authMiddleware_1.authenticat
         const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
         const daysInMonth = new Date(year, mon, 0).getDate();
         const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
-        const salData = await (0, exports.calculateTraineeSalaryData)(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
         const storedSlip = await prisma.salarySlip.findUnique({
             where: {
                 userId_month: { userId, month }
             }
         });
+        const salData = await (0, exports.calculateTraineeSalaryData)(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings, storedSlip ? storedSlip.basicSalary : undefined);
         res.json({
             id: trainee.id,
             fullName: trainee.fullName,
@@ -985,12 +1002,12 @@ router.get('/admin/reports/payslip/export/:userId', authMiddleware_1.authenticat
         const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
         const daysInMonth = new Date(year, mon, 0).getDate();
         const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
-        const salData = await (0, exports.calculateTraineeSalaryData)(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
         const storedSlip = await prisma.salarySlip.findUnique({
             where: {
                 userId_month: { userId, month }
             }
         });
+        const salData = await (0, exports.calculateTraineeSalaryData)(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings, storedSlip ? storedSlip.basicSalary : undefined);
         const workbook = new exceljs.Workbook();
         const sanitizedSheetName = trainee.fullName.replace(/[\\/?:*\[\]]/g, '').substring(0, 31) || 'Pay Slip';
         const ws = workbook.addWorksheet(sanitizedSheetName);
@@ -1377,8 +1394,8 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
         const slipsMap = new Map(slips.map(s => [s.userId, s]));
         for (let idx = 0; idx < trainees.length; idx++) {
             const t = trainees[idx];
-            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
             const storedSlip = slipsMap.get(t.id);
+            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings, storedSlip ? storedSlip.basicSalary : undefined);
             // Use stored overrides if locked, otherwise use computed values
             const basicVal = storedSlip ? storedSlip.basicSalary : salData.professionalFee;
             const conveyanceVal = storedSlip ? storedSlip.conveyance : (salData.conveyance || 0);
@@ -1487,12 +1504,12 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
         for (const t of trainees) {
             const uniqueName = getUniqueSheetName(t.fullName);
             const teacherWs = workbook.addWorksheet(uniqueName);
-            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
             const storedSlip = await prisma.salarySlip.findUnique({
                 where: {
                     userId_month: { userId: t.id, month }
                 }
             });
+            const salData = await (0, exports.calculateTraineeSalaryData)(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings, storedSlip ? storedSlip.basicSalary : undefined);
             generateIndividualPayslipSheet(teacherWs, t, salData, storedSlip, month, year, mon);
         }
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1528,12 +1545,12 @@ router.get('/salary-slips/my-slip', authMiddleware_1.authenticateToken, async (r
         if (settings?.allowPayslipsView === false || user.allowPayslipView === false) {
             return res.status(403).json({ error: 'Payslips are currently hidden by the Administrator.' });
         }
-        const salData = await (0, exports.calculateTraineeSalaryData)(user, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
         const storedSlip = await prisma.salarySlip.findUnique({
             where: {
                 userId_month: { userId, month }
             }
         });
+        const salData = await (0, exports.calculateTraineeSalaryData)(user, year, mon, daysInMonth, startOfMonth, endOfMonth, settings, storedSlip ? storedSlip.basicSalary : undefined);
         res.json({
             user: {
                 fullName: user.fullName,

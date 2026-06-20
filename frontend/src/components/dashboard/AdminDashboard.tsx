@@ -9301,10 +9301,27 @@ const ManagePayslipModal = ({
 
   const grossEarnings = basicVal + conveyanceVal + foodVal + additionsVal + extraClassEarnings + otherCenterClassEarnings + collegeVisitEarnings;
 
-  const absentDeduction = calcData?.salaryData?.absentDeduction || 0;
-  const unpaidApprovedLeavesDeduction = calcData?.salaryData?.unpaidApprovedLeavesDeduction || 0;
-  const lateDeduction = calcData?.salaryData?.lateDeduction || 0;
-  const earlyDeduction = calcData?.salaryData?.earlyDeduction || 0;
+  const [y, m] = selectedMonth.split('-').map(Number);
+  const daysInMonth = (y && m) ? new Date(y, m, 0).getDate() : 30;
+  const dailyRate = daysInMonth > 0 ? (basicVal / daysInMonth) : 0;
+  const absentDays = calcData?.salaryData?.absentDays || 0;
+  const absentDeduction = Math.round(absentDays * dailyRate);
+
+  const limitPaidLeaves = paidLeavesLimit !== '' ? (parseFloat(paidLeavesLimit) || 0) : (calcData?.salaryData?.personalPaidLeavesLimit ?? 0);
+  const carryForwardBalance = calcData?.salaryData?.carryForwardBalance || 0;
+  const totalAvailablePaidLeaves = limitPaidLeaves + carryForwardBalance;
+  const approvedLeavesCount = calcData?.salaryData?.approvedLeavesCount || 0;
+  const unpaidApprovedLeaves = Math.max(0, approvedLeavesCount - totalAvailablePaidLeaves);
+  const unpaidApprovedLeavesDeduction = Math.round(unpaidApprovedLeaves * dailyRate);
+
+  const dailyHours = workingHoursOverride !== '' ? (parseFloat(workingHoursOverride) || 0) : (calcData?.salaryData?.workingHours || 0);
+  let lateDeduction = 0;
+  let earlyDeduction = 0;
+  if (dailyHours > 0) {
+    const perMinuteRate = basicVal / (daysInMonth * dailyHours * 60);
+    lateDeduction = Math.round((calcData?.salaryData?.totalLateMinutes || 0) * perMinuteRate);
+    earlyDeduction = Math.round((calcData?.salaryData?.totalEarlyMinutes || 0) * perMinuteRate);
+  }
 
   const totalDeductions = deductionsVal + tdsVal + absentDeduction + unpaidApprovedLeavesDeduction + lateDeduction + earlyDeduction;
   const previewNetSalary = grossEarnings - totalDeductions;

@@ -130,7 +130,8 @@ export const calculateTraineeSalaryData = async (
   daysInMonth: number,
   startOfMonth: Date,
   endOfMonth: Date,
-  passedSettings?: any
+  passedSettings?: any,
+  overrideBaseSalary?: number
 ) => {
   // Fetch trainee's attendances, holidays, and approved leaves for this month
   const attendances = await prisma.attendance.findMany({
@@ -258,7 +259,23 @@ export const calculateTraineeSalaryData = async (
 
   const settings = passedSettings || await prisma.instituteSettings.findUnique({ where: { id: 1 } });
 
-  const baseSalary = trainee.baseSalary || 0.0;
+  let baseSalary = trainee.baseSalary || 0.0;
+  if (overrideBaseSalary !== undefined && overrideBaseSalary !== null) {
+    baseSalary = overrideBaseSalary;
+  } else {
+    const monthStr = `${year}-${String(mon).padStart(2, '0')}`;
+    const storedSlip = await prisma.salarySlip.findUnique({
+      where: {
+        userId_month: {
+          userId: trainee.id,
+          month: monthStr
+        }
+      }
+    });
+    if (storedSlip) {
+      baseSalary = storedSlip.basicSalary;
+    }
+  }
 
   // Extra class, other center class, and college visit rates
   const extraClassRate = trainee.extraClassRate !== null && trainee.extraClassRate !== undefined ? trainee.extraClassRate : (settings?.extraClassRate !== undefined ? settings.extraClassRate : 0.0);
@@ -521,8 +538,17 @@ router.get('/admin/reports/payslip/list', authenticateToken, checkSalarySlipsAcc
     const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
     const result = [];
     for (const t of trainees) {
-      const salData = await calculateTraineeSalaryData(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
       const storedSlip = slipsMap.get(t.id) || null;
+      const salData = await calculateTraineeSalaryData(
+        t,
+        year,
+        mon,
+        daysInMonth,
+        startOfMonth,
+        endOfMonth,
+        settings,
+        storedSlip ? storedSlip.basicSalary : undefined
+      );
 
       if (storedSlip) {
         const grossEarnings = storedSlip.basicSalary + 
@@ -614,13 +640,22 @@ router.get('/admin/reports/payslip/single/:userId', authenticateToken, checkSala
     const daysInMonth = new Date(year, mon, 0).getDate();
 
     const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
-    const salData = await calculateTraineeSalaryData(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
-
     const storedSlip = await prisma.salarySlip.findUnique({
       where: {
         userId_month: { userId, month }
       }
     });
+
+    const salData = await calculateTraineeSalaryData(
+      trainee,
+      year,
+      mon,
+      daysInMonth,
+      startOfMonth,
+      endOfMonth,
+      settings,
+      storedSlip ? storedSlip.basicSalary : undefined
+    );
 
     res.json({
       id: trainee.id,
@@ -1121,13 +1156,22 @@ router.get('/admin/reports/payslip/export/:userId', authenticateToken, checkSala
     const daysInMonth = new Date(year, mon, 0).getDate();
 
     const settings = await prisma.instituteSettings.findUnique({ where: { id: 1 } });
-    const salData = await calculateTraineeSalaryData(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
-
     const storedSlip = await prisma.salarySlip.findUnique({
       where: {
         userId_month: { userId, month }
       }
     });
+
+    const salData = await calculateTraineeSalaryData(
+      trainee,
+      year,
+      mon,
+      daysInMonth,
+      startOfMonth,
+      endOfMonth,
+      settings,
+      storedSlip ? storedSlip.basicSalary : undefined
+    );
 
     const workbook = new exceljs.Workbook();
     const sanitizedSheetName = trainee.fullName.replace(/[\\/?:*\[\]]/g, '').substring(0, 31) || 'Pay Slip';
@@ -1555,8 +1599,17 @@ router.get('/admin/reports/payslip/export-all', authenticateToken, checkSalarySl
 
     for (let idx = 0; idx < trainees.length; idx++) {
       const t = trainees[idx];
-      const salData = await calculateTraineeSalaryData(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
       const storedSlip = slipsMap.get(t.id);
+      const salData = await calculateTraineeSalaryData(
+        t,
+        year,
+        mon,
+        daysInMonth,
+        startOfMonth,
+        endOfMonth,
+        settings,
+        storedSlip ? storedSlip.basicSalary : undefined
+      );
 
       // Use stored overrides if locked, otherwise use computed values
       const basicVal = storedSlip ? storedSlip.basicSalary : salData.professionalFee;
@@ -1675,12 +1728,21 @@ router.get('/admin/reports/payslip/export-all', authenticateToken, checkSalarySl
       const uniqueName = getUniqueSheetName(t.fullName);
       const teacherWs = workbook.addWorksheet(uniqueName);
       
-      const salData = await calculateTraineeSalaryData(t, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
       const storedSlip = await prisma.salarySlip.findUnique({
         where: {
           userId_month: { userId: t.id, month }
         }
       });
+      const salData = await calculateTraineeSalaryData(
+        t,
+        year,
+        mon,
+        daysInMonth,
+        startOfMonth,
+        endOfMonth,
+        settings,
+        storedSlip ? storedSlip.basicSalary : undefined
+      );
 
       generateIndividualPayslipSheet(teacherWs, t, salData, storedSlip, month, year, mon);
     }
@@ -1725,13 +1787,22 @@ router.get('/salary-slips/my-slip', authenticateToken, async (req: AuthRequest, 
       return res.status(403).json({ error: 'Payslips are currently hidden by the Administrator.' });
     }
 
-    const salData = await calculateTraineeSalaryData(user, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
-
     const storedSlip = await prisma.salarySlip.findUnique({
       where: {
         userId_month: { userId, month }
       }
     });
+
+    const salData = await calculateTraineeSalaryData(
+      user,
+      year,
+      mon,
+      daysInMonth,
+      startOfMonth,
+      endOfMonth,
+      settings,
+      storedSlip ? storedSlip.basicSalary : undefined
+    );
 
     res.json({
       user: {

@@ -1,6 +1,6 @@
 import * as exceljs from 'exceljs';
 declare const router: import("express-serve-static-core").Router;
-export declare const calculateTraineeSalaryData: (trainee: any, year: number, mon: number, daysInMonth: number, startOfMonth: Date, endOfMonth: Date, passedSettings?: any) => Promise<{
+export declare const calculateTraineeSalaryData: (trainee: any, year: number, mon: number, daysInMonth: number, startOfMonth: Date, endOfMonth: Date, passedSettings?: any, overrideBaseSalary?: number) => Promise<{
     professionalFee: any;
     basicSalary: any;
     trainingFee: number;
