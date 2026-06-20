@@ -768,7 +768,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
   const monthName = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
 
   // Check if we are dealing with a stored slip (DB) or calculated values
-  const hasStoredSlip = t.basicSalary !== undefined;
+  const hasStoredSlip = t.netSalary !== undefined;
 
   const grossEarnings = hasStoredSlip 
     ? ((t.basicSalary || 0) + (t.hra || 0) + (t.conveyance || 0) + (t.specialAllowance || 0) + (t.otherAllowance || 0) + (t.food || 0)) 
@@ -4486,7 +4486,9 @@ const TraineePayslipsModal = ({ onClose }: TraineePayslipsModalProps) => {
       return;
     }
 
-    const tMapped = { ...data.user, ...data.salaryData };
+    const tMapped = data.storedSlip 
+      ? { ...data.user, ...data.salaryData, ...data.storedSlip } 
+      : { ...data.user, ...data.salaryData };
 
     printWindow.document.write(`
       <html>

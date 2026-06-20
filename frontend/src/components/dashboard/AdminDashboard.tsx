@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX, UserCheck, FileSpreadsheet, Upload, Plus, Settings, Search, Printer } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX, UserCheck, FileSpreadsheet, Upload, Plus, Settings, Search, Printer, Banknote } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -1461,7 +1461,7 @@ const generateIndividualPayslipHtmlString = (t: any, month: string, inWords: (nu
   const monthName = new Date(parseInt(y), parseInt(m) - 1).toLocaleString('en-IN', { month: 'long' });
 
   // Check if we are dealing with a stored slip (DB) or calculated values
-  const hasStoredSlip = t.basicSalary !== undefined;
+  const hasStoredSlip = t.netSalary !== undefined;
 
   const grossEarnings = hasStoredSlip 
     ? ((t.basicSalary || 0) + (t.hra || 0) + (t.conveyance || 0) + (t.specialAllowance || 0) + (t.otherAllowance || 0) + (t.food || 0)) 
@@ -2243,6 +2243,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [showLeftNICTians, setShowLeftNICTians] = useState(false);
   const [showSalarySlips, setShowSalarySlips] = useState(false);
   const [showMyPayslips, setShowMyPayslips] = useState(false);
+  const [managePayslipUser, setManagePayslipUser] = useState<any | null>(null);
+
+  const getMonthFromDate = (dateStr: string) => {
+    if (!dateStr) {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const parts = dateStr.split(/[\/\-\.]/);
+    if (parts.length === 3) {
+      const month = parts[1];
+      const year = parts[2];
+      if (year.length === 4 && !isNaN(Number(month))) {
+        return `${year}-${month.padStart(2, '0')}`;
+      }
+    }
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  };
 
   const regenerateQr = () => {
     setQrToken('TOKEN_' + Math.random().toString(36).substring(2, 10).toUpperCase());
@@ -2512,23 +2530,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
                     {hasPermission('DOWNLOAD_REPORT') && <button onClick={() => setIndividualReport(t)} className="text-blue-600 hover:text-blue-800 transition-colors" title="Download Report"><FileDown size={16} /></button>}
                     {hasPermission('MANAGE_SALARY_SLIPS') && (
                       <button 
-                        onClick={async () => {
-                          const now = new Date();
-                          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                          try {
-                            const token = localStorage.getItem('token');
-                            const res = await axios.get(`${API}/reports/payslip/single/${t.id}?month=${currentMonth}`, {
-                              headers: { Authorization: `Bearer ${token}` }
-                            });
-                            handlePrintPayslip(res.data, currentMonth);
-                          } catch (e) {
-                            alert(`Failed to print pay slip for ${t.name}`);
-                          }
+                        onClick={() => {
+                          setManagePayslipUser({
+                            id: t.id,
+                            name: t.name,
+                            date: t.date,
+                            month: getMonthFromDate(t.date)
+                          });
                         }} 
-                        className="text-indigo-600 hover:text-indigo-800 transition-colors" 
-                        title="Print Pay Slip (PDF)"
+                        className="text-emerald-600 hover:text-emerald-800 transition-colors animate-pulse hover:animate-none" 
+                        title="Manage Monthly Pay Slip"
                       >
-                        <Printer size={16} />
+                        <Banknote size={16} />
                       </button>
                     )}
                     {hasPermission('EDIT_USER') && (
@@ -2637,6 +2650,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showMyPayslips && (
         <MyPayslipsModal
           onClose={() => setShowMyPayslips(false)}
+        />
+      )}
+      {managePayslipUser && (
+        <ManagePayslipModal
+          userId={managePayslipUser.id}
+          name={managePayslipUser.name}
+          month={managePayslipUser.month}
+          onClose={() => setManagePayslipUser(null)}
+          onSuccess={() => {
+            setManagePayslipUser(null);
+            fetchTrainees();
+          }}
+          hasPermission={hasPermission}
         />
       )}
     </div>
@@ -8936,7 +8962,9 @@ const MyPayslipsModal = ({ onClose }: MyPayslipsModalProps) => {
       return;
     }
 
-    const tMapped = { ...data.user, ...data.salaryData };
+    const tMapped = data.storedSlip 
+      ? { ...data.user, ...data.salaryData, ...data.storedSlip } 
+      : { ...data.user, ...data.salaryData };
 
     printWindow.document.write(`
       <html>
@@ -9110,7 +9138,9 @@ const AdminTraineePayslipPreviewModal = ({ userId, month, onClose }: AdminTraine
       return;
     }
 
-    const tMapped = { ...data.user, ...data.salaryData };
+    const tMapped = data.storedSlip 
+      ? { ...data.user, ...data.salaryData, ...data.storedSlip } 
+      : { ...data.user, ...data.salaryData };
 
     printWindow.document.write(`
       <html>
@@ -9193,6 +9223,361 @@ const AdminTraineePayslipPreviewModal = ({ userId, month, onClose }: AdminTraine
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+const ManagePayslipModal = ({
+  userId,
+  name,
+  month,
+  onClose,
+  onSuccess,
+  hasPermission
+}: {
+  userId: number;
+  name: string;
+  month: string;
+  onClose: () => void;
+  onSuccess: () => void;
+  hasPermission: (perm: string) => boolean;
+}) => {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [calcData, setCalcData] = useState<any>(null);
+  const [storedSlip, setStoredSlip] = useState<any>(null);
+
+  // Editable fields
+  const [basicSalary, setBasicSalary] = useState('0');
+  const [conveyance, setConveyance] = useState('0');
+  const [food, setFood] = useState('0');
+  const [otherAllowance, setOtherAllowance] = useState('0'); // Additions
+  const [otherDeductions, setOtherDeductions] = useState('0'); // Deductions
+  const [tds, setTds] = useState('0');
+
+  const fetchPayslipDetails = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/payslip/single/${userId}?month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCalcData(res.data);
+      if (res.data.storedSlip) {
+        const slip = res.data.storedSlip;
+        setStoredSlip(slip);
+        setBasicSalary(String(slip.basicSalary || 0));
+        setConveyance(String(slip.conveyance || 0));
+        setFood(String(slip.food || 0));
+        setOtherAllowance(String(slip.otherAllowance || 0));
+        setOtherDeductions(String(slip.otherDeductions || 0));
+        setTds(String(slip.tds || 0));
+      } else {
+        setStoredSlip(null);
+        const sal = res.data.salaryData || {};
+        setBasicSalary(String(sal.basicSalary || sal.professionalFee || 0));
+        setConveyance(String(sal.conveyance || 0));
+        setFood(String(sal.food || 0));
+        setOtherAllowance(String(sal.otherAdditions || 0));
+        setOtherDeductions(String(sal.otherDeductions || 0));
+        setTds(String(sal.tdsDeduction || 0));
+      }
+    } catch (e) {
+      alert("Failed to load payslip data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPayslipDetails();
+  }, [userId, month]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/admin/salary-slips`, {
+        userId,
+        month,
+        basicSalary: parseFloat(basicSalary) || 0,
+        hra: 0,
+        conveyance: parseFloat(conveyance) || 0,
+        food: parseFloat(food) || 0,
+        specialAllowance: 0,
+        otherAllowance: parseFloat(otherAllowance) || 0,
+        pf: 0,
+        professionalTax: 0,
+        esi: 0,
+        tds: parseFloat(tds) || 0,
+        otherDeductions: parseFloat(otherDeductions) || 0
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert("Payslip manually overridden and locked successfully!");
+      fetchPayslipDetails();
+    } catch (e) {
+      alert("Failed to save payslip overrides");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUnlock = async () => {
+    if (!storedSlip) return;
+    if (!confirm("Are you sure you want to unlock this payslip? This will delete manual overrides and revert to automatic calculations based on attendance and baseline settings.")) return;
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/admin/salary-slips/${storedSlip.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert("Payslip unlocked successfully. Automatic calculations restored.");
+      fetchPayslipDetails();
+    } catch (e) {
+      alert("Failed to unlock payslip");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/reports/payslip/export/${userId}?month=${month}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `PaySlip_${name.replace(/\s+/g, '_')}_${month}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      alert("Excel download failed");
+    }
+  };
+
+  const handlePrintPDF = () => {
+    if (!calcData) return;
+    const tMapped = storedSlip
+      ? { ...calcData.user, ...calcData.salaryData, ...storedSlip }
+      : { ...calcData.user, ...calcData.salaryData };
+    handlePrintPayslip(tMapped, month);
+  };
+
+  const previewNetSalary = (
+    (parseFloat(basicSalary) || 0) +
+    (parseFloat(conveyance) || 0) +
+    (parseFloat(food) || 0) +
+    (parseFloat(otherAllowance) || 0)
+  ) - (
+    (parseFloat(otherDeductions) || 0) +
+    (parseFloat(tds) || 0)
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fadeIn">
+      <div className="bg-white border border-gray-200 text-gray-950 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex justify-between items-center bg-[#0f766e] text-white px-6 py-4">
+          <div>
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Banknote className="text-teal-200" size={22} />
+              Manage Monthly Payslip
+            </h2>
+            <p className="text-xs text-teal-100 font-medium mt-0.5">{name} — Month: {month}</p>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-1.5 rounded-full hover:bg-[#115e59] text-teal-100 hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center py-20 flex-1">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#0f766e]"></div>
+          </div>
+        ) : (
+          <div className="overflow-y-auto p-6 space-y-6 flex-1 bg-slate-50">
+            {/* Status Badge */}
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-600">Calculations Mode:</span>
+                {storedSlip ? (
+                  <span className="bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                    <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping"></span>
+                    🔒 Locked (Manual Overrides Active)
+                  </span>
+                ) : (
+                  <span className="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                    <span className="h-2 w-2 rounded-full bg-blue-500"></span>
+                    ⚙️ Automatic (Attendance Calculations Active)
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDownloadExcel}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
+                >
+                  <FileSpreadsheet size={15} /> Download Excel
+                </button>
+                <button
+                  onClick={handlePrintPDF}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
+                >
+                  <Printer size={15} /> Print PDF
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Earnings Column */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <h3 className="font-extrabold text-[#0f766e] border-b pb-2 text-sm flex items-center gap-2">
+                  💰 Earnings & Allowances
+                </h3>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Professional Fee / Base Salary (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={basicSalary}
+                      onChange={(e) => setBasicSalary(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Conveyance Allowance (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={conveyance}
+                      onChange={(e) => setConveyance(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Food Allowance (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={food}
+                      onChange={(e) => setFood(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Additions / Other Allowance (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={otherAllowance}
+                      onChange={(e) => setOtherAllowance(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Deductions Column */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <h3 className="font-extrabold text-red-700 border-b pb-2 text-sm flex items-center gap-2">
+                  💸 Deductions & TDS
+                </h3>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Tax Deducted at Source (TDS) (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={tds}
+                      onChange={(e) => setTds(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 border-gray-300"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Deductions / Other Deductions (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={otherDeductions}
+                      onChange={(e) => setOtherDeductions(e.target.value)}
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 border-gray-300"
+                    />
+                  </div>
+
+                  <div className="p-3 bg-slate-50 border rounded-lg border-gray-200 mt-4 space-y-2">
+                    <span className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      ℹ️ Attendance Metrics Reference
+                    </span>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 font-medium">
+                      <div>Absent Days: <span className="font-bold text-red-650">{calcData?.salaryData?.absentDays || 0} days</span></div>
+                      <div>Approved Leaves: <span className="font-bold text-blue-700">{calcData?.salaryData?.approvedLeavesCount || 0} days</span></div>
+                      <div>Late Penalty: <span className="font-bold text-red-650">₹{calcData?.salaryData?.lateDeduction || 0}</span></div>
+                      <div>Early Penalty: <span className="font-bold text-red-650">₹{calcData?.salaryData?.earlyDeduction || 0}</span></div>
+                      <div>Extra Class Pay: <span className="font-bold text-emerald-700">₹{calcData?.salaryData?.extraClassEarnings || 0}</span></div>
+                      <div>College Visit Pay: <span className="font-bold text-emerald-700">₹{calcData?.salaryData?.collegeVisitEarnings || 0}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Preview Summary */}
+            <div className="bg-[#0f766e]/5 border border-[#0f766e]/20 p-5 rounded-xl flex flex-wrap justify-between items-center gap-4">
+              <div>
+                <span className="block text-xs font-bold text-[#0f766e] uppercase tracking-wider">
+                  Nett Take Home (Preview)
+                </span>
+                <span className="text-2xl font-black text-gray-900 mt-1 block">
+                  ₹{previewNetSalary.toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="flex gap-3">
+                {storedSlip && (
+                  <button
+                    onClick={handleUnlock}
+                    disabled={saving}
+                    className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-sm font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition-all"
+                  >
+                    Unlock / Restore Auto
+                  </button>
+                )}
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="bg-[#0f766e] hover:bg-[#115e59] text-white text-sm font-black px-6 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2"
+                >
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
+                  ) : (
+                    "Save & Lock Overrides"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
