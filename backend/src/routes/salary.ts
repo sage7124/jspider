@@ -728,23 +728,17 @@ export function generateIndividualPayslipSheet(
   applyGridBorders(7, 7, 1, 6);
 
   // PAN / Aadhaar line
-  const panLabel = ws.getCell('A8');
-  panLabel.value = 'PAN No:';
-  panLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+  ws.mergeCells('A8:C8');
+  const panCell = ws.getCell('A8');
+  panCell.value = `PAN No: ${salData.panNo || '--'}`;
+  panCell.font = { name: 'Calibri', size: 11, bold: true };
+  panCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-  const panVal = ws.getCell('B8');
-  panVal.value = salData.panNo;
-  panVal.font = { bold: true };
-
-  ws.mergeCells('C8:D8');
-  const aadhLabel = ws.getCell('C8');
-  aadhLabel.value = 'Aadhaar No:';
-  aadhLabel.alignment = { horizontal: 'right', vertical: 'middle' };
-
-  ws.mergeCells('E8:F8');
-  const aadhVal = ws.getCell('E8');
-  aadhVal.value = salData.aadhaarNo;
-  aadhVal.font = { bold: true };
+  ws.mergeCells('D8:F8');
+  const aadhCell = ws.getCell('D8');
+  aadhCell.value = `Aadhaar No: ${salData.aadhaarNo || '--'}`;
+  aadhCell.font = { name: 'Calibri', size: 11, bold: true };
+  aadhCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
   applyGridBorders(8, 8, 1, 6);
 
@@ -752,16 +746,16 @@ export function generateIndividualPayslipSheet(
   ws.mergeCells('A9:B9');
   const earnHeader = ws.getCell('A9');
   earnHeader.value = 'Earnings';
-  earnHeader.font = { bold: true, color: { argb: '800000' } }; // maroon
-  earnHeader.alignment = { horizontal: 'center' };
-  earnHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0E0E0' } };
+  earnHeader.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } }; // white text
+  earnHeader.alignment = { horizontal: 'center', vertical: 'middle' };
+  earnHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '800000' } }; // maroon
 
   ws.mergeCells('C9:F9');
   const dedHeader = ws.getCell('C9');
   dedHeader.value = 'Deductions';
-  dedHeader.font = { bold: true, color: { argb: '800000' } }; // maroon
-  dedHeader.alignment = { horizontal: 'center' };
-  dedHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0E0E0' } };
+  dedHeader.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } }; // white text
+  dedHeader.alignment = { horizontal: 'center', vertical: 'middle' };
+  dedHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '800000' } }; // maroon
 
   applyGridBorders(9, 9, 1, 6);
 
@@ -1058,7 +1052,7 @@ export function generateIndividualPayslipSheet(
   ws.mergeCells(`A${attSectionRow}:F${attSectionRow}`);
   const attSection = ws.getCell(`A${attSectionRow}`);
   attSection.value = 'Attendance Details';
-  attSection.font = { bold: true, color: { argb: 'FFFFFF' } };
+  attSection.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFF' } };
   attSection.alignment = { horizontal: 'center', vertical: 'middle' };
   attSection.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '800000' } }; // maroon
 
@@ -1067,47 +1061,57 @@ export function generateIndividualPayslipSheet(
   // Row curRow + 2: Attendance Headers
   curRow++;
   const attHeaderRow = curRow;
-  ws.getCell(`A${attHeaderRow}`).value = 'Leaves Taken';
-  ws.getCell(`A${attHeaderRow}`).font = { size: 9 };
-  ws.getCell(`A${attHeaderRow}`).alignment = { horizontal: 'center' };
-  ws.getCell(`B${attHeaderRow}`).value = 'Paid Leaves';
-  ws.getCell(`B${attHeaderRow}`).font = { size: 9 };
-  ws.getCell(`B${attHeaderRow}`).alignment = { horizontal: 'center' };
-  ws.getCell(`C${attHeaderRow}`).value = 'Unpaid Approved Leaves';
-  ws.getCell(`C${attHeaderRow}`).font = { size: 9 };
-  ws.getCell(`C${attHeaderRow}`).alignment = { horizontal: 'center' };
-  ws.getCell(`D${attHeaderRow}`).value = 'Absent Days';
-  ws.getCell(`D${attHeaderRow}`).font = { size: 9 };
-  ws.getCell(`D${attHeaderRow}`).alignment = { horizontal: 'center' };
-  ws.mergeCells(`E${attHeaderRow}:F${attHeaderRow}`);
-  ws.getCell(`E${attHeaderRow}`).value = 'Approval Status';
-  ws.getCell(`E${attHeaderRow}`).font = { size: 9 };
-  ws.getCell(`E${attHeaderRow}`).alignment = { horizontal: 'center' };
+  
+  ws.mergeCells(`A${attHeaderRow}:B${attHeaderRow}`);
+  const leavesTakenHeader = ws.getCell(`A${attHeaderRow}`);
+  leavesTakenHeader.value = 'Leaves Taken';
+  leavesTakenHeader.font = { name: 'Calibri', size: 9, bold: true };
+  leavesTakenHeader.alignment = { horizontal: 'center', vertical: 'middle' };
+
+  ws.getCell(`C${attHeaderRow}`).value = 'Paid Leaves';
+  ws.getCell(`C${attHeaderRow}`).font = { name: 'Calibri', size: 9, bold: true };
+  ws.getCell(`C${attHeaderRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  ws.getCell(`D${attHeaderRow}`).value = 'Unpaid Approved Leaves';
+  ws.getCell(`D${attHeaderRow}`).font = { name: 'Calibri', size: 9, bold: true };
+  ws.getCell(`D${attHeaderRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  ws.getCell(`E${attHeaderRow}`).value = 'Absent Days';
+  ws.getCell(`E${attHeaderRow}`).font = { name: 'Calibri', size: 9, bold: true };
+  ws.getCell(`E${attHeaderRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+
+  ws.getCell(`F${attHeaderRow}`).value = 'Approval Status';
+  ws.getCell(`F${attHeaderRow}`).font = { name: 'Calibri', size: 9, bold: true };
+  ws.getCell(`F${attHeaderRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
 
   applyGridBorders(attHeaderRow, attHeaderRow, 1, 6);
 
   // Row curRow + 3: Attendance Values
   curRow++;
   const attValRow = curRow;
-  ws.getCell(`A${attValRow}`).value = storedSlip ? '--' : salData.approvedLeavesCount;
-  ws.getCell(`A${attValRow}`).alignment = { horizontal: 'center' };
-  ws.getCell(`A${attValRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
-
-  ws.getCell(`B${attValRow}`).value = storedSlip ? '--' : salData.paidLeavesLimit;
-  ws.getCell(`B${attValRow}`).alignment = { horizontal: 'center' };
+  
+  ws.mergeCells(`A${attValRow}:B${attValRow}`);
+  const leavesTakenVal = ws.getCell(`A${attValRow}`);
+  leavesTakenVal.value = storedSlip ? '--' : salData.approvedLeavesCount;
+  leavesTakenVal.alignment = { horizontal: 'center', vertical: 'middle' };
+  leavesTakenVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
   ws.getCell(`B${attValRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
 
-  ws.getCell(`C${attValRow}`).value = storedSlip ? '--' : salData.unpaidApprovedLeaves;
-  ws.getCell(`C${attValRow}`).alignment = { horizontal: 'center' };
+  ws.getCell(`C${attValRow}`).value = storedSlip ? '--' : salData.paidLeavesLimit;
+  ws.getCell(`C${attValRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
   ws.getCell(`C${attValRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
 
-  ws.getCell(`D${attValRow}`).value = storedSlip ? '--' : salData.absentDays;
-  ws.getCell(`D${attValRow}`).alignment = { horizontal: 'center' };
+  ws.getCell(`D${attValRow}`).value = storedSlip ? '--' : salData.unpaidApprovedLeaves;
+  ws.getCell(`D${attValRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
   ws.getCell(`D${attValRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
 
-  ws.mergeCells(`E${attValRow}:F${attValRow}`);
-  ws.getCell(`E${attValRow}`).value = 'SK & KK Approved';
-  ws.getCell(`E${attValRow}`).alignment = { horizontal: 'center' };
+  ws.getCell(`E${attValRow}`).value = storedSlip ? '--' : salData.absentDays;
+  ws.getCell(`E${attValRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getCell(`E${attValRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
+
+  ws.getCell(`F${attValRow}`).value = 'SK & KK Approved';
+  ws.getCell(`F${attValRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getCell(`F${attValRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '00FFFF' } };
 
   applyGridBorders(attValRow, attValRow, 1, 6);
 
