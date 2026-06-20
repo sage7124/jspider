@@ -910,35 +910,19 @@ export function generateIndividualPayslipSheet(
 
   curRow++; // 15
 
-  // Row 15: Conveyance Allowance on Left, Approved Leaves on Right
+  // Row 15: Conveyance Allowance on Left, Right side empty (Approved Leaves moved to Attendance Details section)
   ws.getCell(`A${curRow}`).value = 'Conveyance Allowance :';
   ws.getCell(`B${curRow}`).value = conveyanceVal;
   ws.getCell(`B${curRow}`).numFmt = '"₹"#,##0';
   ws.getCell(`B${curRow}`).alignment = { horizontal: 'right' };
 
-  ws.getCell(`C${curRow}`).value = 'Approved Leaves :';
-  ws.getCell(`D${curRow}`).value = `${approvedLeavesCount} days`;
-  ws.getCell(`D${curRow}`).alignment = { horizontal: 'center' };
-  ws.getCell(`E${curRow}`).value = 'Leaves Taken';
-  ws.getCell(`E${curRow}`).alignment = { horizontal: 'center' };
-  ws.getCell(`F${curRow}`).value = '';
-  ws.getCell(`F${curRow}`).alignment = { horizontal: 'right' };
-
   curRow++; // 16
 
-  // Row 16: Food Allowance on Left, Paid Leaves on Right
+  // Row 16: Food Allowance on Left, Right side empty (Paid Leaves moved to Attendance Details section)
   ws.getCell(`A${curRow}`).value = 'Food Allowance :';
   ws.getCell(`B${curRow}`).value = foodVal;
   ws.getCell(`B${curRow}`).numFmt = '"₹"#,##0';
   ws.getCell(`B${curRow}`).alignment = { horizontal: 'right' };
-
-  ws.getCell(`C${curRow}`).value = 'Paid Leaves :';
-  ws.getCell(`D${curRow}`).value = `${paidLeavesLimit} days`;
-  ws.getCell(`D${curRow}`).alignment = { horizontal: 'center' };
-  ws.getCell(`E${curRow}`).value = 'Paid';
-  ws.getCell(`E${curRow}`).alignment = { horizontal: 'center' };
-  ws.getCell(`F${curRow}`).value = '';
-  ws.getCell(`F${curRow}`).alignment = { horizontal: 'right' };
 
   curRow++; // 17
 
