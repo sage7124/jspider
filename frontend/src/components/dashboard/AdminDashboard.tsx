@@ -8623,211 +8623,239 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
         {/* Inline Dialog popup for editing salary */}
         {editingTrainee && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-            <div className="bg-white border border-gray-200 text-gray-950 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center border-b border-gray-200 pb-3">
-                <h3 className="font-bold text-gray-900 flex items-center gap-2 text-base">
-                  <Settings size={16} className="text-emerald-600" />
-                  Configure Salary Settings
-                </h3>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fadeIn">
+            <div className="bg-white border border-gray-200 text-gray-950 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="flex justify-between items-center bg-[#0f766e] text-white px-6 py-4">
+                <div>
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    <Settings className="text-teal-200" size={22} />
+                    Configure Salary Settings
+                  </h2>
+                  <p className="text-xs text-teal-100 font-medium mt-0.5">Configure salary settings for: {editingTrainee.fullName}</p>
+                </div>
                 <button 
                   onClick={() => setEditingTrainee(null)}
-                  className="p-1 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                  className="p-1.5 rounded-full hover:bg-[#115e59] text-teal-100 hover:text-white transition-colors"
                 >
-                  <X size={16} />
+                  <X size={20} />
                 </button>
               </div>
 
-              <div>
-                <p className="text-xs text-gray-500">Configure salary settings for:</p>
-                <div className="font-bold text-sm text-gray-900 mt-0.5">{editingTrainee.fullName}</div>
-              </div>
-
-              <form onSubmit={handleSaveSalary} className="space-y-4">
-                {/* ── Earnings Section ── */}
-                <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-2 flex items-center gap-1">💰 Earnings</h4>
-                  <div className="space-y-2">
-                    <div>
-                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Professional Fee / Base Salary (₹)</label>
-                      <input 
-                        type="number" 
-                        value={editBaseSalary}
-                        onChange={(e) => setEditBaseSalary(e.target.value)}
-                        placeholder="0"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-2 px-3 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                        required
-                      />
+              <form onSubmit={handleSaveSalary} className="overflow-y-auto p-6 space-y-6 flex-1 bg-slate-50 flex flex-col justify-between">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Card 1: Earnings & Allowances */}
+                  <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h3 className="font-extrabold text-[#0f766e] border-b pb-2 text-sm flex items-center gap-2">
+                      💰 Earnings &amp; Allowances
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Professional Fee / Base Salary (₹)
+                        </label>
+                        <input 
+                          type="number" 
+                          value={editBaseSalary}
+                          onChange={(e) => setEditBaseSalary(e.target.value)}
+                          placeholder="0"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Conveyance Allowance (₹)
+                        </label>
+                        <input 
+                          type="number" 
+                          value={editPersonalConveyanceAllowance}
+                          onChange={(e) => setEditPersonalConveyanceAllowance(e.target.value)}
+                          placeholder="0"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Food Allowance (₹)
+                        </label>
+                        <input 
+                          type="number" 
+                          value={editPersonalFoodAllowance}
+                          onChange={(e) => setEditPersonalFoodAllowance(e.target.value)}
+                          placeholder="0"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                        />
+                      </div>
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium italic">
+                        ⚠️ TDS is deducted from Professional Fee only. College Visit, Extra Classes &amp; Other Center Classes are added on top.
+                      </div>
                     </div>
-                    <p className="text-[9px] text-amber-600 font-medium italic">⚠️ TDS is deducted from Professional Fee only. College Visit, Extra Classes &amp; Other Center Classes are added on top.</p>
+                  </div>
+
+                  {/* Card 2: Personal Overrides & Visibility */}
+                  <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h3 className="font-extrabold text-[#0f766e] border-b pb-2 text-sm flex items-center gap-2">
+                      ⚡ Personal Overrides &amp; Visibility
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Daily Working Hours Override
+                        </label>
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          value={editPersonalWorkingHoursOverride}
+                          onChange={(e) => setEditPersonalWorkingHoursOverride(e.target.value)}
+                          placeholder="Auto (Slots)"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                        />
+                        <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                          0 = disable penalty, blank = slot timing
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Paid Leaves (Days)
+                        </label>
+                        <input 
+                          type="number" 
+                          value={editPersonalPaidLeavesLimit}
+                          onChange={(e) => setEditPersonalPaidLeavesLimit(e.target.value)}
+                          placeholder="Global"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                        />
+                        <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                          Leaves Taken: <span className="font-bold text-blue-750">{editingTrainee.approvedLeavesCount || 0} days</span>
+                        </span>
+                      </div>
+                      <div className="p-3 bg-slate-50 border rounded-lg border-gray-200 flex items-center justify-between mt-4">
+                        <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                          Payslip Visibility
+                        </span>
+                        <label className="relative inline-flex items-center cursor-pointer select-none">
+                          <input 
+                            type="checkbox" 
+                            checked={editPersonalAllowPayslipView} 
+                            onChange={e => setEditPersonalAllowPayslipView(e.target.checked)} 
+                            className="sr-only peer" 
+                          />
+                          <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0f766e]"></div>
+                          <span className="ml-2 text-xs font-bold text-gray-700">
+                            {editPersonalAllowPayslipView ? 'Allowed' : 'Blocked'}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Class Rate Overrides (₹/HR) */}
+                  <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h3 className="font-extrabold text-[#0f766e] border-b pb-2 text-sm flex items-center gap-2">
+                      ✨ Class Rate Overrides (₹/HR)
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Extra Class Rate
+                        </label>
+                        <input 
+                          type="number" 
+                          value={editPersonalExtraClassRate}
+                          onChange={(e) => setEditPersonalExtraClassRate(e.target.value)}
+                          placeholder="Global"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                        />
+                        <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                          Month hours: <span className="font-bold text-gray-700">{Math.floor(editingTrainee.extraClassesHours || 0)}h {Math.round(((editingTrainee.extraClassesHours || 0) % 1) * 60)}m</span>
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Other Center Rate
+                        </label>
+                        <input 
+                          type="number" 
+                          value={editPersonalOtherCenterClassRate}
+                          onChange={(e) => setEditPersonalOtherCenterClassRate(e.target.value)}
+                          placeholder="Global"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                        />
+                        <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                          Month hours: <span className="font-bold text-gray-700">{Math.floor(editingTrainee.otherCenterClassesHours || 0)}h {Math.round(((editingTrainee.otherCenterClassesHours || 0) % 1) * 60)}m</span>
+                          {editingTrainee.otherCenterClassesBreakdown && (
+                            <span className="text-[9px] text-purple-700 block font-semibold mt-0.5">({editingTrainee.otherCenterClassesBreakdown})</span>
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          College Visit Rate
+                        </label>
+                        <input 
+                          type="number" 
+                          value={editPersonalCollegeVisitRate}
+                          onChange={(e) => setEditPersonalCollegeVisitRate(e.target.value)}
+                          placeholder="Global"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                        />
+                        <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                          Month hours: <span className="font-bold text-gray-700">{Math.floor(editingTrainee.collegeVisitHours || 0)}h {Math.round(((editingTrainee.collegeVisitHours || 0) % 1) * 60)}m</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Adjustments & TDS */}
+                  <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                    <h3 className="font-extrabold text-red-700 border-b pb-2 text-sm flex items-center gap-2">
+                      💸 Deductions &amp; TDS
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          TDS (%)
+                        </label>
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          value={editTdsOverridePercent}
+                          onChange={(e) => setEditTdsOverridePercent(e.target.value)}
+                          placeholder="Global (10%)"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 border-gray-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Baseline Additions (₹)
+                        </label>
+                        <input 
+                          type="number" 
+                          value={editOtherAdditions}
+                          onChange={(e) => setEditOtherAdditions(e.target.value)}
+                          placeholder="0"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                          Baseline Deductions (₹)
+                        </label>
+                        <input 
+                          type="number" 
+                          value={editOtherDeductions}
+                          onChange={(e) => setEditOtherDeductions(e.target.value)}
+                          placeholder="0"
+                          className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 border-gray-300"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* ── Personal Overrides Section ── */}
-                <div className="border-t border-gray-200 pt-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-1 flex items-center gap-1">⚡ Personal Overrides</h4>
-                  <p className="text-[9px] text-gray-500 mb-2 italic">Set values below to override the defaults for this person.</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Daily Working Hours Override</label>
-                      <input 
-                        type="number" 
-                        step="0.1"
-                        value={editPersonalWorkingHoursOverride}
-                        onChange={(e) => setEditPersonalWorkingHoursOverride(e.target.value)}
-                        placeholder="Auto (Slots)"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                      <span className="text-[8px] text-gray-500 block mt-1 font-medium select-none">
-                        0 = disable penalty, blank = slot timing
-                      </span>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Paid Leaves (Days)</label>
-                      <input 
-                        type="number" 
-                        value={editPersonalPaidLeavesLimit}
-                        onChange={(e) => setEditPersonalPaidLeavesLimit(e.target.value)}
-                        placeholder="Global"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                      <span className="text-[8px] text-gray-500 block mt-1 font-medium select-none">
-                        Leaves Taken: {editingTrainee.approvedLeavesCount || 0} days
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Personal Class Rate Overrides Section ── */}
-                <div className="border-t border-gray-200 pt-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-1 flex items-center gap-1">✨ Personal Class Rate Overrides (₹/hr)</h4>
-                  <p className="text-[9px] text-gray-500 mb-2 italic">Leave blank to use the global rate. Set a value to override for this person only.</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Extra Class</label>
-                      <input 
-                        type="number" 
-                        value={editPersonalExtraClassRate}
-                        onChange={(e) => setEditPersonalExtraClassRate(e.target.value)}
-                        placeholder="Global"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                      <span className="text-[9px] text-gray-500 block mt-1 font-medium select-none">
-                        {Math.floor(editingTrainee.extraClassesHours || 0)} hours {Math.round(((editingTrainee.extraClassesHours || 0) % 1) * 60)} minute
-                      </span>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Other Center</label>
-                      <input 
-                        type="number" 
-                        value={editPersonalOtherCenterClassRate}
-                        onChange={(e) => setEditPersonalOtherCenterClassRate(e.target.value)}
-                        placeholder="Global"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                      <span className="text-[9px] text-gray-500 block mt-1 font-medium select-none">
-                        {Math.floor(editingTrainee.otherCenterClassesHours || 0)} hours {Math.round(((editingTrainee.otherCenterClassesHours || 0) % 1) * 60)} minute
-                        {editingTrainee.otherCenterClassesBreakdown && (
-                          <span className="text-[8px] text-purple-700 block font-semibold mt-0.5">({editingTrainee.otherCenterClassesBreakdown})</span>
-                        )}
-                      </span>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-emerald-700 mb-1">🏛️ College Visit</label>
-                      <input 
-                        type="number" 
-                        value={editPersonalCollegeVisitRate}
-                        onChange={(e) => setEditPersonalCollegeVisitRate(e.target.value)}
-                        placeholder="Global"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                      <span className="text-[9px] text-gray-500 block mt-1 font-medium select-none">
-                        {Math.floor(editingTrainee.collegeVisitHours || 0)} hours {Math.round(((editingTrainee.collegeVisitHours || 0) % 1) * 60)} minute
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Allowances & Visibility Section ── */}
-                <div className="border-t border-gray-200 pt-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-2 flex items-center gap-1">🚗 Allowances & Visibility</h4>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Conveyance Allowance (₹)</label>
-                      <input 
-                        type="number" 
-                        value={editPersonalConveyanceAllowance}
-                        onChange={(e) => setEditPersonalConveyanceAllowance(e.target.value)}
-                        placeholder="0"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Food Allowance (₹)</label>
-                      <input 
-                        type="number" 
-                        value={editPersonalFoodAllowance}
-                        onChange={(e) => setEditPersonalFoodAllowance(e.target.value)}
-                        placeholder="0"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="relative inline-flex items-center cursor-pointer mt-1 select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={editPersonalAllowPayslipView} 
-                        onChange={e => setEditPersonalAllowPayslipView(e.target.checked)} 
-                        className="sr-only peer" 
-                      />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-                      <span className="ml-2 text-xs font-bold text-gray-700">
-                        {editPersonalAllowPayslipView ? 'Allow Teacher to view Payslip' : 'Block Teacher from viewing Payslip'}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* ── TDS & Other Adjustments ── */}
-                <div className="border-t border-gray-200 pt-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-emerald-700 mb-2 flex items-center gap-1">📝 Adjustments & TDS</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">TDS (%)</label>
-                      <input 
-                        type="number" 
-                        step="0.1"
-                        value={editTdsOverridePercent}
-                        onChange={(e) => setEditTdsOverridePercent(e.target.value)}
-                        placeholder="Global (10%)"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Additions (₹)</label>
-                      <input 
-                        type="number" 
-                        value={editOtherAdditions}
-                        onChange={(e) => setEditOtherAdditions(e.target.value)}
-                        placeholder="0"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Deductions (₹)</label>
-                      <input 
-                        type="number" 
-                        value={editOtherDeductions}
-                        onChange={(e) => setEditOtherDeductions(e.target.value)}
-                        placeholder="0"
-                        className="w-full bg-white border border-gray-300 rounded-lg py-1.5 px-2.5 text-xs text-gray-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                {/* Footer Section */}
+                <div className="bg-[#0f766e]/5 border border-[#0f766e]/20 p-5 rounded-xl flex flex-wrap justify-between items-center gap-4 mt-6">
                   <button 
                     type="button"
                     onClick={() => {
@@ -8840,24 +8868,31 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       setEditOtherAdditions('0');
                       setEditOtherDeductions('0');
                     }}
-                    className="text-amber-600 hover:text-amber-700 text-[10px] font-bold uppercase tracking-wider hover:underline transition-colors"
+                    className="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-all"
                   >
                     Clear All Overrides
                   </button>
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <button 
                       type="button"
                       onClick={() => setEditingTrainee(null)}
-                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors"
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl text-xs font-semibold transition-colors"
                     >
                       Cancel
                     </button>
                     <button 
                       type="submit"
                       disabled={saving}
-                      className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white py-1.5 px-3 rounded-lg text-xs font-semibold transition-colors"
+                      className="bg-[#0f766e] hover:bg-[#115e59] text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2"
                     >
-                      {saving ? "Saving..." : "Save Settings"}
+                      {saving ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Baseline Settings"
+                      )}
                     </button>
                   </div>
                 </div>
@@ -9254,7 +9289,15 @@ const ManagePayslipModal = ({
   const [food, setFood] = useState('0');
   const [otherAllowance, setOtherAllowance] = useState('0'); // Additions
   const [otherDeductions, setOtherDeductions] = useState('0'); // Deductions
-  const [tds, setTds] = useState('0');
+  const [tdsRate, setTdsRate] = useState('10'); // TDS percentage override
+  
+  // Baseline settings fields
+  const [workingHoursOverride, setWorkingHoursOverride] = useState('');
+  const [paidLeavesLimit, setPaidLeavesLimit] = useState('');
+  const [extraClassRate, setExtraClassRate] = useState('');
+  const [otherCenterClassRate, setOtherCenterClassRate] = useState('');
+  const [collegeVisitRate, setCollegeVisitRate] = useState('');
+  const [allowPayslipView, setAllowPayslipView] = useState(true);
 
   const fetchPayslipDetails = async () => {
     setLoading(true);
@@ -9264,6 +9307,16 @@ const ManagePayslipModal = ({
         headers: { Authorization: `Bearer ${token}` }
       });
       setCalcData(res.data);
+      
+      // Initialize baseline settings fields
+      setWorkingHoursOverride(res.data.personalWorkingHoursOverride !== null && res.data.personalWorkingHoursOverride !== undefined ? String(res.data.personalWorkingHoursOverride) : '');
+      setPaidLeavesLimit(res.data.personalPaidLeavesLimit !== null && res.data.personalPaidLeavesLimit !== undefined ? String(res.data.personalPaidLeavesLimit) : '');
+      setExtraClassRate(res.data.personalExtraClassRate !== null && res.data.personalExtraClassRate !== undefined ? String(res.data.personalExtraClassRate) : '');
+      setOtherCenterClassRate(res.data.personalOtherCenterClassRate !== null && res.data.personalOtherCenterClassRate !== undefined ? String(res.data.personalOtherCenterClassRate) : '');
+      setCollegeVisitRate(res.data.personalCollegeVisitRate !== null && res.data.personalCollegeVisitRate !== undefined ? String(res.data.personalCollegeVisitRate) : '');
+      setAllowPayslipView(res.data.personalAllowPayslipView ?? true);
+      setTdsRate(String(res.data.personalTdsRate ?? 10));
+
       if (res.data.storedSlip) {
         const slip = res.data.storedSlip;
         setStoredSlip(slip);
@@ -9272,16 +9325,13 @@ const ManagePayslipModal = ({
         setFood(String(slip.food || 0));
         setOtherAllowance(String(slip.otherAllowance || 0));
         setOtherDeductions(String(slip.otherDeductions || 0));
-        setTds(String(slip.tds || 0));
       } else {
         setStoredSlip(null);
-        const sal = res.data.salaryData || {};
-        setBasicSalary(String(sal.basicSalary || sal.professionalFee || 0));
-        setConveyance(String(sal.conveyance || 0));
-        setFood(String(sal.food || 0));
-        setOtherAllowance(String(sal.otherAdditions || 0));
-        setOtherDeductions(String(sal.otherDeductions || 0));
-        setTds(String(sal.tdsDeduction || 0));
+        setBasicSalary(String(res.data.baseSalary || 0));
+        setConveyance(String(res.data.personalConveyanceAllowance || 0));
+        setFood(String(res.data.personalFoodAllowance || 0));
+        setOtherAllowance(String(res.data.otherAdditions || 0));
+        setOtherDeductions(String(res.data.otherDeductions || 0));
       }
     } catch (e) {
       alert("Failed to load payslip data");
@@ -9294,31 +9344,85 @@ const ManagePayslipModal = ({
     fetchPayslipDetails();
   }, [userId, month]);
 
+  // Live dynamic calculations
+  const hrsExtra = parseFloat(calcData?.extraClassesHours) || 0;
+  const hrsOther = parseFloat(calcData?.otherCenterClassesHours) || 0;
+  const hrsCollege = parseFloat(calcData?.collegeVisitHours) || 0;
+
+  const rateExtra = extraClassRate !== '' ? (parseFloat(extraClassRate) || 0) : (parseFloat(calcData?.extraClassRate) || 0);
+  const rateOther = otherCenterClassRate !== '' ? (parseFloat(otherCenterClassRate) || 0) : (parseFloat(calcData?.otherCenterClassRate) || 0);
+  const rateCollege = collegeVisitRate !== '' ? (parseFloat(collegeVisitRate) || 0) : (parseFloat(calcData?.collegeVisitRate) || 0);
+
+  const extraClassEarnings = hrsExtra * rateExtra;
+  const otherCenterClassEarnings = hrsOther * rateOther;
+  const collegeVisitEarnings = hrsCollege * rateCollege;
+
+  const basicVal = parseFloat(basicSalary) || 0;
+  const conveyanceVal = parseFloat(conveyance) || 0;
+  const foodVal = parseFloat(food) || 0;
+  const additionsVal = parseFloat(otherAllowance) || 0;
+  const deductionsVal = parseFloat(otherDeductions) || 0;
+  const tdsPercent = parseFloat(tdsRate) || 0;
+
+  const taxableIncome = basicVal + extraClassEarnings + otherCenterClassEarnings + collegeVisitEarnings + additionsVal;
+  const tdsVal = Math.round(taxableIncome * (tdsPercent / 100.0));
+
+  const grossEarnings = basicVal + conveyanceVal + foodVal + additionsVal + extraClassEarnings + otherCenterClassEarnings + collegeVisitEarnings;
+
+  const absentDeduction = calcData?.salaryData?.absentDeduction || 0;
+  const unpaidApprovedLeavesDeduction = calcData?.salaryData?.unpaidApprovedLeavesDeduction || 0;
+  const lateDeduction = calcData?.salaryData?.lateDeduction || 0;
+  const earlyDeduction = calcData?.salaryData?.earlyDeduction || 0;
+
+  const totalDeductions = deductionsVal + tdsVal + absentDeduction + unpaidApprovedLeavesDeduction + lateDeduction + earlyDeduction;
+  const previewNetSalary = grossEarnings - totalDeductions;
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API}/admin/salary-slips`, {
-        userId,
-        month,
-        basicSalary: parseFloat(basicSalary) || 0,
-        hra: 0,
-        conveyance: parseFloat(conveyance) || 0,
-        food: parseFloat(food) || 0,
-        specialAllowance: 0,
-        otherAllowance: parseFloat(otherAllowance) || 0,
-        pf: 0,
-        professionalTax: 0,
-        esi: 0,
-        tds: parseFloat(tds) || 0,
-        otherDeductions: parseFloat(otherDeductions) || 0
+      
+      // 1. Save user baseline settings in database
+      await axios.put(`${API}/trainees/${userId}/salary`, {
+        baseSalary: basicVal,
+        paidLeavesLimit: paidLeavesLimit !== '' ? parseFloat(paidLeavesLimit) : null,
+        extraClassRate: extraClassRate !== '' ? parseFloat(extraClassRate) : null,
+        otherCenterClassRate: otherCenterClassRate !== '' ? parseFloat(otherCenterClassRate) : null,
+        collegeVisitRate: collegeVisitRate !== '' ? parseFloat(collegeVisitRate) : null,
+        tdsRate: tdsRate !== '' ? parseFloat(tdsRate) : null,
+        otherAdditions: additionsVal,
+        otherDeductions: deductionsVal,
+        conveyanceAllowance: conveyanceVal,
+        foodAllowance: foodVal,
+        workingHoursOverride: workingHoursOverride !== '' ? parseFloat(workingHoursOverride) : null,
+        allowPayslipView: allowPayslipView
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert("Payslip manually overridden and locked successfully!");
-      fetchPayslipDetails();
+
+      // 2. Save manual monthly overrides in database
+      await axios.post(`${API}/admin/salary-slips`, {
+        userId,
+        month,
+        basicSalary: basicVal,
+        hra: 0,
+        conveyance: conveyanceVal,
+        food: foodVal,
+        specialAllowance: 0,
+        otherAllowance: additionsVal,
+        pf: 0,
+        professionalTax: 0,
+        esi: 0,
+        tds: tdsVal, // Store computed flat TDS amount
+        otherDeductions: deductionsVal
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert("Salary settings and monthly overrides saved successfully!");
+      onSuccess(); // Close modal and refresh parent
     } catch (e) {
-      alert("Failed to save payslip overrides");
+      alert("Failed to save salary settings and overrides");
     } finally {
       setSaving(false);
     }
@@ -9334,7 +9438,7 @@ const ManagePayslipModal = ({
         headers: { Authorization: `Bearer ${token}` }
       });
       alert("Payslip unlocked successfully. Automatic calculations restored.");
-      fetchPayslipDetails();
+      onSuccess();
     } catch (e) {
       alert("Failed to unlock payslip");
     } finally {
@@ -9368,16 +9472,6 @@ const ManagePayslipModal = ({
       : { ...calcData.user, ...calcData.salaryData };
     handlePrintPayslip(tMapped, month);
   };
-
-  const previewNetSalary = (
-    (parseFloat(basicSalary) || 0) +
-    (parseFloat(conveyance) || 0) +
-    (parseFloat(food) || 0) +
-    (parseFloat(otherAllowance) || 0)
-  ) - (
-    (parseFloat(otherDeductions) || 0) +
-    (parseFloat(tds) || 0)
-  );
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fadeIn">
@@ -9438,12 +9532,11 @@ const ManagePayslipModal = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Earnings Column */}
+              {/* Card 1: Earnings & Allowances */}
               <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                 <h3 className="font-extrabold text-[#0f766e] border-b pb-2 text-sm flex items-center gap-2">
-                  💰 Earnings & Allowances
+                  💰 Earnings &amp; Allowances
                 </h3>
-
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
@@ -9492,26 +9585,150 @@ const ManagePayslipModal = ({
                       className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
                     />
                   </div>
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium italic">
+                    ⚠️ TDS is deducted from Professional Fee only. College Visit, Extra Classes &amp; Other Center Classes are added on top.
+                  </div>
                 </div>
               </div>
 
-              {/* Deductions Column */}
+              {/* Card 2: Personal Overrides & Visibility */}
               <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                <h3 className="font-extrabold text-red-700 border-b pb-2 text-sm flex items-center gap-2">
-                  💸 Deductions & TDS
+                <h3 className="font-extrabold text-[#0f766e] border-b pb-2 text-sm flex items-center gap-2">
+                  ⚡ Personal Overrides &amp; Visibility
                 </h3>
-
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
-                      Tax Deducted at Source (TDS) (₹)
+                      Daily Working Hours Override
                     </label>
                     <input
                       type="number"
-                      value={tds}
-                      onChange={(e) => setTds(e.target.value)}
+                      step="0.1"
+                      value={workingHoursOverride}
+                      onChange={(e) => setWorkingHoursOverride(e.target.value)}
+                      placeholder="Auto (Slots)"
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                    />
+                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                      0 = disable penalty, blank = slot timing
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Paid Leaves (Days)
+                    </label>
+                    <input
+                      type="number"
+                      value={paidLeavesLimit}
+                      onChange={(e) => setPaidLeavesLimit(e.target.value)}
+                      placeholder="Global"
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                    />
+                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                      Leaves Taken: <span className="font-bold text-blue-750">{calcData?.salaryData?.approvedLeavesCount || 0} days</span>
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 border rounded-lg border-gray-200 flex items-center justify-between mt-4">
+                    <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Payslip Visibility
+                    </span>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={allowPayslipView} 
+                        onChange={e => setAllowPayslipView(e.target.checked)} 
+                        className="sr-only peer" 
+                      />
+                      <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#0f766e]"></div>
+                      <span className="ml-2 text-xs font-bold text-gray-700">
+                        {allowPayslipView ? 'Allowed' : 'Blocked'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Class Rate Overrides (₹/HR) */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <h3 className="font-extrabold text-[#0f766e] border-b pb-2 text-sm flex items-center gap-2">
+                  ✨ Class Rate Overrides (₹/HR)
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Extra Class Rate
+                    </label>
+                    <input
+                      type="number"
+                      value={extraClassRate}
+                      onChange={(e) => setExtraClassRate(e.target.value)}
+                      placeholder="Global"
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                    />
+                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                      Month hours: <span className="font-bold text-gray-700">{Math.floor(calcData?.extraClassesHours || 0)}h {Math.round(((calcData?.extraClassesHours || 0) % 1) * 60)}m</span>
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Other Center Rate
+                    </label>
+                    <input
+                      type="number"
+                      value={otherCenterClassRate}
+                      onChange={(e) => setOtherCenterClassRate(e.target.value)}
+                      placeholder="Global"
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                    />
+                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                      Month hours: <span className="font-bold text-gray-700">{Math.floor(calcData?.otherCenterClassesHours || 0)}h {Math.round(((calcData?.otherCenterClassesHours || 0) % 1) * 60)}m</span>
+                      {calcData?.otherCenterClassesBreakdown && (
+                        <span className="text-[9px] text-purple-750 block font-semibold mt-0.5">({calcData?.otherCenterClassesBreakdown})</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      College Visit Rate
+                    </label>
+                    <input
+                      type="number"
+                      value={collegeVisitRate}
+                      onChange={(e) => setCollegeVisitRate(e.target.value)}
+                      placeholder="Global"
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
+                    />
+                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                      Month hours: <span className="font-bold text-gray-700">{Math.floor(calcData?.collegeVisitHours || 0)}h {Math.round(((calcData?.collegeVisitHours || 0) % 1) * 60)}m</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Deductions & TDS */}
+              <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <h3 className="font-extrabold text-red-700 border-b pb-2 text-sm flex items-center gap-2">
+                  💸 Deductions &amp; TDS
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      TDS (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={tdsRate}
+                      onChange={(e) => setTdsRate(e.target.value)}
                       className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 border-gray-300"
                     />
+                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                      Calculated TDS: <span className="font-bold text-red-750">₹{tdsVal.toLocaleString('en-IN')}</span>
+                    </span>
                   </div>
 
                   <div>
@@ -9535,8 +9752,8 @@ const ManagePayslipModal = ({
                       <div>Approved Leaves: <span className="font-bold text-blue-700">{calcData?.salaryData?.approvedLeavesCount || 0} days</span></div>
                       <div>Late Penalty: <span className="font-bold text-red-650">₹{calcData?.salaryData?.lateDeduction || 0}</span></div>
                       <div>Early Penalty: <span className="font-bold text-red-650">₹{calcData?.salaryData?.earlyDeduction || 0}</span></div>
-                      <div>Extra Class Pay: <span className="font-bold text-emerald-700">₹{calcData?.salaryData?.extraClassEarnings || 0}</span></div>
-                      <div>College Visit Pay: <span className="font-bold text-emerald-700">₹{calcData?.salaryData?.collegeVisitEarnings || 0}</span></div>
+                      <div>Extra Class Pay: <span className="font-bold text-emerald-700">₹{extraClassEarnings.toLocaleString('en-IN')}</span></div>
+                      <div>College Visit Pay: <span className="font-bold text-emerald-700">₹{collegeVisitEarnings.toLocaleString('en-IN')}</span></div>
                     </div>
                   </div>
                 </div>
