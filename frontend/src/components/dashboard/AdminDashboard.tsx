@@ -9213,7 +9213,6 @@ const ManagePayslipModal = ({
   const [saving, setSaving] = useState(false);
   const [calcData, setCalcData] = useState<any>(null);
   const [storedSlip, setStoredSlip] = useState<any>(null);
-  const [updateBaselineSettings, setUpdateBaselineSettings] = useState(false);
 
   // Editable fields
   const [basicSalary, setBasicSalary] = useState('0');
@@ -9326,30 +9325,42 @@ const ManagePayslipModal = ({
   const totalDeductions = deductionsVal + tdsVal + absentDeduction + unpaidApprovedLeavesDeduction + lateDeduction + earlyDeduction;
   const previewNetSalary = grossEarnings - totalDeductions;
 
+  const handleClearFields = () => {
+    setBasicSalary('0');
+    setConveyance('0');
+    setFood('0');
+    setOtherAllowance('0');
+    setOtherDeductions('0');
+    setTdsRate('0');
+    setWorkingHoursOverride('');
+    setPaidLeavesLimit('');
+    setExtraClassRate('');
+    setOtherCenterClassRate('');
+    setCollegeVisitRate('');
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
       
-      // 1. Conditionally save user baseline settings in database
-      if (updateBaselineSettings) {
-        await axios.put(`${API}/trainees/${userId}/salary`, {
-          baseSalary: basicVal,
-          paidLeavesLimit: paidLeavesLimit !== '' ? parseFloat(paidLeavesLimit) : null,
-          extraClassRate: extraClassRate !== '' ? parseFloat(extraClassRate) : null,
-          otherCenterClassRate: otherCenterClassRate !== '' ? parseFloat(otherCenterClassRate) : null,
-          collegeVisitRate: collegeVisitRate !== '' ? parseFloat(collegeVisitRate) : null,
-          tdsRate: tdsRate !== '' ? parseFloat(tdsRate) : null,
-          otherAdditions: additionsVal,
-          otherDeductions: deductionsVal,
-          conveyanceAllowance: conveyanceVal,
-          foodAllowance: foodVal,
-          workingHoursOverride: workingHoursOverride !== '' ? parseFloat(workingHoursOverride) : null,
-          allowPayslipView: allowPayslipView
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
+      // 1. Save user baseline settings in database
+      await axios.put(`${API}/trainees/${userId}/salary`, {
+        baseSalary: basicVal,
+        paidLeavesLimit: paidLeavesLimit !== '' ? parseFloat(paidLeavesLimit) : null,
+        extraClassRate: extraClassRate !== '' ? parseFloat(extraClassRate) : null,
+        otherCenterClassRate: otherCenterClassRate !== '' ? parseFloat(otherCenterClassRate) : null,
+        collegeVisitRate: collegeVisitRate !== '' ? parseFloat(collegeVisitRate) : null,
+        tdsRate: tdsRate !== '' ? parseFloat(tdsRate) : null,
+        otherAdditions: additionsVal,
+        otherDeductions: deductionsVal,
+        conveyanceAllowance: conveyanceVal,
+        foodAllowance: foodVal,
+        workingHoursOverride: workingHoursOverride !== '' ? parseFloat(workingHoursOverride) : null,
+        allowPayslipView: allowPayslipView
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       // 2. Save manual monthly overrides in database
       await axios.post(`${API}/salary-slips`, {
@@ -9370,10 +9381,7 @@ const ManagePayslipModal = ({
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      alert(updateBaselineSettings 
-        ? "Salary baseline settings and monthly overrides saved successfully!"
-        : "Monthly overrides saved and locked successfully! (Baseline settings unchanged)"
-      );
+      alert("Monthly overrides and baseline settings saved successfully!");
       onSuccess(); // Close modal and refresh parent
     } catch (e: any) {
       const errMsg = e.response?.data?.error || e.response?.data?.message || e.message || "Failed to save salary settings and overrides";
@@ -9754,17 +9762,13 @@ const ManagePayslipModal = ({
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-4">
-                <label className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg py-2 px-3 cursor-pointer shadow-sm hover:bg-slate-50 select-none">
-                  <input 
-                    type="checkbox" 
-                    checked={updateBaselineSettings} 
-                    onChange={e => setUpdateBaselineSettings(e.target.checked)} 
-                    className="h-4 w-4 text-[#0f766e] focus:ring-[#0f766e] border-gray-300 rounded cursor-pointer"
-                  />
-                  <span className="text-xs font-extrabold text-gray-700">
-                    Update Trainee Baseline Profile
-                  </span>
-                </label>
+                <button
+                  type="button"
+                  onClick={handleClearFields}
+                  className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-extrabold px-4 py-2.5 rounded-lg shadow-sm transition-all"
+                >
+                  Clear Fields
+                </button>
 
                 <div className="flex gap-3">
                   {storedSlip && (
