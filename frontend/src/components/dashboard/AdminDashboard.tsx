@@ -8218,7 +8218,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white border border-gray-200 text-gray-950 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col relative transition-all">
+      <div className="bg-white border border-gray-200 text-gray-950 rounded-2xl shadow-2xl w-full max-w-[96vw] max-h-[95vh] overflow-hidden flex flex-col relative transition-all">
         
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50/50">
@@ -8372,7 +8372,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
         {/* Content Table */}
         <div className="flex-1 overflow-auto px-6 pb-6">
-          <div className="border border-gray-200 rounded-xl bg-white overflow-x-auto shadow-sm">
+          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm">
             {loading ? (
               <div className="h-48 flex justify-center items-center text-xs text-gray-400">
                 <div className="flex flex-col items-center gap-2">
@@ -8386,7 +8386,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                 <span>No employees matching the criteria found.</span>
               </div>
             ) : (
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full min-w-[1350px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-gray-50 text-gray-500 uppercase font-bold text-[9px] tracking-wider border-b border-gray-200">
                     <th className="py-3 px-4">Employee / Teacher</th>
