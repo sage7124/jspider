@@ -361,6 +361,9 @@ model SalarySlip {
   esi              Float    @default(0.0)
   tds              Float    @default(0.0)
   otherDeductions  Float    @default(0.0)
+  lateDeduction    Float    @default(0.0)
+  earlyDeduction   Float    @default(0.0)
+  absentDeduction  Float    @default(0.0)
   netSalary        Float    @default(0.0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

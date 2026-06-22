@@ -517,9 +517,9 @@ router.get('/admin/reports/payslip/list', authMiddleware_1.authenticateToken, ch
                     (salData.otherCenterClassEarnings || 0.0);
                 const totalDeductions = storedSlip.otherDeductions +
                     storedSlip.tds +
-                    (salData.lateDeduction || 0.0) +
-                    (salData.earlyDeduction || 0.0) +
-                    (salData.absentDeduction || 0.0) +
+                    (storedSlip.lateDeduction !== null && storedSlip.lateDeduction !== undefined ? storedSlip.lateDeduction : (salData.lateDeduction || 0.0)) +
+                    (storedSlip.earlyDeduction !== null && storedSlip.earlyDeduction !== undefined ? storedSlip.earlyDeduction : (salData.earlyDeduction || 0.0)) +
+                    (storedSlip.absentDeduction !== null && storedSlip.absentDeduction !== undefined ? storedSlip.absentDeduction : (salData.absentDeduction || 0.0)) +
                     (salData.unpaidApprovedLeavesDeduction || 0.0);
                 const netTakeHome = Math.max(0, grossEarnings - totalDeductions);
                 result.push({
@@ -536,6 +536,9 @@ router.get('/admin/reports/payslip/list', authMiddleware_1.authenticateToken, ch
                     additions: storedSlip.otherAllowance,
                     tdsDeduction: storedSlip.tds,
                     otherDeductions: storedSlip.otherDeductions,
+                    lateDeduction: storedSlip.lateDeduction !== null && storedSlip.lateDeduction !== undefined ? storedSlip.lateDeduction : (salData.lateDeduction || 0.0),
+                    earlyDeduction: storedSlip.earlyDeduction !== null && storedSlip.earlyDeduction !== undefined ? storedSlip.earlyDeduction : (salData.earlyDeduction || 0.0),
+                    absentDeduction: storedSlip.absentDeduction !== null && storedSlip.absentDeduction !== undefined ? storedSlip.absentDeduction : (salData.absentDeduction || 0.0),
                     netTakeHome,
                     totalDeductions,
                     grossEarnings
@@ -611,7 +614,15 @@ router.get('/admin/reports/payslip/single/:userId', authMiddleware_1.authenticat
                 bankBranchName: trainee.bankBranchName,
             },
             ...salData,
-            salaryData: salData,
+            lateDeduction: storedSlip ? storedSlip.lateDeduction : (salData.lateDeduction || 0.0),
+            earlyDeduction: storedSlip ? storedSlip.earlyDeduction : (salData.earlyDeduction || 0.0),
+            absentDeduction: storedSlip ? storedSlip.absentDeduction : (salData.absentDeduction || 0.0),
+            salaryData: {
+                ...salData,
+                lateDeduction: storedSlip ? storedSlip.lateDeduction : (salData.lateDeduction || 0.0),
+                earlyDeduction: storedSlip ? storedSlip.earlyDeduction : (salData.earlyDeduction || 0.0),
+                absentDeduction: storedSlip ? storedSlip.absentDeduction : (salData.absentDeduction || 0.0),
+            },
             storedSlip
         });
     }
@@ -741,15 +752,15 @@ function generateIndividualPayslipSheet(ws, trainee, salData, storedSlip, month,
     const otherCenterClassRate = salData.otherCenterClassRate || 0;
     const otherCenterClassEarnings = salData.otherCenterClassEarnings || 0;
     const otherCenterClassesBreakdown = salData.otherCenterClassesBreakdown || '';
-    // Dynamic attendance deductions (always from salData)
+    // Dynamic attendance deductions (overridden if locked)
     const totalLateMinutes = salData.totalLateMinutes || 0;
     const lateInstances = salData.lateInstances || 0;
-    const lateDeduction = salData.lateDeduction || 0;
+    const lateDeduction = isLocked && storedSlip ? (storedSlip.lateDeduction || 0.0) : (salData.lateDeduction || 0.0);
     const totalEarlyMinutes = salData.totalEarlyMinutes || 0;
     const earlyInstances = salData.earlyInstances || 0;
-    const earlyDeduction = salData.earlyDeduction || 0;
+    const earlyDeduction = isLocked && storedSlip ? (storedSlip.earlyDeduction || 0.0) : (salData.earlyDeduction || 0.0);
     const absentDays = salData.absentDays || 0;
-    const absentDeduction = salData.absentDeduction || 0;
+    const absentDeduction = isLocked && storedSlip ? (storedSlip.absentDeduction || 0.0) : (salData.absentDeduction || 0.0);
     const unpaidApprovedLeaves = salData.unpaidApprovedLeaves || 0;
     const unpaidApprovedLeavesDeduction = salData.unpaidApprovedLeavesDeduction || 0;
     const approvedLeavesCount = salData.approvedLeavesCount || 0;
@@ -1065,7 +1076,7 @@ router.get('/admin/salary-slips', authMiddleware_1.authenticateToken, checkSalar
 // Add or update a single salary slip manually
 router.post('/admin/salary-slips', authMiddleware_1.authenticateToken, checkSalarySlipsAccess, async (req, res) => {
     try {
-        const { userId, month, basicSalary, hra, conveyance, specialAllowance, otherAllowance, pf, professionalTax, esi, tds, otherDeductions, food } = req.body;
+        const { userId, month, basicSalary, hra, conveyance, specialAllowance, otherAllowance, pf, professionalTax, esi, tds, otherDeductions, food, lateDeduction, earlyDeduction, absentDeduction } = req.body;
         if (!userId || !month) {
             return res.status(400).json({ error: 'userId and month are required' });
         }
@@ -1092,6 +1103,9 @@ router.post('/admin/salary-slips', authMiddleware_1.authenticateToken, checkSala
         const esiVal = parseFloat(esi) || 0.0;
         const tdsVal = parseFloat(tds) || 0.0;
         const othDed = parseFloat(otherDeductions) || 0.0;
+        const lateDedOverride = lateDeduction !== undefined && lateDeduction !== null ? parseFloat(lateDeduction) : null;
+        const earlyDedOverride = earlyDeduction !== undefined && earlyDeduction !== null ? parseFloat(earlyDeduction) : null;
+        const absentDedOverride = absentDeduction !== undefined && absentDeduction !== null ? parseFloat(absentDeduction) : null;
         const [year, mon] = month.split('-').map(Number);
         const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
         const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
@@ -1102,14 +1116,17 @@ router.post('/admin/salary-slips', authMiddleware_1.authenticateToken, checkSala
             return res.status(404).json({ error: 'Trainee not found' });
         }
         const salData = await (0, exports.calculateTraineeSalaryData)(trainee, year, mon, daysInMonth, startOfMonth, endOfMonth, settings);
+        const finalLateDed = lateDedOverride !== null ? lateDedOverride : (salData.lateDeduction || 0.0);
+        const finalEarlyDed = earlyDedOverride !== null ? earlyDedOverride : (salData.earlyDeduction || 0.0);
+        const finalAbsentDed = absentDedOverride !== null ? absentDedOverride : (salData.absentDeduction || 0.0);
         const grossEarnings = basic + conv + foodVal + othAllow +
             (salData.collegeVisitEarnings || 0.0) +
             (salData.extraClassEarnings || 0.0) +
             (salData.otherCenterClassEarnings || 0.0);
         const totalDeductions = tdsVal + othDed +
-            (salData.lateDeduction || 0.0) +
-            (salData.earlyDeduction || 0.0) +
-            (salData.absentDeduction || 0.0) +
+            finalLateDed +
+            finalEarlyDed +
+            finalAbsentDed +
             (salData.unpaidApprovedLeavesDeduction || 0.0);
         const netSalary = Math.max(0, grossEarnings - totalDeductions);
         const slip = await prisma.salarySlip.upsert({
@@ -1128,6 +1145,9 @@ router.post('/admin/salary-slips', authMiddleware_1.authenticateToken, checkSala
                 esi: esiVal,
                 tds: tdsVal,
                 otherDeductions: othDed,
+                lateDeduction: finalLateDed,
+                earlyDeduction: finalEarlyDed,
+                absentDeduction: finalAbsentDed,
                 netSalary
             },
             create: {
@@ -1144,6 +1164,9 @@ router.post('/admin/salary-slips', authMiddleware_1.authenticateToken, checkSala
                 esi: esiVal,
                 tds: tdsVal,
                 otherDeductions: othDed,
+                lateDeduction: finalLateDed,
+                earlyDeduction: finalEarlyDed,
+                absentDeduction: finalAbsentDed,
                 netSalary
             }
         });
@@ -1408,11 +1431,14 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
             const otherCenterClassEarnings = salData.otherCenterClassEarnings || 0;
             const grossEarnings = basicVal + conveyanceVal + foodVal + additionsVal +
                 collegeVisitEarnings + extraClassEarnings + otherCenterClassEarnings;
+            const finalLateDeduction = storedSlip ? storedSlip.lateDeduction : (salData.lateDeduction || 0.0);
+            const finalEarlyDeduction = storedSlip ? storedSlip.earlyDeduction : (salData.earlyDeduction || 0.0);
+            const finalAbsentDeduction = storedSlip ? storedSlip.absentDeduction : (salData.absentDeduction || 0.0);
             const totalDeductions = deductionsVal + tdsVal +
-                (salData.lateDeduction || 0) +
-                (salData.earlyDeduction || 0) +
-                (salData.absentDeduction || 0) +
-                (salData.unpaidApprovedLeavesDeduction || 0);
+                finalLateDeduction +
+                finalEarlyDeduction +
+                finalAbsentDeduction +
+                (salData.unpaidApprovedLeavesDeduction || 0.0);
             const netTakeHome = Math.max(0, grossEarnings - totalDeductions);
             ws.addRow([
                 idx + 1, // Col 1: Sl. No
@@ -1429,16 +1455,16 @@ router.get('/admin/reports/payslip/export-all', authMiddleware_1.authenticateTok
                 grossEarnings, // Col 12: Gross Earnings
                 salData.totalLateMinutes, // Col 13: Late Arrival Total (Mins)
                 parseFloat((salData.totalLateMinutes / 60).toFixed(2)), // Col 14: Late Arrival Total (Hrs)
-                salData.lateDeduction, // Col 15: Late Penalty
+                finalLateDeduction, // Col 15: Late Penalty
                 salData.totalEarlyMinutes, // Col 16: Early Checkout Total (Mins)
                 parseFloat((salData.totalEarlyMinutes / 60).toFixed(2)), // Col 17: Early Checkout Total (Hrs)
-                salData.earlyDeduction, // Col 18: Early Penalty
+                finalEarlyDeduction, // Col 18: Early Penalty
                 salData.absentDays, // Col 19: Absent Days
                 salData.approvedLeavesCount, // Col 20: Approved Leaves
                 salData.paidLeavesLimit, // Col 21: Paid Leaves Limit
                 salData.unpaidApprovedLeaves, // Col 22: Unpaid Approved Leaves
                 salData.unexcusedLeaves, // Col 23: Unexcused Leaves
-                salData.absentDeduction, // Col 24: Absenteeism Deduction
+                finalAbsentDeduction, // Col 24: Absenteeism Deduction
                 salData.unpaidApprovedLeavesDeduction, // Col 25: Unpaid Leaves Deduction
                 salData.extraClassesCount, // Col 26: Extra Classes Conducted (Count)
                 parseFloat(salData.extraClassesHours.toFixed(2)), // Col 27: Extra Classes Hours

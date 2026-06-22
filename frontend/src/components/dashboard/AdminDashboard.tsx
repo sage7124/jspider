@@ -7957,6 +7957,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [previewTrainee, setPreviewTrainee] = useState<any | null>(null);
+  const [activePayslipUser, setActivePayslipUser] = useState<any | null>(null);
 
   // Editing state
   const [editingTrainee, setEditingTrainee] = useState<any | null>(null);
@@ -8407,6 +8408,9 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                   <tr className="bg-gray-50 text-gray-500 uppercase font-bold text-[9px] tracking-wider border-b border-gray-200">
                     <th className="py-3 px-4">Employee / Teacher</th>
                     <th className="py-3 px-4 text-right">Professional Fee</th>
+                    <th className="py-3 px-4 text-right">Conveyance</th>
+                    <th className="py-3 px-4 text-right">Food</th>
+                    <th className="py-3 px-4 text-right">Other Additions</th>
                     <th className="py-3 px-4 text-center">College Visits</th>
                     <th className="py-3 px-4 text-center">Extra Classes</th>
                     <th className="py-3 px-4 text-center">Other Center Classes</th>
@@ -8414,6 +8418,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                     <th className="py-3 px-4 text-center">Early Penalty</th>
                     <th className="py-3 px-4 text-center">Absent Penalty</th>
                     <th className="py-3 px-4 text-right">TDS</th>
+                    <th className="py-3 px-4 text-right">Other Deductions</th>
                     <th className="py-3 px-4 text-right font-bold border-l border-gray-200">Net Takehome</th>
                   </tr>
                 </thead>
@@ -8427,6 +8432,15 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                       <td className="py-3 px-4 text-right text-gray-700">
                         ₹{(t.professionalFee || 0).toLocaleString('en-IN')}
                         <span className="text-gray-400 text-[9px] block">TDS base</span>
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-700">
+                        ₹{(t.conveyance || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-700">
+                        ₹{(t.food || 0).toLocaleString('en-IN')}
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-700">
+                        ₹{(t.otherAdditions || 0).toLocaleString('en-IN')}
                       </td>
                       <td className="py-3 px-4 text-center text-gray-700">
                         {(t.collegeVisitHours || 0) > 0 ? (
@@ -8479,6 +8493,9 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                         ₹{(t.tdsDeduction || 0).toLocaleString('en-IN')}
                         <span className="text-[10px] text-gray-400 block">({t.tdsPercentage}%)</span>
                       </td>
+                      <td className="py-3 px-4 text-right text-gray-700">
+                        ₹{(t.otherDeductions || 0).toLocaleString('en-IN')}
+                      </td>
                       <td className="py-3 px-4 text-right text-emerald-700 font-extrabold text-sm border-l border-gray-200">
                         ₹{(t.netTakeHome || 0).toLocaleString('en-IN')}
                       </td>
@@ -8486,28 +8503,14 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                         <div className="flex justify-center items-center gap-3">
                            <button 
                             onClick={() => {
-                              setEditingTrainee(t);
-                              setEditBaseSalary(String(t.professionalFee || 0));
-                              setEditPersonalLateRate(t.personalLateRate !== null && t.personalLateRate !== undefined ? String(t.personalLateRate) : '');
-                              setEditPersonalEarlyRate(t.personalEarlyRate !== null && t.personalEarlyRate !== undefined ? String(t.personalEarlyRate) : '');
-                              setEditPersonalPaidLeavesLimit(t.personalPaidLeavesLimit !== null && t.personalPaidLeavesLimit !== undefined ? String(t.personalPaidLeavesLimit) : '');
-                              setEditPersonalExtraClassRate(t.personalExtraClassRate !== null && t.personalExtraClassRate !== undefined ? String(t.personalExtraClassRate) : '');
-                              setEditPersonalOtherCenterClassRate(t.personalOtherCenterClassRate !== null && t.personalOtherCenterClassRate !== undefined ? String(t.personalOtherCenterClassRate) : '');
-                              setEditPersonalCollegeVisitRate(t.personalCollegeVisitRate !== null && t.personalCollegeVisitRate !== undefined ? String(t.personalCollegeVisitRate) : '');
-                              setEditTdsOverridePercent(t.personalTdsRate !== null && t.personalTdsRate !== undefined ? String(t.personalTdsRate) : '');
-                              setEditOtherAdditions(String(t.otherAdditions || 0));
-                              setEditOtherDeductions(String(t.otherDeductions || 0));
-                              setEditPersonalLateDeductionType(t.personalLateDeductionType || '');
-                              setEditPersonalLateIntervalValue(t.personalLateIntervalValue !== null && t.personalLateIntervalValue !== undefined ? String(t.personalLateIntervalValue) : '');
-                              setEditPersonalEarlyDeductionType(t.personalEarlyDeductionType || '');
-                              setEditPersonalEarlyIntervalValue(t.personalEarlyIntervalValue !== null && t.personalEarlyIntervalValue !== undefined ? String(t.personalEarlyIntervalValue) : '');
-                              setEditPersonalWorkingHoursOverride(t.personalWorkingHoursOverride !== null && t.personalWorkingHoursOverride !== undefined ? String(t.personalWorkingHoursOverride) : '');
-                              setEditPersonalConveyanceAllowance(t.personalConveyanceAllowance !== null && t.personalConveyanceAllowance !== undefined ? String(t.personalConveyanceAllowance) : '');
-                              setEditPersonalFoodAllowance(t.personalFoodAllowance !== null && t.personalFoodAllowance !== undefined ? String(t.personalFoodAllowance) : '');
-                              setEditPersonalAllowPayslipView(t.personalAllowPayslipView !== undefined ? Boolean(t.personalAllowPayslipView) : true);
+                              setActivePayslipUser({
+                                id: t.id,
+                                name: t.fullName,
+                                month: month
+                              });
                             }}
                             className="text-amber-600 hover:text-amber-800 transition-colors cursor-pointer"
-                            title="Edit Salary Settings"
+                            title="Manage Monthly Pay Slip"
                           >
                             <Settings size={15} />
                           </button>
@@ -8838,6 +8841,19 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
           userId={previewTrainee.id}
           month={month}
           onClose={() => setPreviewTrainee(null)}
+        />
+      )}
+      {activePayslipUser && (
+        <ManagePayslipModal 
+          userId={activePayslipUser.id}
+          name={activePayslipUser.name}
+          month={activePayslipUser.month}
+          onClose={() => setActivePayslipUser(null)}
+          onSuccess={() => {
+            setActivePayslipUser(null);
+            fetchTraineesList();
+          }}
+          hasPermission={hasPermission}
         />
       )}
     </div>
@@ -9221,6 +9237,9 @@ const ManagePayslipModal = ({
   const [otherAllowance, setOtherAllowance] = useState('0'); // Additions
   const [otherDeductions, setOtherDeductions] = useState('0'); // Deductions
   const [tdsRate, setTdsRate] = useState('10'); // TDS percentage override
+  const [lateDeductionOverride, setLateDeductionOverride] = useState('');
+  const [earlyDeductionOverride, setEarlyDeductionOverride] = useState('');
+  const [absentDeductionOverride, setAbsentDeductionOverride] = useState('');
   
   // Baseline settings fields
   const [workingHoursOverride, setWorkingHoursOverride] = useState('');
@@ -9229,6 +9248,7 @@ const ManagePayslipModal = ({
   const [otherCenterClassRate, setOtherCenterClassRate] = useState('');
   const [collegeVisitRate, setCollegeVisitRate] = useState('');
   const [allowPayslipView, setAllowPayslipView] = useState(true);
+  const [updateBaseline, setUpdateBaseline] = useState(false);
 
   const fetchPayslipDetails = async () => {
     setLoading(true);
@@ -9256,6 +9276,9 @@ const ManagePayslipModal = ({
         setFood(String(slip.food || 0));
         setOtherAllowance(String(slip.otherAllowance || 0));
         setOtherDeductions(String(slip.otherDeductions || 0));
+        setLateDeductionOverride(slip.lateDeduction !== null && slip.lateDeduction !== undefined ? String(slip.lateDeduction) : '0');
+        setEarlyDeductionOverride(slip.earlyDeduction !== null && slip.earlyDeduction !== undefined ? String(slip.earlyDeduction) : '0');
+        setAbsentDeductionOverride(slip.absentDeduction !== null && slip.absentDeduction !== undefined ? String(slip.absentDeduction) : '0');
       } else {
         setStoredSlip(null);
         setBasicSalary(String(res.data.baseSalary || 0));
@@ -9263,6 +9286,9 @@ const ManagePayslipModal = ({
         setFood(String(res.data.personalFoodAllowance || 0));
         setOtherAllowance(String(res.data.otherAdditions || 0));
         setOtherDeductions(String(res.data.otherDeductions || 0));
+        setLateDeductionOverride('');
+        setEarlyDeductionOverride('');
+        setAbsentDeductionOverride('');
       }
     } catch (e) {
       alert("Failed to load payslip data");
@@ -9304,7 +9330,7 @@ const ManagePayslipModal = ({
   const daysInMonth = (y && m) ? new Date(y, m, 0).getDate() : 30;
   const dailyRate = daysInMonth > 0 ? (basicVal / daysInMonth) : 0;
   const absentDays = calcData?.salaryData?.absentDays || 0;
-  const absentDeduction = Math.round(absentDays * dailyRate);
+  const autoAbsentDeduction = Math.round(absentDays * dailyRate);
 
   const limitPaidLeaves = paidLeavesLimit !== '' ? (parseFloat(paidLeavesLimit) || 0) : (calcData?.salaryData?.personalPaidLeavesLimit ?? 0);
   const carryForwardBalance = calcData?.salaryData?.carryForwardBalance || 0;
@@ -9314,15 +9340,19 @@ const ManagePayslipModal = ({
   const unpaidApprovedLeavesDeduction = Math.round(unpaidApprovedLeaves * dailyRate);
 
   const dailyHours = workingHoursOverride !== '' ? (parseFloat(workingHoursOverride) || 0) : (calcData?.salaryData?.workingHours || 0);
-  let lateDeduction = 0;
-  let earlyDeduction = 0;
+  let autoLateDeduction = 0;
+  let autoEarlyDeduction = 0;
   if (dailyHours > 0) {
     const perMinuteRate = basicVal / (daysInMonth * dailyHours * 60);
-    lateDeduction = Math.round((calcData?.salaryData?.totalLateMinutes || 0) * perMinuteRate);
-    earlyDeduction = Math.round((calcData?.salaryData?.totalEarlyMinutes || 0) * perMinuteRate);
+    autoLateDeduction = Math.round((calcData?.salaryData?.totalLateMinutes || 0) * perMinuteRate);
+    autoEarlyDeduction = Math.round((calcData?.salaryData?.totalEarlyMinutes || 0) * perMinuteRate);
   }
 
-  const totalDeductions = deductionsVal + tdsVal + absentDeduction + unpaidApprovedLeavesDeduction + lateDeduction + earlyDeduction;
+  const resolvedLateDeduction = lateDeductionOverride !== '' ? (parseFloat(lateDeductionOverride) || 0) : autoLateDeduction;
+  const resolvedEarlyDeduction = earlyDeductionOverride !== '' ? (parseFloat(earlyDeductionOverride) || 0) : autoEarlyDeduction;
+  const resolvedAbsentDeduction = absentDeductionOverride !== '' ? (parseFloat(absentDeductionOverride) || 0) : autoAbsentDeduction;
+
+  const totalDeductions = deductionsVal + tdsVal + resolvedAbsentDeduction + unpaidApprovedLeavesDeduction + resolvedLateDeduction + resolvedEarlyDeduction;
   const previewNetSalary = grossEarnings - totalDeductions;
 
   const handleClearFields = () => {
@@ -9337,6 +9367,9 @@ const ManagePayslipModal = ({
     setExtraClassRate('');
     setOtherCenterClassRate('');
     setCollegeVisitRate('');
+    setLateDeductionOverride('');
+    setEarlyDeductionOverride('');
+    setAbsentDeductionOverride('');
   };
 
   const handleSave = async () => {
@@ -9345,22 +9378,24 @@ const ManagePayslipModal = ({
       const token = localStorage.getItem('token');
       
       // 1. Save user baseline settings in database
-      await axios.put(`${API}/trainees/${userId}/salary`, {
-        baseSalary: basicVal,
-        paidLeavesLimit: paidLeavesLimit !== '' ? parseFloat(paidLeavesLimit) : null,
-        extraClassRate: extraClassRate !== '' ? parseFloat(extraClassRate) : null,
-        otherCenterClassRate: otherCenterClassRate !== '' ? parseFloat(otherCenterClassRate) : null,
-        collegeVisitRate: collegeVisitRate !== '' ? parseFloat(collegeVisitRate) : null,
-        tdsRate: tdsRate !== '' ? parseFloat(tdsRate) : null,
-        otherAdditions: additionsVal,
-        otherDeductions: deductionsVal,
-        conveyanceAllowance: conveyanceVal,
-        foodAllowance: foodVal,
-        workingHoursOverride: workingHoursOverride !== '' ? parseFloat(workingHoursOverride) : null,
-        allowPayslipView: allowPayslipView
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (updateBaseline) {
+        await axios.put(`${API}/trainees/${userId}/salary`, {
+          baseSalary: basicVal,
+          paidLeavesLimit: paidLeavesLimit !== '' ? parseFloat(paidLeavesLimit) : null,
+          extraClassRate: extraClassRate !== '' ? parseFloat(extraClassRate) : null,
+          otherCenterClassRate: otherCenterClassRate !== '' ? parseFloat(otherCenterClassRate) : null,
+          collegeVisitRate: collegeVisitRate !== '' ? parseFloat(collegeVisitRate) : null,
+          tdsRate: tdsRate !== '' ? parseFloat(tdsRate) : null,
+          otherAdditions: additionsVal,
+          otherDeductions: deductionsVal,
+          conveyanceAllowance: conveyanceVal,
+          foodAllowance: foodVal,
+          workingHoursOverride: workingHoursOverride !== '' ? parseFloat(workingHoursOverride) : null,
+          allowPayslipView: allowPayslipView
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
 
       // 2. Save manual monthly overrides in database
       await axios.post(`${API}/salary-slips`, {
@@ -9376,12 +9411,19 @@ const ManagePayslipModal = ({
         professionalTax: 0,
         esi: 0,
         tds: tdsVal, // Store computed flat TDS amount
-        otherDeductions: deductionsVal
+        otherDeductions: deductionsVal,
+        lateDeduction: resolvedLateDeduction,
+        earlyDeduction: resolvedEarlyDeduction,
+        absentDeduction: resolvedAbsentDeduction
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      alert("Monthly overrides and baseline settings saved successfully!");
+      if (updateBaseline) {
+        alert("Monthly overrides and baseline settings saved successfully!");
+      } else {
+        alert("Monthly overrides saved successfully!");
+      }
       onSuccess(); // Close modal and refresh parent
     } catch (e: any) {
       const errMsg = e.response?.data?.error || e.response?.data?.message || e.message || "Failed to save salary settings and overrides";
@@ -9724,6 +9766,54 @@ const ManagePayslipModal = ({
 
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Late Arrival Penalty (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={lateDeductionOverride}
+                      onChange={(e) => setLateDeductionOverride(e.target.value)}
+                      placeholder={`Auto: ₹${autoLateDeduction}`}
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 border-gray-300"
+                    />
+                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                      Timing-based auto-calculated: <span className="font-bold text-red-750">₹{autoLateDeduction}</span>
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Early Departure Penalty (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={earlyDeductionOverride}
+                      onChange={(e) => setEarlyDeductionOverride(e.target.value)}
+                      placeholder={`Auto: ₹${autoEarlyDeduction}`}
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 border-gray-300"
+                    />
+                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                      Timing-based auto-calculated: <span className="font-bold text-red-750">₹{autoEarlyDeduction}</span>
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
+                      Absenteeism Penalty (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={absentDeductionOverride}
+                      onChange={(e) => setAbsentDeductionOverride(e.target.value)}
+                      placeholder={`Auto: ₹${autoAbsentDeduction}`}
+                      className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 bg-slate-50 border-gray-300"
+                    />
+                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
+                      Days-based auto-calculated: <span className="font-bold text-red-750">₹{autoAbsentDeduction}</span>
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">
                       Deductions / Other Deductions (₹)
                     </label>
                     <input
@@ -9741,8 +9831,8 @@ const ManagePayslipModal = ({
                     <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 font-medium">
                       <div>Absent Days: <span className="font-bold text-red-650">{calcData?.salaryData?.absentDays || 0} days</span></div>
                       <div>Approved Leaves: <span className="font-bold text-blue-700">{calcData?.salaryData?.approvedLeavesCount || 0} days</span></div>
-                      <div>Late Penalty: <span className="font-bold text-red-650">₹{calcData?.salaryData?.lateDeduction || 0}</span></div>
-                      <div>Early Penalty: <span className="font-bold text-red-650">₹{calcData?.salaryData?.earlyDeduction || 0}</span></div>
+                      <div>Late Penalty: <span className="font-bold text-red-650">₹{resolvedLateDeduction}</span></div>
+                      <div>Early Penalty: <span className="font-bold text-red-650">₹{resolvedEarlyDeduction}</span></div>
                       <div>Extra Class Pay: <span className="font-bold text-emerald-700">₹{extraClassEarnings.toLocaleString('en-IN')}</span></div>
                       <div>College Visit Pay: <span className="font-bold text-emerald-700">₹{collegeVisitEarnings.toLocaleString('en-IN')}</span></div>
                     </div>
@@ -9762,6 +9852,15 @@ const ManagePayslipModal = ({
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-700 bg-white border border-gray-200 px-4 py-2.5 rounded-xl shadow-sm hover:bg-slate-50 select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={updateBaseline} 
+                    onChange={(e) => setUpdateBaseline(e.target.checked)} 
+                    className="h-4 w-4 text-[#0f766e] focus:ring-teal-500 border-gray-300 rounded cursor-pointer"
+                  />
+                  Update Trainee Baseline Profile
+                </label>
                 <div className="flex gap-3">
                   <button
                     type="button"
