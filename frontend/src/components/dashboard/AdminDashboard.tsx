@@ -3817,14 +3817,19 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
               <h3 className="text-xs font-black text-pink-700 mb-2 uppercase tracking-wider">Holiday Quota</h3>
               <div className="flex gap-2">
                 <input type="number" value={quota} onChange={e => setQuota(parseInt(e.target.value) || 0)} disabled={!canManage}
-                  className="flex-1 border border-pink-200 rounded px-3 py-1.5 text-xs focus:ring-2 focus:ring-pink-500 outline-none disabled:bg-gray-100 disabled:text-gray-500" />
+                  className="flex-1 border border-pink-200 rounded px-3 py-1.5 text-xs focus:ring-2 focus:ring-pink-500 outline-none disabled:bg-gray-100 disabled:text-gray-500 font-semibold" />
+                {canManage && (
+                  <button onClick={handleUpdateSettings} className="bg-pink-650 hover:bg-pink-750 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors shadow-sm cursor-pointer">
+                    Save Quota
+                  </button>
+                )}
               </div>
               <p className="text-[9px] text-pink-600 mt-1 italic">Total holidays allowed for this session</p>
             </div>
           </div>
 
           {canManage && (
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 font-semibold">
               <h3 className="text-xs font-black text-gray-700 mb-2 uppercase tracking-wider">Add New Holiday</h3>
               <div className="space-y-1.5">
                 <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)}
@@ -3832,34 +3837,12 @@ const HolidayManagementModal = ({ onClose, canManage }: { onClose: () => void; c
                 <input type="text" placeholder="Holiday Name (e.g., Diwali)" value={newName} onChange={e => setNewName(e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-1 text-xs focus:ring-2 focus:ring-blue-500 outline-none" />
                 <button onClick={handleAddHoliday} disabled={saving}
-                  className="w-full bg-blue-600 text-white py-1 rounded text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
+                  className="w-full bg-blue-600 text-white py-1 rounded text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 cursor-pointer">
                   {saving ? 'Adding...' : 'Add Holiday'}
                 </button>
               </div>
             </div>
           )}
-        </div>
-
-        {/* Deduction Rates card */}
-        <div className="bg-emerald-50/50 p-4 rounded-lg border border-emerald-100/60 mb-4">
-          <h3 className="text-xs font-black text-emerald-800 mb-3 uppercase tracking-wider flex items-center gap-1.5">
-            💸 Deduction & Penalty Rates Configuration
-          </h3>
-          <div className="max-w-xs">
-            <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Paid Leaves (Days)</label>
-            <input type="number" value={paidLeavesLimit} onChange={e => setPaidLeavesLimit(parseFloat(e.target.value) || 0)} disabled={!canManage}
-              className="w-full border border-slate-200 rounded px-2.5 py-1.5 text-xs bg-white focus:ring-2 focus:ring-emerald-500 outline-none" />
-          </div>
-          <div className="flex justify-between items-center mt-3 pt-2 border-t border-emerald-100">
-            <p className="text-[9px] text-emerald-700 italic">
-              * Paid Leaves limit specifies the default number of paid leaves allowed per month. Exceeding leaves are deducted as Unpaid Approved Leaves.
-            </p>
-            {canManage && (
-              <button onClick={handleUpdateSettings} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1 rounded text-xs font-bold transition-colors">
-                Save System Settings
-              </button>
-            )}
-          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-[150px]">
@@ -8389,7 +8372,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
 
         {/* Content Table */}
         <div className="flex-1 overflow-auto px-6 pb-6">
-          <div className="border border-gray-200 rounded-xl bg-white overflow-hidden shadow-sm">
+          <div className="border border-gray-200 rounded-xl bg-white overflow-x-auto shadow-sm">
             {loading ? (
               <div className="h-48 flex justify-center items-center text-xs text-gray-400">
                 <div className="flex flex-col items-center gap-2">
@@ -8420,6 +8403,7 @@ const SalarySlipsModal = ({ onClose, hasPermission }: SalarySlipsModalProps) => 
                     <th className="py-3 px-4 text-right">TDS</th>
                     <th className="py-3 px-4 text-right">Other Deductions</th>
                     <th className="py-3 px-4 text-right font-bold border-l border-gray-200">Net Takehome</th>
+                    <th className="py-3 px-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -9338,6 +9322,7 @@ const ManagePayslipModal = ({
   const approvedLeavesCount = calcData?.salaryData?.approvedLeavesCount || 0;
   const unpaidApprovedLeaves = Math.max(0, approvedLeavesCount - totalAvailablePaidLeaves);
   const unpaidApprovedLeavesDeduction = Math.round(unpaidApprovedLeaves * dailyRate);
+  const paidLeavesUsed = Math.min(approvedLeavesCount, totalAvailablePaidLeaves);
 
   const dailyHours = workingHoursOverride !== '' ? (parseFloat(workingHoursOverride) || 0) : (calcData?.salaryData?.workingHours || 0);
   let autoLateDeduction = 0;
@@ -9639,9 +9624,11 @@ const ManagePayslipModal = ({
                       placeholder="Global"
                       className="w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50 border-gray-300"
                     />
-                    <span className="text-[10px] text-gray-500 block mt-1 font-medium select-none">
-                      Leaves Taken: <span className="font-bold text-blue-750">{calcData?.salaryData?.approvedLeavesCount || 0} days</span>
-                    </span>
+                    <div className="text-[11px] text-gray-600 mt-2 space-y-1 bg-slate-50 border border-gray-200 p-2.5 rounded-lg select-none font-medium">
+                      <div>Total Leaves Taken: <span className="font-bold text-slate-800">{approvedLeavesCount} days</span></div>
+                      <div>Paid Leaves: <span className="font-bold text-blue-700">{paidLeavesUsed} days</span> {carryForwardBalance > 0 && <span className="text-[10px] text-gray-500 font-normal">(incl. {carryForwardBalance}d carry-forward)</span>}</div>
+                      <div>Loss of Pay (LOP): <span className="font-bold text-red-650">{unpaidApprovedLeaves} days</span></div>
+                    </div>
                   </div>
 
                   <div className="p-3 bg-slate-50 border rounded-lg border-gray-200 flex items-center justify-between mt-4">
