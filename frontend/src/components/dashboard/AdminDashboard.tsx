@@ -9831,8 +9831,8 @@ const ManagePayslipModal = ({
                     <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 font-medium">
                       <div>Absent Days: <span className="font-bold text-red-650">{calcData?.salaryData?.absentDays || 0} days</span></div>
                       <div>Approved Leaves: <span className="font-bold text-blue-700">{calcData?.salaryData?.approvedLeavesCount || 0} days</span></div>
-                      <div>Late Penalty: <span className="font-bold text-red-650">₹{resolvedLateDeduction}</span></div>
-                      <div>Early Penalty: <span className="font-bold text-red-650">₹{resolvedEarlyDeduction}</span></div>
+                      <div>Late Penalty: <span className="font-bold text-red-650">₹{autoLateDeduction}</span></div>
+                      <div>Early Penalty: <span className="font-bold text-red-650">₹{autoEarlyDeduction}</span></div>
                       <div>Extra Class Pay: <span className="font-bold text-emerald-700">₹{extraClassEarnings.toLocaleString('en-IN')}</span></div>
                       <div>College Visit Pay: <span className="font-bold text-emerald-700">₹{collegeVisitEarnings.toLocaleString('en-IN')}</span></div>
                     </div>
