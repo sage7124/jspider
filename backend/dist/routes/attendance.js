@@ -100,6 +100,55 @@ router.get('/status', authMiddleware_1.authenticateToken, async (req, res) => {
                 }
             }
         }
+        // Check if they forgot to punch out of a slot today (deadline has passed)
+        if (!forgotPunchOut && attendance && attendance.status === 'IN') {
+            let currentlyPunchedInSlot = null;
+            for (const s of slots) {
+                const hasIn = attendance[`inTime${s.slotNo}`];
+                const hasOut = attendance[`outTime${s.slotNo}`];
+                if (hasIn && !hasOut) {
+                    currentlyPunchedInSlot = s;
+                    break;
+                }
+            }
+            if (currentlyPunchedInSlot) {
+                const sortedSlots = [...slots].sort((a, b) => {
+                    const parseTime = (timeStr) => {
+                        const [tStr, mod] = timeStr.split(' ');
+                        let [h, m] = tStr.split(':').map(Number);
+                        if (mod === 'PM' && h < 12)
+                            h += 12;
+                        if (mod === 'AM' && h === 12)
+                            h = 0;
+                        const d = new Date(today);
+                        d.setHours(h, m, 0, 0);
+                        return d;
+                    };
+                    return parseTime(a.startTime).getTime() - parseTime(b.startTime).getTime();
+                });
+                const activeIndex = sortedSlots.findIndex(s => s.id === currentlyPunchedInSlot.id);
+                if (activeIndex !== -1 && activeIndex < sortedSlots.length - 1) {
+                    const nextSlot = sortedSlots[activeIndex + 1];
+                    const parseTime = (timeStr) => {
+                        const [tStr, mod] = timeStr.split(' ');
+                        let [h, m] = tStr.split(':').map(Number);
+                        if (mod === 'PM' && h < 12)
+                            h += 12;
+                        if (mod === 'AM' && h === 12)
+                            h = 0;
+                        const d = new Date(today);
+                        d.setHours(h, m, 0, 0);
+                        return d;
+                    };
+                    const nextSlotStart = parseTime(nextSlot.startTime);
+                    const limitTime = new Date(nextSlotStart.getTime() - 5 * 60 * 1000);
+                    const now = new Date();
+                    if (now.getTime() >= limitTime.getTime()) {
+                        forgotPunchOut = true;
+                    }
+                }
+            }
+        }
         const todayBreaks = await prisma.breakLog.findMany({
             where: { userId, date: today },
             orderBy: { breakOut: 'asc' }
@@ -110,7 +159,7 @@ router.get('/status', authMiddleware_1.authenticateToken, async (req, res) => {
         const breakPending = pendingBreak !== null;
         const approvedBreaks = todayBreaks.filter(b => b.status === 'APPROVED');
         res.json({
-            status: attendance?.status || 'OUT',
+            status: forgotPunchOut ? 'OUT' : (attendance?.status || 'OUT'),
             inTime: attendance?.inTime,
             outTime: attendance?.outTime,
             forgotPunchOut,
@@ -359,7 +408,22 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
         const activeSlotNo = activeSlot ? activeSlot.slotNo : 1;
         if (type === 'IN') {
             if (existing?.status === 'IN') {
-                return res.status(400).json({ error: 'Already punched in' });
+                let currentlyPunchedInSlot = null;
+                for (const s of slots) {
+                    const hasIn = existing[`inTime${s.slotNo}`];
+                    const hasOut = existing[`outTime${s.slotNo}`];
+                    if (hasIn && !hasOut) {
+                        currentlyPunchedInSlot = s;
+                        break;
+                    }
+                }
+                let isForgotBypass = false;
+                if (currentlyPunchedInSlot && activeSlot && currentlyPunchedInSlot.slotNo !== activeSlot.slotNo) {
+                    isForgotBypass = true;
+                }
+                if (!isForgotBypass) {
+                    return res.status(400).json({ error: 'Already punched in' });
+                }
             }
             const dataUpdate = {
                 status: 'IN',

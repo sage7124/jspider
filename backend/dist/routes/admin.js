@@ -152,8 +152,24 @@ router.post('/external-punch', verifyCrossSecret, async (req, res) => {
         }
         const activeSlotNo = activeSlot.slotNo;
         if (typeUpper === 'IN') {
-            if (existing?.status === 'IN')
-                return res.json({ success: true, message: 'Already punched in' });
+            if (existing?.status === 'IN') {
+                let currentlyPunchedInSlot = null;
+                for (const s of slots) {
+                    const hasIn = existing[`inTime${s.slotNo}`];
+                    const hasOut = existing[`outTime${s.slotNo}`];
+                    if (hasIn && !hasOut) {
+                        currentlyPunchedInSlot = s;
+                        break;
+                    }
+                }
+                let isForgotBypass = false;
+                if (currentlyPunchedInSlot && activeSlot && currentlyPunchedInSlot.slotNo !== activeSlot.slotNo) {
+                    isForgotBypass = true;
+                }
+                if (!isForgotBypass) {
+                    return res.json({ success: true, message: 'Already punched in' });
+                }
+            }
             const updateD = { status: 'IN', inTime: existing?.inTime || now, isLate: existing ? existing.isLate : isLate };
             const createD = { userId: user.id, date: today, status: 'IN', inTime: now, isLate };
             if ([1, 2, 3, 4, 5].includes(activeSlotNo)) {
