@@ -302,6 +302,44 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
                     activeSlot = slots[0];
                 }
             }
+            if (type === 'OUT' && slots.length >= 2 && activeSlot) {
+                const sortedSlots = [...slots].sort((a, b) => {
+                    const parseTime = (timeStr) => {
+                        const [tStr, mod] = timeStr.split(' ');
+                        let [h, m] = tStr.split(':').map(Number);
+                        if (mod === 'PM' && h < 12)
+                            h += 12;
+                        if (mod === 'AM' && h === 12)
+                            h = 0;
+                        const d = new Date(today);
+                        d.setHours(h, m, 0, 0);
+                        return d;
+                    };
+                    return parseTime(a.startTime).getTime() - parseTime(b.startTime).getTime();
+                });
+                const activeIndex = sortedSlots.findIndex(s => s.id === activeSlot.id);
+                if (activeIndex !== -1 && activeIndex < sortedSlots.length - 1) {
+                    const nextSlot = sortedSlots[activeIndex + 1];
+                    const parseTime = (timeStr) => {
+                        const [tStr, mod] = timeStr.split(' ');
+                        let [h, m] = tStr.split(':').map(Number);
+                        if (mod === 'PM' && h < 12)
+                            h += 12;
+                        if (mod === 'AM' && h === 12)
+                            h = 0;
+                        const d = new Date(today);
+                        d.setHours(h, m, 0, 0);
+                        return d;
+                    };
+                    const nextSlotStart = parseTime(nextSlot.startTime);
+                    const limitTime = new Date(nextSlotStart.getTime() - 5 * 60 * 1000);
+                    if (now.getTime() >= limitTime.getTime()) {
+                        return res.status(400).json({
+                            error: 'You forgot to punch out of your previous slot. Please talk to the admin.'
+                        });
+                    }
+                }
+            }
             if (type === 'IN') {
                 // Parse active slot start time
                 const [sTime, sMod] = activeSlot.startTime.split(' ');
