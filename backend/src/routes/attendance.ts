@@ -908,15 +908,18 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
       where: { userId, date: today }
     });
 
-    const pendingBreak = todayBreaks.find(b => b.status === 'PENDING');
-    if (pendingBreak) {
-      return res.status(400).json({ error: 'You already have a pending break request.' });
-    }
-
     const approvedBreaks = todayBreaks.filter(b => b.status === 'APPROVED');
-    const activeBreak = approvedBreaks.find(b => b.breakIn === null);
-    if (activeBreak && breakType !== 'COLLEGE_VISIT') {
-      return res.status(400).json({ error: 'You are already on an active break.' });
+
+    if (breakType === 'NORMAL') {
+      const pendingNormal = todayBreaks.find(b => b.status === 'PENDING' && !b.bookletNo && !(b.reason && b.reason.startsWith('College Visit:')));
+      if (pendingNormal) {
+        return res.status(400).json({ error: 'You already have a pending break request.' });
+      }
+
+      const activeNormal = approvedBreaks.find(b => b.breakIn === null && !b.bookletNo && !(b.reason && b.reason.startsWith('College Visit:')));
+      if (activeNormal) {
+        return res.status(400).json({ error: 'You are already on an active break.' });
+      }
     }
 
     const normalApprovedBreaks = approvedBreaks.filter(b => !b.collegeName);

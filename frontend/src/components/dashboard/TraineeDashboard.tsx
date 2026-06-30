@@ -2266,13 +2266,13 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                       setBreakType('NORMAL');
                       setShowBreakReasonModal(true);
                     }}
-                    disabled={startingBreak || status?.status !== 'IN' || status?.currentlyOnBreak}
+                    disabled={startingBreak || status?.status !== 'IN' || (status?.currentlyOnBreak && !(status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:'))))}
                     className={`w-full font-black py-4 rounded-xl text-xs uppercase tracking-wider transition-all transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
-                      status?.status !== 'IN' || status?.currentlyOnBreak
+                      status?.status !== 'IN' || (status?.currentlyOnBreak && !(status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:'))))
                         ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-60'
                         : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
                     }`}
-                    title={status?.status !== 'IN' ? 'You must punch in first to take a normal break' : status?.currentlyOnBreak ? 'You are currently on an active break/visit' : ''}
+                    title={status?.status !== 'IN' ? 'You must punch in first to take a normal break' : (status?.currentlyOnBreak && !(status.activeBreak?.bookletNo !== null || (status.activeBreak?.reason && status.activeBreak.reason.startsWith('College Visit:')))) ? 'You are currently on an active break' : ''}
                   >
                     {startingBreak ? 'Processing...' : '☕ Start Normal Break'}
                   </button>
