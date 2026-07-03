@@ -3837,7 +3837,7 @@ const EarlyLeavePermissionsModal = ({ onClose, allTrainees }: { onClose: () => v
               >
                 <option value="">-- Choose Trainee --</option>
                 {allTrainees.map((t: any) => (
-                  <option key={t.id} value={t.id}>{t.fullName} ({t.identifier})</option>
+                  <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
                 ))}
               </select>
             </div>
