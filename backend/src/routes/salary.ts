@@ -210,8 +210,15 @@ export const calculateTraineeSalaryData = async (
     }
   }
 
+  const earlyLeaves = await prisma.earlyLeavePermission.findMany({
+    where: {
+      userId: trainee.id,
+      date: { gte: startOfMonth, lte: endOfMonth }
+    }
+  });
+
   // Compute report rows using the utility
-  const report = getTraineeReportData(trainee, attendances, year, mon, daysInMonth, holidays, leaves);
+  const report = getTraineeReportData(trainee, attendances, year, mon, daysInMonth, holidays, leaves, earlyLeaves);
   const { totalLateMinutes, totalEarlyMinutes } = report;
   
   let lateInstances = 0;

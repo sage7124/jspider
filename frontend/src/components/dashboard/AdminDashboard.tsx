@@ -2167,6 +2167,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [showSalarySlips, setShowSalarySlips] = useState(false);
   const [showMyPayslips, setShowMyPayslips] = useState(false);
   const [managePayslipUser, setManagePayslipUser] = useState<any | null>(null);
+  const [showEarlyLeaves, setShowEarlyLeaves] = useState(false);
 
   const getMonthFromDate = (dateStr: string) => {
     if (!dateStr) {
@@ -2285,6 +2286,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
             <button onClick={() => setShowLeaves(true)}
               className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded font-medium transition-colors">
               Leaves
+            </button>
+          )}
+          {hasPermission('DIRECT_LEAVE') && (
+            <button onClick={() => setShowEarlyLeaves(true)}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded font-medium transition-colors">
+              Early Leaves
             </button>
           )}
           {hasPermission('HOLIDAYS') && (
@@ -2544,6 +2551,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {manualPunchUser && <ManualPunchModal trainee={manualPunchUser} onClose={() => setManualPunchUser(null)} onSave={fetchTrainees} />}
       {deleteUser && <DeleteConfirmModal trainee={deleteUser} onClose={() => setDeleteUser(null)} onDeleted={fetchTrainees} />}
       {showLeaves && <LeaveManagementModal onClose={() => setShowLeaves(null as any)} onProcessed={fetchTrainees} canManage={hasPermission('DIRECT_LEAVE')} />}
+      {showEarlyLeaves && <EarlyLeavePermissionsModal onClose={() => setShowEarlyLeaves(false)} allTrainees={trainees} />}
       {showDownload && <MonthlyDownloadModal onClose={() => setShowDownload(false)} />}
       {individualReport && <IndividualDownloadModal trainee={individualReport} onClose={() => setIndividualReport(null)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} role={role} canManage={hasPermission('GPS_LOCATION')} />}
@@ -3719,6 +3727,243 @@ const SettingsModal = ({ onClose, role, canManage }: { onClose: () => void; role
 
         <div className="pt-4 mt-2 border-t flex-shrink-0">
           <button onClick={onClose} className="w-full py-2 text-gray-500 hover:text-gray-800 text-sm font-bold transition-colors">DONE & CLOSE</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Early Leave Permissions Modal ────────────────────────────────────────────
+const EarlyLeavePermissionsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees: any[] }) => {
+  const [permissions, setPermissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  // Form states
+  const [userId, setUserId] = useState('');
+  const [date, setDate] = useState('');
+  const [slotNo, setSlotNo] = useState('1');
+  const [allowedMinutes, setAllowedMinutes] = useState('60');
+  const [reason, setReason] = useState('');
+
+  useEffect(() => {
+    fetchPermissions();
+  }, []);
+
+  const fetchPermissions = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API}/early-leave`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPermissions(res.data);
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to fetch early leave permissions.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPermission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId || !date || !allowedMinutes) {
+      alert('Please fill in all required fields.');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`${API}/early-leave`, {
+        userId: Number(userId),
+        date,
+        slotNo: Number(slotNo),
+        allowedMinutes: Number(allowedMinutes),
+        reason
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Early leave permission added successfully.');
+      // Reset form
+      setUserId('');
+      setDate('');
+      setSlotNo('1');
+      setAllowedMinutes('60');
+      setReason('');
+      fetchPermissions();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to add permission.');
+    }
+  };
+
+  const handleDeletePermission = async (id: number) => {
+    if (!confirm('Are you sure you want to revoke this early leave permission?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/early-leave/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchPermissions();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to delete permission.');
+    }
+  };
+
+  const filteredPermissions = permissions.filter((p: any) =>
+    (p.user?.fullName || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.user?.identifier || '').includes(search)
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-100">
+        {/* Modal Header */}
+        <div className="px-6 py-4 bg-indigo-600 text-white flex justify-between items-center">
+          <h2 className="text-lg font-bold uppercase tracking-wider">Early Leave Permissions</h2>
+          <button onClick={onClose} className="text-white hover:text-gray-200 cursor-pointer">
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {/* Add Permission Form */}
+          <form onSubmit={handleAddPermission} className="bg-gray-50/50 p-5 rounded-lg border border-gray-200/60 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div className="md:col-span-2">
+              <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1.5">Select Trainee *</label>
+              <select
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                className="w-full text-xs border border-gray-300 rounded p-2 bg-white focus:outline-none focus:border-indigo-500"
+                required
+              >
+                <option value="">-- Choose Trainee --</option>
+                {allTrainees.map((t: any) => (
+                  <option key={t.id} value={t.id}>{t.fullName} ({t.identifier})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1.5">Date *</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full text-xs border border-gray-300 rounded p-2 focus:outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1.5">Slot Number *</label>
+              <select
+                value={slotNo}
+                onChange={(e) => setSlotNo(e.target.value)}
+                className="w-full text-xs border border-gray-300 rounded p-2 bg-white focus:outline-none focus:border-indigo-500"
+                required
+              >
+                <option value="0">All Slots</option>
+                <option value="1">Slot 1</option>
+                <option value="2">Slot 2</option>
+                <option value="3">Slot 3</option>
+                <option value="4">Slot 4</option>
+                <option value="5">Slot 5</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1.5">Minutes Early *</label>
+              <input
+                type="number"
+                min="1"
+                value={allowedMinutes}
+                onChange={(e) => setAllowedMinutes(e.target.value)}
+                className="w-full text-xs border border-gray-300 rounded p-2 focus:outline-none focus:border-indigo-500"
+                required
+              />
+            </div>
+
+            <div className="md:col-span-4">
+              <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1.5">Reason / Remarks</label>
+              <input
+                type="text"
+                placeholder="e.g. Personal work, Health checkup..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className="w-full text-xs border border-gray-300 rounded p-2 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                className="w-full text-xs font-bold uppercase py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded cursor-pointer transition-all active:scale-[0.98]"
+              >
+                Add Permission
+              </button>
+            </div>
+          </form>
+
+          {/* Permissions List */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-gray-700">Existing Permissions</h3>
+              <input
+                type="text"
+                placeholder="Search by name or mobile..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="text-xs border border-gray-300 rounded px-3 py-1.5 w-64 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            {loading ? (
+              <div className="text-center py-6 text-xs text-gray-400">Loading permissions...</div>
+            ) : filteredPermissions.length === 0 ? (
+              <div className="text-center py-8 text-xs text-gray-400 border border-dashed rounded-lg bg-gray-50/50">
+                No active early leave permissions found.
+              </div>
+            ) : (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100/80 border-b border-gray-200 text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                      <th className="p-3">Trainee Name</th>
+                      <th className="p-3">Identifier</th>
+                      <th className="p-3">Date</th>
+                      <th className="p-3 text-center">Slot</th>
+                      <th className="p-3 text-center">Allowed Minutes</th>
+                      <th className="p-3">Reason</th>
+                      <th className="p-3 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredPermissions.map((p: any) => (
+                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="p-3 font-semibold text-gray-800">{p.user?.fullName}</td>
+                        <td className="p-3 text-gray-600 font-mono">{p.user?.identifier}</td>
+                        <td className="p-3 text-gray-700">{new Date(p.date).toLocaleDateString('en-IN')}</td>
+                        <td className="p-3 text-center font-bold text-gray-800">
+                          {p.slotNo === 0 ? 'All Slots' : `Slot ${p.slotNo}`}
+                        </td>
+                        <td className="p-3 text-center font-mono font-bold text-indigo-700">
+                          {p.allowedMinutes}m
+                        </td>
+                        <td className="p-3 text-gray-500 italic">{p.reason || '--'}</td>
+                        <td className="p-3 text-center">
+                          <button
+                            onClick={() => handleDeletePermission(p.id)}
+                            className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded border border-red-200 transition-colors cursor-pointer"
+                          >
+                            Revoke
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

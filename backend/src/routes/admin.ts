@@ -961,6 +961,12 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
       }
     });
 
+    const allEarlyLeaves = await prisma.earlyLeavePermission.findMany({
+      where: {
+        date: { gte: startOfMonth, lte: endOfMonth }
+      }
+    });
+
     for (const trainee of trainees) {
       // Use max 31 chars for worksheet name, replacing invalid chars
       const sheetName = trainee.fullName.replace(/[*/\?:\[\]]/g, '').substring(0, 31) || `Trainee_${trainee.id}`;
@@ -973,7 +979,8 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
       }
       const traineeAtts = attendances.filter(a => a.userId === trainee.id);
       const traineeLeaves = allLeaves.filter(l => l.userId === trainee.id);
-      generateTraineeWorksheet(ws, trainee, traineeAtts, year, mon, daysInMonth, holidays, traineeLeaves);
+      const traineeEarlyLeaves = allEarlyLeaves.filter(el => el.userId === trainee.id);
+      generateTraineeWorksheet(ws, trainee, traineeAtts, year, mon, daysInMonth, holidays, traineeLeaves, traineeEarlyLeaves);
     }
 
     if (trainees.length === 0) {
@@ -1066,7 +1073,14 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
       });
     }
 
-    generateTraineeWorksheet(ws, user, finalAttendances, year, mon, daysInMonth, finalHolidays, finalLeaves);
+    const earlyLeaves = await prisma.earlyLeavePermission.findMany({
+      where: {
+        userId,
+        date: { gte: startOfMonth, lte: endOfMonth }
+      }
+    });
+
+    generateTraineeWorksheet(ws, user, finalAttendances, year, mon, daysInMonth, finalHolidays, finalLeaves, earlyLeaves);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=Report_${user.fullName}_${month}.xlsx`);

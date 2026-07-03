@@ -765,7 +765,13 @@ router.get('/reports/monthly-excel', authMiddleware_1.authenticateToken, async (
             finalHolidays = [...holidays, ...remoteHolidays];
             finalLeaves = [...leaves, ...remoteLeaves];
         }
-        (0, excel_1.generateTraineeWorksheet)(ws, user, finalAttendances, y, m, daysInMonth, finalHolidays, finalLeaves);
+        const earlyLeaves = await prisma.earlyLeavePermission.findMany({
+            where: {
+                userId,
+                date: { gte: startDate, lte: endDate }
+            }
+        });
+        (0, excel_1.generateTraineeWorksheet)(ws, user, finalAttendances, y, m, daysInMonth, finalHolidays, finalLeaves, earlyLeaves);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=My_Report_${m}_${y}.xlsx`);
         await workbook.xlsx.write(res);
@@ -836,7 +842,13 @@ router.get('/reports/monthly-json', authMiddleware_1.authenticateToken, async (r
             finalHolidays = [...holidays, ...remoteHolidays];
             finalLeaves = [...leaves, ...remoteLeaves];
         }
-        const reportData = (0, excel_1.getTraineeReportData)(user, finalAttendances, y, m, daysInMonth, finalHolidays, finalLeaves);
+        const earlyLeaves = await prisma.earlyLeavePermission.findMany({
+            where: {
+                userId,
+                date: { gte: startDate, lte: endDate }
+            }
+        });
+        const reportData = (0, excel_1.getTraineeReportData)(user, finalAttendances, y, m, daysInMonth, finalHolidays, finalLeaves, earlyLeaves);
         const collegeVisits = await prisma.breakLog.findMany({
             where: {
                 userId,

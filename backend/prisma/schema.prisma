@@ -97,6 +97,7 @@ model User {
   disableLogs            DisableLog[] @relation("UserDisableLogs")
   disabledByLogs         DisableLog[] @relation("AdminDisableLogs")
   salarySlips            SalarySlip[]
+  earlyLeavePermissions  EarlyLeavePermission[]
 }
 
 model LeaveRequest {
@@ -380,5 +381,18 @@ model SalarySlip {
   updatedAt        DateTime @updatedAt
 
   @@unique([userId, month])
+}
+
+model EarlyLeavePermission {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           DateTime
+  slotNo         Int      // Slot number (1 to 5) or 0 for "All Slots"
+  allowedMinutes Int      // How many minutes early they are permitted to leave (e.g. 60 for 1 hour)
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, date, slotNo])
 }
 

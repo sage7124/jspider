@@ -978,6 +978,11 @@ router.get('/reports/monthly', async (req, res) => {
                 ]
             }
         });
+        const allEarlyLeaves = await prisma.earlyLeavePermission.findMany({
+            where: {
+                date: { gte: startOfMonth, lte: endOfMonth }
+            }
+        });
         for (const trainee of trainees) {
             // Use max 31 chars for worksheet name, replacing invalid chars
             const sheetName = trainee.fullName.replace(/[*/\?:\[\]]/g, '').substring(0, 31) || `Trainee_${trainee.id}`;
@@ -991,7 +996,8 @@ router.get('/reports/monthly', async (req, res) => {
             }
             const traineeAtts = attendances.filter(a => a.userId === trainee.id);
             const traineeLeaves = allLeaves.filter(l => l.userId === trainee.id);
-            (0, excel_1.generateTraineeWorksheet)(ws, trainee, traineeAtts, year, mon, daysInMonth, holidays, traineeLeaves);
+            const traineeEarlyLeaves = allEarlyLeaves.filter(el => el.userId === trainee.id);
+            (0, excel_1.generateTraineeWorksheet)(ws, trainee, traineeAtts, year, mon, daysInMonth, holidays, traineeLeaves, traineeEarlyLeaves);
         }
         if (trainees.length === 0) {
             workbook.addWorksheet('No Data');
@@ -1075,7 +1081,13 @@ router.get('/reports/individual/:userId', async (req, res) => {
                 }
             });
         }
-        (0, excel_1.generateTraineeWorksheet)(ws, user, finalAttendances, year, mon, daysInMonth, finalHolidays, finalLeaves);
+        const earlyLeaves = await prisma.earlyLeavePermission.findMany({
+            where: {
+                userId,
+                date: { gte: startOfMonth, lte: endOfMonth }
+            }
+        });
+        (0, excel_1.generateTraineeWorksheet)(ws, user, finalAttendances, year, mon, daysInMonth, finalHolidays, finalLeaves, earlyLeaves);
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=Report_${user.fullName}_${month}.xlsx`);
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

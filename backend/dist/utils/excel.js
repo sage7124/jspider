@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateTraineeWorksheet = exports.getTraineeReportData = void 0;
-const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holidays = [], leaves = []) => {
+const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holidays = [], leaves = [], earlyLeaves = []) => {
     let totalWorkedMinutes = 0;
     let totalLateMinutes = 0;
     let totalEarlyMinutes = 0;
@@ -247,8 +247,43 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             // Legacy fallback injection removed so overall punches no longer pollute Column D if Slot 1 is cleared.
             const sIn = rawIn ? new Date(rawIn) : undefined;
             const sOut = rawOut ? new Date(rawOut) : undefined;
+            const dayPermission = earlyLeaves.find((el) => {
+                const elDate = new Date(new Date(el.date).getTime() + (5.5 * 60 * 60 * 1000));
+                return elDate.getUTCDate() === day &&
+                    (elDate.getUTCMonth() + 1) === mon &&
+                    elDate.getUTCFullYear() === year &&
+                    (el.slotNo === si || el.slotNo === 0);
+            });
+            let adjustedOut = sOut;
+            let earlyLeaveText = '';
+            if (sOut && slot && !isExtra && dayPermission) {
+                const [eTime, eMod] = slot.endTime.split(' ');
+                let [eh, em] = eTime.split(':').map(Number);
+                if (eMod === 'PM' && eh < 12)
+                    eh += 12;
+                if (eMod === 'AM' && eh === 12)
+                    eh = 0;
+                const slotEnd = new Date(currentDate);
+                slotEnd.setHours(eh, em, 0, 0);
+                const earlyDepartureMins = Math.floor((slotEnd.getTime() - sOut.getTime()) / 60000);
+                if (earlyDepartureMins > 0) {
+                    const allowed = dayPermission.allowedMinutes;
+                    if (earlyDepartureMins <= allowed) {
+                        adjustedOut = slotEnd;
+                    }
+                    else {
+                        adjustedOut = new Date(sOut.getTime() + allowed * 60000);
+                    }
+                    const reasonPart = dayPermission.reason ? `: ${dayPermission.reason}` : '';
+                    earlyLeaveText = `Early Leave${reasonPart}`;
+                }
+            }
             rowData[`s${si}In`] = getSlotInTimeStatus(slot, sIn, isExtra, inBranch, infoText);
-            rowData[`s${si}Out`] = getSlotOutTimeStatus(slot, sOut, !!sIn, isExtra, outBranch, infoText);
+            let outStatus = getSlotOutTimeStatus(slot, adjustedOut, !!sIn, isExtra, outBranch, infoText);
+            if (earlyLeaveText && outStatus !== 'MISSING OUT' && outStatus !== 'ABSENT') {
+                outStatus = `${outStatus} (${earlyLeaveText})`;
+            }
+            rowData[`s${si}Out`] = outStatus;
             let finalLate = '--';
             let finalEarly = '--';
             if (att) {
@@ -257,7 +292,7 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
                     const safeIn = att.inTime ? new Date(att.inTime) : undefined;
                     const safeOut = att.outTime ? new Date(att.outTime) : undefined;
                     const l = calcLate(slot, safeIn, sIn, false);
-                    const e = calcEarly(slot, safeOut, safeIn, sOut, sIn, false);
+                    const e = calcEarly(slot, safeOut, safeIn, adjustedOut, sIn, false);
                     if (typeof l === 'number') {
                         dayLateMins += l;
                         finalLate = `${l}m`;
@@ -331,7 +366,7 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
     };
 };
 exports.getTraineeReportData = getTraineeReportData;
-const generateTraineeWorksheet = (ws, user, attendances, year, mon, daysInMonth, holidays = [], leaves = []) => {
+const generateTraineeWorksheet = (ws, user, attendances, year, mon, daysInMonth, holidays = [], leaves = [], earlyLeaves = []) => {
     // Build distinct sorted set of slot numbers — only columns for these will appear
     const assignedSlotNos = (user.slots || []).map((s) => Number(s.slotNo)).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
     const hasExtraSlots = assignedSlotNos.some(n => n > 3);
@@ -396,7 +431,7 @@ const generateTraineeWorksheet = (ws, user, attendances, year, mon, daysInMonth,
         }
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
     });
-    const reportData = (0, exports.getTraineeReportData)(user, attendances, year, mon, daysInMonth, holidays, leaves);
+    const reportData = (0, exports.getTraineeReportData)(user, attendances, year, mon, daysInMonth, holidays, leaves, earlyLeaves);
     for (const row of reportData.rows) {
         const addedRow = ws.addRow(row);
         addedRow.eachCell((cell) => {
