@@ -21,7 +21,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', salaryRoutes);
-app.use('/api/early-leave', earlyLeaveRoutes);
+app.use('/api/admin/early-leave', earlyLeaveRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', environment: process.env.NODE_ENV });

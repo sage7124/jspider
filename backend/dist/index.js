@@ -22,7 +22,7 @@ app.use('/api/auth', auth_1.default);
 app.use('/api/attendance', attendance_1.default);
 app.use('/api/admin', admin_1.default);
 app.use('/api', salary_1.default);
-app.use('/api/early-leave', earlyLeave_1.default);
+app.use('/api/admin/early-leave', earlyLeave_1.default);
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', environment: process.env.NODE_ENV });
 });
