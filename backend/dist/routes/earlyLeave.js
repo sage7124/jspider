@@ -101,6 +101,61 @@ router.post('/', authMiddleware_1.authenticateToken, async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+// PUT /api/early-leave/:id - Update an existing permission
+router.put('/:id', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        if (req.user?.role === 'TRAINEE') {
+            return res.status(403).json({ error: 'Access denied.' });
+        }
+        const id = Number(req.params.id);
+        const { userId, date, slotNo, allowedMinutes, reason } = req.body;
+        const existingPermission = await prisma.earlyLeavePermission.findUnique({
+            where: { id }
+        });
+        if (!existingPermission) {
+            return res.status(404).json({ error: 'Permission record not found.' });
+        }
+        if (req.user?.role === 'SUPERVISOR') {
+            const isAssigned = await isTraineeAssignedToSupervisor(req.user.id, existingPermission.userId);
+            if (!isAssigned) {
+                return res.status(403).json({ error: 'Access denied: Trainee is not assigned to you.' });
+            }
+        }
+        const targetUserId = Number(userId);
+        const targetSlotNo = Number(slotNo);
+        const targetAllowedMinutes = Number(allowedMinutes);
+        // Normalize date to local midnight
+        const parsedDate = new Date(date);
+        parsedDate.setHours(0, 0, 0, 0);
+        // Check duplicate unique keys
+        const duplicate = await prisma.earlyLeavePermission.findFirst({
+            where: {
+                userId: targetUserId,
+                date: parsedDate,
+                slotNo: targetSlotNo,
+                id: { not: id }
+            }
+        });
+        if (duplicate) {
+            return res.status(400).json({ error: 'A permission already exists for this trainee, date, and slot.' });
+        }
+        const updated = await prisma.earlyLeavePermission.update({
+            where: { id },
+            data: {
+                userId: targetUserId,
+                date: parsedDate,
+                slotNo: targetSlotNo,
+                allowedMinutes: targetAllowedMinutes,
+                reason: reason || null
+            }
+        });
+        res.json({ message: 'Early leave permission updated successfully.', permission: updated });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 // DELETE /api/early-leave/:id - Delete a permission
 router.delete('/:id', authMiddleware_1.authenticateToken, async (req, res) => {
     try {

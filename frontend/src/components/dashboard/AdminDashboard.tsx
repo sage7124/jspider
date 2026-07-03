@@ -3738,6 +3738,7 @@ const EarlyLeavePermissionsModal = ({ onClose, allTrainees }: { onClose: () => v
   const [permissions, setPermissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [editingPermissionId, setEditingPermissionId] = useState<number | null>(null);
 
   // Form states
   const [userId, setUserId] = useState('');
@@ -3772,25 +3773,36 @@ const EarlyLeavePermissionsModal = ({ onClose, allTrainees }: { onClose: () => v
     }
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API}/early-leave`, {
+      const payload = {
         userId: Number(userId),
         date,
         slotNo: Number(slotNo),
         allowedMinutes: Number(allowedMinutes),
         reason
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      alert('Early leave permission added successfully.');
+      };
+
+      if (editingPermissionId) {
+        await axios.put(`${API}/early-leave/${editingPermissionId}`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Early leave permission updated successfully.');
+      } else {
+        await axios.post(`${API}/early-leave`, payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        alert('Early leave permission added successfully.');
+      }
+
       // Reset form
       setUserId('');
       setDate('');
       setSlotNo('1');
       setAllowedMinutes('60');
       setReason('');
+      setEditingPermissionId(null);
       fetchPermissions();
     } catch (e: any) {
-      alert(e.response?.data?.error || 'Failed to add permission.');
+      alert(e.response?.data?.error || 'Failed to save permission.');
     }
   };
 
@@ -3894,11 +3906,27 @@ const EarlyLeavePermissionsModal = ({ onClose, allTrainees }: { onClose: () => v
             </div>
 
             <div>
+              {editingPermissionId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserId('');
+                    setDate('');
+                    setSlotNo('1');
+                    setAllowedMinutes('60');
+                    setReason('');
+                    setEditingPermissionId(null);
+                  }}
+                  className="w-full text-xs font-bold uppercase py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded border border-gray-300 cursor-pointer mb-2 transition-all"
+                >
+                  Cancel Edit
+                </button>
+              )}
               <button
                 type="submit"
                 className="w-full text-xs font-bold uppercase py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded cursor-pointer transition-all active:scale-[0.98]"
               >
-                Add Permission
+                {editingPermissionId ? 'Update Permission' : 'Add Permission'}
               </button>
             </div>
           </form>
@@ -3949,7 +3977,21 @@ const EarlyLeavePermissionsModal = ({ onClose, allTrainees }: { onClose: () => v
                           {p.allowedMinutes}m
                         </td>
                         <td className="p-3 text-gray-500 italic">{p.reason || '--'}</td>
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-center space-x-2">
+                          <button
+                            onClick={() => {
+                              setUserId(String(p.userId));
+                              const formattedDate = new Date(p.date).toISOString().split('T')[0];
+                              setDate(formattedDate);
+                              setSlotNo(String(p.slotNo));
+                              setAllowedMinutes(String(p.allowedMinutes));
+                              setReason(p.reason || '');
+                              setEditingPermissionId(p.id);
+                            }}
+                            className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded border border-indigo-200 transition-colors cursor-pointer"
+                          >
+                            Edit
+                          </button>
                           <button
                             onClick={() => handleDeletePermission(p.id)}
                             className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded border border-red-200 transition-colors cursor-pointer"
