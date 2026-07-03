@@ -412,7 +412,31 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   const reportData = getTraineeReportData(user, attendances, year, mon, daysInMonth, holidays, leaves);
 
   for (const row of reportData.rows) {
-    ws.addRow(row);
+    const addedRow = ws.addRow(row);
+    addedRow.eachCell((cell) => {
+      const valStr = String(cell.value || '').toUpperCase();
+      if (valStr === 'ABSENT') {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFEE2E2' } // Light red background
+        };
+        cell.font = {
+          color: { argb: 'FF991B1B' }, // Dark red text
+          bold: true
+        };
+      } else if (valStr === 'LEAVE' || valStr === 'HOLIDAY') {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFD1FAE5' } // Light green background
+        };
+        cell.font = {
+          color: { argb: 'FF065F46' }, // Dark green text
+          bold: true
+        };
+      }
+    });
   }
 
   const totalRowData: any = {
