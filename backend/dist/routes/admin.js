@@ -174,7 +174,11 @@ router.post('/external-punch', verifyCrossSecret, async (req, res) => {
             const createD = { userId: user.id, date: today, status: 'IN', inTime: now, isLate };
             if ([1, 2, 3, 4, 5].includes(activeSlotNo)) {
                 updateD[`inTime${activeSlotNo}`] = now;
+                updateD[`slotStart${activeSlotNo}`] = activeSlot.startTime;
+                updateD[`slotEnd${activeSlotNo}`] = activeSlot.endTime;
                 createD[`inTime${activeSlotNo}`] = now;
+                createD[`slotStart${activeSlotNo}`] = activeSlot.startTime;
+                createD[`slotEnd${activeSlotNo}`] = activeSlot.endTime;
             }
             await prisma.attendance.upsert({ where: { userId_date: { userId: user.id, date: today } }, update: updateD, create: createD });
         }

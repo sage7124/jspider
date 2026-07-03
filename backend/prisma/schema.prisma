@@ -180,6 +180,17 @@ model Attendance {
   info4          String?
   info5          String?
 
+  slotStart1     String?
+  slotEnd1       String?
+  slotStart2     String?
+  slotEnd2       String?
+  slotStart3     String?
+  slotEnd3       String?
+  slotStart4     String?
+  slotEnd4       String?
+  slotStart5     String?
+  slotEnd5       String?
+
   @@unique([userId, date])
 }
 

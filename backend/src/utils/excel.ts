@@ -214,8 +214,17 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
 
     // Core iteration — only process slots that are actually assigned
     for (const si of assignedSlotNos) {
-      const slot = daySlots.find((s: any) => s.slotNo === si);
+      let slot = daySlots.find((s: any) => s.slotNo === si);
       const isExtra = si > 3; // Definition of Extra Slot
+      
+      // Override slot object with snapshotted timing if saved in Attendance record
+      if (att && att[`slotStart${si}`] && att[`slotEnd${si}`]) {
+        slot = {
+          slotNo: si,
+          startTime: att[`slotStart${si}`],
+          endTime: att[`slotEnd${si}`]
+        };
+      }
       
       let rawIn = att ? att[`inTime${si}`] : null;
       let rawOut = att ? att[`outTime${si}`] : null;

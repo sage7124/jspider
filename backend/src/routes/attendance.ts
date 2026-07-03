@@ -432,11 +432,13 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         isLate: existing ? existing.isLate : isLate
       };
 
-      // Set inTime / inBranch only if not already set. If already set, clear outTime so slot is active again.
+      // Set inTime / inBranch and snapshot slot timings only if not already set. If already set, clear outTime so slot is active again.
       if (activeSlotNo === 1) {
         if (!existing?.inTime1) {
           dataUpdate.inTime1 = now;
           dataUpdate.inBranch1 = punchedBranchName;
+          dataUpdate.slotStart1 = activeSlot.startTime;
+          dataUpdate.slotEnd1 = activeSlot.endTime;
           if (!existing?.realInTime1) {
             dataUpdate.realInTime1 = now;
           }
@@ -449,6 +451,8 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         if (!existing?.inTime2) {
           dataUpdate.inTime2 = now;
           dataUpdate.inBranch2 = punchedBranchName;
+          dataUpdate.slotStart2 = activeSlot.startTime;
+          dataUpdate.slotEnd2 = activeSlot.endTime;
           if (!existing?.realInTime2) {
             dataUpdate.realInTime2 = now;
           }
@@ -461,6 +465,8 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         if (!existing?.inTime3) {
           dataUpdate.inTime3 = now;
           dataUpdate.inBranch3 = punchedBranchName;
+          dataUpdate.slotStart3 = activeSlot.startTime;
+          dataUpdate.slotEnd3 = activeSlot.endTime;
           if (!existing?.realInTime3) {
             dataUpdate.realInTime3 = now;
           }
@@ -472,6 +478,8 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       if (activeSlotNo === 4) {
         if (!existing?.inTime4) {
           dataUpdate.inTime4 = now;
+          dataUpdate.slotStart4 = activeSlot.startTime;
+          dataUpdate.slotEnd4 = activeSlot.endTime;
           if (!existing?.realInTime4) {
             dataUpdate.realInTime4 = now;
           }
@@ -482,6 +490,8 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
       if (activeSlotNo === 5) {
         if (!existing?.inTime5) {
           dataUpdate.inTime5 = now;
+          dataUpdate.slotStart5 = activeSlot.startTime;
+          dataUpdate.slotEnd5 = activeSlot.endTime;
           if (!existing?.realInTime5) {
             dataUpdate.realInTime5 = now;
           }
@@ -497,11 +507,11 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         inTime: now,
         isLate
       };
-      if (activeSlotNo === 1) { dataCreate.inTime1 = now; dataCreate.inBranch1 = punchedBranchName; dataCreate.realInTime1 = now; }
-      if (activeSlotNo === 2) { dataCreate.inTime2 = now; dataCreate.inBranch2 = punchedBranchName; dataCreate.realInTime2 = now; }
-      if (activeSlotNo === 3) { dataCreate.inTime3 = now; dataCreate.inBranch3 = punchedBranchName; dataCreate.realInTime3 = now; }
-      if (activeSlotNo === 4) { dataCreate.inTime4 = now; dataCreate.realInTime4 = now; }
-      if (activeSlotNo === 5) { dataCreate.inTime5 = now; dataCreate.realInTime5 = now; }
+      if (activeSlotNo === 1) { dataCreate.inTime1 = now; dataCreate.inBranch1 = punchedBranchName; dataCreate.realInTime1 = now; dataCreate.slotStart1 = activeSlot.startTime; dataCreate.slotEnd1 = activeSlot.endTime; }
+      if (activeSlotNo === 2) { dataCreate.inTime2 = now; dataCreate.inBranch2 = punchedBranchName; dataCreate.realInTime2 = now; dataCreate.slotStart2 = activeSlot.startTime; dataCreate.slotEnd2 = activeSlot.endTime; }
+      if (activeSlotNo === 3) { dataCreate.inTime3 = now; dataCreate.inBranch3 = punchedBranchName; dataCreate.realInTime3 = now; dataCreate.slotStart3 = activeSlot.startTime; dataCreate.slotEnd3 = activeSlot.endTime; }
+      if (activeSlotNo === 4) { dataCreate.inTime4 = now; dataCreate.realInTime4 = now; dataCreate.slotStart4 = activeSlot.startTime; dataCreate.slotEnd4 = activeSlot.endTime; }
+      if (activeSlotNo === 5) { dataCreate.inTime5 = now; dataCreate.realInTime5 = now; dataCreate.slotStart5 = activeSlot.startTime; dataCreate.slotEnd5 = activeSlot.endTime; }
 
       await prisma.attendance.upsert({
         where: { userId_date: { userId, date: today } },
