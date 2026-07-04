@@ -71,53 +71,6 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
       }
     }
 
-    // Check if they forgot to punch out of a slot today (deadline has passed)
-    if (!forgotPunchOut && attendance && attendance.status === 'IN') {
-      let currentlyPunchedInSlot = null;
-      for (const s of slots) {
-        const hasIn = attendance[`inTime${s.slotNo}` as keyof typeof attendance];
-        const hasOut = attendance[`outTime${s.slotNo}` as keyof typeof attendance];
-        if (hasIn && !hasOut) {
-          currentlyPunchedInSlot = s;
-          break;
-        }
-      }
-
-      if (currentlyPunchedInSlot) {
-        const sortedSlots = [...slots].sort((a, b) => {
-          const parseTime = (timeStr: string) => {
-            const [tStr, mod] = timeStr.split(' ');
-            let [h, m] = tStr.split(':').map(Number);
-            if (mod === 'PM' && h < 12) h += 12;
-            if (mod === 'AM' && h === 12) h = 0;
-            const d = new Date(today);
-            d.setHours(h, m, 0, 0);
-            return d;
-          };
-          return parseTime(a.startTime).getTime() - parseTime(b.startTime).getTime();
-        });
-
-        const activeIndex = sortedSlots.findIndex(s => s.id === currentlyPunchedInSlot.id);
-        if (activeIndex !== -1 && activeIndex < sortedSlots.length - 1) {
-          const nextSlot = sortedSlots[activeIndex + 1];
-          const parseTime = (timeStr: string) => {
-            const [tStr, mod] = timeStr.split(' ');
-            let [h, m] = tStr.split(':').map(Number);
-            if (mod === 'PM' && h < 12) h += 12;
-            if (mod === 'AM' && h === 12) h = 0;
-            const d = new Date(today);
-            d.setHours(h, m, 0, 0);
-            return d;
-          };
-          const nextSlotStart = parseTime(nextSlot.startTime);
-          const limitTime = new Date(nextSlotStart.getTime() - 5 * 60 * 1000);
-          const now = new Date();
-          if (now.getTime() >= limitTime.getTime()) {
-            forgotPunchOut = true;
-          }
-        }
-      }
-    }
 
     const todayBreaks = await prisma.breakLog.findMany({
       where: { userId, date: today },
@@ -348,42 +301,6 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
         }
       }
 
-      if (type === 'OUT' && slots.length >= 2 && activeSlot) {
-        const sortedSlots = [...slots].sort((a, b) => {
-          const parseTime = (timeStr: string) => {
-            const [tStr, mod] = timeStr.split(' ');
-            let [h, m] = tStr.split(':').map(Number);
-            if (mod === 'PM' && h < 12) h += 12;
-            if (mod === 'AM' && h === 12) h = 0;
-            const d = new Date(today);
-            d.setHours(h, m, 0, 0);
-            return d;
-          };
-          return parseTime(a.startTime).getTime() - parseTime(b.startTime).getTime();
-        });
-
-        const activeIndex = sortedSlots.findIndex(s => s.id === activeSlot.id);
-        if (activeIndex !== -1 && activeIndex < sortedSlots.length - 1) {
-          const nextSlot = sortedSlots[activeIndex + 1];
-          const parseTime = (timeStr: string) => {
-            const [tStr, mod] = timeStr.split(' ');
-            let [h, m] = tStr.split(':').map(Number);
-            if (mod === 'PM' && h < 12) h += 12;
-            if (mod === 'AM' && h === 12) h = 0;
-            const d = new Date(today);
-            d.setHours(h, m, 0, 0);
-            return d;
-          };
-          const nextSlotStart = parseTime(nextSlot.startTime);
-          const limitTime = new Date(nextSlotStart.getTime() - 5 * 60 * 1000);
-          
-          if (now.getTime() >= limitTime.getTime()) {
-            return res.status(400).json({ 
-              error: 'You forgot to punch out of your previous slot. Please talk to the admin.' 
-            });
-          }
-        }
-      }
 
       if (type === 'IN') {
         // Parse active slot start time
