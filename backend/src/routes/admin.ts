@@ -65,11 +65,10 @@ router.post('/external-punch', verifyCrossSecret, async (req, res) => {
         }
       }
     }
-    if (!activeSlot) activeSlot = slots[slots.length - 1];
+    if (!activeSlot && slots.length > 0) activeSlot = slots[slots.length - 1];
 
-    
     let isLate = false;
-    if (typeUpper === 'IN') {
+    if (typeUpper === 'IN' && activeSlot) {
       const [sTime, sMod] = activeSlot.startTime.split(' ');
       let [sh, sm] = sTime.split(':').map(Number);
       if (sMod === 'PM' && sh < 12) sh += 12;
@@ -79,7 +78,7 @@ router.post('/external-punch', verifyCrossSecret, async (req, res) => {
       if (now.getTime() > slotStartTime.getTime() && activeSlot.slotNo <= 3) isLate = true;
     }
 
-    const activeSlotNo = activeSlot.slotNo;
+    const activeSlotNo = activeSlot ? activeSlot.slotNo : 1;
 
     if (typeUpper === 'IN') {
       if (existing?.status === 'IN') {
@@ -106,11 +105,15 @@ router.post('/external-punch', verifyCrossSecret, async (req, res) => {
       const createD: any = { userId: user.id, date: today, status: 'IN', inTime: now, isLate };
       if ([1,2,3,4,5].includes(activeSlotNo)) {
         updateD[`inTime${activeSlotNo}`] = now;
-        updateD[`slotStart${activeSlotNo}`] = activeSlot.startTime;
-        updateD[`slotEnd${activeSlotNo}`] = activeSlot.endTime;
+        if (activeSlot) {
+          updateD[`slotStart${activeSlotNo}`] = activeSlot.startTime;
+          updateD[`slotEnd${activeSlotNo}`] = activeSlot.endTime;
+        }
         createD[`inTime${activeSlotNo}`] = now;
-        createD[`slotStart${activeSlotNo}`] = activeSlot.startTime;
-        createD[`slotEnd${activeSlotNo}`] = activeSlot.endTime;
+        if (activeSlot) {
+          createD[`slotStart${activeSlotNo}`] = activeSlot.startTime;
+          createD[`slotEnd${activeSlotNo}`] = activeSlot.endTime;
+        }
       }
       await prisma.attendance.upsert({ where: { userId_date: { userId: user.id, date: today } }, update: updateD, create: createD });
     } else {
