@@ -26,6 +26,12 @@ async function calculateCarryForwardLeaves(
     };
   }
 
+  const userWithSlots = await prisma.user.findUnique({
+    where: { id: traineeId },
+    include: { slots: true }
+  });
+  const userSlots = userWithSlots?.slots || [];
+
   let currentYear = startYear;
   let currentMonth = startMonth;
   let accumulatedBalance = 0; // Carry-forward balance from previous months
@@ -51,6 +57,9 @@ async function calculateCarryForwardLeaves(
     let approvedLeavesCount = 0;
     for (let dIndex = 1; dIndex <= daysInCurrentMonth; dIndex++) {
       const currentDate = new Date(currentYear, currentMonth - 1, dIndex);
+      const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
+      const hasSlots = userSlots.some((s: any) => s.dayOfWeek === dayOfWeek);
+
       const leave = leaves.find(l => {
         const dObj = new Date(Date.UTC(currentYear, currentMonth - 1, dIndex, 12, 0, 0));
         const start = new Date(new Date(l.startDate).getTime() + (5.5 * 60 * 60 * 1000));
@@ -61,7 +70,7 @@ async function calculateCarryForwardLeaves(
         const dTime = dObj.getTime();
         return dTime >= start.getTime() && dTime <= end.getTime() && l.status === 'APPROVED';
       });
-      if (leave) {
+      if (leave && hasSlots) {
         approvedLeavesCount++;
       }
     }
@@ -195,6 +204,9 @@ export const calculateTraineeSalaryData = async (
   let approvedLeavesCount = 0;
   for (let dIndex = 1; dIndex <= daysInMonth; dIndex++) {
     const currentDate = new Date(year, mon - 1, dIndex);
+    const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
+    const hasSlots = (trainee.slots || []).some((s: any) => s.dayOfWeek === dayOfWeek);
+
     const leave = leaves.find(l => {
       const dObj = new Date(Date.UTC(year, mon - 1, dIndex, 12, 0, 0));
       const start = new Date(new Date(l.startDate).getTime() + (5.5 * 60 * 60 * 1000));
@@ -205,7 +217,7 @@ export const calculateTraineeSalaryData = async (
       const dTime = dObj.getTime();
       return dTime >= start.getTime() && dTime <= end.getTime() && l.status === 'APPROVED';
     });
-    if (leave) {
+    if (leave && hasSlots) {
       approvedLeavesCount++;
     }
   }

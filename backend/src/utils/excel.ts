@@ -82,7 +82,7 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
       continue;
     }
 
-    if (holiday || leave) {
+    if ((holiday || leave) && daySlots.length > 0) {
       // Pre-fill only assigned slots with labels
       assignedSlotNos.forEach((si, idx) => {
         if (idx === 0) {
