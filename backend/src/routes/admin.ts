@@ -1121,7 +1121,17 @@ router.put('/leaves/:userId', async (req: AuthRequest, res) => {
 router.get('/leaves/requests', async (_req: AuthRequest, res) => {
   try {
     const requests = await prisma.leaveRequest.findMany({
-      include: { user: { select: { fullName: true, identifier: true, department: true, leaveBalance: true } } },
+      include: {
+        user: {
+          select: {
+            fullName: true,
+            identifier: true,
+            department: true,
+            leaveBalance: true,
+            slots: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
     res.json(requests);

@@ -3040,7 +3040,30 @@ const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: ()
                   const currentEndDateStr = editedEndDates[r.id] || r.endDate.split('T')[0];
                   const currentEndDate = new Date(currentEndDateStr);
                   const startDate = new Date(r.startDate);
-                  const dynamicDays = Math.ceil((currentEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+                  const scheduledDays = new Set((r.user?.slots || []).map((s: any) => (s.day || s.dayOfWeek || '').toUpperCase()));
+                  const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+                  let dynamicDays = 0;
+                  if (!isNaN(startDate.getTime()) && !isNaN(currentEndDate.getTime())) {
+                    const tempStart = new Date(startDate);
+                    tempStart.setHours(0, 0, 0, 0);
+                    const tempEnd = new Date(currentEndDate);
+                    tempEnd.setHours(0, 0, 0, 0);
+                    
+                    if (tempEnd.getTime() >= tempStart.getTime()) {
+                      if (scheduledDays.size > 0) {
+                        for (let d = new Date(tempStart); d <= tempEnd; d.setDate(d.getDate() + 1)) {
+                          const curDay = dMap[d.getDay()];
+                          if (scheduledDays.has(curDay)) {
+                            dynamicDays += 1;
+                          }
+                        }
+                      } else {
+                        // Fallback to raw calendar day difference if no slots are configured
+                        dynamicDays = Math.ceil((tempEnd.getTime() - tempStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                      }
+                    }
+                  }
 
                   return (
                   <tr key={r.id} className="border-b hover:bg-gray-50">
