@@ -109,6 +109,7 @@ model LeaveRequest {
   reason         String?
   adminReason    String?      // Optional reason given by admin when approving/rejecting
   status         String       @default("PENDING") // PENDING, APPROVED, REJECTED
+  slots          String?      // Comma-separated slot numbers, e.g., "1,2". Null means all slots.
   
   appliedDate        DateTime?
   remarksAlternative String?
@@ -128,7 +129,8 @@ model Slot {
   endTime        String       // e.g., "08:00 PM"
   createdAt      DateTime     @default(now())
   
-  @@unique([userId, dayOfWeek, slotNo])
+  effectiveFrom  DateTime     @default(now())
+  effectiveTo    DateTime?
 }
 
 model Attendance {

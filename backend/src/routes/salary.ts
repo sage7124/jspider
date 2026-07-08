@@ -58,9 +58,32 @@ async function calculateCarryForwardLeaves(
     for (let dIndex = 1; dIndex <= daysInCurrentMonth; dIndex++) {
       const currentDate = new Date(currentYear, currentMonth - 1, dIndex);
       const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
-      const hasSlots = userSlots.some((s: any) => s.dayOfWeek === dayOfWeek);
+      
+      const activeSlotsForDay = userSlots.filter((s: any) => {
+        if (s.dayOfWeek !== dayOfWeek) return false;
+        
+        const effectiveFrom = s.effectiveFrom ? new Date(s.effectiveFrom) : (s.createdAt ? new Date(s.createdAt) : null);
+        if (effectiveFrom) {
+          effectiveFrom.setHours(0, 0, 0, 0);
+          const current = new Date(currentDate);
+          current.setHours(0, 0, 0, 0);
+          if (current.getTime() < effectiveFrom.getTime()) return false;
+        }
 
-      const leave = leaves.find(l => {
+        const effectiveTo = s.effectiveTo ? new Date(s.effectiveTo) : null;
+        if (effectiveTo) {
+          effectiveTo.setHours(0, 0, 0, 0);
+          const current = new Date(currentDate);
+          current.setHours(0, 0, 0, 0);
+          if (current.getTime() > effectiveTo.getTime()) return false;
+        }
+
+        return true;
+      });
+
+      const daySlotsCount = activeSlotsForDay.length;
+
+      const dayLeaves = leaves.filter(l => {
         const dObj = new Date(Date.UTC(currentYear, currentMonth - 1, dIndex, 12, 0, 0));
         const start = new Date(new Date(l.startDate).getTime() + (5.5 * 60 * 60 * 1000));
         start.setUTCHours(0, 0, 0, 0);
@@ -70,8 +93,22 @@ async function calculateCarryForwardLeaves(
         const dTime = dObj.getTime();
         return dTime >= start.getTime() && dTime <= end.getTime() && l.status === 'APPROVED';
       });
-      if (leave && hasSlots) {
-        approvedLeavesCount++;
+
+      let dayLeaveFraction = 0;
+      dayLeaves.forEach(l => {
+        if (!l.slots) {
+          dayLeaveFraction = 1.0;
+        } else {
+          const leaveSlots = l.slots.split(',').map(Number);
+          const activeLeaveSlots = leaveSlots.filter(sNum => activeSlotsForDay.some(s => s.slotNo === sNum));
+          if (activeLeaveSlots.length > 0 && daySlotsCount > 0) {
+            dayLeaveFraction = Math.max(dayLeaveFraction, activeLeaveSlots.length / daySlotsCount);
+          }
+        }
+      });
+
+      if (daySlotsCount > 0 && dayLeaveFraction > 0) {
+        approvedLeavesCount += dayLeaveFraction;
       }
     }
 
@@ -205,9 +242,32 @@ export const calculateTraineeSalaryData = async (
   for (let dIndex = 1; dIndex <= daysInMonth; dIndex++) {
     const currentDate = new Date(year, mon - 1, dIndex);
     const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][currentDate.getDay()];
-    const hasSlots = (trainee.slots || []).some((s: any) => s.dayOfWeek === dayOfWeek);
+    
+    const activeSlotsForDay = (trainee.slots || []).filter((s: any) => {
+      if (s.dayOfWeek !== dayOfWeek) return false;
+      
+      const effectiveFrom = s.effectiveFrom ? new Date(s.effectiveFrom) : (s.createdAt ? new Date(s.createdAt) : null);
+      if (effectiveFrom) {
+        effectiveFrom.setHours(0, 0, 0, 0);
+        const current = new Date(currentDate);
+        current.setHours(0, 0, 0, 0);
+        if (current.getTime() < effectiveFrom.getTime()) return false;
+      }
 
-    const leave = leaves.find(l => {
+      const effectiveTo = s.effectiveTo ? new Date(s.effectiveTo) : null;
+      if (effectiveTo) {
+        effectiveTo.setHours(0, 0, 0, 0);
+        const current = new Date(currentDate);
+        current.setHours(0, 0, 0, 0);
+        if (current.getTime() > effectiveTo.getTime()) return false;
+      }
+
+      return true;
+    });
+
+    const daySlotsCount = activeSlotsForDay.length;
+
+    const dayLeaves = leaves.filter(l => {
       const dObj = new Date(Date.UTC(year, mon - 1, dIndex, 12, 0, 0));
       const start = new Date(new Date(l.startDate).getTime() + (5.5 * 60 * 60 * 1000));
       start.setUTCHours(0, 0, 0, 0);
@@ -217,8 +277,22 @@ export const calculateTraineeSalaryData = async (
       const dTime = dObj.getTime();
       return dTime >= start.getTime() && dTime <= end.getTime() && l.status === 'APPROVED';
     });
-    if (leave && hasSlots) {
-      approvedLeavesCount++;
+
+    let dayLeaveFraction = 0;
+    dayLeaves.forEach(l => {
+      if (!l.slots) {
+        dayLeaveFraction = 1.0;
+      } else {
+        const leaveSlots = l.slots.split(',').map(Number);
+        const activeLeaveSlots = leaveSlots.filter(sNum => activeSlotsForDay.some(s => s.slotNo === sNum));
+        if (activeLeaveSlots.length > 0 && daySlotsCount > 0) {
+          dayLeaveFraction = Math.max(dayLeaveFraction, activeLeaveSlots.length / daySlotsCount);
+        }
+      }
+    });
+
+    if (daySlotsCount > 0 && dayLeaveFraction > 0) {
+      approvedLeavesCount += dayLeaveFraction;
     }
   }
 

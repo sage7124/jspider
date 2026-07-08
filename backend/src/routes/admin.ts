@@ -335,7 +335,7 @@ router.get('/attendance', async (_req: AuthRequest, res) => {
       },
       orderBy: { fullName: 'asc' },
       include: {
-        slots: { orderBy: [{ dayOfWeek: 'asc' }, { slotNo: 'asc' }] },
+        slots: { where: { effectiveTo: null }, orderBy: [{ dayOfWeek: 'asc' }, { slotNo: 'asc' }] },
         attendances: { where: { date: today } },
       },
     });
@@ -651,19 +651,50 @@ router.put('/slots/:userId', async (req: AuthRequest, res) => {
     const slots: Array<{ dayOfWeek: string; slotNo: number; startTime: string; endTime: string }> =
       req.body.slots;
 
-    await prisma.slot.deleteMany({ where: { userId } });
+    const existingSlots = await prisma.slot.findMany({
+      where: { userId, effectiveTo: null }
+    });
 
+    const now = new Date();
+
+    // Deactivate slots that are no longer present or changed in timing
+    for (const ext of existingSlots) {
+      const isStillActive = slots.some(s => 
+        s.dayOfWeek === ext.dayOfWeek &&
+        s.slotNo === ext.slotNo &&
+        s.startTime === ext.startTime &&
+        s.endTime === ext.endTime &&
+        s.startTime !== '--'
+      );
+      if (!isStillActive) {
+        await prisma.slot.update({
+          where: { id: ext.id },
+          data: { effectiveTo: now }
+        });
+      }
+    }
+
+    // Insert new slots
     const toCreate = slots.filter((s) => s.startTime && s.endTime && s.startTime !== '--');
-    if (toCreate.length > 0) {
-      await prisma.slot.createMany({
-        data: toCreate.map((s) => ({
-          userId,
-          dayOfWeek: s.dayOfWeek,
-          slotNo: s.slotNo,
-          startTime: s.startTime,
-          endTime: s.endTime,
-        })),
-      });
+    for (const s of toCreate) {
+      const alreadyExists = existingSlots.some(ext =>
+        ext.dayOfWeek === s.dayOfWeek &&
+        ext.slotNo === s.slotNo &&
+        ext.startTime === s.startTime &&
+        ext.endTime === s.endTime
+      );
+      if (!alreadyExists) {
+        await prisma.slot.create({
+          data: {
+            userId,
+            dayOfWeek: s.dayOfWeek,
+            slotNo: s.slotNo,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            effectiveFrom: now
+          }
+        });
+      }
     }
 
     res.json({ message: 'Slots updated successfully' });
@@ -693,7 +724,7 @@ router.post('/reset-password/:id', async (req: AuthRequest, res) => {
 // ── Direct Leave (Admin to Trainee) ──────────────────────────────────────────
 router.post('/leaves/direct', async (req: AuthRequest, res) => {
   try {
-    const { traineeId, startDate, endDate, reason, appliedDate, remarksAlternative, remarksOfficeUse } = req.body;
+    const { traineeId, startDate, endDate, reason, appliedDate, remarksAlternative, remarksOfficeUse, slots } = req.body;
     
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -712,12 +743,21 @@ router.post('/leaves/direct', async (req: AuthRequest, res) => {
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const curDay = dMap[d.getDay()];
       if (scheduledDays.has(curDay)) {
-        days += 1;
+        if (slots && Array.isArray(slots) && slots.length > 0) {
+          const totalSlotsOnDay = user.slots.filter(s => s.dayOfWeek === curDay).length;
+          if (totalSlotsOnDay > 0) {
+            days += (slots.length / totalSlotsOnDay);
+          }
+        } else {
+          days += 1;
+        }
       }
     }
     
     // Fallback to safety ensure at least 0
     days = Math.max(0, days);
+
+    const slotsStr = slots && Array.isArray(slots) && slots.length > 0 ? slots.join(',') : null;
 
     await prisma.$transaction([
       prisma.leaveRequest.create({
@@ -730,7 +770,8 @@ router.post('/leaves/direct', async (req: AuthRequest, res) => {
           adminReason: 'Direct assignment',
           appliedDate: appliedDate ? new Date(appliedDate) : new Date(),
           remarksAlternative: remarksAlternative || null,
-          remarksOfficeUse: remarksOfficeUse || null
+          remarksOfficeUse: remarksOfficeUse || null,
+          slots: slotsStr
         }
       }),
       prisma.user.update({
@@ -2115,7 +2156,7 @@ router.get('/left-users', authenticateToken, async (req: AuthRequest, res) => {
       },
       orderBy: { fullName: 'asc' },
       include: {
-        slots: { orderBy: [{ dayOfWeek: 'asc' }, { slotNo: 'asc' }] }
+        slots: { where: { effectiveTo: null }, orderBy: [{ dayOfWeek: 'asc' }, { slotNo: 'asc' }] }
       }
     });
 

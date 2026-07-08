@@ -50,7 +50,7 @@ router.get('/status', authenticateToken, async (req: AuthRequest, res) => {
 
     const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][today.getDay()];
     const slots = await prisma.slot.findMany({
-      where: { userId, dayOfWeek },
+      where: { userId, dayOfWeek, effectiveTo: null },
       orderBy: { slotNo: 'asc' }
     });
 
@@ -196,7 +196,7 @@ router.post('/punch', authenticateToken, async (req: AuthRequest, res) => {
     // Find all slots for today
     const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][now.getDay()];
     let slots = await prisma.slot.findMany({
-      where: { userId, dayOfWeek },
+      where: { userId, dayOfWeek, effectiveTo: null },
       orderBy: { slotNo: 'asc' }
     });
 

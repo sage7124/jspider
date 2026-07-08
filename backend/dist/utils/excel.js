@@ -19,7 +19,29 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
         const fullDayStr = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][currentDate.getDay()];
         const isFutureDay = currentDate.getTime() > today.getTime();
         const isToday = currentDate.getTime() === today.getTime();
-        const daySlots = user.slots?.filter((s) => s.dayOfWeek === dayStr).sort((a, b) => a.slotNo - b.slotNo) || [];
+        const daySlots = user.slots?.filter((s) => {
+            if (s.dayOfWeek !== dayStr)
+                return false;
+            const effectiveFrom = s.effectiveFrom ? new Date(s.effectiveFrom) : (s.createdAt ? new Date(s.createdAt) : null);
+            if (effectiveFrom) {
+                effectiveFrom.setHours(0, 0, 0, 0);
+                const current = new Date(currentDate);
+                current.setHours(0, 0, 0, 0);
+                if (current.getTime() < effectiveFrom.getTime()) {
+                    return false;
+                }
+            }
+            const effectiveTo = s.effectiveTo ? new Date(s.effectiveTo) : null;
+            if (effectiveTo) {
+                effectiveTo.setHours(0, 0, 0, 0);
+                const current = new Date(currentDate);
+                current.setHours(0, 0, 0, 0);
+                if (current.getTime() > effectiveTo.getTime()) {
+                    return false;
+                }
+            }
+            return true;
+        }).sort((a, b) => a.slotNo - b.slotNo) || [];
         const att = attendances.find((a) => {
             const aDate = new Date(new Date(a.date).getTime() + (5.5 * 60 * 60 * 1000));
             return aDate.getUTCDate() === day && (aDate.getUTCMonth() + 1) === mon;
@@ -29,8 +51,8 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             const hDate = new Date(new Date(h.date).getTime() + (5.5 * 60 * 60 * 1000));
             return hDate.getUTCDate() === day && (hDate.getUTCMonth() + 1) === mon && hDate.getUTCFullYear() === year;
         });
-        // Check for Approved Leave
-        const leave = leaves.find(l => {
+        // Check for Approved Leaves
+        const dayLeaves = leaves.filter(l => {
             const d = new Date(Date.UTC(year, mon - 1, day, 12, 0, 0));
             const start = new Date(new Date(l.startDate).getTime() + (5.5 * 60 * 60 * 1000));
             start.setUTCHours(0, 0, 0, 0);
@@ -39,6 +61,8 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             const dTime = d.getTime();
             return dTime >= start.getTime() && dTime <= end.getTime() && l.status === 'APPROVED';
         });
+        const hasWholeDayLeave = dayLeaves.some(l => !l.slots);
+        const activeLeave = dayLeaves.find(l => !l.slots);
         // Check if before Date of Joining
         let isBeforeJoining = false;
         if (user.dateOfJoining) {
@@ -71,12 +95,12 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             rows.push(rowData);
             continue;
         }
-        if ((holiday || leave) && daySlots.length > 0) {
+        if ((holiday || hasWholeDayLeave) && daySlots.length > 0) {
             // Pre-fill only assigned slots with labels
             assignedSlotNos.forEach((si, idx) => {
                 if (idx === 0) {
                     rowData[`s${si}In`] = holiday ? 'HOLIDAY' : 'LEAVE';
-                    rowData[`s${si}Out`] = holiday ? holiday.name : (leave?.reason || 'Leave');
+                    rowData[`s${si}Out`] = holiday ? holiday.name : (activeLeave?.reason || 'Leave');
                 }
                 else {
                     rowData[`s${si}In`] = '--';
@@ -215,6 +239,21 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
         for (const si of assignedSlotNos) {
             let slot = daySlots.find((s) => s.slotNo === si);
             const isExtra = si > 3; // Definition of Extra Slot
+            // Check for approved slot-level leave
+            const activeLeaveForSlot = dayLeaves.find(l => {
+                if (!l.slots)
+                    return false; // Full day leaves are handled by the pre-fill block
+                return l.slots.split(',').map(Number).includes(si);
+            });
+            if (activeLeaveForSlot) {
+                rowData[`s${si}In`] = 'LEAVE';
+                rowData[`s${si}Out`] = activeLeaveForSlot.reason || 'Leave';
+                rowData[`s${si}Start`] = '--';
+                rowData[`s${si}End`] = '--';
+                rowData[`s${si}Late`] = '--';
+                rowData[`s${si}Early`] = '--';
+                continue;
+            }
             // Override slot object with snapshotted timing if saved in Attendance record
             if (att && att[`slotStart${si}`] && att[`slotEnd${si}`]) {
                 slot = {

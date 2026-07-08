@@ -2637,6 +2637,11 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                 <div className="flex justify-between items-center">
                   <div>
                     <div className="text-xs font-bold">{new Date(r.startDate).toLocaleDateString()} – {new Date(r.endDate).toLocaleDateString()}</div>
+                    {r.slots && (
+                      <div className="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 mt-1 inline-block">
+                        Leave for Slot(s): {r.slots}
+                      </div>
+                    )}
                     <div className="text-[10px] text-gray-500 mt-0.5 italic line-clamp-1">{r.reason || 'No reason'}</div>
                   </div>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -2651,6 +2656,41 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
                     <span className="font-bold mr-1">Admin Remark:</span>{r.adminReason}
                   </div>
                 )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Early Leave Permissions List */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold flex items-center gap-2">
+              <Clock className="text-amber-600" /> Early Leave Permissions
+            </h3>
+          </div>
+          <div className="space-y-3 overflow-y-auto max-h-[300px] pr-2">
+            {!leaves?.earlyLeaves || leaves.earlyLeaves.length === 0 ? (
+              <p className="text-center py-10 text-gray-400 text-sm">No early leave permissions found</p>
+            ) : leaves.earlyLeaves.map((el: any) => (
+              <div key={el.id} className="p-3 rounded border bg-amber-50/50 border-amber-100 flex flex-col gap-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-xs font-bold text-amber-950">
+                      Date: {new Date(el.date).toLocaleDateString()}
+                    </div>
+                    <div className="text-[10px] text-amber-900 font-bold mt-1">
+                      Allowed to leave {el.allowedMinutes} minutes early {el.slotNo === 0 ? '(All slots)' : `(Slot ${el.slotNo})`}
+                    </div>
+                    {el.reason && (
+                      <div className="text-[10px] text-gray-600 bg-white border border-amber-50 px-2 py-1 rounded italic mt-1.5">
+                        <span className="font-bold mr-1">Reason:</span>{el.reason}
+                      </div>
+                    )}
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800">
+                    APPROVED
+                  </span>
+                </div>
               </div>
             ))}
           </div>

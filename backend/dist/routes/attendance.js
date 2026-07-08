@@ -81,7 +81,7 @@ router.get('/status', authMiddleware_1.authenticateToken, async (req, res) => {
         });
         const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][today.getDay()];
         const slots = await prisma.slot.findMany({
-            where: { userId, dayOfWeek },
+            where: { userId, dayOfWeek, effectiveTo: null },
             orderBy: { slotNo: 'asc' }
         });
         const recentAtt = await prisma.attendance.findFirst({
@@ -206,7 +206,7 @@ router.post('/punch', authMiddleware_1.authenticateToken, async (req, res) => {
         // Find all slots for today
         const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][now.getDay()];
         let slots = await prisma.slot.findMany({
-            where: { userId, dayOfWeek },
+            where: { userId, dayOfWeek, effectiveTo: null },
             orderBy: { slotNo: 'asc' }
         });
         let isLate = false;

@@ -2671,13 +2671,26 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
   const [remarksOfficeUse, setRemarksOfficeUse] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const [applyToAll, setApplyToAll] = useState(true);
+  const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
+
+  const uniqueSlots = Array.from(new Set((trainee.slots || []).map((s: any) => s.slotNo))).sort((a, b) => Number(a) - Number(b)) as number[];
+
   const handleSave = async () => {
     if (!startDate || !endDate) return alert('Please select start and end dates');
+    if (!applyToAll && selectedSlots.length === 0) return alert('Please select at least one slot or apply to all slots');
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
       await axios.post(`${API}/leaves/direct`, {
-        traineeId: trainee.id, startDate, endDate, reason, appliedDate, remarksAlternative, remarksOfficeUse
+        traineeId: trainee.id, 
+        startDate, 
+        endDate, 
+        reason, 
+        appliedDate, 
+        remarksAlternative, 
+        remarksOfficeUse,
+        slots: applyToAll ? null : selectedSlots
       }, { headers: { Authorization: `Bearer ${token}` } });
       alert('Leave assigned successfully');
       onSave();
@@ -2704,7 +2717,6 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     
     if (end.getTime() < start.getTime()) return 'Invalid Date Range';
 
-    // Track which days the trainee actually has scheduled slots
     const scheduledDays = new Set((trainee.slots || []).map(s => s.day.toUpperCase()));
     const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     
@@ -2712,11 +2724,18 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const curDay = dMap[d.getDay()];
       if (scheduledDays.has(curDay)) {
-        diffDays += 1;
+        if (!applyToAll && selectedSlots.length > 0) {
+          const totalSlotsOnDay = (trainee.slots || []).filter(s => s.day.toUpperCase() === curDay).length;
+          if (totalSlotsOnDay > 0) {
+            diffDays += (selectedSlots.length / totalSlotsOnDay);
+          }
+        } else {
+          diffDays += 1;
+        }
       }
     }
 
-    return `${diffDays} Day${diffDays !== 1 ? 's' : ''} (Active working days in range)`;
+    return `${diffDays.toFixed(2).replace(/\.00$/, '')} Day${diffDays !== 1 ? 's' : ''} (Active working duration in range)`;
   };
 
   return (
@@ -2750,6 +2769,50 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
                 className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
           </div>
+
+          {uniqueSlots.length > 0 && (
+            <div className="bg-gray-50 border rounded-lg p-3">
+              <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">
+                Apply Leave To:
+              </label>
+              <div className="flex gap-4 items-center">
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
+                  <input type="radio" name="leaveScope" checked={applyToAll} onChange={() => setApplyToAll(true)} />
+                  Whole Day (All slots)
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
+                  <input type="radio" name="leaveScope" checked={!applyToAll} onChange={() => setApplyToAll(false)} />
+                  Specific Slot(s)
+                </label>
+              </div>
+
+              {!applyToAll && (
+                <div className="mt-3 flex flex-wrap gap-2 border-t pt-2.5">
+                  {uniqueSlots.map((slotNo) => {
+                    const slotInfo = trainee.slots?.find(s => s.slotNo === slotNo);
+                    const timingStr = slotInfo ? ` (${slotInfo.start} - ${slotInfo.end})` : '';
+                    
+                    return (
+                      <label key={slotNo} className="flex items-center gap-1.5 bg-white border rounded px-2.5 py-1 text-xs font-medium text-gray-700 cursor-pointer hover:bg-indigo-50/50">
+                        <input
+                          type="checkbox"
+                          checked={selectedSlots.includes(slotNo)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSlots(prev => [...prev, slotNo]);
+                            } else {
+                              setSelectedSlots(prev => prev.filter(n => n !== slotNo));
+                            }
+                          }}
+                        />
+                        Slot {slotNo}{timingStr}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {startDate && endDate && (
             <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center shadow-sm">

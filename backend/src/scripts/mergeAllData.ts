@@ -77,26 +77,34 @@ async function runMerge() {
         const newUserId = userMapping.get(rs.userId);
         if (!newUserId) continue;
 
-        await prismaCentral.slot.upsert({
+        const existingSlot = await prismaCentral.slot.findFirst({
           where: {
-            userId_dayOfWeek_slotNo: {
-              userId: newUserId,
-              dayOfWeek: rs.dayOfWeek,
-              slotNo: rs.slotNo
-            }
-          },
-          update: {
-            startTime: rs.startTime,
-            endTime: rs.endTime
-          },
-          create: {
             userId: newUserId,
             dayOfWeek: rs.dayOfWeek,
             slotNo: rs.slotNo,
-            startTime: rs.startTime,
-            endTime: rs.endTime
+            effectiveTo: null
           }
         });
+
+        if (existingSlot) {
+          await prismaCentral.slot.update({
+            where: { id: existingSlot.id },
+            data: {
+              startTime: rs.startTime,
+              endTime: rs.endTime
+            }
+          });
+        } else {
+          await prismaCentral.slot.create({
+            data: {
+              userId: newUserId,
+              dayOfWeek: rs.dayOfWeek,
+              slotNo: rs.slotNo,
+              startTime: rs.startTime,
+              endTime: rs.endTime
+            }
+          });
+        }
         slotsUpserted++;
       }
       console.log(`   ✅ Successfully processed ${slotsUpserted} slots`);
