@@ -655,7 +655,13 @@ router.put('/slots/:userId', async (req: AuthRequest, res) => {
       where: { userId, effectiveTo: null }
     });
 
-    const now = new Date();
+    // Define boundaries in local timezone
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+
+    const yesterdayEnd = new Date();
+    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+    yesterdayEnd.setHours(23, 59, 59, 999);
 
     // Deactivate slots that are no longer present or changed in timing
     for (const ext of existingSlots) {
@@ -669,7 +675,7 @@ router.put('/slots/:userId', async (req: AuthRequest, res) => {
       if (!isStillActive) {
         await prisma.slot.update({
           where: { id: ext.id },
-          data: { effectiveTo: now }
+          data: { effectiveTo: yesterdayEnd }
         });
       }
     }
@@ -691,7 +697,7 @@ router.put('/slots/:userId', async (req: AuthRequest, res) => {
             slotNo: s.slotNo,
             startTime: s.startTime,
             endTime: s.endTime,
-            effectiveFrom: now
+            effectiveFrom: todayMidnight
           }
         });
       }
@@ -1253,26 +1259,158 @@ router.post('/leaves/process', async (req: AuthRequest, res) => {
   }
 });
 
+router.put('/leaves/:id', async (req: AuthRequest, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { startDate, endDate, reason, slots, remarksAlternative, remarksOfficeUse, appliedDate } = req.body;
+    
+    const leave = await prisma.leaveRequest.findUnique({
+      where: { id },
+      include: { user: { include: { slots: true } } }
+    });
+    if (!leave) return res.status(404).json({ error: 'Leave request not found' });
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Invalid dates' });
+    }
+
+    // 1. Calculate old days deduction
+    let oldDays = 0;
+    if (leave.status === 'APPROVED') {
+      const oldScheduledDays = new Set((leave.user.slots || []).map(s => s.dayOfWeek.toUpperCase()));
+      const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+      for (let d = new Date(leave.startDate); d <= leave.endDate; d.setDate(d.getDate() + 1)) {
+        const curDay = dMap[d.getDay()];
+        if (oldScheduledDays.has(curDay)) {
+          if (leave.slots) {
+            const leaveSlots = leave.slots.split(',').map(s => s.trim());
+            const totalSlotsOnDay = leave.user.slots.filter(s => s.dayOfWeek === curDay).length;
+            if (totalSlotsOnDay > 0) {
+              let slotWeight = 0;
+              leaveSlots.forEach(sVal => {
+                if (sVal.includes('(half)') || sVal.includes('(')) {
+                  slotWeight += 0.5;
+                } else {
+                  slotWeight += 1;
+                }
+              });
+              oldDays += (slotWeight / totalSlotsOnDay);
+            }
+          } else {
+            oldDays += 1;
+          }
+        }
+      }
+    }
+
+    // 2. Calculate new days deduction
+    let newDays = 0;
+    const newScheduledDays = new Set((leave.user.slots || []).map(s => s.dayOfWeek.toUpperCase()));
+    const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const curDay = dMap[d.getDay()];
+      if (newScheduledDays.has(curDay)) {
+        if (slots && Array.isArray(slots) && slots.length > 0) {
+          const totalSlotsOnDay = leave.user.slots.filter(s => s.dayOfWeek === curDay).length;
+          if (totalSlotsOnDay > 0) {
+            let slotWeight = 0;
+            slots.forEach((sVal: string) => {
+              if (sVal.includes('(half)') || sVal.includes('(')) {
+                slotWeight += 0.5;
+              } else {
+                slotWeight += 1;
+              }
+            });
+            newDays += (slotWeight / totalSlotsOnDay);
+          }
+        } else {
+          newDays += 1;
+        }
+      }
+    }
+
+    // Update leave request and user leaveBalance in a transaction
+    const diff = newDays - oldDays;
+    const slotsStr = slots && Array.isArray(slots) && slots.length > 0 ? slots.join(',') : null;
+
+    await prisma.$transaction([
+      prisma.leaveRequest.update({
+        where: { id },
+        data: {
+          startDate: start,
+          endDate: end,
+          reason: reason || leave.reason,
+          slots: slotsStr,
+          appliedDate: appliedDate ? new Date(appliedDate) : leave.appliedDate,
+          remarksAlternative: remarksAlternative !== undefined ? remarksAlternative : leave.remarksAlternative,
+          remarksOfficeUse: remarksOfficeUse !== undefined ? remarksOfficeUse : leave.remarksOfficeUse
+        }
+      }),
+      prisma.user.update({
+        where: { id: leave.userId },
+        data: { leaveBalance: { decrement: diff } }
+      })
+    ]);
+
+    res.json({ message: 'Leave request updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.delete('/leaves/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const request = await prisma.leaveRequest.findUnique({
       where: { id: Number(id) },
-      include: { user: true }
+      include: { user: { include: { slots: true } } }
     });
 
     if (!request) return res.status(404).json({ error: 'Request not found' });
 
     // If it was already approved, credit back the leaveBalance
+    let days = 0;
     if (request.status === 'APPROVED') {
-      const days = Math.ceil((request.endDate.getTime() - request.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      await prisma.user.update({
-        where: { id: request.userId },
-        data: { leaveBalance: { increment: days } }
-      });
+      const scheduledDays = new Set((request.user.slots || []).map(s => s.dayOfWeek.toUpperCase()));
+      const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+      for (let d = new Date(request.startDate); d <= request.endDate; d.setDate(d.getDate() + 1)) {
+        const curDay = dMap[d.getDay()];
+        if (scheduledDays.has(curDay)) {
+          if (request.slots) {
+            const leaveSlots = request.slots.split(',').map(s => s.trim());
+            const totalSlotsOnDay = request.user.slots.filter(s => s.dayOfWeek === curDay).length;
+            if (totalSlotsOnDay > 0) {
+              let slotWeight = 0;
+              leaveSlots.forEach(sVal => {
+                if (sVal.includes('(half)') || sVal.includes('(')) {
+                  slotWeight += 0.5;
+                } else {
+                  slotWeight += 1;
+                }
+              });
+              days += (slotWeight / totalSlotsOnDay);
+            }
+          } else {
+            days += 1;
+          }
+        }
+      }
     }
 
-    await prisma.leaveRequest.delete({ where: { id: Number(id) } });
+    await prisma.$transaction([
+      prisma.leaveRequest.delete({ where: { id: Number(id) } }),
+      prisma.user.update({
+        where: { id: request.userId },
+        data: { leaveBalance: { increment: days } }
+      })
+    ]);
+
     res.json({ message: 'Leave request deleted successfully' });
   } catch (error) {
     console.error(error);

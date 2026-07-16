@@ -243,9 +243,16 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             const activeLeaveForSlot = dayLeaves.find(l => {
                 if (!l.slots)
                     return false; // Full day leaves are handled by the pre-fill block
-                return l.slots.split(',').map(Number).includes(si);
+                const leaveSlots = l.slots.split(',').map(s => s.trim());
+                return leaveSlots.some(s => parseInt(s.split('(')[0]) === si);
             });
+            let leaveTimeStr = null;
             if (activeLeaveForSlot) {
+                const slotString = activeLeaveForSlot.slots.split(',').map(s => s.trim()).find(s => parseInt(s.split('(')[0]) === si);
+                const timeMatch = slotString ? slotString.match(/\(([^)]+)\)/) : null;
+                leaveTimeStr = timeMatch ? timeMatch[1] : null;
+            }
+            if (activeLeaveForSlot && !leaveTimeStr) {
                 rowData[`s${si}In`] = 'LEAVE';
                 rowData[`s${si}Out`] = activeLeaveForSlot.reason || 'Leave';
                 rowData[`s${si}Start`] = '--';
@@ -260,6 +267,12 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
                     slotNo: si,
                     startTime: att[`slotStart${si}`],
                     endTime: att[`slotEnd${si}`]
+                };
+            }
+            if (slot && leaveTimeStr) {
+                slot = {
+                    ...slot,
+                    endTime: leaveTimeStr
                 };
             }
             let rawIn = att ? att[`inTime${si}`] : null;
@@ -321,6 +334,9 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             let outStatus = getSlotOutTimeStatus(slot, adjustedOut, !!sIn, isExtra, outBranch, infoText);
             if (earlyLeaveText && outStatus !== 'MISSING OUT' && outStatus !== 'ABSENT') {
                 outStatus = `${outStatus} (${earlyLeaveText})`;
+            }
+            if (leaveTimeStr) {
+                outStatus = `${outStatus} (Leave after ${leaveTimeStr})`;
             }
             rowData[`s${si}Out`] = outStatus;
             let finalLate = '--';

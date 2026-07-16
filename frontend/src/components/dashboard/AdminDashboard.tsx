@@ -2673,6 +2673,7 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
 
   const [applyToAll, setApplyToAll] = useState(true);
   const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
+  const [slotTimes, setSlotTimes] = useState<Record<number, string>>({});
 
   const uniqueSlots = Array.from(new Set((trainee.slots || []).map((s: any) => s.slotNo))).sort((a, b) => Number(a) - Number(b)) as number[];
 
@@ -2682,6 +2683,10 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
+      const slotsPayload = applyToAll 
+        ? null 
+        : selectedSlots.map(num => slotTimes[num] ? `${num}(${slotTimes[num]})` : `${num}`);
+
       await axios.post(`${API}/leaves/direct`, {
         traineeId: trainee.id, 
         startDate, 
@@ -2690,7 +2695,7 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
         appliedDate, 
         remarksAlternative, 
         remarksOfficeUse,
-        slots: applyToAll ? null : selectedSlots
+        slots: slotsPayload
       }, { headers: { Authorization: `Bearer ${token}` } });
       alert('Leave assigned successfully');
       onSave();
@@ -2727,7 +2732,15 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
         if (!applyToAll && selectedSlots.length > 0) {
           const totalSlotsOnDay = (trainee.slots || []).filter(s => s.day.toUpperCase() === curDay).length;
           if (totalSlotsOnDay > 0) {
-            diffDays += (selectedSlots.length / totalSlotsOnDay);
+            let slotWeight = 0;
+            selectedSlots.forEach(slotNo => {
+              if (slotTimes[slotNo]) {
+                slotWeight += 0.5;
+              } else {
+                slotWeight += 1;
+              }
+            });
+            diffDays += (slotWeight / totalSlotsOnDay);
           }
         } else {
           diffDays += 1;
@@ -2787,26 +2800,58 @@ const DirectLeaveModal = ({ trainee, onClose, onSave }: { trainee: Trainee; onCl
               </div>
 
               {!applyToAll && (
-                <div className="mt-3 flex flex-wrap gap-2 border-t pt-2.5">
+                <div className="mt-3 space-y-2 border-t pt-2.5">
                   {uniqueSlots.map((slotNo) => {
                     const slotInfo = trainee.slots?.find(s => s.slotNo === slotNo);
                     const timingStr = slotInfo ? ` (${slotInfo.start} - ${slotInfo.end})` : '';
                     
                     return (
-                      <label key={slotNo} className="flex items-center gap-1.5 bg-white border rounded px-2.5 py-1 text-xs font-medium text-gray-700 cursor-pointer hover:bg-indigo-50/50">
-                        <input
-                          type="checkbox"
-                          checked={selectedSlots.includes(slotNo)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedSlots(prev => [...prev, slotNo]);
-                            } else {
-                              setSelectedSlots(prev => prev.filter(n => n !== slotNo));
-                            }
-                          }}
-                        />
-                        Slot {slotNo}{timingStr}
-                      </label>
+                      <div key={slotNo} className="flex items-center justify-between bg-white border rounded p-2.5 hover:bg-indigo-50/50">
+                        <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedSlots.includes(slotNo)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSlots(prev => [...prev, slotNo]);
+                              } else {
+                                setSelectedSlots(prev => prev.filter(n => n !== slotNo));
+                                const newTimes = { ...slotTimes };
+                                delete newTimes[slotNo];
+                                setSlotTimes(newTimes);
+                              }
+                            }}
+                          />
+                          Slot {slotNo}{timingStr}
+                        </label>
+                        {selectedSlots.includes(slotNo) && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSlotTimes({
+                                  ...slotTimes,
+                                  [slotNo]: slotTimes[slotNo] === '12:30 PM' ? '' : '12:30 PM'
+                                });
+                              }}
+                              className={`px-1.5 py-0.5 text-[10px] font-bold rounded border transition-colors ${
+                                slotTimes[slotNo] === '12:30 PM' 
+                                  ? 'bg-amber-100 border-amber-300 text-amber-800' 
+                                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                              }`}
+                            >
+                              Half Day (12:30 PM)
+                            </button>
+                            <input
+                              type="text"
+                              placeholder="Leave after (e.g. 02:00 PM)"
+                              value={slotTimes[slotNo] || ''}
+                              onChange={(e) => setSlotTimes({ ...slotTimes, [slotNo]: e.target.value })}
+                              className="border rounded px-2 py-1 text-xs w-44 outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -3002,6 +3047,262 @@ const DeleteConfirmModal = ({ trainee, onClose, onDeleted }: { trainee: Trainee;
   );
 };
 
+// ── Edit Leave Modal ─────────────────────────────────────────────────────────
+const EditLeaveModal = ({ leave, onClose, onSave }: { leave: any; onClose: () => void; onSave: () => void }) => {
+  const [appliedDate, setAppliedDate] = useState(leave.appliedDate ? leave.appliedDate.split('T')[0] : '');
+  const [startDate, setStartDate] = useState(leave.startDate ? leave.startDate.split('T')[0] : '');
+  const [endDate, setEndDate] = useState(leave.endDate ? leave.endDate.split('T')[0] : '');
+  const [reason, setReason] = useState(leave.reason || '');
+  const [remarksAlternative, setRemarksAlternative] = useState(leave.remarksAlternative || '');
+  const [remarksOfficeUse, setRemarksOfficeUse] = useState(leave.remarksOfficeUse || '');
+  const [saving, setSaving] = useState(false);
+
+  const [applyToAll, setApplyToAll] = useState(true);
+  const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
+  const [slotTimes, setSlotTimes] = useState<Record<number, string>>({});
+
+  const trainee = leave.user;
+  const uniqueSlots = Array.from(new Set((trainee.slots || []).map((s: any) => s.slotNo))).sort((a, b) => Number(a) - Number(b)) as number[];
+
+  useEffect(() => {
+    if (leave.slots) {
+      setApplyToAll(false);
+      const leaveSlots = leave.slots.split(',').map((s: string) => s.trim());
+      const nums: number[] = [];
+      const times: Record<number, string> = {};
+      leaveSlots.forEach((s: string) => {
+        const num = parseInt(s.split('(')[0]);
+        if (!isNaN(num)) {
+          nums.push(num);
+          const match = s.match(/\(([^)]+)\)/);
+          if (match) {
+            times[num] = match[1];
+          }
+        }
+      });
+      setSelectedSlots(nums);
+      setSlotTimes(times);
+    } else {
+      setApplyToAll(true);
+      setSelectedSlots([]);
+      setSlotTimes({});
+    }
+  }, [leave]);
+
+  const handleSave = async () => {
+    if (!startDate || !endDate) return alert('Please select start and end dates');
+    if (!applyToAll && selectedSlots.length === 0) return alert('Please select at least one slot or apply to all slots');
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const slotsPayload = applyToAll 
+        ? null 
+        : selectedSlots.map(num => slotTimes[num] ? `${num}(${slotTimes[num]})` : `${num}`);
+
+      await axios.put(`${API}/leaves/${leave.id}`, {
+        startDate, 
+        endDate, 
+        reason, 
+        appliedDate, 
+        remarksAlternative, 
+        remarksOfficeUse,
+        slots: slotsPayload
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      alert('Leave updated successfully');
+      onSave();
+      onClose();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to update leave');
+    } finally { setSaving(false); }
+  };
+
+  const getWeekdayName = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    if (isNaN(dateObj.getTime())) return '';
+    return dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+  };
+
+  const getDaysCount = () => {
+    if (!startDate || !endDate) return '';
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    
+    if (end.getTime() < start.getTime()) return 'Invalid Date Range';
+
+    const scheduledDays = new Set((trainee.slots || []).map((s: any) => s.day.toUpperCase()));
+    const dMap = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    
+    let diffDays = 0;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const curDay = dMap[d.getDay()];
+      if (scheduledDays.has(curDay)) {
+        if (!applyToAll && selectedSlots.length > 0) {
+          const totalSlotsOnDay = (trainee.slots || []).filter((s: any) => s.day.toUpperCase() === curDay).length;
+          if (totalSlotsOnDay > 0) {
+            let slotWeight = 0;
+            selectedSlots.forEach(slotNo => {
+              if (slotTimes[slotNo]) {
+                slotWeight += 0.5;
+              } else {
+                slotWeight += 1;
+              }
+            });
+            diffDays += (slotWeight / totalSlotsOnDay);
+          }
+        } else {
+          diffDays += 1;
+        }
+      }
+    }
+
+    return `${diffDays.toFixed(2).replace(/\.00$/, '')} Day${diffDays !== 1 ? 's' : ''} (Active working duration in range)`;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
+        <button onClick={onClose} className="absolute right-4 top-4 text-gray-400 hover:text-gray-700"><X size={20} /></button>
+        <h2 className="text-lg font-bold mb-1">Edit Assigned Leave</h2>
+        <p className="text-xs text-gray-500 mb-6">{trainee.fullName}</p>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">
+              Date on which applied {appliedDate && <span className="text-indigo-600 font-extrabold normal-case ml-1">({getWeekdayName(appliedDate)})</span>}
+            </label>
+            <input type="date" value={appliedDate} onChange={e => setAppliedDate(e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">
+                Leave Start Date {startDate && <span className="text-indigo-600 font-extrabold normal-case ml-1">({getWeekdayName(startDate)})</span>}
+              </label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">
+                Leave End Date {endDate && <span className="text-indigo-600 font-extrabold normal-case ml-1">({getWeekdayName(endDate)})</span>}
+              </label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+            </div>
+          </div>
+
+          {uniqueSlots.length > 0 && (
+            <div className="bg-gray-50 border rounded-lg p-3">
+              <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">
+                Apply Leave To:
+              </label>
+              <div className="flex gap-4 items-center">
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
+                  <input type="radio" name="editLeaveScope" checked={applyToAll} onChange={() => setApplyToAll(true)} />
+                  Whole Day (All slots)
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer">
+                  <input type="radio" name="editLeaveScope" checked={!applyToAll} onChange={() => setApplyToAll(false)} />
+                  Specific Slot(s)
+                </label>
+              </div>
+
+              {!applyToAll && (
+                <div className="mt-3 space-y-2 border-t pt-2.5">
+                  {uniqueSlots.map((slotNo) => {
+                    const slotInfo = trainee.slots?.find((s: any) => s.slotNo === slotNo);
+                    const timingStr = slotInfo ? ` (${slotInfo.start || slotInfo.startTime} - ${slotInfo.end || slotInfo.endTime})` : '';
+                    
+                    return (
+                      <div key={slotNo} className="flex items-center justify-between bg-white border rounded p-2.5 hover:bg-indigo-50/50">
+                        <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedSlots.includes(slotNo)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSlots(prev => [...prev, slotNo]);
+                              } else {
+                                setSelectedSlots(prev => prev.filter(n => n !== slotNo));
+                                const newTimes = { ...slotTimes };
+                                delete newTimes[slotNo];
+                                setSlotTimes(newTimes);
+                              }
+                            }}
+                          />
+                          Slot {slotNo}{timingStr}
+                        </label>
+                        {selectedSlots.includes(slotNo) && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSlotTimes({
+                                  ...slotTimes,
+                                  [slotNo]: slotTimes[slotNo] === '12:30 PM' ? '' : '12:30 PM'
+                                });
+                              }}
+                              className={`px-1.5 py-0.5 text-[10px] font-bold rounded border transition-colors ${
+                                slotTimes[slotNo] === '12:30 PM' 
+                                  ? 'bg-amber-100 border-amber-300 text-amber-800' 
+                                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                              }`}
+                            >
+                              Half Day (12:30 PM)
+                            </button>
+                            <input
+                              type="text"
+                              placeholder="Leave after (e.g. 02:00 PM)"
+                              value={slotTimes[slotNo] || ''}
+                              onChange={(e) => setSlotTimes({ ...slotTimes, [slotNo]: e.target.value })}
+                              className="border rounded px-2 py-1 text-xs w-44 outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {startDate && endDate && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 text-center shadow-sm">
+              <span className="text-[10px] font-bold text-indigo-700 uppercase block tracking-wider mb-0.5">Calculated Leave Duration</span>
+              <span className="text-base font-black text-indigo-950">{getDaysCount()}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Reason (Optional)</label>
+            <input type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g., Sick leave"
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Remarks Alternative</label>
+            <input type="text" value={remarksAlternative} onChange={e => setRemarksAlternative(e.target.value)} placeholder="Alternative details..."
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 mb-1 uppercase">Remarks Office Use</label>
+            <input type="text" value={remarksOfficeUse} onChange={e => setRemarksOfficeUse(e.target.value)} placeholder="Office use remarks..."
+              className="w-full border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+        </div>
+
+        <button onClick={handleSave} disabled={saving}
+          className="w-full mt-8 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded font-bold transition-colors disabled:opacity-50">
+          {saving ? 'Updating...' : 'Update Leave'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ── Leave Management Modal ──────────────────────────────────────────────────
 const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: () => void; onProcessed: () => void; canManage: boolean }) => {
   const [requests, setRequests] = useState<any[]>([]);
@@ -3009,6 +3310,7 @@ const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: ()
   const [editedEndDates, setEditedEndDates] = useState<Record<number, string>>({});
   const [adminReasons, setAdminReasons] = useState<Record<number, string>>({});
   const [search, setSearch] = useState('');
+  const [editingLeave, setEditingLeave] = useState<any | null>(null);
 
   useEffect(() => { fetchRequests(); }, []);
 
@@ -3203,9 +3505,14 @@ const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: ()
                           </div>
                         )}
                         {canManage && (
-                          <button onClick={() => handleDeleteLeave(r.id)} className="text-red-500 hover:text-red-700 p-1 flex items-center gap-1 text-[10px] font-bold mt-1" title="Delete Leave Record">
-                            <Trash2 size={12} /> Remove Record
-                          </button>
+                          <div className="flex gap-2 mt-1">
+                            <button onClick={() => setEditingLeave(r)} className="text-indigo-600 hover:text-indigo-800 p-1 flex items-center gap-1 text-[10px] font-bold" title="Edit Leave Record">
+                              <Edit size={12} /> Edit Record
+                            </button>
+                            <button onClick={() => handleDeleteLeave(r.id)} className="text-red-500 hover:text-red-700 p-1 flex items-center gap-1 text-[10px] font-bold" title="Delete Leave Record">
+                              <Trash2 size={12} /> Remove Record
+                            </button>
+                          </div>
                         )}
                       </div>
                     </td>
@@ -3216,6 +3523,16 @@ const LeaveManagementModal = ({ onClose, onProcessed, canManage }: { onClose: ()
           </div>
         )}
       </div>
+      {editingLeave && (
+        <EditLeaveModal
+          leave={editingLeave}
+          onClose={() => setEditingLeave(null)}
+          onSave={() => {
+            fetchRequests();
+            onProcessed();
+          }}
+        />
+      )}
     </div>
   );
 };
