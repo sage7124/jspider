@@ -244,13 +244,14 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
       inq.name?.toLowerCase().includes(q) ||
       inq.mobile?.toLowerCase().includes(q) ||
       inq.educationQualification?.toLowerCase().includes(q) ||
+      inq.nictPreference?.toLowerCase().includes(q) ||
       inq.id?.toLowerCase().includes(q)
     );
   });
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-3xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-fadeIn text-slate-100">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-fadeIn text-slate-100">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90">
           <div className="flex items-center gap-3">
@@ -387,7 +388,7 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
               <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
                 <input
                   type="text"
-                  placeholder="Search inquiries by candidate name, phone, or education..."
+                  placeholder="Search by candidate name, phone, education, or preference..."
                   value={inquiriesSearch}
                   onChange={(e) => setInquiriesSearch(e.target.value)}
                   className="w-full sm:w-80 bg-slate-900 border border-slate-700 rounded-xl py-2 px-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
@@ -415,6 +416,7 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                         <th className="p-3">Candidate Name</th>
                         <th className="p-3">Mobile Number</th>
                         <th className="p-3">Education Qualification</th>
+                        <th className="p-3">NICT Preference</th>
                         <th className="p-3">Date & Time</th>
                       </tr>
                     </thead>
@@ -425,6 +427,7 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                           <td className="p-3 font-semibold text-white">{inq.name}</td>
                           <td className="p-3 font-mono">{inq.mobile}</td>
                           <td className="p-3 text-slate-300">{inq.educationQualification}</td>
+                          <td className="p-3 text-blue-300 font-medium">{inq.nictPreference || 'NICT Jayanagar Center'}</td>
                           <td className="p-3 text-slate-400">
                             {new Date(inq.submittedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                           </td>
@@ -440,4 +443,5 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
       </div>
     </div>
   );
+
 }

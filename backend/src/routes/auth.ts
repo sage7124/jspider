@@ -380,28 +380,31 @@ import path from 'path';
 const qrFilePath = path.join(__dirname, '../../static_qr.json');
 const inquiriesFilePath = path.join(__dirname, '../../qr_inquiries.json');
 
-const getStaticQRTokenHelper = () => {
+const getStaticQRTokenHelper = async () => {
+  try {
+    const record = await prisma.staticQR.findUnique({ where: { id: 1 } });
+    if (record) {
+      return { token: record.token, updatedAt: record.updatedAt.toISOString() };
+    }
+    const created = await prisma.staticQR.create({
+      data: { id: 1, token: 'NICT_STATIC_QR_1001' }
+    });
+    return { token: created.token, updatedAt: created.updatedAt.toISOString() };
+  } catch (err) {
+    console.error('Error reading static QR from DB:', err);
+  }
   try {
     if (fs.existsSync(qrFilePath)) {
       return JSON.parse(fs.readFileSync(qrFilePath, 'utf-8'));
     }
-  } catch (err) {
-    console.error('Error reading static_qr.json:', err);
-  }
-  const defaultData = {
-    token: 'NICT_STATIC_QR_1001',
-    updatedAt: new Date().toISOString()
-  };
-  try {
-    fs.writeFileSync(qrFilePath, JSON.stringify(defaultData, null, 2));
   } catch (err) {}
-  return defaultData;
+  return { token: 'NICT_STATIC_QR_1001', updatedAt: new Date().toISOString() };
 };
 
 // Public Static QR endpoint
-router.get('/public/static-qr', (req, res) => {
+router.get('/public/static-qr', async (req, res) => {
   try {
-    const qrData = getStaticQRTokenHelper();
+    const qrData = await getStaticQRTokenHelper();
     res.json(qrData);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch QR token' });
@@ -409,34 +412,66 @@ router.get('/public/static-qr', (req, res) => {
 });
 
 // Public QR Inquiry submission
-router.post('/public/qr-inquiry', (req, res) => {
+router.post('/public/qr-inquiry', async (req, res) => {
   try {
-    const { name, mobile, educationQualification } = req.body;
+    const { name, mobile, educationQualification, nictPreference } = req.body;
     if (!name || !mobile || !educationQualification) {
       return res.status(400).json({ error: 'Name, mobile number, and education qualification are required' });
     }
 
-    const qrData = getStaticQRTokenHelper();
-    let inquiries: any[] = [];
-    if (fs.existsSync(inquiriesFilePath)) {
-      try {
-        inquiries = JSON.parse(fs.readFileSync(inquiriesFilePath, 'utf-8'));
-      } catch (e) {
-        inquiries = [];
-      }
+    const qrData = await getStaticQRTokenHelper();
+    const inquiryId = 'INQ-' + Date.now().toString().slice(-6) + Math.floor(Math.random() * 100);
+    const pref = nictPreference ? String(nictPreference).trim() : 'NICT Jayanagar Center';
+
+    let newInquiry: any = null;
+
+    try {
+      const dbInquiry = await prisma.qRInquiry.create({
+        data: {
+          inquiryId,
+          name: String(name).trim(),
+          mobile: String(mobile).trim(),
+          educationQualification: String(educationQualification).trim(),
+          nictPreference: pref,
+          token: qrData.token
+        }
+      });
+      newInquiry = {
+        id: dbInquiry.inquiryId,
+        name: dbInquiry.name,
+        mobile: dbInquiry.mobile,
+        educationQualification: dbInquiry.educationQualification,
+        nictPreference: dbInquiry.nictPreference,
+        submittedAt: dbInquiry.createdAt.toISOString(),
+        token: dbInquiry.token
+      };
+    } catch (dbErr) {
+      console.warn('Database save failed for QR inquiry, using fallback:', dbErr);
     }
 
-    const newInquiry = {
-      id: 'INQ-' + Date.now().toString().slice(-6) + Math.floor(Math.random() * 100),
-      name: String(name).trim(),
-      mobile: String(mobile).trim(),
-      educationQualification: String(educationQualification).trim(),
-      submittedAt: new Date().toISOString(),
-      token: qrData.token
-    };
+    if (!newInquiry) {
+      newInquiry = {
+        id: inquiryId,
+        name: String(name).trim(),
+        mobile: String(mobile).trim(),
+        educationQualification: String(educationQualification).trim(),
+        nictPreference: pref,
+        submittedAt: new Date().toISOString(),
+        token: qrData.token
+      };
+    }
 
-    inquiries.unshift(newInquiry);
-    fs.writeFileSync(inquiriesFilePath, JSON.stringify(inquiries, null, 2));
+    // Also write to local file fallback
+    try {
+      let inquiries: any[] = [];
+      if (fs.existsSync(inquiriesFilePath)) {
+        try {
+          inquiries = JSON.parse(fs.readFileSync(inquiriesFilePath, 'utf-8'));
+        } catch (e) {}
+      }
+      inquiries.unshift(newInquiry);
+      fs.writeFileSync(inquiriesFilePath, JSON.stringify(inquiries, null, 2));
+    } catch (fErr) {}
 
     res.status(201).json({
       message: 'Inquiry submitted successfully',
@@ -449,4 +484,5 @@ router.post('/public/qr-inquiry', (req, res) => {
 });
 
 export default router;
+
 

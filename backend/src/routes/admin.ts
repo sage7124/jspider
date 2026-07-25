@@ -4865,50 +4865,71 @@ import path from 'path';
 const adminQrFilePath = path.join(__dirname, '../../static_qr.json');
 const adminInquiriesFilePath = path.join(__dirname, '../../qr_inquiries.json');
 
-const getAdminStaticQRToken = () => {
-  try {
-    if (fs.existsSync(adminQrFilePath)) {
-      return JSON.parse(fs.readFileSync(adminQrFilePath, 'utf-8'));
-    }
-  } catch (e) {}
-  const defaultData = {
-    token: 'NICT_STATIC_QR_1001',
-    updatedAt: new Date().toISOString()
-  };
-  try {
-    fs.writeFileSync(adminQrFilePath, JSON.stringify(defaultData, null, 2));
-  } catch (e) {}
-  return defaultData;
-};
-
 // Admin GET static QR token
-router.get('/static-qr', authenticateToken, (req: AuthRequest, res) => {
+router.get('/static-qr', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const data = getAdminStaticQRToken();
-    res.json(data);
+    const record = await prisma.staticQR.findUnique({ where: { id: 1 } });
+    if (record) {
+      return res.json({ token: record.token, updatedAt: record.updatedAt.toISOString() });
+    }
+    const created = await prisma.staticQR.create({
+      data: { id: 1, token: 'NICT_STATIC_QR_1001' }
+    });
+    res.json({ token: created.token, updatedAt: created.updatedAt.toISOString() });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch static QR' });
+    try {
+      if (fs.existsSync(adminQrFilePath)) {
+        return res.json(JSON.parse(fs.readFileSync(adminQrFilePath, 'utf-8')));
+      }
+    } catch (e) {}
+    res.json({ token: 'NICT_STATIC_QR_1001', updatedAt: new Date().toISOString() });
   }
 });
 
 // Admin POST regenerate static QR token
-router.post('/static-qr/regenerate', authenticateToken, (req: AuthRequest, res) => {
+router.post('/static-qr/regenerate', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const newToken = 'NICT_QR_' + Date.now().toString(36).toUpperCase() + '_' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const updated = await prisma.staticQR.upsert({
+      where: { id: 1 },
+      update: { token: newToken },
+      create: { id: 1, token: newToken }
+    });
     const data = {
-      token: newToken,
-      updatedAt: new Date().toISOString()
+      token: updated.token,
+      updatedAt: updated.updatedAt.toISOString()
     };
-    fs.writeFileSync(adminQrFilePath, JSON.stringify(data, null, 2));
+    try {
+      fs.writeFileSync(adminQrFilePath, JSON.stringify(data, null, 2));
+    } catch (e) {}
     res.json({ message: 'Static QR code regenerated successfully', qrData: data });
   } catch (error) {
+    console.error('Error regenerating static QR:', error);
     res.status(500).json({ error: 'Failed to regenerate static QR code' });
   }
 });
 
 // Admin GET QR inquiries list
-router.get('/qr-inquiries', authenticateToken, (req: AuthRequest, res) => {
+router.get('/qr-inquiries', authenticateToken, async (req: AuthRequest, res) => {
   try {
+    const dbInquiries = await prisma.qRInquiry.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (dbInquiries && dbInquiries.length > 0) {
+      const formatted = dbInquiries.map(inq => ({
+        id: inq.inquiryId,
+        name: inq.name,
+        mobile: inq.mobile,
+        educationQualification: inq.educationQualification,
+        nictPreference: inq.nictPreference || 'NICT Jayanagar Center',
+        submittedAt: inq.createdAt.toISOString(),
+        token: inq.token
+      }));
+      return res.json(formatted);
+    }
+
+    // File fallback if DB empty or during transition
     let inquiries: any[] = [];
     if (fs.existsSync(adminInquiriesFilePath)) {
       try {
@@ -4919,10 +4940,18 @@ router.get('/qr-inquiries', authenticateToken, (req: AuthRequest, res) => {
     }
     res.json(inquiries);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch inquiries' });
+    console.error('Error fetching inquiries:', error);
+    let inquiries: any[] = [];
+    if (fs.existsSync(adminInquiriesFilePath)) {
+      try {
+        inquiries = JSON.parse(fs.readFileSync(adminInquiriesFilePath, 'utf-8'));
+      } catch (e) {}
+    }
+    res.json(inquiries);
   }
 });
 
 export default router;
+
 
 

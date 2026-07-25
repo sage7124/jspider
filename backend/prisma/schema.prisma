@@ -398,3 +398,21 @@ model EarlyLeavePermission {
   @@unique([userId, date, slotNo])
 }
 
+model StaticQR {
+  id        Int      @id @default(1)
+  token     String   @default("NICT_STATIC_QR_1001")
+  updatedAt DateTime @updatedAt
+}
+
+model QRInquiry {
+  id                      Int      @id @default(autoincrement())
+  inquiryId               String   @unique
+  name                    String
+  mobile                  String
+  educationQualification  String
+  nictPreference          String   @default("NICT Jayanagar Center")
+  token                   String?
+  createdAt               DateTime @default(now())
+}
+
+

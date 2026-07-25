@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import jsPDF from 'jspdf';
-import { User, Phone, GraduationCap, CheckCircle2, Download, RefreshCw, Sparkles, Building2, ShieldCheck } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, Download, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -14,10 +14,19 @@ export default function PublicScanPage() {
   const [mobile, setMobile] = useState('');
   const [education, setEducation] = useState('');
   const [customEducation, setCustomEducation] = useState('');
+  const [nictPreference, setNictPreference] = useState('NICT Jayanagar Center');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submittedData, setSubmittedData] = useState<any>(null);
+
+  const nictPreferenceOptions = [
+    'NICT Jayanagar Center',
+    'NICT Hanumanthanagar Center',
+    'NICT Koramangala Center',
+    'NICT Malleshwaram Center',
+    'other NICT Centers at Bangalore'
+  ];
 
   const [educationOptions, setEducationOptions] = useState<string[]>([
     'B.Tech / B.E. (Computer Science / IT)',
@@ -32,7 +41,6 @@ export default function PublicScanPage() {
   ]);
 
   useEffect(() => {
-    // Fetch dropdown options if available
     axios.get(`${API_BASE}/auth/dropdown-options`)
       .then(res => {
         if (res.data && res.data.educations && res.data.educations.length > 0) {
@@ -41,9 +49,7 @@ export default function PublicScanPage() {
           setEducationOptions(fetched);
         }
       })
-      .catch(() => {
-        // Fallback options already set
-      });
+      .catch(() => {});
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,9 +59,10 @@ export default function PublicScanPage() {
     const finalName = name.trim();
     const finalMobile = mobile.trim();
     const finalEducation = education === 'Other' ? customEducation.trim() : education;
+    const finalPreference = nictPreference.trim();
 
     if (!finalName) {
-      setError('Please enter your full name');
+      setError('Please enter your name');
       return;
     }
     if (!finalMobile || !/^\d{10}$/.test(finalMobile)) {
@@ -66,6 +73,10 @@ export default function PublicScanPage() {
       setError('Please select or specify your educational qualification');
       return;
     }
+    if (!finalPreference) {
+      setError('Please select your NICT preference center');
+      return;
+    }
 
     setLoading(true);
 
@@ -74,28 +85,30 @@ export default function PublicScanPage() {
         name: finalName,
         mobile: finalMobile,
         educationQualification: finalEducation,
+        nictPreference: finalPreference,
         token: tokenParam
       });
 
       if (res.data && res.data.inquiry) {
         setSubmittedData(res.data.inquiry);
       } else {
-        // Fallback local inquiry object
         setSubmittedData({
           id: 'INQ-' + Date.now().toString().slice(-6),
           name: finalName,
           mobile: finalMobile,
           educationQualification: finalEducation,
+          nictPreference: finalPreference,
           submittedAt: new Date().toISOString()
         });
       }
     } catch (err: any) {
-      console.warn('Backend save failed, using client record:', err);
+      console.warn('Backend save failed, using local inquiry object:', err);
       setSubmittedData({
         id: 'INQ-' + Date.now().toString().slice(-6),
         name: finalName,
         mobile: finalMobile,
         educationQualification: finalEducation,
+        nictPreference: finalPreference,
         submittedAt: new Date().toISOString()
       });
     } finally {
@@ -146,24 +159,25 @@ export default function PublicScanPage() {
 
     // Details Box Container
     doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-    doc.roundedRect(15, 62, 180, 85, 3, 3, 'F');
+    doc.roundedRect(15, 62, 180, 95, 3, 3, 'F');
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.3);
-    doc.roundedRect(15, 62, 180, 85, 3, 3, 'D');
+    doc.roundedRect(15, 62, 180, 95, 3, 3, 'D');
 
     const fields = [
       { label: 'Inquiry Reference ID:', value: submittedData.id || 'N/A' },
       { label: 'Candidate Full Name:', value: submittedData.name },
       { label: 'Mobile / Phone Number:', value: submittedData.mobile },
       { label: 'Educational Qualification:', value: submittedData.educationQualification },
+      { label: 'NICT Preference Center:', value: submittedData.nictPreference || 'NICT Jayanagar Center' },
       { label: 'Date & Time of Submission:', value: new Date(submittedData.submittedAt || Date.now()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) },
       { label: 'Verification Status:', value: 'Verified via QR Scan' }
     ];
 
     let currentY = 74;
-    fields.forEach((f) => {
+    fields.forEach((f, idx) => {
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
+      doc.setFontSize(10.5);
       doc.setTextColor(darkText[0], darkText[1], darkText[2]);
       doc.text(f.label, 22, currentY);
 
@@ -172,7 +186,7 @@ export default function PublicScanPage() {
       doc.text(f.value, 82, currentY);
 
       // Light separator line
-      if (currentY < 130) {
+      if (idx < fields.length - 1) {
         doc.setDrawColor(226, 232, 240);
         doc.line(22, currentY + 3, 188, currentY + 3);
       }
@@ -182,28 +196,28 @@ export default function PublicScanPage() {
     // Verification Box
     doc.setFillColor(239, 246, 255);
     doc.setDrawColor(191, 219, 254);
-    doc.roundedRect(15, 156, 180, 25, 2, 2, 'FD');
+    doc.roundedRect(15, 168, 180, 25, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(30, 58, 138);
-    doc.text('OFFICIAL VERIFICATION STATEMENT', 22, 164);
+    doc.text('OFFICIAL VERIFICATION STATEMENT', 22, 176);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(51, 65, 85);
-    doc.text('This document verifies that the candidate has scanned the official NICT QR Code and registered their educational details into the system.', 22, 172);
+    doc.text('This document verifies that the candidate has scanned the official NICT QR Code and registered their educational details into the system.', 22, 184);
 
     // Footer Stamp & Sign Area
     doc.setDrawColor(203, 213, 225);
-    doc.line(135, 225, 185, 225);
+    doc.line(135, 235, 185, 235);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(71, 85, 105);
-    doc.text('Authorized Signature', 160, 230, { align: 'center' });
+    doc.text('Authorized Signature', 160, 240, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('NICT Administration', 160, 235, { align: 'center' });
+    doc.text('NICT Administration', 160, 245, { align: 'center' });
 
     // Page Footer Line
     doc.setDrawColor(203, 213, 225);
@@ -230,7 +244,7 @@ export default function PublicScanPage() {
             <Building2 className="w-8 h-8" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            NICT Candidate Registration
+            NICT Computer Education
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             Scan & Submit your details for course inquiry & verification
@@ -244,7 +258,7 @@ export default function PublicScanPage() {
               <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto mb-3 animate-bounce" />
               <h2 className="text-xl font-bold text-emerald-300">Submission Successful!</h2>
               <p className="text-slate-300 text-xs mt-1">
-                Your educational details have been recorded under ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
+                Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
             </div>
 
@@ -258,9 +272,13 @@ export default function PublicScanPage() {
                 <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Mobile Number</span>
                 <span className="text-slate-100 font-mono font-bold text-sm">{submittedData.mobile}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-800">
                 <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Education</span>
                 <span className="text-slate-100 font-medium text-sm text-right max-w-[200px] truncate">{submittedData.educationQualification}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">NICT Preference</span>
+                <span className="text-blue-400 font-bold text-sm text-right max-w-[220px] truncate">{submittedData.nictPreference}</span>
               </div>
             </div>
 
@@ -280,6 +298,7 @@ export default function PublicScanPage() {
                   setMobile('');
                   setEducation('');
                   setCustomEducation('');
+                  setNictPreference('NICT Jayanagar Center');
                 }}
                 className="w-full flex items-center justify-center gap-2 bg-slate-700/60 hover:bg-slate-700 text-slate-300 font-medium py-3 px-4 rounded-xl border border-slate-600/50 transition-colors cursor-pointer text-sm"
               >
@@ -300,14 +319,14 @@ export default function PublicScanPage() {
             {/* Name Input */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Full Name <span className="text-red-400">*</span>
+                Enter your Name <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
                   required
-                  placeholder="Enter your full name"
+                  placeholder="Enter your Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full bg-slate-900/90 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
@@ -374,6 +393,28 @@ export default function PublicScanPage() {
               </div>
             )}
 
+            {/* Your NICT Preference Dropdown */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
+                Your NICT Preference <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <select
+                  required
+                  value={nictPreference}
+                  onChange={(e) => setNictPreference(e.target.value)}
+                  className="w-full bg-slate-900/90 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors appearance-none cursor-pointer"
+                >
+                  {nictPreferenceOptions.map((center, i) => (
+                    <option key={i} value={center} className="bg-slate-900 text-white">
+                      {center}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"
@@ -386,7 +427,7 @@ export default function PublicScanPage() {
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-5 h-5" /> Submit & Get PDF
+                  <Sparkles className="w-5 h-5" /> Click to download the Details
                 </>
               )}
             </button>
