@@ -373,4 +373,80 @@ router.get('/dropdown-options', async (req, res) => {
   }
 });
 
+// ── Static QR Code & Public Inquiry Endpoints ────────────────────────────────
+import fs from 'fs';
+import path from 'path';
+
+const qrFilePath = path.join(__dirname, '../../static_qr.json');
+const inquiriesFilePath = path.join(__dirname, '../../qr_inquiries.json');
+
+const getStaticQRTokenHelper = () => {
+  try {
+    if (fs.existsSync(qrFilePath)) {
+      return JSON.parse(fs.readFileSync(qrFilePath, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('Error reading static_qr.json:', err);
+  }
+  const defaultData = {
+    token: 'NICT_STATIC_QR_1001',
+    updatedAt: new Date().toISOString()
+  };
+  try {
+    fs.writeFileSync(qrFilePath, JSON.stringify(defaultData, null, 2));
+  } catch (err) {}
+  return defaultData;
+};
+
+// Public Static QR endpoint
+router.get('/public/static-qr', (req, res) => {
+  try {
+    const qrData = getStaticQRTokenHelper();
+    res.json(qrData);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch QR token' });
+  }
+});
+
+// Public QR Inquiry submission
+router.post('/public/qr-inquiry', (req, res) => {
+  try {
+    const { name, mobile, educationQualification } = req.body;
+    if (!name || !mobile || !educationQualification) {
+      return res.status(400).json({ error: 'Name, mobile number, and education qualification are required' });
+    }
+
+    const qrData = getStaticQRTokenHelper();
+    let inquiries: any[] = [];
+    if (fs.existsSync(inquiriesFilePath)) {
+      try {
+        inquiries = JSON.parse(fs.readFileSync(inquiriesFilePath, 'utf-8'));
+      } catch (e) {
+        inquiries = [];
+      }
+    }
+
+    const newInquiry = {
+      id: 'INQ-' + Date.now().toString().slice(-6) + Math.floor(Math.random() * 100),
+      name: String(name).trim(),
+      mobile: String(mobile).trim(),
+      educationQualification: String(educationQualification).trim(),
+      submittedAt: new Date().toISOString(),
+      token: qrData.token
+    };
+
+    inquiries.unshift(newInquiry);
+    fs.writeFileSync(inquiriesFilePath, JSON.stringify(inquiries, null, 2));
+
+    res.status(201).json({
+      message: 'Inquiry submitted successfully',
+      inquiry: newInquiry
+    });
+  } catch (error: any) {
+    console.error('Error saving QR inquiry:', error);
+    res.status(500).json({ error: 'Failed to save inquiry details' });
+  }
+});
+
 export default router;
+

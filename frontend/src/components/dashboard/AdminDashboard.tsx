@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX, UserCheck, FileSpreadsheet, Upload, Plus, Settings, Search, Printer, Banknote } from 'lucide-react';
+import { Download, Edit, Clock, Key, FileDown, LogOut, CheckCircle, Bell, X, ArrowLeft, Trash2, MapPin, Calendar, Eye, User, Mail, ChevronDown, ChevronUp, GraduationCap, BookOpen, CalendarX, Ban, UserX, UserCheck, FileSpreadsheet, Upload, Plus, Settings, Search, Printer, Banknote, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { createClient } from '@supabase/supabase-js';
+import QRCodeGeneratorModal from './QRCodeGeneratorModal';
+
 
 const supabaseUrl = 'https://uzbobbzbbkqzgtjemayu.supabase.co';
 const supabaseAnonKey = 'sb_publishable_r0jMviNey66U0tDDtyScEQ_CRmZg-Rr';
@@ -2149,6 +2151,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
   const [showDownload, setShowDownload] = useState(false);
   const [individualReport, setIndividualReport] = useState<Trainee | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
   const [directLeaveUser, setDirectLeaveUser] = useState<Trainee | null>(null);
   const [viewDetailUser, setViewDetailUser] = useState<Trainee | null>(null);
   const [showDailyReport, setShowDailyReport] = useState(false);
@@ -2316,6 +2319,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
             <button onClick={() => setShowSettings(true)}
               className="flex items-center gap-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-medium transition-colors">
               Add GPS Location
+            </button>
+          )}
+          {role === 'ADMIN' && (
+            <button onClick={() => setShowQRCode(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors shadow-sm cursor-pointer">
+              <QrCode size={18} /> Static QR Code
             </button>
           )}
           {hasPermission('DOWNLOAD_REPORT') && (
@@ -2555,6 +2564,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role = 'ADMIN' }) => {
       {showDownload && <MonthlyDownloadModal onClose={() => setShowDownload(false)} />}
       {individualReport && <IndividualDownloadModal trainee={individualReport} onClose={() => setIndividualReport(null)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} role={role} canManage={hasPermission('GPS_LOCATION')} />}
+      {showQRCode && <QRCodeGeneratorModal onClose={() => setShowQRCode(false)} />}
       {directLeaveUser && <DirectLeaveModal trainee={directLeaveUser} onClose={() => setDirectLeaveUser(null)} onSave={fetchTrainees} />}
       {viewDetailUser && <ViewSlotsDetailModal trainee={viewDetailUser} onClose={() => setViewDetailUser(null)} />}
       {showDailyReport && <DailyReportModal onClose={() => setShowDailyReport(false)} />}

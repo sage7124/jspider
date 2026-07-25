@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
+import PublicScanPage from './pages/PublicScanPage';
 
 function App() {
   useEffect(() => {
@@ -14,6 +15,8 @@ function App() {
       <Routes>
         <Route path="/login" element={<AuthPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/scan-qr" element={<PublicScanPage />} />
+        <Route path="/qr-submit" element={<PublicScanPage />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
@@ -21,3 +24,4 @@ function App() {
 }
 
 export default App;
+
