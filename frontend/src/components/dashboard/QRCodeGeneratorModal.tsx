@@ -415,7 +415,7 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                         <th className="p-3">Ref ID</th>
                         <th className="p-3">Candidate Name</th>
                         <th className="p-3">Mobile Number</th>
-                        <th className="p-3">Education Qualification</th>
+                        <th className="p-3">Qualification</th>
                         <th className="p-3">NICT Preference</th>
                         <th className="p-3">Date & Time</th>
                       </tr>

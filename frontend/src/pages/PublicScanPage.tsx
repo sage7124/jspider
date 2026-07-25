@@ -29,14 +29,12 @@ export default function PublicScanPage() {
   ];
 
   const [educationOptions, setEducationOptions] = useState<string[]>([
-    'B.Tech / B.E. (Computer Science / IT)',
-    'B.Tech / B.E. (Other Branches)',
+    'B.E / B.Tech',
     'BCA / MCA',
-    'B.Sc / M.Sc (Computer Science / IT)',
-    'Degree / Bachelor Graduate',
-    'Post Graduate (PG)',
-    'Diploma in Engineering / CS',
-    '12th Pass / Higher Secondary',
+    'B.Sc / M.Sc',
+    'B.Com / M.Com',
+    'Under Graduate',
+    'Post Graduate',
     'Other'
   ]);
 
@@ -46,7 +44,17 @@ export default function PublicScanPage() {
         if (res.data && res.data.educations && res.data.educations.length > 0) {
           const fetched = [...res.data.educations];
           if (!fetched.includes('Other')) fetched.push('Other');
-          setEducationOptions(fetched);
+          // Merge custom backend educations if any
+          const merged = Array.from(new Set([
+            'B.E / B.Tech',
+            'BCA / MCA',
+            'B.Sc / M.Sc',
+            'B.Com / M.Com',
+            'Under Graduate',
+            'Post Graduate',
+            ...fetched
+          ]));
+          setEducationOptions(merged);
         }
       })
       .catch(() => {});
@@ -168,7 +176,7 @@ export default function PublicScanPage() {
       { label: 'Inquiry Reference ID:', value: submittedData.id || 'N/A' },
       { label: 'Candidate Full Name:', value: submittedData.name },
       { label: 'Mobile / Phone Number:', value: submittedData.mobile },
-      { label: 'Educational Qualification:', value: submittedData.educationQualification },
+      { label: 'Qualification:', value: submittedData.educationQualification },
       { label: 'NICT Preference Center:', value: submittedData.nictPreference || 'NICT Jayanagar Center' },
       { label: 'Date & Time of Submission:', value: new Date(submittedData.submittedAt || Date.now()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) },
       { label: 'Verification Status:', value: 'Verified via QR Scan' }
@@ -247,7 +255,7 @@ export default function PublicScanPage() {
             NICT Computer Education
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Scan & Submit your details for course inquiry & verification
+            Scan & Submit your details for NICT Courses
           </p>
         </div>
 
@@ -273,7 +281,7 @@ export default function PublicScanPage() {
                 <span className="text-slate-100 font-mono font-bold text-sm">{submittedData.mobile}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Education</span>
+                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Qualification</span>
                 <span className="text-slate-100 font-medium text-sm text-right max-w-[200px] truncate">{submittedData.educationQualification}</span>
               </div>
               <div className="flex justify-between items-center">
@@ -356,7 +364,7 @@ export default function PublicScanPage() {
             {/* Educational Qualification Dropdown */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-                Educational Qualification <span className="text-red-400">*</span>
+                Qualification <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <GraduationCap className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -366,7 +374,7 @@ export default function PublicScanPage() {
                   onChange={(e) => setEducation(e.target.value)}
                   className="w-full bg-slate-900/90 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors appearance-none cursor-pointer"
                 >
-                  <option value="" disabled>-- Select Educational Qualification --</option>
+                  <option value="" disabled>-- Select Qualification --</option>
                   {educationOptions.map((opt, i) => (
                     <option key={i} value={opt} className="bg-slate-900 text-white">
                       {opt}
