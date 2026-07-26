@@ -60,72 +60,8 @@ export default function PublicScanPage() {
       .catch(() => {});
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    const finalName = name.trim();
-    const finalMobile = mobile.trim();
-    const finalEducation = education === 'Other' ? customEducation.trim() : education;
-    const finalPreference = nictPreference.trim();
-
-    if (!finalName) {
-      setError('Please enter your name');
-      return;
-    }
-    if (!finalMobile || !/^\d{10}$/.test(finalMobile)) {
-      setError('Please enter a valid 10-digit mobile number');
-      return;
-    }
-    if (!finalEducation) {
-      setError('Please select or specify your educational qualification');
-      return;
-    }
-    if (!finalPreference) {
-      setError('Please select your NICT preference center');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await axios.post(`${API_BASE}/auth/public/qr-inquiry`, {
-        name: finalName,
-        mobile: finalMobile,
-        educationQualification: finalEducation,
-        nictPreference: finalPreference,
-        token: tokenParam
-      });
-
-      if (res.data && res.data.inquiry) {
-        setSubmittedData(res.data.inquiry);
-      } else {
-        setSubmittedData({
-          id: 'INQ-' + Date.now().toString().slice(-6),
-          name: finalName,
-          mobile: finalMobile,
-          educationQualification: finalEducation,
-          nictPreference: finalPreference,
-          submittedAt: new Date().toISOString()
-        });
-      }
-    } catch (err: any) {
-      console.warn('Backend save failed, using local inquiry object:', err);
-      setSubmittedData({
-        id: 'INQ-' + Date.now().toString().slice(-6),
-        name: finalName,
-        mobile: finalMobile,
-        educationQualification: finalEducation,
-        nictPreference: finalPreference,
-        submittedAt: new Date().toISOString()
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generatePDF = () => {
-    if (!submittedData) return;
+  const generatePDFForData = (data: any) => {
+    if (!data) return;
 
     const doc = new jsPDF({
       orientation: 'portrait',
@@ -149,7 +85,7 @@ export default function PublicScanPage() {
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text('Candidate Inquiry & Educational Qualification Record', 105, 25, { align: 'center' });
+    doc.text('Candidate Inquiry & Qualification Record', 105, 25, { align: 'center' });
 
     doc.setFontSize(9);
     doc.text('Official Digital Copy • Verified QR Candidate Submission', 105, 32, { align: 'center' });
@@ -173,14 +109,120 @@ export default function PublicScanPage() {
     doc.roundedRect(15, 62, 180, 95, 3, 3, 'D');
 
     const fields = [
-      { label: 'Inquiry Reference ID:', value: submittedData.id || 'N/A' },
-      { label: 'Candidate Full Name:', value: submittedData.name },
-      { label: 'Mobile / Phone Number:', value: submittedData.mobile },
-      { label: 'Qualification:', value: submittedData.educationQualification },
-      { label: 'NICT Preference Center:', value: submittedData.nictPreference || 'NICT Jayanagar Center' },
-      { label: 'Date & Time of Submission:', value: new Date(submittedData.submittedAt || Date.now()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) },
+      { label: 'Inquiry Reference ID:', value: data.id || 'N/A' },
+      { label: 'Candidate Full Name:', value: data.name },
+      { label: 'Mobile / Phone Number:', value: data.mobile },
+      { label: 'Qualification:', value: data.educationQualification },
+      { label: 'NICT Preference Center:', value: data.nictPreference || 'NICT Jayanagar Center' },
+      { label: 'Date & Time of Submission:', value: new Date(data.submittedAt || Date.now()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) },
       { label: 'Verification Status:', value: 'Verified via QR Scan' }
     ];
+
+    let currentY = 74;
+    fields.forEach((f, idx) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(darkText[0], darkText[1], darkText[2]);
+      doc.text(f.label, 22, currentY);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(15, 23, 42);
+      doc.text(f.value, 82, currentY);
+
+      if (idx < fields.length - 1) {
+        doc.setDrawColor(226, 232, 240);
+        doc.line(22, currentY + 3, 188, currentY + 3);
+      }
+      currentY += 12;
+    });
+
+    // Verification Box
+    doc.setFillColor(239, 246, 255);
+    doc.setDrawColor(191, 219, 254);
+    doc.roundedRect(15, 168, 180, 25, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 58, 138);
+    doc.text('OFFICIAL VERIFICATION STATEMENT', 22, 176);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text('This document verifies that the candidate has scanned the official NICT QR Code and registered their details into the system.', 22, 184);
+
+    // Footer Stamp & Sign Area
+    doc.setDrawColor(203, 213, 225);
+    doc.line(135, 235, 185, 235);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Authorized Signature', 160, 240, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('NICT Administration', 160, 245, { align: 'center' });
+
+    // Page Footer Line
+    doc.setDrawColor(203, 213, 225);
+    doc.line(15, 275, 195, 275);
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('NICT Computer Education • Generated automatically on candidate QR scan', 105, 281, { align: 'center' });
+
+    // Save File
+    const fileName = `NICT_Candidate_${data.name.replace(/\s+/g, '_')}_Inquiry.pdf`;
+    doc.save(fileName);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    const finalName = name.trim();
+    const finalMobile = mobile.trim();
+    const finalEducation = education === 'Other' ? customEducation.trim() : education;
+    const finalPreference = nictPreference.trim();
+
+    if (!finalName) {
+      setError('Please enter your name');
+      return;
+    }
+    if (!finalMobile || !/^\d{10}$/.test(finalMobile)) {
+      setError('Please enter a valid 10-digit mobile number');
+      return;
+    }
+    if (!finalEducation) {
+      setError('Please select or specify your qualification');
+      return;
+    }
+    if (!finalPreference) {
+      setError('Please select your NICT preference center');
+      return;
+    }
+
+    // 1. Instantly create inquiry object & download PDF in <50ms (Zero network delay!)
+    const localInquiry = {
+      id: 'INQ-' + Date.now().toString().slice(-6),
+      name: finalName,
+      mobile: finalMobile,
+      educationQualification: finalEducation,
+      nictPreference: finalPreference,
+      submittedAt: new Date().toISOString()
+    };
+
+    setSubmittedData(localInquiry);
+    generatePDFForData(localInquiry);
+
+    // 2. Fire backend save asynchronously in background (non-blocking)
+    axios.post(`${API_BASE}/auth/public/qr-inquiry`, {
+      name: finalName,
+      mobile: finalMobile,
+      educationQualification: finalEducation,
+      nictPreference: finalPreference,
+      token: tokenParam
+    }).catch(err => console.warn('Background save note:', err));
+  };
+
 
     let currentY = 74;
     fields.forEach((f, idx) => {
@@ -293,7 +335,7 @@ export default function PublicScanPage() {
             {/* Action Buttons */}
             <div className="space-y-3 pt-2">
               <button
-                onClick={generatePDF}
+                onClick={() => generatePDFForData(submittedData)}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-200 cursor-pointer"
               >
                 <Download className="w-5 h-5" /> Download Details as PDF

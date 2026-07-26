@@ -305,8 +305,8 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                   <QRCodeSVG
                     id="static-qr-svg"
                     value={targetUrl}
-                    size={220}
-                    level="H"
+                    size={260}
+                    level="M"
                     includeMargin={true}
                   />
                 </div>
