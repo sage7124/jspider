@@ -3,7 +3,14 @@ import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, RefreshCw, Download, Printer, Copy, Check, QrCode, Users, Calendar, Phone, GraduationCap, Sparkles, Edit, Trash2, Search, ArrowUpDown, MapPin, User, Save } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const getApiBase = () => {
+  let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  envUrl = envUrl.trim();
+  if (envUrl.endsWith('/')) envUrl = envUrl.slice(0, -1);
+  if (!envUrl.endsWith('/api')) envUrl = `${envUrl}/api`;
+  return envUrl;
+};
+const API_BASE = getApiBase();
 
 interface QRCodeGeneratorModalProps {
   onClose: () => void;
