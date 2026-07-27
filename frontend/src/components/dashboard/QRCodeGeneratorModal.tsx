@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, RefreshCw, Download, Printer, Copy, Check, QrCode, Users, Calendar, Phone, GraduationCap, Sparkles, Edit, Trash2, Search, ArrowUpDown, MapPin, User, Save } from 'lucide-react';
+import { X, RefreshCw, Download, Printer, Copy, Check, QrCode, Users, Calendar, Phone, GraduationCap, Sparkles, Edit, Trash2, Search, ArrowUpDown, MapPin, User, Save, FileSpreadsheet, Filter } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -36,16 +36,6 @@ function EditInquiryModal({ inquiry, onClose, onSave }: EditInquiryModalProps) {
     'NICT Koramangala Center',
     'NICT Malleshwaram Center',
     'other NICT Centers at Bangalore'
-  ];
-
-  const educationOptions = [
-    'B.E / B.Tech',
-    'BCA / MCA',
-    'B.Sc / M.Sc',
-    'B.Com / M.Com',
-    'Under Graduate',
-    'Post Graduate',
-    'Other'
   ];
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -187,6 +177,7 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
   const [inquiriesLoading, setInquiriesLoading] = useState<boolean>(false);
   const [inquiriesSearch, setInquiriesSearch] = useState<string>('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
 
   const [editingInquiry, setEditingInquiry] = useState<any | null>(null);
 
@@ -419,8 +410,153 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
     }
   };
 
+  // Unique months extracted from inquiries list
+  const availableMonths = Array.from(
+    new Set(
+      inquiries.map((inq) =>
+        new Date(inq.submittedAt).toLocaleString('en-US', { month: 'long', year: 'numeric' })
+      )
+    )
+  );
+
+  // Export to Excel handler
+  const handleExportExcel = async (filterMonth: string = selectedMonth) => {
+    try {
+      const ExcelJS = await import('exceljs');
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Scanned QR Inquiries');
+
+      // Filter records by month if specific month selected
+      let exportData = [...inquiries];
+      if (filterMonth !== 'ALL') {
+        exportData = exportData.filter((inq) => {
+          const m = new Date(inq.submittedAt).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+          return m === filterMonth;
+        });
+      }
+
+      if (exportData.length === 0) {
+        alert(`No inquiry records found for ${filterMonth === 'ALL' ? 'the entire period' : filterMonth}.`);
+        return;
+      }
+
+      // Title Banner
+      worksheet.mergeCells('A1:H1');
+      const titleCell = worksheet.getCell('A1');
+      titleCell.value = 'NICT COMPUTER EDUCATION - SCANNED QR INQUIRIES REPORT';
+      titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1976D2' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      worksheet.getRow(1).height = 40;
+
+      // Report Info Subtitle
+      worksheet.mergeCells('A2:H2');
+      const infoCell = worksheet.getCell('A2');
+      const reportMonthLabel = filterMonth === 'ALL' ? 'All Months (Complete Export)' : filterMonth;
+      infoCell.value = `Report Period: ${reportMonthLabel}  |  Total Records: ${exportData.length}  |  Generated On: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`;
+      infoCell.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF334155' } };
+      infoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+      infoCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      worksheet.getRow(2).height = 25;
+
+      worksheet.addRow([]); // Empty Row 3
+
+      // Headers Row 4
+      const headers = [
+        'Ref ID',
+        'Person Name',
+        'Mobile Number',
+        'Qualification / Course',
+        'NICT Preference Center',
+        'Submission Month',
+        'Date & Time of Submission',
+        'Verification Status'
+      ];
+
+      const headerRow = worksheet.addRow(headers);
+      headerRow.height = 28;
+
+      headerRow.eachCell((cell) => {
+        cell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } }; // Dark Slate
+        cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          bottom: { style: 'medium', color: { argb: 'FF1E293B' } },
+          left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+          right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        };
+      });
+
+      // Data Rows
+      exportData.forEach((inq, idx) => {
+        const subDate = new Date(inq.submittedAt);
+        const monthYearStr = subDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        const fullDateTimeStr = subDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+        const row = worksheet.addRow([
+          inq.id || 'N/A',
+          inq.name || 'N/A',
+          inq.mobile || 'N/A',
+          inq.educationQualification || 'N/A',
+          inq.nictPreference || 'NICT Jayanagar Center',
+          monthYearStr,
+          fullDateTimeStr,
+          'Verified via QR Scan'
+        ]);
+
+        row.height = 22;
+
+        const isEven = idx % 2 === 0;
+        const bgHex = isEven ? 'FFFFFFFF' : 'FFF8FAFC';
+
+        row.eachCell((cell) => {
+          cell.font = { name: 'Arial', size: 10, color: { argb: 'FF1E293B' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgHex } };
+          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+          };
+        });
+      });
+
+      // Auto Column Widths
+      worksheet.columns.forEach((column) => {
+        let maxLen = 15;
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const val = cell.value ? cell.value.toString() : '';
+          if (val.length > maxLen) maxLen = val.length;
+        });
+        column.width = Math.min(Math.max(maxLen + 4, 15), 45);
+      });
+
+      // Save Excel File
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const cleanMonthName = filterMonth === 'ALL' ? 'All_Months' : filterMonth.replace(/\s+/g, '_');
+      link.href = url;
+      link.download = `NICT_Scanned_Inquiries_Report_${cleanMonthName}.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Excel Export Error:', err);
+      alert('Failed to generate Excel report');
+    }
+  };
+
   const filteredInquiries = inquiries
     .filter((inq) => {
+      // Month Filter
+      if (selectedMonth !== 'ALL') {
+        const m = new Date(inq.submittedAt).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        if (m !== selectedMonth) return false;
+      }
+      // Search Filter
       const q = inquiriesSearch.toLowerCase().trim();
       if (!q) return true;
       return (
@@ -586,20 +722,38 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
           ) : (
             /* Inquiries Table Tab */
             <div className="space-y-4">
-              {/* Toolbar: Search, Sort, Refresh */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-                <div className="relative w-full sm:w-80">
+              {/* Toolbar Row 1: Search, Month Filter, Sort */}
+              <div className="flex flex-col md:flex-row justify-between items-center gap-3">
+                {/* Search Bar */}
+                <div className="relative w-full md:w-72">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Search by candidate name, mobile, course, preference..."
+                    placeholder="Search name, mobile, course..."
                     value={inquiriesSearch}
                     onChange={(e) => setInquiriesSearch(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 pl-9 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
-                <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                {/* Filters & Actions */}
+                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+                  {/* Filter Month Dropdown */}
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5">
+                    <Filter size={14} className="text-blue-400" />
+                    <span className="text-[11px] text-slate-400 font-semibold uppercase">Month:</span>
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                      className="bg-transparent text-white text-xs focus:outline-none cursor-pointer"
+                    >
+                      <option value="ALL" className="bg-slate-900">All Months (Complete)</option>
+                      {availableMonths.map((m, idx) => (
+                        <option key={idx} value={m} className="bg-slate-900">{m}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Sort By Dropdown */}
                   <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5">
                     <ArrowUpDown size={14} className="text-slate-400" />
@@ -615,11 +769,43 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                     </select>
                   </div>
 
+                  {/* Refresh List Button */}
                   <button
                     onClick={fetchInquiries}
-                    className="flex items-center gap-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-semibold py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
                   >
-                    <RefreshCw size={13} className={inquiriesLoading ? 'animate-spin' : ''} /> Refresh List
+                    <RefreshCw size={13} className={inquiriesLoading ? 'animate-spin' : ''} /> Refresh
+                  </button>
+                </div>
+              </div>
+
+              {/* Excel Download Banner Row */}
+              <div className="bg-emerald-950/40 border border-emerald-800/40 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-emerald-300">
+                  <FileSpreadsheet size={18} className="text-emerald-400 shrink-0" />
+                  <div>
+                    <span className="font-bold">Excel Report Download Options</span>
+                    <p className="text-slate-400 text-[11px]">
+                      Download styled Excel reports showing candidate details, submission months, and verification logs.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleExportExcel(selectedMonth)}
+                    className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3.5 rounded-lg shadow-md transition-all cursor-pointer text-xs"
+                  >
+                    <Download size={14} />
+                    Export {selectedMonth === 'ALL' ? 'Selected Month' : selectedMonth} (.xlsx)
+                  </button>
+
+                  <button
+                    onClick={() => handleExportExcel('ALL')}
+                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3.5 rounded-lg shadow-md transition-all cursor-pointer text-xs"
+                  >
+                    <FileSpreadsheet size={14} />
+                    Download All Records (.xlsx)
                   </button>
                 </div>
               </div>
@@ -630,7 +816,9 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                   <Users size={36} className="mx-auto text-slate-600 mb-2" />
                   <p className="text-slate-400 text-sm font-medium">No inquiries found</p>
                   <p className="text-slate-500 text-xs mt-1">
-                    {inquiriesSearch ? 'No candidate matches your search terms.' : 'Candidates scanning the static QR code will appear here in real-time.'}
+                    {inquiriesSearch || selectedMonth !== 'ALL'
+                      ? 'No candidate matches your search or month filter.'
+                      : 'Candidates scanning the static QR code will appear here in real-time.'}
                   </p>
                 </div>
               ) : (
@@ -643,41 +831,46 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                         <th className="p-3">Mobile Number</th>
                         <th className="p-3">Qualification / Course</th>
                         <th className="p-3">NICT Preference</th>
+                        <th className="p-3">Submission Month</th>
                         <th className="p-3">Date & Time</th>
                         <th className="p-3 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-slate-200">
-                      {filteredInquiries.map((inq) => (
-                        <tr key={inq.id} className="hover:bg-slate-800/50 transition-colors">
-                          <td className="p-3 font-mono font-bold text-blue-400">{inq.id}</td>
-                          <td className="p-3 font-semibold text-white">{inq.name}</td>
-                          <td className="p-3 font-mono">{inq.mobile}</td>
-                          <td className="p-3 text-slate-300 font-medium">{inq.educationQualification}</td>
-                          <td className="p-3 text-blue-300 font-medium">{inq.nictPreference || 'NICT Jayanagar Center'}</td>
-                          <td className="p-3 text-slate-400">
-                            {new Date(inq.submittedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
-                          </td>
-                          <td className="p-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                onClick={() => setEditingInquiry(inq)}
-                                className="p-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors cursor-pointer"
-                                title="Edit Inquiry"
-                              >
-                                <Edit size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteInquiry(inq.id, inq.name)}
-                                className="p-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors cursor-pointer"
-                                title="Delete Inquiry"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {filteredInquiries.map((inq) => {
+                        const monthLabel = new Date(inq.submittedAt).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                        return (
+                          <tr key={inq.id} className="hover:bg-slate-800/50 transition-colors">
+                            <td className="p-3 font-mono font-bold text-blue-400">{inq.id}</td>
+                            <td className="p-3 font-semibold text-white">{inq.name}</td>
+                            <td className="p-3 font-mono">{inq.mobile}</td>
+                            <td className="p-3 text-slate-300 font-medium">{inq.educationQualification}</td>
+                            <td className="p-3 text-blue-300 font-medium">{inq.nictPreference || 'NICT Jayanagar Center'}</td>
+                            <td className="p-3 text-emerald-400 font-medium">{monthLabel}</td>
+                            <td className="p-3 text-slate-400">
+                              {new Date(inq.submittedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  onClick={() => setEditingInquiry(inq)}
+                                  className="p-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors cursor-pointer"
+                                  title="Edit Inquiry"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteInquiry(inq.id, inq.name)}
+                                  className="p-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete Inquiry"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
