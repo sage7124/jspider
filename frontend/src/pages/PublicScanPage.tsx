@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import jsPDF from 'jspdf';
-import { User, Phone, GraduationCap, CheckCircle2, Download, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -16,7 +16,6 @@ export default function PublicScanPage() {
   const [customEducation, setCustomEducation] = useState('');
   const [nictPreference, setNictPreference] = useState('NICT Jayanagar Center');
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submittedData, setSubmittedData] = useState<any>(null);
 
@@ -28,7 +27,7 @@ export default function PublicScanPage() {
     'other NICT Centers at Bangalore'
   ];
 
-  const [educationOptions, setEducationOptions] = useState<string[]>([
+  const educationOptions = [
     'B.E / B.Tech',
     'BCA / MCA',
     'B.Sc / M.Sc',
@@ -36,142 +35,124 @@ export default function PublicScanPage() {
     'Under Graduate',
     'Post Graduate',
     'Other'
-  ]);
-
-  useEffect(() => {
-    axios.get(`${API_BASE}/auth/dropdown-options`)
-      .then(res => {
-        if (res.data && res.data.educations && res.data.educations.length > 0) {
-          const fetched = [...res.data.educations];
-          if (!fetched.includes('Other')) fetched.push('Other');
-          // Merge custom backend educations if any
-          const merged = Array.from(new Set([
-            'B.E / B.Tech',
-            'BCA / MCA',
-            'B.Sc / M.Sc',
-            'B.Com / M.Com',
-            'Under Graduate',
-            'Post Graduate',
-            ...fetched
-          ]));
-          setEducationOptions(merged);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  ];
 
   const generatePDFForData = (data: any) => {
     if (!data) return;
 
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
 
-    const primaryColor = [25, 118, 210]; // #1976D2 NICT Blue
-    const darkText = [30, 41, 59];
-    const lightBg = [241, 245, 249];
+      const primaryColor = [25, 118, 210]; // #1976D2 NICT Blue
+      const darkText = [30, 41, 59];
+      const lightBg = [241, 245, 249];
 
-    // Header Background Banner
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.rect(0, 0, 210, 38, 'F');
+      // Header Background Banner
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, 210, 38, 'F');
 
-    // Header Title
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.text('NICT COMPUTER EDUCATION', 105, 16, { align: 'center' });
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Candidate Inquiry & Qualification Record', 105, 25, { align: 'center' });
-
-    doc.setFontSize(9);
-    doc.text('Official Digital Copy • Verified QR Candidate Submission', 105, 32, { align: 'center' });
-
-    // Document Body Title
-    doc.setTextColor(darkText[0], darkText[1], darkText[2]);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('CANDIDATE DETAILS SUMMARY', 15, 52);
-
-    // Decorative underline
-    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.setLineWidth(0.8);
-    doc.line(15, 55, 195, 55);
-
-    // Details Box Container
-    doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-    doc.roundedRect(15, 62, 180, 95, 3, 3, 'F');
-    doc.setDrawColor(203, 213, 225);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(15, 62, 180, 95, 3, 3, 'D');
-
-    const fields = [
-      { label: 'Inquiry Reference ID:', value: data.id || 'N/A' },
-      { label: 'Candidate Full Name:', value: data.name },
-      { label: 'Mobile / Phone Number:', value: data.mobile },
-      { label: 'Qualification:', value: data.educationQualification },
-      { label: 'NICT Preference Center:', value: data.nictPreference || 'NICT Jayanagar Center' },
-      { label: 'Date & Time of Submission:', value: new Date(data.submittedAt || Date.now()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) },
-      { label: 'Verification Status:', value: 'Verified via QR Scan' }
-    ];
-
-    let currentY = 74;
-    fields.forEach((f, idx) => {
+      // Header Title
+      doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10.5);
+      doc.setFontSize(22);
+      doc.text('NICT COMPUTER EDUCATION', 105, 16, { align: 'center' });
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Candidate Inquiry & Qualification Record', 105, 25, { align: 'center' });
+
+      doc.setFontSize(9);
+      doc.text('Official Digital Copy • Verified QR Candidate Submission', 105, 32, { align: 'center' });
+
+      // Document Body Title
       doc.setTextColor(darkText[0], darkText[1], darkText[2]);
-      doc.text(f.label, 22, currentY);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('CANDIDATE DETAILS SUMMARY', 15, 52);
+
+      // Decorative underline
+      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setLineWidth(0.8);
+      doc.line(15, 55, 195, 55);
+
+      // Details Box Container
+      doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
+      doc.roundedRect(15, 62, 180, 95, 3, 3, 'F');
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(15, 62, 180, 95, 3, 3, 'D');
+
+      const fields = [
+        { label: 'Inquiry Reference ID:', value: data.id || 'N/A' },
+        { label: 'Candidate Full Name:', value: data.name },
+        { label: 'Mobile / Phone Number:', value: data.mobile },
+        { label: 'Qualification:', value: data.educationQualification },
+        { label: 'NICT Preference Center:', value: data.nictPreference || 'NICT Jayanagar Center' },
+        { label: 'Date & Time of Submission:', value: new Date(data.submittedAt || Date.now()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) },
+        { label: 'Verification Status:', value: 'Verified via QR Scan' }
+      ];
+
+      let currentY = 74;
+      fields.forEach((f, idx) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10.5);
+        doc.setTextColor(darkText[0], darkText[1], darkText[2]);
+        doc.text(f.label, 22, currentY);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(15, 23, 42);
+        doc.text(f.value, 82, currentY);
+
+        if (idx < fields.length - 1) {
+          doc.setDrawColor(226, 232, 240);
+          doc.line(22, currentY + 3, 188, currentY + 3);
+        }
+        currentY += 12;
+      });
+
+      // Verification Box
+      doc.setFillColor(239, 246, 255);
+      doc.setDrawColor(191, 219, 254);
+      doc.roundedRect(15, 168, 180, 25, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(30, 58, 138);
+      doc.text('OFFICIAL VERIFICATION STATEMENT', 22, 176);
 
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(15, 23, 42);
-      doc.text(f.value, 82, currentY);
+      doc.setFontSize(9);
+      doc.setTextColor(51, 65, 85);
+      doc.text('This document verifies that the candidate has scanned the official NICT QR Code and registered their details into the system.', 22, 184);
 
-      if (idx < fields.length - 1) {
-        doc.setDrawColor(226, 232, 240);
-        doc.line(22, currentY + 3, 188, currentY + 3);
-      }
-      currentY += 12;
-    });
+      // Footer Stamp & Sign Area
+      doc.setDrawColor(203, 213, 225);
+      doc.line(135, 235, 185, 235);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text('Authorized Signature', 160, 240, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text('NICT Administration', 160, 245, { align: 'center' });
 
-    // Verification Box
-    doc.setFillColor(239, 246, 255);
-    doc.setDrawColor(191, 219, 254);
-    doc.roundedRect(15, 168, 180, 25, 2, 2, 'FD');
+      // Page Footer Line
+      doc.setDrawColor(203, 213, 225);
+      doc.line(15, 275, 195, 275);
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text('NICT Computer Education • Generated automatically on candidate QR scan', 105, 281, { align: 'center' });
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(30, 58, 138);
-    doc.text('OFFICIAL VERIFICATION STATEMENT', 22, 176);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(51, 65, 85);
-    doc.text('This document verifies that the candidate has scanned the official NICT QR Code and registered their details into the system.', 22, 184);
-
-    // Footer Stamp & Sign Area
-    doc.setDrawColor(203, 213, 225);
-    doc.line(135, 235, 185, 235);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(71, 85, 105);
-    doc.text('Authorized Signature', 160, 240, { align: 'center' });
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text('NICT Administration', 160, 245, { align: 'center' });
-
-    // Page Footer Line
-    doc.setDrawColor(203, 213, 225);
-    doc.line(15, 275, 195, 275);
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text('NICT Computer Education • Generated automatically on candidate QR scan', 105, 281, { align: 'center' });
-
-    // Save File
-    const fileName = `NICT_Candidate_${data.name.replace(/\s+/g, '_')}_Inquiry.pdf`;
-    doc.save(fileName);
+      // Save File directly
+      const fileName = `NICT_Candidate_${data.name.replace(/\s+/g, '_')}_Inquiry.pdf`;
+      doc.save(fileName);
+    } catch (e) {
+      console.error('PDF generation error:', e);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -200,7 +181,6 @@ export default function PublicScanPage() {
       return;
     }
 
-    // 1. Instantly create inquiry object & download PDF in <50ms (Zero network delay!)
     const localInquiry = {
       id: 'INQ-' + Date.now().toString().slice(-6),
       name: finalName,
@@ -210,10 +190,13 @@ export default function PublicScanPage() {
       submittedAt: new Date().toISOString()
     };
 
+    // 1. Immediately show Submission Successful screen
     setSubmittedData(localInquiry);
+
+    // 2. Automatically trigger PDF download
     generatePDFForData(localInquiry);
 
-    // 2. Fire backend save asynchronously in background (non-blocking)
+    // 3. Save to database asynchronously in background
     axios.post(`${API_BASE}/auth/public/qr-inquiry`, {
       name: finalName,
       mobile: finalMobile,
@@ -221,64 +204,6 @@ export default function PublicScanPage() {
       nictPreference: finalPreference,
       token: tokenParam
     }).catch(err => console.warn('Background save note:', err));
-  };
-
-
-    let currentY = 74;
-    fields.forEach((f, idx) => {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10.5);
-      doc.setTextColor(darkText[0], darkText[1], darkText[2]);
-      doc.text(f.label, 22, currentY);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(15, 23, 42);
-      doc.text(f.value, 82, currentY);
-
-      // Light separator line
-      if (idx < fields.length - 1) {
-        doc.setDrawColor(226, 232, 240);
-        doc.line(22, currentY + 3, 188, currentY + 3);
-      }
-      currentY += 12;
-    });
-
-    // Verification Box
-    doc.setFillColor(239, 246, 255);
-    doc.setDrawColor(191, 219, 254);
-    doc.roundedRect(15, 168, 180, 25, 2, 2, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(30, 58, 138);
-    doc.text('OFFICIAL VERIFICATION STATEMENT', 22, 176);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(51, 65, 85);
-    doc.text('This document verifies that the candidate has scanned the official NICT QR Code and registered their educational details into the system.', 22, 184);
-
-    // Footer Stamp & Sign Area
-    doc.setDrawColor(203, 213, 225);
-    doc.line(135, 235, 185, 235);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(71, 85, 105);
-    doc.text('Authorized Signature', 160, 240, { align: 'center' });
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text('NICT Administration', 160, 245, { align: 'center' });
-
-    // Page Footer Line
-    doc.setDrawColor(203, 213, 225);
-    doc.line(15, 275, 195, 275);
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text('NICT Computer Education • Generated automatically on candidate QR scan', 105, 281, { align: 'center' });
-
-    // Save File
-    const fileName = `NICT_Candidate_${submittedData.name.replace(/\s+/g, '_')}_Inquiry.pdf`;
-    doc.save(fileName);
   };
 
   return (
@@ -307,8 +232,11 @@ export default function PublicScanPage() {
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center">
               <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto mb-3 animate-bounce" />
               <h2 className="text-xl font-bold text-emerald-300">Submission Successful!</h2>
-              <p className="text-slate-300 text-xs mt-1">
+              <p className="text-slate-300 text-xs mt-1.5">
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
+              </p>
+              <p className="text-emerald-400/80 text-xs mt-1">
+                Your PDF details document has been downloaded automatically.
               </p>
             </div>
 
@@ -332,15 +260,8 @@ export default function PublicScanPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-3 pt-2">
-              <button
-                onClick={() => generatePDFForData(submittedData)}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-200 cursor-pointer"
-              >
-                <Download className="w-5 h-5" /> Download Details as PDF
-              </button>
-
+            {/* Submit Another Entry Button */}
+            <div className="pt-2">
               <button
                 onClick={() => {
                   setSubmittedData(null);
@@ -350,7 +271,7 @@ export default function PublicScanPage() {
                   setCustomEducation('');
                   setNictPreference('NICT Jayanagar Center');
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-slate-700/60 hover:bg-slate-700 text-slate-300 font-medium py-3 px-4 rounded-xl border border-slate-600/50 transition-colors cursor-pointer text-sm"
+                className="w-full flex items-center justify-center gap-2 bg-slate-700/80 hover:bg-slate-700 text-slate-200 font-bold py-3.5 px-4 rounded-xl border border-slate-600/50 transition-colors cursor-pointer text-sm shadow-md"
               >
                 <RefreshCw className="w-4 h-4" /> Submit Another Entry
               </button>
@@ -468,18 +389,9 @@ export default function PublicScanPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="w-full mt-2 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+              className="w-full mt-2 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-200 cursor-pointer"
             >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-5 h-5 animate-spin" /> Submitting...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" /> Click to download the Details
-                </>
-              )}
+              <Sparkles className="w-5 h-5" /> Click to download the Details
             </button>
           </form>
         )}
