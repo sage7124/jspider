@@ -464,7 +464,7 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
       // Headers Row 4
       const headers = [
         'Ref ID',
-        'Person Name',
+        'Name',
         'Mobile Number',
         'Qualification / Course',
         'NICT Preference Center',
@@ -765,7 +765,7 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                     >
                       <option value="newest" className="bg-slate-900">Date (Newest First)</option>
                       <option value="oldest" className="bg-slate-900">Date (Oldest First)</option>
-                      <option value="name" className="bg-slate-900">Person Name (A-Z)</option>
+                      <option value="name" className="bg-slate-900">Name (A-Z)</option>
                     </select>
                   </div>
 
@@ -827,7 +827,7 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                     <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
                       <tr>
                         <th className="p-3">Ref ID</th>
-                        <th className="p-3">Person Name</th>
+                        <th className="p-3">Name</th>
                         <th className="p-3">Mobile Number</th>
                         <th className="p-3">Qualification / Course</th>
                         <th className="p-3">NICT Preference</th>
