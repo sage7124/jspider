@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import jsPDF from 'jspdf';
 import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -37,10 +36,11 @@ export default function PublicScanPage() {
     'Other'
   ];
 
-  const generatePDFForData = (data: any) => {
+  const generatePDFForData = async (data: any) => {
     if (!data) return;
 
     try {
+      const { default: jsPDF } = await import('jspdf');
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
