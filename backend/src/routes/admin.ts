@@ -4909,49 +4909,150 @@ router.post('/static-qr/regenerate', authenticateToken, async (req: AuthRequest,
   }
 });
 
-// Admin GET QR inquiries list
+// Admin GET QR inquiries list (Merges DB + File inquiries)
 router.get('/qr-inquiries', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const dbInquiries = await prisma.qRInquiry.findMany({
-      orderBy: { createdAt: 'desc' }
-    });
+    let combinedInquiries: any[] = [];
 
-    if (dbInquiries && dbInquiries.length > 0) {
-      const formatted = dbInquiries.map(inq => ({
-        id: inq.inquiryId,
-        name: inq.name,
-        mobile: inq.mobile,
-        educationQualification: inq.educationQualification,
-        nictPreference: inq.nictPreference || 'NICT Jayanagar Center',
-        submittedAt: inq.createdAt.toISOString(),
-        token: inq.token
-      }));
-      return res.json(formatted);
+    // 1. Fetch from Database
+    try {
+      const dbInquiries = await prisma.qRInquiry.findMany({
+        orderBy: { createdAt: 'desc' }
+      });
+      if (dbInquiries) {
+        dbInquiries.forEach(inq => {
+          combinedInquiries.push({
+            id: inq.inquiryId,
+            name: inq.name,
+            mobile: inq.mobile,
+            educationQualification: inq.educationQualification,
+            nictPreference: inq.nictPreference || 'NICT Jayanagar Center',
+            submittedAt: inq.createdAt.toISOString(),
+            token: inq.token
+          });
+        });
+      }
+    } catch (dbErr) {
+      console.warn('DB inquiry fetch note:', dbErr);
     }
 
-    // File fallback if DB empty or during transition
-    let inquiries: any[] = [];
+    // 2. Fetch from JSON File fallback
     if (fs.existsSync(adminInquiriesFilePath)) {
       try {
-        inquiries = JSON.parse(fs.readFileSync(adminInquiriesFilePath, 'utf-8'));
-      } catch (e) {
-        inquiries = [];
-      }
+        const fileInquiries: any[] = JSON.parse(fs.readFileSync(adminInquiriesFilePath, 'utf-8'));
+        if (Array.isArray(fileInquiries)) {
+          fileInquiries.forEach(finq => {
+            const exists = combinedInquiries.some(ci => ci.id === finq.id || (ci.name === finq.name && ci.mobile === finq.mobile));
+            if (!exists) {
+              combinedInquiries.push(finq);
+            }
+          });
+        }
+      } catch (fErr) {}
     }
-    res.json(inquiries);
+
+    // 3. Sort by submittedAt descending
+    combinedInquiries.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+
+    res.json(combinedInquiries);
   } catch (error) {
     console.error('Error fetching inquiries:', error);
-    let inquiries: any[] = [];
+    res.status(500).json({ error: 'Failed to fetch inquiries' });
+  }
+});
+
+// Admin PUT update QR inquiry
+router.put('/qr-inquiries/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const targetId = String(req.params.id);
+    const { name, mobile, educationQualification, nictPreference } = req.body;
+
+    if (!name || !mobile || !educationQualification) {
+      return res.status(400).json({ error: 'Name, mobile, and qualification are required' });
+    }
+
+    let updated = false;
+
+    // 1. Update in Database
+    try {
+      await prisma.qRInquiry.updateMany({
+        where: { inquiryId: targetId },
+        data: {
+          name: String(name).trim(),
+          mobile: String(mobile).trim(),
+          educationQualification: String(educationQualification).trim(),
+          nictPreference: String(nictPreference).trim()
+        }
+      });
+      updated = true;
+    } catch (dbErr) {
+      console.warn('DB update inquiry note:', dbErr);
+    }
+
+    // 2. Update in JSON File fallback
     if (fs.existsSync(adminInquiriesFilePath)) {
       try {
-        inquiries = JSON.parse(fs.readFileSync(adminInquiriesFilePath, 'utf-8'));
-      } catch (e) {}
+        let fileInquiries: any[] = JSON.parse(fs.readFileSync(adminInquiriesFilePath, 'utf-8'));
+        if (Array.isArray(fileInquiries)) {
+          fileInquiries = fileInquiries.map(inq => {
+            if (inq.id === targetId) {
+              updated = true;
+              return {
+                ...inq,
+                name: String(name).trim(),
+                mobile: String(mobile).trim(),
+                educationQualification: String(educationQualification).trim(),
+                nictPreference: String(nictPreference).trim()
+              };
+            }
+            return inq;
+          });
+          fs.writeFileSync(adminInquiriesFilePath, JSON.stringify(fileInquiries, null, 2));
+        }
+      } catch (fErr) {}
     }
-    res.json(inquiries);
+
+    res.json({ message: 'Inquiry updated successfully', id: targetId });
+  } catch (error) {
+    console.error('Error updating inquiry:', error);
+    res.status(500).json({ error: 'Failed to update inquiry' });
+  }
+});
+
+// Admin DELETE QR inquiry
+router.delete('/qr-inquiries/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const targetId = String(req.params.id);
+
+    // 1. Delete from Database
+    try {
+      await prisma.qRInquiry.deleteMany({
+        where: { inquiryId: targetId }
+      });
+    } catch (dbErr) {
+      console.warn('DB delete inquiry note:', dbErr);
+    }
+
+    // 2. Delete from JSON File fallback
+    if (fs.existsSync(adminInquiriesFilePath)) {
+      try {
+        let fileInquiries: any[] = JSON.parse(fs.readFileSync(adminInquiriesFilePath, 'utf-8'));
+        if (Array.isArray(fileInquiries)) {
+          fileInquiries = fileInquiries.filter(inq => inq.id !== targetId);
+          fs.writeFileSync(adminInquiriesFilePath, JSON.stringify(fileInquiries, null, 2));
+        }
+      } catch (fErr) {}
+    }
+
+    res.json({ message: 'Inquiry deleted successfully', id: targetId });
+  } catch (error) {
+    console.error('Error deleting inquiry:', error);
+    res.status(500).json({ error: 'Failed to delete inquiry' });
   }
 });
 
 export default router;
+
 
 
 

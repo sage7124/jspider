@@ -36,6 +36,11 @@ export default function PublicScanPage() {
     'Other'
   ];
 
+  React.useEffect(() => {
+    // Pre-warm jsPDF module in background for instant <10ms download
+    import('jspdf').catch(() => {});
+  }, []);
+
   const generatePDFForData = async (data: any) => {
     if (!data) return;
 

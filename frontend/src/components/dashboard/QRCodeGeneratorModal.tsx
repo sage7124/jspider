@@ -1,12 +1,171 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, RefreshCw, Download, Printer, Copy, Check, QrCode, Users, Calendar, Phone, GraduationCap, Sparkles, Building2 } from 'lucide-react';
+import { X, RefreshCw, Download, Printer, Copy, Check, QrCode, Users, Calendar, Phone, GraduationCap, Sparkles, Edit, Trash2, Search, ArrowUpDown, MapPin, User, Save } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface QRCodeGeneratorModalProps {
   onClose: () => void;
+}
+
+interface EditInquiryModalProps {
+  inquiry: any;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+function EditInquiryModal({ inquiry, onClose, onSave }: EditInquiryModalProps) {
+  const [name, setName] = useState(inquiry.name || '');
+  const [mobile, setMobile] = useState(inquiry.mobile || '');
+  const [qualification, setQualification] = useState(inquiry.educationQualification || '');
+  const [nictPreference, setNictPreference] = useState(inquiry.nictPreference || 'NICT Jayanagar Center');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const nictPreferenceOptions = [
+    'NICT Jayanagar Center',
+    'NICT Hanumanthanagar Center',
+    'NICT Koramangala Center',
+    'NICT Malleshwaram Center',
+    'other NICT Centers at Bangalore'
+  ];
+
+  const educationOptions = [
+    'B.E / B.Tech',
+    'BCA / MCA',
+    'B.Sc / M.Sc',
+    'B.Com / M.Com',
+    'Under Graduate',
+    'Post Graduate',
+    'Other'
+  ];
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !mobile.trim() || !qualification.trim()) {
+      setError('Please fill in all required fields');
+      return;
+    }
+    setLoading(true);
+    try {
+      const authToken = localStorage.getItem('token');
+      await axios.put(`${API_BASE}/admin/qr-inquiries/${inquiry.id}`, {
+        name: name.trim(),
+        mobile: mobile.trim(),
+        educationQualification: qualification.trim(),
+        nictPreference: nictPreference.trim()
+      }, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      onSave();
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update inquiry');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl p-6 text-slate-100 animate-fadeIn">
+        <div className="flex justify-between items-center pb-4 border-b border-slate-800 mb-4">
+          <div className="flex items-center gap-2">
+            <Edit size={18} className="text-blue-400" />
+            <h3 className="text-base font-bold text-white">Edit Inquiry ({inquiry.id})</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-1 rounded cursor-pointer">
+            <X size={18} />
+          </button>
+        </div>
+
+        {error && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs mb-4">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleUpdate} className="space-y-4 text-xs">
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">Candidate Name</label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-9 pr-3 text-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">Mobile Number</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="tel"
+                required
+                maxLength={10}
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-9 pr-3 text-white focus:outline-none focus:border-blue-500 font-mono"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">Qualification / Course</label>
+            <div className="relative">
+              <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                required
+                value={qualification}
+                onChange={(e) => setQualification(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-9 pr-3 text-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1">NICT Preference Center</label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <select
+                value={nictPreference}
+                onChange={(e) => setNictPreference(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg py-2.5 pl-9 pr-3 text-white focus:outline-none focus:border-blue-500 appearance-none"
+              >
+                {nictPreferenceOptions.map((opt, i) => (
+                  <option key={i} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Save size={14} /> {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalProps) {
@@ -20,8 +179,9 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [inquiriesLoading, setInquiriesLoading] = useState<boolean>(false);
   const [inquiriesSearch, setInquiriesSearch] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
 
-  const printRef = useRef<HTMLDivElement>(null);
+  const [editingInquiry, setEditingInquiry] = useState<any | null>(null);
 
   // Target URL encoded in the QR code
   const targetUrl = `${window.location.origin}/scan-qr?code=${encodeURIComponent(token)}`;
@@ -212,8 +372,7 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
             <ol>
               <li>Open your smartphone camera or QR scanner app.</li>
               <li>Point camera at the QR code above.</li>
-              <li>Tap the link pop-up to enter your <strong>Name, Phone Number & Educational Qualification</strong>.</li>
-              <li>Download your submission details as a PDF!</li>
+              <li>Tap the link pop-up to enter your details.</li>
             </ol>
           </div>
 
@@ -238,20 +397,55 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
     printWindow.document.close();
   };
 
-  const filteredInquiries = inquiries.filter((inq) => {
-    const q = inquiriesSearch.toLowerCase();
-    return (
-      inq.name?.toLowerCase().includes(q) ||
-      inq.mobile?.toLowerCase().includes(q) ||
-      inq.educationQualification?.toLowerCase().includes(q) ||
-      inq.nictPreference?.toLowerCase().includes(q) ||
-      inq.id?.toLowerCase().includes(q)
-    );
-  });
+  const handleDeleteInquiry = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete inquiry for "${name}" (${id})?`)) {
+      return;
+    }
+    try {
+      const authToken = localStorage.getItem('token');
+      await axios.delete(`${API_BASE}/admin/qr-inquiries/${id}`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      fetchInquiries();
+    } catch (err) {
+      alert('Failed to delete inquiry');
+    }
+  };
+
+  const filteredInquiries = inquiries
+    .filter((inq) => {
+      const q = inquiriesSearch.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        inq.name?.toLowerCase().includes(q) ||
+        inq.mobile?.toLowerCase().includes(q) ||
+        inq.educationQualification?.toLowerCase().includes(q) ||
+        inq.nictPreference?.toLowerCase().includes(q) ||
+        inq.id?.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === 'oldest') {
+        return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+      }
+      if (sortBy === 'name') {
+        return (a.name || '').localeCompare(b.name || '');
+      }
+      // default newest
+      return new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime();
+    });
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-fadeIn text-slate-100">
+      {editingInquiry && (
+        <EditInquiryModal
+          inquiry={editingInquiry}
+          onClose={() => setEditingInquiry(null)}
+          onSave={fetchInquiries}
+        />
+      )}
+
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-5xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-fadeIn text-slate-100">
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90">
           <div className="flex items-center gap-3">
@@ -385,27 +579,52 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
           ) : (
             /* Inquiries Table Tab */
             <div className="space-y-4">
+              {/* Toolbar: Search, Sort, Refresh */}
               <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-                <input
-                  type="text"
-                  placeholder="Search by candidate name, phone, education, or preference..."
-                  value={inquiriesSearch}
-                  onChange={(e) => setInquiriesSearch(e.target.value)}
-                  className="w-full sm:w-80 bg-slate-900 border border-slate-700 rounded-xl py-2 px-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                />
-                <button
-                  onClick={fetchInquiries}
-                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium py-2 px-3 rounded-lg border border-slate-700 transition-colors cursor-pointer"
-                >
-                  <RefreshCw size={13} className={inquiriesLoading ? 'animate-spin' : ''} /> Refresh List
-                </button>
+                <div className="relative w-full sm:w-80">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by candidate name, mobile, course, preference..."
+                    value={inquiriesSearch}
+                    onChange={(e) => setInquiriesSearch(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 pl-9 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                  {/* Sort By Dropdown */}
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5">
+                    <ArrowUpDown size={14} className="text-slate-400" />
+                    <span className="text-[11px] text-slate-400 font-semibold uppercase">Sort:</span>
+                    <select
+                      value={sortBy}
+                      onChange={(e: any) => setSortBy(e.target.value)}
+                      className="bg-transparent text-white text-xs focus:outline-none cursor-pointer"
+                    >
+                      <option value="newest" className="bg-slate-900">Date (Newest First)</option>
+                      <option value="oldest" className="bg-slate-900">Date (Oldest First)</option>
+                      <option value="name" className="bg-slate-900">Person Name (A-Z)</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={fetchInquiries}
+                    className="flex items-center gap-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-semibold py-2 px-3 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <RefreshCw size={13} className={inquiriesLoading ? 'animate-spin' : ''} /> Refresh List
+                  </button>
+                </div>
               </div>
 
+              {/* Table List */}
               {filteredInquiries.length === 0 ? (
                 <div className="text-center py-12 border border-dashed border-slate-800 rounded-xl bg-slate-950/40">
                   <Users size={36} className="mx-auto text-slate-600 mb-2" />
-                  <p className="text-slate-400 text-sm font-medium">No inquiries scanned yet</p>
-                  <p className="text-slate-500 text-xs mt-1">Candidates scanning the static QR code will appear here</p>
+                  <p className="text-slate-400 text-sm font-medium">No inquiries found</p>
+                  <p className="text-slate-500 text-xs mt-1">
+                    {inquiriesSearch ? 'No candidate matches your search terms.' : 'Candidates scanning the static QR code will appear here in real-time.'}
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto border border-slate-800 rounded-xl">
@@ -413,23 +632,42 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
                     <thead className="bg-slate-950 text-slate-400 uppercase font-semibold border-b border-slate-800">
                       <tr>
                         <th className="p-3">Ref ID</th>
-                        <th className="p-3">Candidate Name</th>
+                        <th className="p-3">Person Name</th>
                         <th className="p-3">Mobile Number</th>
-                        <th className="p-3">Qualification</th>
+                        <th className="p-3">Qualification / Course</th>
                         <th className="p-3">NICT Preference</th>
                         <th className="p-3">Date & Time</th>
+                        <th className="p-3 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800 text-slate-200">
-                      {filteredInquiries.map((inq, idx) => (
-                        <tr key={inq.id || idx} className="hover:bg-slate-800/50 transition-colors">
+                      {filteredInquiries.map((inq) => (
+                        <tr key={inq.id} className="hover:bg-slate-800/50 transition-colors">
                           <td className="p-3 font-mono font-bold text-blue-400">{inq.id}</td>
                           <td className="p-3 font-semibold text-white">{inq.name}</td>
                           <td className="p-3 font-mono">{inq.mobile}</td>
-                          <td className="p-3 text-slate-300">{inq.educationQualification}</td>
+                          <td className="p-3 text-slate-300 font-medium">{inq.educationQualification}</td>
                           <td className="p-3 text-blue-300 font-medium">{inq.nictPreference || 'NICT Jayanagar Center'}</td>
                           <td className="p-3 text-slate-400">
                             {new Date(inq.submittedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => setEditingInquiry(inq)}
+                                className="p-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Inquiry"
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteInquiry(inq.id, inq.name)}
+                                className="p-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors cursor-pointer"
+                                title="Delete Inquiry"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -443,5 +681,4 @@ export default function QRCodeGeneratorModal({ onClose }: QRCodeGeneratorModalPr
       </div>
     </div>
   );
-
 }
