@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, FileText, Download, Eye } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -24,6 +24,7 @@ export default function PublicScanPage() {
 
   const [error, setError] = useState('');
   const [submittedData, setSubmittedData] = useState<any>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>('');
 
   const nictPreferenceOptions = [
     'NICT Jayanagar Center',
@@ -44,7 +45,7 @@ export default function PublicScanPage() {
   ];
 
   React.useEffect(() => {
-    // Pre-warm jsPDF module in background for instant <10ms download
+    // Pre-warm jsPDF module in background for instant download
     import('jspdf').catch(() => {});
   }, []);
 
@@ -159,6 +160,10 @@ export default function PublicScanPage() {
       doc.setTextColor(148, 163, 184);
       doc.text('NICT Computer Education • Generated automatically on candidate QR scan', 105, 281, { align: 'center' });
 
+      // Generate Data URI for Live Preview
+      const dataUri = doc.output('datauristring');
+      setPdfPreviewUrl(dataUri);
+
       // Save File directly
       const fileName = `NICT_Candidate_${data.name.replace(/\s+/g, '_')}_Inquiry.pdf`;
       doc.save(fileName);
@@ -202,10 +207,10 @@ export default function PublicScanPage() {
       submittedAt: new Date().toISOString()
     };
 
-    // 1. Immediately show Submission Successful screen
+    // 1. Set submitted data state
     setSubmittedData(localInquiry);
 
-    // 2. Automatically trigger PDF download
+    // 2. Automatically generate PDF preview and trigger download
     generatePDFForData(localInquiry);
 
     // 3. Save to database asynchronously in background
@@ -224,9 +229,9 @@ export default function PublicScanPage() {
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="w-full max-w-lg bg-slate-800/80 backdrop-blur-xl border border-slate-700/70 rounded-2xl shadow-2xl p-6 sm:p-8 z-10">
+      <div className="w-full max-w-[640px] bg-slate-800/80 backdrop-blur-xl border border-slate-700/70 rounded-2xl shadow-2xl p-6 sm:p-8 z-10">
         {/* Header Branding */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center p-3 bg-blue-600/20 text-blue-400 rounded-2xl mb-3 border border-blue-500/30">
             <Building2 className="w-8 h-8" />
           </div>
@@ -239,23 +244,53 @@ export default function PublicScanPage() {
         </div>
 
         {submittedData ? (
-          /* Confirmation Screen */
+          /* Confirmation Screen with PDF Preview Above Successful Message */
           <div className="space-y-6 animate-fadeIn">
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center">
-              <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto mb-3 animate-bounce" />
+            {/* 1. PDF Preview Container (Positioned Above Success Message) */}
+            {pdfPreviewUrl ? (
+              <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-3 sm:p-4 shadow-xl">
+                <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-400" />
+                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      PDF Document Live Preview
+                    </span>
+                  </div>
+                  <span className="text-[11px] bg-blue-500/20 text-blue-300 px-2.5 py-0.5 rounded-full border border-blue-500/30 font-medium">
+                    Verified Digital Copy
+                  </span>
+                </div>
+                <div className="relative w-full h-[360px] sm:h-[440px] rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+                  <iframe
+                    src={`${pdfPreviewUrl}#toolbar=0&navpanes=0`}
+                    className="w-full h-full border-none"
+                    title="NICT PDF Details Preview"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center bg-slate-900 border border-slate-800 rounded-2xl">
+                <FileText className="w-10 h-10 text-blue-400 mx-auto mb-2 animate-pulse" />
+                <p className="text-xs text-slate-300 font-medium">Generating PDF Preview...</p>
+              </div>
+            )}
+
+            {/* 2. Successful Message (Positioned Below PDF Preview) */}
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center shadow-lg">
+              <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto mb-2 animate-bounce" />
               <h2 className="text-xl font-bold text-emerald-300">Submission Successful!</h2>
               <p className="text-slate-300 text-xs mt-1.5">
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/80 text-xs mt-1">
-                Your PDF details document has been downloaded automatically.
+                Your official PDF document previewed above has been downloaded automatically.
               </p>
             </div>
 
-            {/* Candidate Card Summary */}
+            {/* 3. Candidate Details Summary Card */}
             <div className="bg-slate-900/80 rounded-xl p-5 border border-slate-700/60 space-y-3">
               <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Candidate Name</span>
+                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Name</span>
                 <span className="text-slate-100 font-bold text-sm">{submittedData.name}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-slate-800">
@@ -272,11 +307,12 @@ export default function PublicScanPage() {
               </div>
             </div>
 
-            {/* Submit Another Entry Button */}
+            {/* 4. Action Buttons */}
             <div className="pt-2">
               <button
                 onClick={() => {
                   setSubmittedData(null);
+                  setPdfPreviewUrl('');
                   setName('');
                   setMobile('');
                   setEducation('');
