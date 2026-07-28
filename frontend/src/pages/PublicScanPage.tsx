@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, ExternalLink } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, Sparkles, Building2, ShieldCheck, MapPin, ExternalLink } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -94,7 +94,7 @@ export default function PublicScanPage() {
         submittedAt: new Date().toISOString()
       };
 
-      // 2. Show Submission Successful screen (NO automatic opening/redirecting)
+      // 2. Show Submission Successful screen
       setSubmittedData(savedInquiry);
     } catch (err: any) {
       console.warn('Network or server note during QR inquiry submit:', err);
@@ -142,7 +142,7 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                ✓ Click the link below to view the course details.
+                ✓ Click the button below to view NICT Course details.
               </p>
             </div>
 
@@ -167,26 +167,12 @@ export default function PublicScanPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="space-y-3 pt-2">
+            <div className="pt-2">
               <button
                 onClick={handleOpenCourseDetails}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all cursor-pointer text-sm"
               >
-                <ExternalLink className="w-5 h-5" /> Click the Link to view the course details
-              </button>
-
-              <button
-                onClick={() => {
-                  setSubmittedData(null);
-                  setName('');
-                  setMobile('');
-                  setEducation('');
-                  setCustomEducation('');
-                  setNictPreference('NICT Jayanagar Center');
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-slate-700/80 hover:bg-slate-700 text-slate-200 font-bold py-3 px-4 rounded-xl border border-slate-600/50 transition-colors cursor-pointer text-xs"
-              >
-                <RefreshCw className="w-4 h-4" /> Submit Another Entry
+                <ExternalLink className="w-5 h-5" /> Click to view NICT Course
               </button>
             </div>
           </div>
@@ -311,7 +297,7 @@ export default function PublicScanPage() {
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-5 h-5" /> Click to view course details
+                  <Sparkles className="w-5 h-5" /> Click to view NICT Course
                 </>
               )}
             </button>
