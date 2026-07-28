@@ -41,11 +41,16 @@ export default function PublicScanPage() {
     'Other'
   ];
 
-  const isIOS = () => {
-    return (
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  const isIPhoneSafariOrCamera = () => {
+    const ua = navigator.userAgent;
+    const isIOSDevice = (
+      /iPad|iPhone|iPod/.test(ua) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
     );
+    const isChromeOnIOS = /CriOS/i.test(ua);
+    
+    // Show Chrome prompt ONLY if on iPhone/iPad AND NOT already using Chrome
+    return isIOSDevice && !isChromeOnIOS;
   };
 
   const openInChromeOnIOS = () => {
@@ -127,7 +132,7 @@ export default function PublicScanPage() {
       // 2. Show Submission Successful screen
       setSubmittedData(savedInquiry);
 
-      // 3. Trigger PDF Download + 5s auto-open in new tab for BOTH iOS & Android
+      // 3. Trigger PDF Download + 5s auto-open in new tab
       handlePDFDownloadAndOpen(savedInquiry);
     } catch (err: any) {
       console.warn('Network or server note during QR inquiry submit:', err);
@@ -214,7 +219,7 @@ export default function PublicScanPage() {
                 PDF document will automatically open in a new tab in 5 seconds.
               </div>
 
-              {isIOS() && (
+              {isIPhoneSafariOrCamera() && (
                 <button
                   onClick={openInChromeOnIOS}
                   className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-blue-300 font-bold py-3 px-4 rounded-xl border border-blue-500/30 transition-colors cursor-pointer text-xs"
@@ -241,8 +246,8 @@ export default function PublicScanPage() {
         ) : (
           /* Input Form */
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* iPhone Chrome Redirect Prompt */}
-            {isIOS() && (
+            {/* iPhone Safari/Camera User Auto-Detection Banner */}
+            {isIPhoneSafariOrCamera() && (
               <div className="p-3 bg-blue-950/60 border border-blue-500/40 rounded-xl flex items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-2 text-blue-200">
                   <Globe className="w-4 h-4 text-blue-400 shrink-0" />
