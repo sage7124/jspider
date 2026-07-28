@@ -32,10 +32,7 @@ function EditInquiryModal({ inquiry, onClose, onSave }: EditInquiryModalProps) {
 
   const nictPreferenceOptions = [
     'NICT Jayanagar Center',
-    'NICT Hanumanthanagar Center',
-    'NICT Koramangala Center',
-    'NICT Malleshwaram Center',
-    'other NICT Centers at Bangalore'
+    'NICT Hanumanthanagar Center'
   ];
 
   const handleUpdate = async (e: React.FormEvent) => {
