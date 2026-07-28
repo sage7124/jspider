@@ -48,8 +48,6 @@ export default function PublicScanPage() {
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
     );
     const isChromeOnIOS = /CriOS/i.test(ua);
-    
-    // Show Chrome prompt ONLY if on iPhone/iPad AND NOT already using Chrome
     return isIOSDevice && !isChromeOnIOS;
   };
 
@@ -63,12 +61,16 @@ export default function PublicScanPage() {
     return `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
   };
 
+  const getViewUrl = (data: any) => {
+    return `${API_BASE}/auth/public/qr-inquiry/view-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
+  };
+
   const handlePDFDownloadAndOpen = (data: any) => {
     if (!data) return;
     const downloadUrl = getDownloadUrl(data);
     const filename = `NICT_Candidate_${(data.name || 'Details').replace(/\s+/g, '_')}.pdf`;
 
-    // 1. Initial file download trigger
+    // 1. Trigger file download
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = filename;
@@ -76,9 +78,9 @@ export default function PublicScanPage() {
     a.click();
     document.body.removeChild(a);
 
-    // 2. Automatically open PDF in a new tab after 5 seconds for BOTH iOS & Android
+    // 2. Automatically navigate to PDF View after 5 seconds (Guaranteed unblocked on Android & iOS)
     setTimeout(() => {
-      window.open(downloadUrl, '_blank');
+      window.location.href = getViewUrl(data);
     }, 5000);
   };
 
@@ -132,7 +134,7 @@ export default function PublicScanPage() {
       // 2. Show Submission Successful screen
       setSubmittedData(savedInquiry);
 
-      // 3. Trigger PDF Download + 5s auto-open in new tab
+      // 3. Trigger PDF Download + 5s auto-open view
       handlePDFDownloadAndOpen(savedInquiry);
     } catch (err: any) {
       console.warn('Network or server note during QR inquiry submit:', err);
@@ -181,7 +183,7 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                ✓ Details recorded! Opening PDF document in a new tab in 5 seconds...
+                ✓ PDF downloaded! Opening PDF viewer in 5 seconds...
               </p>
             </div>
 
@@ -208,15 +210,15 @@ export default function PublicScanPage() {
             {/* Action Buttons */}
             <div className="space-y-3 pt-2">
               <button
-                onClick={() => window.open(getDownloadUrl(submittedData), '_blank')}
+                onClick={() => { window.location.href = getViewUrl(submittedData); }}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all cursor-pointer text-sm"
               >
-                <ExternalLink className="w-5 h-5" /> Open PDF in New Tab Now
+                <ExternalLink className="w-5 h-5" /> Open PDF View Now
               </button>
 
               <div className="p-3 bg-slate-800/60 border border-slate-700/60 rounded-xl text-[11px] text-slate-300 text-center flex items-center justify-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-blue-400" />
-                PDF document will automatically open in a new tab in 5 seconds.
+                PDF document will automatically open in 5 seconds.
               </div>
 
               {isIPhoneSafariOrCamera() && (
