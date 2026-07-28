@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download, ExternalLink } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -40,146 +40,12 @@ export default function PublicScanPage() {
     'Other'
   ];
 
-  React.useEffect(() => {
-    // Pre-warm jsPDF module in background for instant download
-    import('jspdf').catch(() => {});
-  }, []);
-
-  const isIOS = () => {
-    return (
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-    );
-  };
-
-  const generatePDFForData = async (data: any) => {
+  const triggerDirectPDFDownload = (data: any) => {
     if (!data) return;
-
-    try {
-      const { default: jsPDF } = await import('jspdf');
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const primaryColor = [25, 118, 210]; // #1976D2 NICT Blue
-      const darkText = [30, 41, 59];
-      const lightBg = [241, 245, 249];
-
-      // Header Background Banner
-      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.rect(0, 0, 210, 38, 'F');
-
-      // Header Title
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(22);
-      doc.text('NICT COMPUTER EDUCATION', 105, 16, { align: 'center' });
-
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Candidate Inquiry & Qualification Record', 105, 25, { align: 'center' });
-
-      doc.setFontSize(9);
-      doc.text('Official Digital Copy • Verified QR Candidate Submission', 105, 32, { align: 'center' });
-
-      // Document Body Title
-      doc.setTextColor(darkText[0], darkText[1], darkText[2]);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
-      doc.text('CANDIDATE DETAILS SUMMARY', 15, 52);
-
-      // Decorative underline
-      doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.setLineWidth(0.8);
-      doc.line(15, 55, 195, 55);
-
-      // Details Box Container
-      doc.setFillColor(lightBg[0], lightBg[1], lightBg[2]);
-      doc.roundedRect(15, 62, 180, 95, 3, 3, 'F');
-      doc.setDrawColor(203, 213, 225);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(15, 62, 180, 95, 3, 3, 'D');
-
-      const fields = [
-        { label: 'Inquiry Reference ID:', value: data.id || 'N/A' },
-        { label: 'Candidate Full Name:', value: data.name },
-        { label: 'Mobile / Phone Number:', value: data.mobile },
-        { label: 'Qualification:', value: data.educationQualification },
-        { label: 'NICT Preference Center:', value: data.nictPreference || 'NICT Jayanagar Center' },
-        { label: 'Date & Time of Submission:', value: new Date(data.submittedAt || Date.now()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) },
-        { label: 'Verification Status:', value: 'Verified via QR Scan' }
-      ];
-
-      let currentY = 74;
-      fields.forEach((f, idx) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10.5);
-        doc.setTextColor(darkText[0], darkText[1], darkText[2]);
-        doc.text(f.label, 22, currentY);
-
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(15, 23, 42);
-        doc.text(f.value, 82, currentY);
-
-        if (idx < fields.length - 1) {
-          doc.setDrawColor(226, 232, 240);
-          doc.line(22, currentY + 3, 188, currentY + 3);
-        }
-        currentY += 12;
-      });
-
-      // Verification Box
-      doc.setFillColor(239, 246, 255);
-      doc.setDrawColor(191, 219, 254);
-      doc.roundedRect(15, 168, 180, 25, 2, 2, 'FD');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.setTextColor(30, 58, 138);
-      doc.text('OFFICIAL VERIFICATION STATEMENT', 22, 176);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(51, 65, 85);
-      doc.text('This document verifies that the candidate has scanned the official NICT QR Code and registered their details into the system.', 22, 184);
-
-      // Footer Stamp & Sign Area
-      doc.setDrawColor(203, 213, 225);
-      doc.line(135, 235, 185, 235);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.setTextColor(71, 85, 105);
-      doc.text('Authorized Signature', 160, 240, { align: 'center' });
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text('NICT Administration', 160, 245, { align: 'center' });
-
-      // Page Footer Line
-      doc.setDrawColor(203, 213, 225);
-      doc.line(15, 275, 195, 275);
-      doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184);
-      doc.text('NICT Computer Education • Generated automatically on candidate QR scan', 105, 281, { align: 'center' });
-
-      const fileName = `NICT_Candidate_${data.name.replace(/\s+/g, '_')}_Inquiry.pdf`;
-
-      if (isIOS()) {
-        // On iOS Safari / Camera Webview: Open Blob in a new tab for native Apple PDF Viewer & Save/Share menu
-        const blob = doc.output('blob');
-        const blobUrl = URL.createObjectURL(blob);
-        const newWin = window.open(blobUrl, '_blank');
-        if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
-          window.location.href = blobUrl;
-        }
-      } else {
-        // On Android / Desktop: Directly trigger download
-        doc.save(fileName);
-      }
-    } catch (e) {
-      console.error('PDF generation error:', e);
-    }
+    const downloadUrl = `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
+    
+    // Trigger native browser attachment download without screen navigation
+    window.location.href = downloadUrl;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -220,8 +86,8 @@ export default function PublicScanPage() {
     // 1. Immediately show Submission Successful screen
     setSubmittedData(localInquiry);
 
-    // 2. Automatically trigger PDF file generation & download/view
-    generatePDFForData(localInquiry);
+    // 2. Automatically trigger direct PDF File download via native attachment header
+    triggerDirectPDFDownload(localInquiry);
 
     // 3. Save to database asynchronously in background
     axios.post(`${API_BASE}/auth/public/qr-inquiry`, {
@@ -254,7 +120,7 @@ export default function PublicScanPage() {
         </div>
 
         {submittedData ? (
-          /* Clean Confirmation Screen with iOS / Android Direct Download Button */
+          /* Clean Confirmation Screen (PDF File Download Prompted Natively) */
           <div className="space-y-6 animate-fadeIn">
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center shadow-lg">
               <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto mb-2 animate-bounce" />
@@ -263,7 +129,7 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                ✓ Your official PDF Details File has been generated.
+                ✓ Your official PDF File download has been prompted.
               </p>
             </div>
 
@@ -290,10 +156,10 @@ export default function PublicScanPage() {
             {/* Action Buttons */}
             <div className="space-y-3 pt-2">
               <button
-                onClick={() => generatePDFForData(submittedData)}
+                onClick={() => triggerDirectPDFDownload(submittedData)}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all cursor-pointer text-sm"
               >
-                <Download className="w-5 h-5" /> Open / Download PDF File
+                <Download className="w-5 h-5" /> Re-Download PDF File
               </button>
 
               <button
