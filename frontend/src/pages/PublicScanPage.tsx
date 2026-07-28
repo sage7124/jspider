@@ -52,7 +52,7 @@ export default function PublicScanPage() {
     const downloadUrl = `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
     const filename = `NICT_Candidate_${(data.name || 'Details').replace(/\s+/g, '_')}.pdf`;
 
-    // 1. Prompt download (trigggers native "Do you want to download NICT_Candidate_Name.pdf?" prompt on iPhone)
+    // 1. Prompt download (triggers native "Do you want to download NICT_Candidate_Name.pdf?" prompt on iPhone)
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = filename;
@@ -60,10 +60,10 @@ export default function PublicScanPage() {
     a.click();
     document.body.removeChild(a);
 
-    // 2. Automatically open PDF view in a new window/tab after 5 seconds
+    // 2. Automatically open PDF view in a new window/tab after 10 seconds
     setTimeout(() => {
       window.open(downloadUrl, '_blank');
-    }, 5000);
+    }, 10000);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -104,7 +104,7 @@ export default function PublicScanPage() {
     // 1. Immediately show Submission Successful screen
     setSubmittedData(localInquiry);
 
-    // 2. Prompt iPhone / Android download first & schedule 5 second auto-open PDF view
+    // 2. Prompt iPhone / Android download first & schedule 10 second auto-open PDF view
     handlePDFDownload(localInquiry);
 
     // 3. Save to database asynchronously in background
@@ -148,8 +148,8 @@ export default function PublicScanPage() {
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
                 {isIOS()
-                  ? '✓ Download prompted for iPhone! Opening PDF view in 5 seconds...'
-                  : '✓ PDF downloaded! Opening PDF view in 5 seconds...'}
+                  ? '✓ Download prompted for iPhone! Opening PDF view in 10 seconds...'
+                  : '✓ PDF downloaded! Opening PDF view in 10 seconds...'}
               </p>
             </div>
 
@@ -184,7 +184,7 @@ export default function PublicScanPage() {
 
               <div className="p-3 bg-slate-800/60 border border-slate-700/60 rounded-xl text-[11px] text-slate-300 text-center flex items-center justify-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-blue-400" />
-                PDF will automatically open in a new view in 5 seconds.
+                PDF will automatically open in a new view in 10 seconds.
               </div>
 
               <button
