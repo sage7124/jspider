@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, ExternalLink, FileText } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, ExternalLink } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -94,13 +94,8 @@ export default function PublicScanPage() {
         submittedAt: new Date().toISOString()
       };
 
-      // 2. Show Submission Successful screen
+      // 2. Show Submission Successful screen (NO automatic opening/redirecting)
       setSubmittedData(savedInquiry);
-
-      // 3. Automatically redirect to official Google Drive course prospectus after 3 seconds
-      setTimeout(() => {
-        window.location.href = COURSE_DETAILS_DRIVE_URL;
-      }, 3000);
     } catch (err: any) {
       console.warn('Network or server note during QR inquiry submit:', err);
       const fallbackInquiry = {
@@ -112,9 +107,6 @@ export default function PublicScanPage() {
         submittedAt: new Date().toISOString()
       };
       setSubmittedData(fallbackInquiry);
-      setTimeout(() => {
-        window.location.href = COURSE_DETAILS_DRIVE_URL;
-      }, 3000);
     } finally {
       setSubmitting(false);
     }
@@ -150,7 +142,7 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                ✓ Details recorded! Redirecting to course details in 3 seconds...
+                ✓ Click the link below to view the course details.
               </p>
             </div>
 
@@ -315,7 +307,7 @@ export default function PublicScanPage() {
             >
               {submitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" /> Submitting Details...
+                  <Sparkles className="w-5 h-5 animate-spin" /> Submitting Details...
                 </>
               ) : (
                 <>
