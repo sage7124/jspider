@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download, Share2 } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download, Share2, Clock } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -40,12 +40,40 @@ export default function PublicScanPage() {
     'Other'
   ];
 
-  const triggerDirectPDFDownload = (data: any) => {
+  const isIOS = () => {
+    return (
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    );
+  };
+
+  const handlePDFDownload = (data: any) => {
     if (!data) return;
     const downloadUrl = `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
-    
-    // Open in new tab/window for clean download/viewing without navigating away from success screen
-    window.open(downloadUrl, '_blank');
+    const filename = `NICT_Candidate_${(data.name || 'Details').replace(/\s+/g, '_')}.pdf`;
+
+    if (isIOS()) {
+      // 1. iPhone / iOS: Trigger native attachment prompt ("Do you want to download NICT_Candidate_Name.pdf?")
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else {
+      // 2. Android / Desktop: Download file immediately
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // 3. Android / Desktop: Automatically open PDF in new tab after 5 seconds
+      setTimeout(() => {
+        window.open(downloadUrl, '_blank');
+      }, 5000);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -83,10 +111,13 @@ export default function PublicScanPage() {
       submittedAt: new Date().toISOString()
     };
 
-    // 1. Immediately show Submission Successful screen and STAY on this screen
+    // 1. Immediately show Submission Successful screen
     setSubmittedData(localInquiry);
 
-    // 2. Save to database asynchronously in background
+    // 2. Trigger PDF Download (Attachment for iOS, Immediate download + 5s auto-open for Android)
+    handlePDFDownload(localInquiry);
+
+    // 3. Save to database asynchronously in background
     axios.post(`${API_BASE}/auth/public/qr-inquiry`, {
       name: finalName,
       mobile: finalMobile,
@@ -117,7 +148,7 @@ export default function PublicScanPage() {
         </div>
 
         {submittedData ? (
-          /* Clean Confirmation Screen - STAYS PERMANENTLY VISIBLE */
+          /* Clean Confirmation Screen */
           <div className="space-y-6 animate-fadeIn">
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center shadow-lg">
               <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto mb-2 animate-bounce" />
@@ -126,7 +157,9 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                ✓ Click the button below to download or save your official PDF File.
+                {isIOS()
+                  ? '✓ PDF File download prompted for iPhone Files App.'
+                  : '✓ PDF downloaded! Opening PDF view in 5 seconds...'}
               </p>
             </div>
 
@@ -153,20 +186,27 @@ export default function PublicScanPage() {
             {/* Action Buttons */}
             <div className="space-y-3 pt-2">
               <button
-                onClick={() => triggerDirectPDFDownload(submittedData)}
+                onClick={() => handlePDFDownload(submittedData)}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all cursor-pointer text-sm"
               >
-                <Download className="w-5 h-5" /> Download PDF File
+                <Download className="w-5 h-5" /> Download / Open PDF File
               </button>
 
-              <div className="p-3 bg-blue-950/40 border border-blue-800/40 rounded-xl text-[11px] text-blue-300 text-center space-y-1">
-                <div className="font-semibold flex items-center justify-center gap-1 text-blue-200">
-                  <Share2 className="w-3.5 h-3.5" /> How to save to iPhone Files App:
+              {isIOS() ? (
+                <div className="p-3 bg-blue-950/40 border border-blue-800/40 rounded-xl text-[11px] text-blue-300 text-center space-y-1">
+                  <div className="font-semibold flex items-center justify-center gap-1 text-blue-200">
+                    <Share2 className="w-3.5 h-3.5" /> iPhone Downloads Tip:
+                  </div>
+                  <p className="text-slate-300 text-[11px] leading-tight">
+                    On iPhone, tap <strong>"Download"</strong> when prompted to save directly to your iPhone <strong>Files App</strong>.
+                  </p>
                 </div>
-                <p className="text-slate-300 text-[11px] leading-tight">
-                  Tap <strong>Download PDF File</strong> above, then tap the iPhone <strong>Share Icon</strong> at bottom → select <strong>Save to Files</strong>.
-                </p>
-              </div>
+              ) : (
+                <div className="p-3 bg-slate-800/60 border border-slate-700/60 rounded-xl text-[11px] text-slate-300 text-center flex items-center justify-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-400" />
+                  PDF will automatically open in a new view in 5 seconds.
+                </div>
+              )}
 
               <button
                 onClick={() => {
