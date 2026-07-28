@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download, ExternalLink } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -44,6 +44,13 @@ export default function PublicScanPage() {
     // Pre-warm jsPDF module in background for instant download
     import('jspdf').catch(() => {});
   }, []);
+
+  const isIOS = () => {
+    return (
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    );
+  };
 
   const generatePDFForData = async (data: any) => {
     if (!data) return;
@@ -156,9 +163,20 @@ export default function PublicScanPage() {
       doc.setTextColor(148, 163, 184);
       doc.text('NICT Computer Education • Generated automatically on candidate QR scan', 105, 281, { align: 'center' });
 
-      // Directly Save PDF File to User's Device
       const fileName = `NICT_Candidate_${data.name.replace(/\s+/g, '_')}_Inquiry.pdf`;
-      doc.save(fileName);
+
+      if (isIOS()) {
+        // On iOS Safari / Camera Webview: Open Blob in a new tab for native Apple PDF Viewer & Save/Share menu
+        const blob = doc.output('blob');
+        const blobUrl = URL.createObjectURL(blob);
+        const newWin = window.open(blobUrl, '_blank');
+        if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
+          window.location.href = blobUrl;
+        }
+      } else {
+        // On Android / Desktop: Directly trigger download
+        doc.save(fileName);
+      }
     } catch (e) {
       console.error('PDF generation error:', e);
     }
@@ -202,7 +220,7 @@ export default function PublicScanPage() {
     // 1. Immediately show Submission Successful screen
     setSubmittedData(localInquiry);
 
-    // 2. Automatically trigger direct PDF File download
+    // 2. Automatically trigger PDF file generation & download/view
     generatePDFForData(localInquiry);
 
     // 3. Save to database asynchronously in background
@@ -236,7 +254,7 @@ export default function PublicScanPage() {
         </div>
 
         {submittedData ? (
-          /* Clean Confirmation Screen (PDF File Downloaded Directly) */
+          /* Clean Confirmation Screen with iOS / Android Direct Download Button */
           <div className="space-y-6 animate-fadeIn">
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center shadow-lg">
               <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto mb-2 animate-bounce" />
@@ -245,7 +263,7 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                ✓ Your official PDF File has been downloaded to your device.
+                ✓ Your official PDF Details File has been generated.
               </p>
             </div>
 
@@ -273,9 +291,9 @@ export default function PublicScanPage() {
             <div className="space-y-3 pt-2">
               <button
                 onClick={() => generatePDFForData(submittedData)}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all cursor-pointer text-xs"
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all cursor-pointer text-sm"
               >
-                <Download className="w-4 h-4" /> Download PDF File Again
+                <Download className="w-5 h-5" /> Open / Download PDF File
               </button>
 
               <button
