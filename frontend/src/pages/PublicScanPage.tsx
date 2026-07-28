@@ -48,16 +48,22 @@ export default function PublicScanPage() {
     );
   };
 
+  const openInChromeOnIOS = () => {
+    const rawUrl = window.location.href.replace(/^https?:\/\//, '');
+    const chromeSchemeUrl = `googlechromes://${rawUrl}`;
+    window.location.href = chromeSchemeUrl;
+  };
+
   const getDownloadUrl = (data: any) => {
     return `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
   };
 
-  const handlePDFDownload = (data: any) => {
+  const handlePDFDownloadAndOpen = (data: any) => {
     if (!data) return;
     const downloadUrl = getDownloadUrl(data);
     const filename = `NICT_Candidate_${(data.name || 'Details').replace(/\s+/g, '_')}.pdf`;
 
-    // Trigger direct attachment download prompt
+    // 1. Initial file download trigger
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = filename;
@@ -65,17 +71,10 @@ export default function PublicScanPage() {
     a.click();
     document.body.removeChild(a);
 
-    // Automatically open PDF view in a new window/tab after 10 seconds
+    // 2. Automatically open PDF in a new tab after 5 seconds for BOTH iOS & Android
     setTimeout(() => {
       window.open(downloadUrl, '_blank');
-    }, 10000);
-  };
-
-  const openInSafari = (data: any) => {
-    if (!data) return;
-    const downloadUrl = getDownloadUrl(data);
-    // Open in Safari / system browser where native file downloading works 100%
-    window.open(downloadUrl, '_blank');
+    }, 5000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,8 +127,8 @@ export default function PublicScanPage() {
       // 2. Show Submission Successful screen
       setSubmittedData(savedInquiry);
 
-      // 3. Trigger PDF Download + 10s auto-open
-      handlePDFDownload(savedInquiry);
+      // 3. Trigger PDF Download + 5s auto-open in new tab for BOTH iOS & Android
+      handlePDFDownloadAndOpen(savedInquiry);
     } catch (err: any) {
       console.warn('Network or server note during QR inquiry submit:', err);
       const fallbackInquiry = {
@@ -141,7 +140,7 @@ export default function PublicScanPage() {
         submittedAt: new Date().toISOString()
       };
       setSubmittedData(fallbackInquiry);
-      handlePDFDownload(fallbackInquiry);
+      handlePDFDownloadAndOpen(fallbackInquiry);
     } finally {
       setSubmitting(false);
     }
@@ -177,7 +176,7 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                ✓ Details recorded! Opening PDF view in 10 seconds...
+                ✓ Details recorded! Opening PDF document in a new tab in 5 seconds...
               </p>
             </div>
 
@@ -201,38 +200,28 @@ export default function PublicScanPage() {
               </div>
             </div>
 
-            {/* iPhone Safari Redirect Box (Option 3) */}
-            {isIOS() && (
-              <div className="p-4 bg-gradient-to-r from-blue-950/80 to-slate-900 border border-blue-500/40 rounded-xl space-y-2.5 shadow-lg">
-                <div className="flex items-center gap-2 text-blue-300 font-bold text-xs">
-                  <Globe className="w-4 h-4 text-blue-400" />
-                  iPhone Scan Detected
-                </div>
-                <p className="text-slate-300 text-xs leading-relaxed">
-                  Apple Camera view prevents background file saving. Tap below to <strong>Open in Safari</strong> where the PDF file downloads directly to your iPhone Files App!
-                </p>
-                <button
-                  onClick={() => openInSafari(submittedData)}
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-3 rounded-lg text-xs shadow-md transition-all cursor-pointer"
-                >
-                  <ExternalLink className="w-4 h-4" /> Open in Safari Browser & Download PDF
-                </button>
-              </div>
-            )}
-
             {/* Action Buttons */}
             <div className="space-y-3 pt-2">
               <button
-                onClick={() => handlePDFDownload(submittedData)}
+                onClick={() => window.open(getDownloadUrl(submittedData), '_blank')}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all cursor-pointer text-sm"
               >
-                <Download className="w-5 h-5" /> Download / Open PDF File
+                <ExternalLink className="w-5 h-5" /> Open PDF in New Tab Now
               </button>
 
               <div className="p-3 bg-slate-800/60 border border-slate-700/60 rounded-xl text-[11px] text-slate-300 text-center flex items-center justify-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-blue-400" />
-                PDF will automatically open in a new view in 10 seconds.
+                PDF document will automatically open in a new tab in 5 seconds.
               </div>
+
+              {isIOS() && (
+                <button
+                  onClick={openInChromeOnIOS}
+                  className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-blue-300 font-bold py-3 px-4 rounded-xl border border-blue-500/30 transition-colors cursor-pointer text-xs"
+                >
+                  <Globe className="w-4 h-4 text-blue-400" /> Open Page in Chrome Browser
+                </button>
+              )}
 
               <button
                 onClick={() => {
@@ -252,6 +241,23 @@ export default function PublicScanPage() {
         ) : (
           /* Input Form */
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* iPhone Chrome Redirect Prompt */}
+            {isIOS() && (
+              <div className="p-3 bg-blue-950/60 border border-blue-500/40 rounded-xl flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 text-blue-200">
+                  <Globe className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>iPhone User? Open in Chrome for best experience</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={openInChromeOnIOS}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg shrink-0 text-[11px] transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <ExternalLink className="w-3 h-3" /> Open in Chrome
+                </button>
+              </div>
+            )}
+
             {error && (
               <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-medium flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-red-500" />
