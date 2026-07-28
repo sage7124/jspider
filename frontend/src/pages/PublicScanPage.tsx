@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download, Clock, Loader2 } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download, Clock, Loader2, Globe, ExternalLink } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -48,12 +48,16 @@ export default function PublicScanPage() {
     );
   };
 
+  const getDownloadUrl = (data: any) => {
+    return `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
+  };
+
   const handlePDFDownload = (data: any) => {
     if (!data) return;
-    const downloadUrl = `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
+    const downloadUrl = getDownloadUrl(data);
     const filename = `NICT_Candidate_${(data.name || 'Details').replace(/\s+/g, '_')}.pdf`;
 
-    // 1. Trigger direct attachment download prompt
+    // Trigger direct attachment download prompt
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = filename;
@@ -61,10 +65,17 @@ export default function PublicScanPage() {
     a.click();
     document.body.removeChild(a);
 
-    // 2. Automatically open PDF view in a new window/tab after 10 seconds
+    // Automatically open PDF view in a new window/tab after 10 seconds
     setTimeout(() => {
       window.open(downloadUrl, '_blank');
     }, 10000);
+  };
+
+  const openInSafari = (data: any) => {
+    if (!data) return;
+    const downloadUrl = getDownloadUrl(data);
+    // Open in Safari / system browser where native file downloading works 100%
+    window.open(downloadUrl, '_blank');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,7 +107,7 @@ export default function PublicScanPage() {
     setSubmitting(true);
 
     try {
-      // 1. SAVE TO DATABASE & NEON POSTGRESQL FIRST BEFORE SHOWING SUCCESS
+      // 1. SAVE TO DATABASE & NEON POSTGRESQL FIRST
       const res = await axios.post(`${API_BASE}/auth/public/qr-inquiry`, {
         name: finalName,
         mobile: finalMobile,
@@ -117,7 +128,7 @@ export default function PublicScanPage() {
       // 2. Show Submission Successful screen
       setSubmittedData(savedInquiry);
 
-      // 3. Trigger PDF Download for iPhone & Android + 10s auto-open
+      // 3. Trigger PDF Download + 10s auto-open
       handlePDFDownload(savedInquiry);
     } catch (err: any) {
       console.warn('Network or server note during QR inquiry submit:', err);
@@ -166,9 +177,7 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                {isIOS()
-                  ? '✓ Download prompted for iPhone! Opening PDF view in 10 seconds...'
-                  : '✓ PDF downloaded! Opening PDF view in 10 seconds...'}
+                ✓ Details recorded! Opening PDF view in 10 seconds...
               </p>
             </div>
 
@@ -191,6 +200,25 @@ export default function PublicScanPage() {
                 <span className="text-blue-400 font-bold text-sm text-right max-w-[220px] truncate">{submittedData.nictPreference}</span>
               </div>
             </div>
+
+            {/* iPhone Safari Redirect Box (Option 3) */}
+            {isIOS() && (
+              <div className="p-4 bg-gradient-to-r from-blue-950/80 to-slate-900 border border-blue-500/40 rounded-xl space-y-2.5 shadow-lg">
+                <div className="flex items-center gap-2 text-blue-300 font-bold text-xs">
+                  <Globe className="w-4 h-4 text-blue-400" />
+                  iPhone Scan Detected
+                </div>
+                <p className="text-slate-300 text-xs leading-relaxed">
+                  Apple Camera view prevents background file saving. Tap below to <strong>Open in Safari</strong> where the PDF file downloads directly to your iPhone Files App!
+                </p>
+                <button
+                  onClick={() => openInSafari(submittedData)}
+                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-3 rounded-lg text-xs shadow-md transition-all cursor-pointer"
+                >
+                  <ExternalLink className="w-4 h-4" /> Open in Safari Browser & Download PDF
+                </button>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="space-y-3 pt-2">
