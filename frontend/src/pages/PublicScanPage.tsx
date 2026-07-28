@@ -40,12 +40,19 @@ export default function PublicScanPage() {
     'Other'
   ];
 
+  const isIOS = () => {
+    return (
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    );
+  };
+
   const handlePDFDownload = (data: any) => {
     if (!data) return;
     const downloadUrl = `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
     const filename = `NICT_Candidate_${(data.name || 'Details').replace(/\s+/g, '_')}.pdf`;
 
-    // 1. Download file directly for iPhone, Android, and Desktop
+    // 1. Prompt download (trigggers native "Do you want to download NICT_Candidate_Name.pdf?" prompt on iPhone)
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = filename;
@@ -53,7 +60,7 @@ export default function PublicScanPage() {
     a.click();
     document.body.removeChild(a);
 
-    // 2. Automatically open PDF view in a new window/tab after 5 seconds for iPhone, Android & Desktop
+    // 2. Automatically open PDF view in a new window/tab after 5 seconds
     setTimeout(() => {
       window.open(downloadUrl, '_blank');
     }, 5000);
@@ -97,7 +104,7 @@ export default function PublicScanPage() {
     // 1. Immediately show Submission Successful screen
     setSubmittedData(localInquiry);
 
-    // 2. Trigger PDF Download + 5 second auto-open for all devices (iPhone, Android, Desktop)
+    // 2. Prompt iPhone / Android download first & schedule 5 second auto-open PDF view
     handlePDFDownload(localInquiry);
 
     // 3. Save to database asynchronously in background
@@ -140,7 +147,9 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                ✓ PDF downloaded! Opening PDF view in 5 seconds...
+                {isIOS()
+                  ? '✓ Download prompted for iPhone! Opening PDF view in 5 seconds...'
+                  : '✓ PDF downloaded! Opening PDF view in 5 seconds...'}
               </p>
             </div>
 
