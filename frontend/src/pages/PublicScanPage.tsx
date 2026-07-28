@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download, Share2 } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -44,8 +44,8 @@ export default function PublicScanPage() {
     if (!data) return;
     const downloadUrl = `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
     
-    // Trigger native browser attachment download without screen navigation
-    window.location.href = downloadUrl;
+    // Open in new tab/window for clean download/viewing without navigating away from success screen
+    window.open(downloadUrl, '_blank');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -83,13 +83,10 @@ export default function PublicScanPage() {
       submittedAt: new Date().toISOString()
     };
 
-    // 1. Immediately show Submission Successful screen
+    // 1. Immediately show Submission Successful screen and STAY on this screen
     setSubmittedData(localInquiry);
 
-    // 2. Automatically trigger direct PDF File download via native attachment header
-    triggerDirectPDFDownload(localInquiry);
-
-    // 3. Save to database asynchronously in background
+    // 2. Save to database asynchronously in background
     axios.post(`${API_BASE}/auth/public/qr-inquiry`, {
       name: finalName,
       mobile: finalMobile,
@@ -120,7 +117,7 @@ export default function PublicScanPage() {
         </div>
 
         {submittedData ? (
-          /* Clean Confirmation Screen (PDF File Download Prompted Natively) */
+          /* Clean Confirmation Screen - STAYS PERMANENTLY VISIBLE */
           <div className="space-y-6 animate-fadeIn">
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-6 text-center shadow-lg">
               <CheckCircle2 className="w-14 h-14 text-emerald-400 mx-auto mb-2 animate-bounce" />
@@ -129,7 +126,7 @@ export default function PublicScanPage() {
                 Your details have been recorded under Reference ID: <span className="font-mono font-bold text-white">{submittedData.id}</span>
               </p>
               <p className="text-emerald-400/90 text-xs mt-2 font-medium">
-                ✓ Your official PDF File download has been prompted.
+                ✓ Click the button below to download or save your official PDF File.
               </p>
             </div>
 
@@ -159,8 +156,17 @@ export default function PublicScanPage() {
                 onClick={() => triggerDirectPDFDownload(submittedData)}
                 className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all cursor-pointer text-sm"
               >
-                <Download className="w-5 h-5" /> Re-Download PDF File
+                <Download className="w-5 h-5" /> Download PDF File
               </button>
+
+              <div className="p-3 bg-blue-950/40 border border-blue-800/40 rounded-xl text-[11px] text-blue-300 text-center space-y-1">
+                <div className="font-semibold flex items-center justify-center gap-1 text-blue-200">
+                  <Share2 className="w-3.5 h-3.5" /> How to save to iPhone Files App:
+                </div>
+                <p className="text-slate-300 text-[11px] leading-tight">
+                  Tap <strong>Download PDF File</strong> above, then tap the iPhone <strong>Share Icon</strong> at bottom → select <strong>Save to Files</strong>.
+                </p>
+              </div>
 
               <button
                 onClick={() => {
