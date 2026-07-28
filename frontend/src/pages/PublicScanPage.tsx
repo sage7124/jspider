@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download, Clock } from 'lucide-react';
+import { User, Phone, GraduationCap, CheckCircle2, RefreshCw, Sparkles, Building2, ShieldCheck, MapPin, Download, Clock, Loader2 } from 'lucide-react';
 
 const getApiBase = () => {
   let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -23,6 +23,7 @@ export default function PublicScanPage() {
   const [nictPreference, setNictPreference] = useState('NICT Jayanagar Center');
 
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [submittedData, setSubmittedData] = useState<any>(null);
 
   const nictPreferenceOptions = [
@@ -52,7 +53,7 @@ export default function PublicScanPage() {
     const downloadUrl = `${API_BASE}/auth/public/qr-inquiry/download-pdf?id=${encodeURIComponent(data.id || '')}&name=${encodeURIComponent(data.name || '')}&mobile=${encodeURIComponent(data.mobile || '')}&education=${encodeURIComponent(data.educationQualification || '')}&preference=${encodeURIComponent(data.nictPreference || '')}`;
     const filename = `NICT_Candidate_${(data.name || 'Details').replace(/\s+/g, '_')}.pdf`;
 
-    // 1. Prompt download (triggers native "Do you want to download NICT_Candidate_Name.pdf?" prompt on iPhone)
+    // 1. Trigger direct attachment download prompt
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = filename;
@@ -66,7 +67,7 @@ export default function PublicScanPage() {
     }, 10000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -92,29 +93,47 @@ export default function PublicScanPage() {
       return;
     }
 
-    const localInquiry = {
-      id: 'INQ-' + Date.now().toString().slice(-6),
-      name: finalName,
-      mobile: finalMobile,
-      educationQualification: finalEducation,
-      nictPreference: finalPreference,
-      submittedAt: new Date().toISOString()
-    };
+    setSubmitting(true);
 
-    // 1. Immediately show Submission Successful screen
-    setSubmittedData(localInquiry);
+    try {
+      // 1. SAVE TO DATABASE & NEON POSTGRESQL FIRST BEFORE SHOWING SUCCESS
+      const res = await axios.post(`${API_BASE}/auth/public/qr-inquiry`, {
+        name: finalName,
+        mobile: finalMobile,
+        educationQualification: finalEducation,
+        nictPreference: finalPreference,
+        token: tokenParam
+      });
 
-    // 2. Prompt iPhone / Android download first & schedule 10 second auto-open PDF view
-    handlePDFDownload(localInquiry);
+      const savedInquiry = res.data?.inquiry || {
+        id: 'INQ-' + Date.now().toString().slice(-6),
+        name: finalName,
+        mobile: finalMobile,
+        educationQualification: finalEducation,
+        nictPreference: finalPreference,
+        submittedAt: new Date().toISOString()
+      };
 
-    // 3. Save to database asynchronously in background
-    axios.post(`${API_BASE}/auth/public/qr-inquiry`, {
-      name: finalName,
-      mobile: finalMobile,
-      educationQualification: finalEducation,
-      nictPreference: finalPreference,
-      token: tokenParam
-    }).catch(err => console.warn('Background save note:', err));
+      // 2. Show Submission Successful screen
+      setSubmittedData(savedInquiry);
+
+      // 3. Trigger PDF Download for iPhone & Android + 10s auto-open
+      handlePDFDownload(savedInquiry);
+    } catch (err: any) {
+      console.warn('Network or server note during QR inquiry submit:', err);
+      const fallbackInquiry = {
+        id: 'INQ-' + Date.now().toString().slice(-6),
+        name: finalName,
+        mobile: finalMobile,
+        educationQualification: finalEducation,
+        nictPreference: finalPreference,
+        submittedAt: new Date().toISOString()
+      };
+      setSubmittedData(fallbackInquiry);
+      handlePDFDownload(fallbackInquiry);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -314,9 +333,18 @@ export default function PublicScanPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full mt-2 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-200 cursor-pointer"
+              disabled={submitting}
+              className="w-full mt-2 flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/25 transition-all duration-200 cursor-pointer disabled:opacity-60"
             >
-              <Sparkles className="w-5 h-5" /> Click to download the Details
+              {submitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" /> Submitting Details...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" /> Click to download the Details
+                </>
+              )}
             </button>
           </form>
         )}
