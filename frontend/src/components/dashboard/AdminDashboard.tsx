@@ -6836,6 +6836,13 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                             >
                                               <Edit size={12} />
                                             </button>
+                                            <button
+                                              onClick={() => handleDeleteCollegeVisit(b.id)}
+                                              className="bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-800 border border-red-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                              title="Delete college visit record"
+                                            >
+                                              <Trash2 size={12} />
+                                            </button>
                                           </td>
                                         </tr>
                                       ))}
