@@ -6159,6 +6159,63 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                                 <div className="text-[10px] font-bold text-amber-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
                                   <Clock size={12} /> Outings for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 </div>
+                                <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                                  <table className="w-full text-xs text-left">
+                                    <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
+                                      <tr>
+                                        <th className="px-4 py-2 w-[8%] text-center">#</th>
+                                        <th className="px-4 py-2">Out Time</th>
+                                        <th className="px-2 py-2 text-center w-[5%]">-</th>
+                                        <th className="px-4 py-2">In Time</th>
+                                        <th className="px-4 py-2 text-center">Duration</th>
+                                        <th className="px-4 py-2">Reason</th>
+                                        <th className="px-4 py-2 text-right w-[10%]">Actions</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-150">
+                                      {group.breaks.map((b: any, idx: number) => (
+                                        <tr key={b.id} className="hover:bg-gray-50/50">
+                                          <td className="px-4 py-2.5 text-center font-bold text-gray-400">{idx + 1}</td>
+                                          <td className="px-4 py-2.5 text-purple-700 font-semibold">{b.breakOut}</td>
+                                          <td className="px-2 py-2.5 text-center text-gray-400 font-bold">➔</td>
+                                          <td className="px-4 py-2.5 text-green-700 font-semibold">{b.breakIn}</td>
+                                          <td className="px-4 py-2.5 text-center">
+                                            <span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                                              {b.duration}
+                                            </span>
+                                          </td>
+                                          <td className="px-4 py-2.5 text-gray-600 italic font-medium">{b.reason || '--'}</td>
+                                          <td className="px-4 py-2.5 text-right">
+                                            <button
+                                              onClick={() => handleStartEdit(b)}
+                                              className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                              title="Edit outing details"
+                                            >
+                                              <Edit size={12} />
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ── Teacher College Visit Logs Modal ─────────────────────────────────────────
 const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
   const [logs, setLogs] = useState<any[]>([]);
