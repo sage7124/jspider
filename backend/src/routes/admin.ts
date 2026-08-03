@@ -2542,9 +2542,9 @@ function parseCollegeVisit(b: any) {
   let subject = b.subject || '';
   const topicsCovered = b.topicsCovered || '--';
   const conveyance = b.conveyance || '--';
-  const numberOfHours = b.numberOfHours || '--';
-  const fromTime = b.fromTime || '--';
-  const toTime = b.toTime || '--';
+  let numberOfHours = b.numberOfHours || '--';
+  let fromTime = b.fromTime || '--';
+  let toTime = b.toTime || '--';
 
   if (!collegeName && b.reason && b.reason.startsWith('College Visit:')) {
     if (b.reason.includes('Booklet No:')) {
@@ -2570,6 +2570,39 @@ function parseCollegeVisit(b: any) {
         subject = match[2];
       } else {
         collegeName = b.reason.replace('College Visit:', '').trim();
+      }
+    }
+  }
+
+  // Smart Auto-Correction for AM/PM duration errors (e.g. 01:45 AM to 03:45 PM -> 01:45 PM to 03:45 PM)
+  if (fromTime && toTime && fromTime !== '--' && toTime !== '--') {
+    const fromMatch = fromTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    const toMatch = toTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (fromMatch && toMatch) {
+      let fH = parseInt(fromMatch[1], 10);
+      const fM = parseInt(fromMatch[2], 10);
+      let fP = fromMatch[3].toUpperCase();
+      let tH = parseInt(toMatch[1], 10);
+      const tM = parseInt(toMatch[2], 10);
+      let tP = toMatch[3].toUpperCase();
+
+      let f24 = fH + (fP === 'PM' && fH < 12 ? 12 : 0);
+      if (fP === 'AM' && fH === 12) f24 = 0;
+      let t24 = tH + (tP === 'PM' && tH < 12 ? 12 : 0);
+      if (tP === 'AM' && tH === 12) t24 = 0;
+
+      let diffMin = (t24 * 60 + tM) - (f24 * 60 + fM);
+
+      // If duration is > 8 hours and start time is 1 AM - 8 AM ending in PM, user intended PM for start time
+      if (diffMin > 480 && fP === 'AM' && fH >= 1 && fH <= 8 && tP === 'PM') {
+        fP = 'PM';
+        f24 = fH < 12 ? fH + 12 : fH;
+        diffMin = (t24 * 60 + tM) - (f24 * 60 + fM);
+        fromTime = `${String(fH).padStart(2, '0')}:${String(fM).padStart(2, '0')} PM`;
+      }
+
+      if (diffMin > 0) {
+        numberOfHours = `${(diffMin / 60).toFixed(1)} hrs`;
       }
     }
   }
@@ -3117,6 +3150,10 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             const bLocalDateKey = `${bYear}-${bMonth}-${bDay}`;
             return bLocalDateKey === localDateKey;
           });
+
+          if (type === 'COLLEGE_VISIT' && dayBreaks.length === 0) {
+            continue;
+          }
 
           let bookletNoVal = '--';
           let collegeNameVal = '--';
