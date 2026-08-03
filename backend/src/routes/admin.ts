@@ -4422,7 +4422,49 @@ router.put('/breaks/:id', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// 5. Edit Extra Class Log
+// 5. Delete Break / College Visit Log
+router.delete('/breaks/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const logId = Number(id);
+
+    const breakLog = await prisma.breakLog.findUnique({
+      where: { id: logId },
+      include: { user: { include: { supervisors: true } } }
+    });
+
+    if (!breakLog) {
+      return res.status(404).json({ error: 'Break record not found.' });
+    }
+
+    if (req.user?.role === 'SUPERVISOR') {
+      const supervisor = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { permissions: true }
+      });
+      const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+      if (!perms.includes('MANAGE_BREAKS')) {
+        return res.status(403).json({ error: 'Access Denied: You do not have clearance to delete breaks.' });
+      }
+
+      const isAssigned = breakLog.user.supervisors.some(s => s.id === req.user.id);
+      if (!isAssigned) {
+        return res.status(403).json({ error: 'Access Denied: You can only delete breaks for trainees assigned under you.' });
+      }
+    }
+
+    await prisma.breakLog.delete({
+      where: { id: logId }
+    });
+
+    res.json({ message: 'Record deleted successfully.' });
+  } catch (error) {
+    console.error('Error deleting break record:', error);
+    res.status(500).json({ error: 'Failed to delete record.' });
+  }
+});
+
+// 6. Edit Extra Class Log
 router.put('/extra-classes/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;

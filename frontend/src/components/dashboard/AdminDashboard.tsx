@@ -5804,6 +5804,22 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
     }
   };
 
+  const handleDeleteBreak = async (id: number) => {
+    if (!window.confirm('Are you sure you want to completely delete this Outing record? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/breaks/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Outing record deleted successfully.');
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete record.');
+    }
+  };
+
   const closeForm = () => {
     setShowAddForm(false);
     setEditingLog(null);
@@ -6185,13 +6201,20 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                                             </span>
                                           </td>
                                           <td className="px-4 py-2.5 text-gray-600 italic font-medium">{b.reason || '--'}</td>
-                                          <td className="px-4 py-2.5 text-right">
+                                          <td className="px-4 py-2.5 text-right flex items-center justify-end gap-1">
                                             <button
                                               onClick={() => handleStartEdit(b)}
                                               className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
                                               title="Edit outing details"
                                             >
                                               <Edit size={12} />
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteBreak(b.id)}
+                                              className="bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-800 border border-red-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                              title="Delete outing details"
+                                            >
+                                              <Trash2 size={12} />
                                             </button>
                                           </td>
                                         </tr>
@@ -6269,6 +6292,22 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
       fetchLogs();
     } catch (err: any) {
       alert(err.response?.data?.error || `Failed to process college visit request.`);
+    }
+  };
+
+  const handleDeleteCollegeVisit = async (id: number) => {
+    if (!window.confirm('Are you sure you want to completely delete this College Visit record? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/breaks/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('College visit record deleted successfully.');
+      fetchLogs();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete record.');
     }
   };
 
