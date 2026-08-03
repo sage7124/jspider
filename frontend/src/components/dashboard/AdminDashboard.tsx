@@ -6159,69 +6159,13 @@ const BreakLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrai
                                 <div className="text-[10px] font-bold text-amber-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
                                   <Clock size={12} /> Outings for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 </div>
-                                <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
-                                  <table className="w-full text-xs text-left">
-                                    <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
-                                      <tr>
-                                        <th className="px-4 py-2 w-[8%] text-center">#</th>
-                                        <th className="px-4 py-2">Out Time</th>
-                                        <th className="px-2 py-2 text-center w-[5%]">-</th>
-                                        <th className="px-4 py-2">In Time</th>
-                                        <th className="px-4 py-2 text-center">Duration</th>
-                                        <th className="px-4 py-2">Reason</th>
-                                        <th className="px-4 py-2 text-right w-[10%]">Actions</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-150">
-                                      {group.breaks.map((b: any, idx: number) => (
-                                        <tr key={b.id} className="hover:bg-gray-50/50">
-                                          <td className="px-4 py-2.5 text-center font-bold text-gray-400">{idx + 1}</td>
-                                          <td className="px-4 py-2.5 text-purple-700 font-semibold">{b.breakOut}</td>
-                                          <td className="px-2 py-2.5 text-center text-gray-400 font-bold">➔</td>
-                                          <td className="px-4 py-2.5 text-green-700 font-semibold">{b.breakIn}</td>
-                                          <td className="px-4 py-2.5 text-center">
-                                            <span className="font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
-                                              {b.duration}
-                                            </span>
-                                          </td>
-                                          <td className="px-4 py-2.5 text-gray-600 italic font-medium">{b.reason || '--'}</td>
-                                          <td className="px-4 py-2.5 text-right">
-                                            <button
-                                              onClick={() => handleStartEdit(b)}
-                                              className="bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 rounded p-1 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer"
-                                              title="Edit outing details"
-                                            >
-                                              <Edit size={12} />
-                                            </button>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-};
-
 // ── Teacher College Visit Logs Modal ─────────────────────────────────────────
 const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; allTrainees?: any[] }) => {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [month, setMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [status, setStatus] = useState('ALL');
   const [exportMonth, setExportMonth] = useState(new Date().toISOString().substring(0, 7));
   const [exporting, setExporting] = useState(false);
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
@@ -6246,7 +6190,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
 
   useEffect(() => {
     fetchLogs();
-  }, [date]);
+  }, [month, status]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -6275,7 +6219,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks?date=${date}&search=${search}&type=COLLEGE_VISIT`, {
+      const res = await axios.get(`${API}/reports/breaks?month=${month}&search=${encodeURIComponent(search)}&status=${status}&type=COLLEGE_VISIT`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setLogs(res.data || []);
@@ -6392,7 +6336,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
     try {
       setExporting(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}&type=COLLEGE_VISIT`, {
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(search)}&status=${status}&type=COLLEGE_VISIT`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -6418,7 +6362,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
   const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}&type=COLLEGE_VISIT`, {
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}&status=${status}&type=COLLEGE_VISIT`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -6481,163 +6425,158 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Select Trainee</label>
+                <label className="block font-bold text-gray-700 mb-1">Select Trainee / Teacher *</label>
                 <select
-                  required
-                  disabled={!!editingLog}
                   value={selectedTraineeId}
-                  onChange={e => setSelectedTraineeId(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+                  onChange={(e) => setSelectedTraineeId(e.target.value)}
+                  required
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">-- Choose Trainee --</option>
-                  {(allTrainees || []).map(t => (
-                    <option key={t.id} value={t.id}>{t.name} ({t.empCode})</option>
+                  <option value="">-- Select Trainee --</option>
+                  {(allTrainees || []).map((t: any) => (
+                    <option key={t.id} value={t.id}>
+                      {t.fullName} ({t.identifier})
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Date</label>
-                <input 
-                  type="date" 
+                <label className="block font-bold text-gray-700 mb-1">Date *</label>
+                <input
+                  type="date"
+                  value={logDate}
+                  onChange={(e) => setLogDate(e.target.value)}
                   required
-                  value={logDate} 
-                  onChange={e => setLogDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold" 
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Booklet No</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="Enter Booklet Number"
-                  value={bookletNo} 
-                  onChange={e => setBookletNo(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold" 
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">College Name</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="Enter College Name"
-                  value={collegeName} 
-                  onChange={e => setCollegeName(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold" 
+                <label className="block font-bold text-gray-700 mb-1">Booklet No</label>
+                <input
+                  type="text"
+                  value={bookletNo}
+                  onChange={(e) => setBookletNo(e.target.value)}
+                  placeholder="e.g. BKL-1024"
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Subject / Purpose</label>
-                <input 
-                  type="text" 
+                <label className="block font-bold text-gray-700 mb-1">College Name *</label>
+                <input
+                  type="text"
+                  value={collegeName}
+                  onChange={(e) => setCollegeName(e.target.value)}
+                  placeholder="e.g. St. Joseph College"
                   required
-                  placeholder="Enter Subject or Purpose"
-                  value={subject} 
-                  onChange={e => setSubject(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold" 
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Conveyance</label>
-                <select
+                <label className="block font-bold text-gray-700 mb-1">Subject / Purpose *</label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="e.g. Python Workshop / Guest Lecture"
+                  required
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 mb-1">Conveyance Details</label>
+                <input
+                  type="text"
                   value={conveyance}
-                  onChange={e => setConveyance(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
-                >
-                  <option value="Two Wheeler">Two Wheeler</option>
-                  <option value="Four Wheeler">Four Wheeler</option>
-                  <option value="Bus">Bus</option>
-                  <option value="Train">Train</option>
-                  <option value="Other">Other</option>
-                </select>
+                  onChange={(e) => setConveyance(e.target.value)}
+                  placeholder="e.g. Two Wheeler / Bus / Cab"
+                  className="w-full border border-gray-300 rounded px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Topics Covered</label>
-              <textarea 
-                required
+              <label className="block font-bold text-gray-700 mb-1">Topics Covered</label>
+              <textarea
+                value={topicsCovered}
+                onChange={(e) => setTopicsCovered(e.target.value)}
+                rows={2}
                 placeholder="Enter details of topics covered during college visit..."
-                value={topicsCovered} 
-                onChange={e => setTopicsCovered(e.target.value)}
-                rows={3}
-                className="w-full border border-gray-300 rounded px-2.5 py-2 bg-white outline-none focus:ring-2 focus:ring-blue-500 font-semibold resize-none" 
+                className="w-full border border-gray-300 rounded px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+            {/* Timing pickers */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-blue-50/50 p-3 rounded border border-blue-100">
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Planned Start Time (Out Time)</label>
-                <div className="flex gap-2">
-                  <select value={outHour} onChange={e => setOutHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                <label className="block font-bold text-blue-900 mb-1">Out Time (From)</label>
+                <div className="flex items-center gap-1">
+                  <select value={outHour} onChange={(e) => setOutHour(e.target.value)} className="border border-gray-300 rounded p-1 bg-white">
+                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
-                  <select value={outMin} onChange={e => setOutMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                  <span>:</span>
+                  <select value={outMin} onChange={(e) => setOutMin(e.target.value)} className="border border-gray-300 rounded p-1 bg-white">
                     {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
-                  <select value={outPeriod} onChange={e => setOutPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
+                  <select value={outPeriod} onChange={(e) => setOutPeriod(e.target.value)} className="border border-gray-300 rounded p-1 bg-white font-bold">
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 mb-2 uppercase">Planned End Time (In Time)</label>
-                <div className="flex gap-2">
-                  <select value={inHour} onChange={e => setInHour(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+                <label className="block font-bold text-blue-900 mb-1">In Time (To)</label>
+                <div className="flex items-center gap-1">
+                  <select value={inHour} onChange={(e) => setInHour(e.target.value)} className="border border-gray-300 rounded p-1 bg-white">
+                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
-                  <select value={inMin} onChange={e => setInMin(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
+                  <span>:</span>
+                  <select value={inMin} onChange={(e) => setInMin(e.target.value)} className="border border-gray-300 rounded p-1 bg-white">
                     {MINS_60.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
-                  <select value={inPeriod} onChange={e => setInPeriod(e.target.value)} className="flex-1 border border-gray-300 rounded p-2 bg-white font-semibold">
-                    {AMPM.map(p => <option key={p} value={p}>{p}</option>)}
+                  <select value={inPeriod} onChange={(e) => setInPeriod(e.target.value)} className="border border-gray-300 rounded p-1 bg-white font-bold">
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
                   </select>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t pt-4 bg-blue-50 p-3 rounded border border-blue-200">
-              <span className="text-blue-800 font-bold uppercase text-[10px]">Computed Duration / Hours:</span>
-              <span className="font-extrabold text-blue-900 bg-blue-100 px-3 py-1 rounded border border-blue-300 text-sm">
-                {currentDuration}
-              </span>
+            <div className="text-right text-gray-600 font-semibold pt-1">
+              Estimated Duration: <span className="text-blue-700 font-bold">{currentDuration}</span>
             </div>
 
-            <div className="flex gap-2 justify-end pt-2 border-t">
+            <div className="flex justify-end gap-2 pt-3 border-t">
               <button
                 type="button"
                 onClick={closeForm}
-                className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded font-bold hover:bg-gray-50 transition-all active:scale-95 cursor-pointer"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer shadow disabled:opacity-50"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded shadow transition-all active:scale-95 cursor-pointer"
               >
-                {saving ? 'Saving...' : editingLog ? '🚀 Update' : '🚀 Save'}
+                {saving ? 'Saving...' : editingLog ? 'Update College Visit' : 'Save College Visit'}
               </button>
             </div>
           </form>
         ) : (
           <>
-            {/* Filter Controls */}
-            <div className="flex flex-wrap items-end gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-150 text-xs">
-              <div className="min-w-[160px] flex-1">
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Date</label>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            {/* Top Bar Controls */}
+            <div className="flex flex-wrap items-end gap-3 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-150 text-xs">
+              <div className="min-w-[140px] flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Filter Month</label>
+                <input type="month" value={month} onChange={e => setMonth(e.target.value)}
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="min-w-[160px] flex-1">
@@ -6645,7 +6584,17 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                 <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or identifier..."
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-              <div className="min-w-[160px] flex-1">
+              <div className="min-w-[130px] flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Status</label>
+                <select value={status} onChange={e => setStatus(e.target.value)}
+                  className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                  <option value="ALL">All Statuses</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+              <div className="min-w-[140px] flex-1">
                 <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Export Month</label>
                 <input type="month" value={exportMonth} onChange={e => setExportMonth(e.target.value)}
                   className="w-full border border-gray-355 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500" />
@@ -6679,7 +6628,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                   <tbody className="divide-y divide-gray-100">
                     {groupedLogs.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No College Visit logs found for this date.</td>
+                        <td colSpan={6} className="px-4 py-10 text-center text-gray-400 italic">No College Visit logs found for this month.</td>
                       </tr>
                     ) : (
                       groupedLogs.map((group) => (
@@ -6715,13 +6664,14 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                             <tr className="bg-blue-50/10">
                               <td colSpan={6} className="px-6 py-4 border-t border-b border-gray-150 bg-gray-50/30">
                                 <div className="text-[10px] font-bold text-blue-800 uppercase mb-3 tracking-wider flex items-center gap-1.5">
-                                  <GraduationCap size={12} /> Visits for {group.name} on {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                  <GraduationCap size={12} /> Visits for {group.name} ({month})
                                 </div>
                                 <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
                                   <table className="w-full text-xs text-left">
                                     <thead className="bg-[#f8fafc] text-gray-600 font-bold border-b">
                                       <tr>
                                         <th className="px-3 py-2 w-[4%] text-center">#</th>
+                                        <th className="px-3 py-2">Date</th>
                                         <th className="px-3 py-2">Booklet No</th>
                                         <th className="px-3 py-2">College Name</th>
                                         <th className="px-3 py-2">Subject / Purpose</th>
@@ -6740,6 +6690,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                       {group.breaks.map((b: any, idx: number) => (
                                         <tr key={b.id} className="hover:bg-gray-50/50">
                                           <td className="px-3 py-2.5 text-center font-bold text-gray-400">{idx + 1}</td>
+                                          <td className="px-3 py-2.5 font-semibold text-gray-700">{b.date}</td>
                                           <td className="px-3 py-2.5 font-semibold text-gray-700">{b.bookletNo || '--'}</td>
                                           <td className="px-3 py-2.5 text-gray-800 font-medium">{b.collegeName || '--'}</td>
                                           <td className="px-3 py-2.5 text-gray-800 font-medium">{b.subject || b.reason || '--'}</td>
@@ -6795,7 +6746,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                                     </tbody>
                                     <tfoot className="bg-gray-100 font-bold border-t border-gray-200">
                                       <tr>
-                                        <td colSpan={7} className="px-3 py-2 text-right text-gray-700">Total Hours:</td>
+                                        <td colSpan={8} className="px-3 py-2 text-right text-gray-700">Total Hours:</td>
                                         <td className="px-3 py-2 text-center font-extrabold text-blue-700">
                                           {(() => {
                                             const total = group.breaks.reduce((acc: number, b: any) => {

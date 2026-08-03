@@ -2589,7 +2589,7 @@ function parseCollegeVisit(b: any) {
 // ── Teacher Break System Reports Endpoints ─────────────────────────────────────
 router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { date, search, type } = req.query;
+    const { date, month, status, search, type } = req.query;
     if (req.user?.role === 'SUPERVISOR') {
       const supervisor = await prisma.user.findUnique({
         where: { id: req.user.id },
@@ -2601,16 +2601,33 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
         return res.status(403).json({ error: `Access Denied: You do not have clearance to manage ${type === 'COLLEGE_VISIT' ? 'college visits' : 'breaks'}.` });
       }
     }
-    const targetDate = date ? new Date(date as string) : new Date();
-    targetDate.setHours(0, 0, 0, 0);
+
+    let dateWhere: any;
+    if (month && typeof month === 'string' && month.includes('-')) {
+      const [year, mon] = month.split('-').map(Number);
+      const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+      const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+      dateWhere = { gte: startOfMonth, lte: endOfMonth };
+    } else {
+      const targetDate = date ? new Date(date as string) : new Date();
+      targetDate.setHours(0, 0, 0, 0);
+      dateWhere = targetDate;
+    }
+
+    let statusWhere: any;
+    if (status && status !== 'ALL') {
+      statusWhere = String(status);
+    } else {
+      statusWhere = type === 'COLLEGE_VISIT' ? { in: ['APPROVED', 'PENDING', 'REJECTED'] } : 'APPROVED';
+    }
 
     const searchStr = search as string;
     const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisors: { some: { id: req.user.id } } } } : {};
 
     const breakLogs = await prisma.breakLog.findMany({
       where: {
-        date: targetDate,
-        status: type === 'COLLEGE_VISIT' ? { in: ['APPROVED', 'PENDING', 'REJECTED'] } : 'APPROVED',
+        date: dateWhere,
+        status: statusWhere,
         ...supervisorFilter,
         user: {
           OR: searchStr ? [
@@ -2646,7 +2663,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
     const userIds = filteredLogs.map(b => b.userId);
     const attendances = await prisma.attendance.findMany({
       where: {
-        date: targetDate,
+        date: dateWhere,
         userId: { in: userIds }
       }
     });
@@ -2720,7 +2737,7 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
 
 router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { month, search, type } = req.query; // e.g., "2026-05", with optional search & type
+    const { month, status, search, type } = req.query; // e.g., "2026-05", with optional search & type
     if (req.user?.role === 'SUPERVISOR') {
       const supervisor = await prisma.user.findUnique({
         where: { id: req.user.id },
@@ -2743,11 +2760,18 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
     const searchStr = search as string;
 
+    let statusWhere: any;
+    if (status && status !== 'ALL') {
+      statusWhere = String(status);
+    } else {
+      statusWhere = type === 'COLLEGE_VISIT' ? { in: ['APPROVED', 'PENDING', 'REJECTED'] } : 'APPROVED';
+    }
+
     const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisors: { some: { id: req.user.id } } } } : {};
     const breakLogs = await prisma.breakLog.findMany({
       where: {
         date: { gte: startOfMonth, lte: endOfMonth },
-        status: 'APPROVED',
+        status: statusWhere,
         ...supervisorFilter,
         user: {
           OR: searchStr ? [
@@ -2757,7 +2781,15 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         }
       },
       include: {
-        user: { select: { id: true, fullName: true, identifier: true, department: true } }
+        user: { 
+          select: { 
+            id: true, 
+            fullName: true, 
+            identifier: true, 
+            department: true,
+            supervisors: { select: { fullName: true } }
+          } 
+        }
       },
       orderBy: [
         { date: 'asc' },
@@ -2783,7 +2815,13 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             { identifier: { contains: searchStr, mode: 'insensitive' } }
           ]
         },
-        select: { id: true, fullName: true, identifier: true, department: true }
+        select: { 
+          id: true, 
+          fullName: true, 
+          identifier: true, 
+          department: true,
+          supervisors: { select: { fullName: true } }
+        }
       });
       if (targetUser) {
         const hasLogs = filteredBreakLogs.some(b => b.userId === targetUser.id);
@@ -2816,7 +2854,104 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
       const ws = workbook.addWorksheet('No Data');
       ws.getCell('A1').value = 'No break logs found for this month.';
     } else {
+      // ── MASTER SUMMARY SHEET FOR COLLEGE VISITS ──────────────────────────
+      if (type === 'COLLEGE_VISIT') {
+        const masterWs = workbook.addWorksheet('All College Visits');
+        masterWs.columns = [
+          { key: 'index', width: 6 },
+          { key: 'teacherName', width: 24 },
+          { key: 'supervisor', width: 25 },
+          { key: 'identifier', width: 16 },
+          { key: 'date', width: 14 },
+          { key: 'day', width: 12 },
+          { key: 'bookletNo', width: 14 },
+          { key: 'collegeName', width: 28 },
+          { key: 'subject', width: 24 },
+          { key: 'topicsCovered', width: 30 },
+          { key: 'conveyance', width: 20 },
+          { key: 'plannedTime', width: 22 },
+          { key: 'numberOfHours', width: 14 },
+          { key: 'punchIn', width: 16 },
+          { key: 'punchOut', width: 16 },
+          { key: 'punchDuration', width: 18 },
+          { key: 'status', width: 14 }
+        ];
+
+        // Master Title
+        masterWs.mergeCells('A1:Q1');
+        const mTitleCell = masterWs.getCell('A1');
+        mTitleCell.value = `MASTER COLLEGE VISIT REPORT (${month})`;
+        mTitleCell.font = { bold: true, size: 14, name: 'Calibri', color: { argb: 'FFFFFF' } };
+        mTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F4E79' } };
+        mTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        masterWs.getRow(1).height = 40;
+        masterWs.getRow(2).height = 15;
+
+        // Master Header Row
+        const mHeaderRow = masterWs.getRow(3);
+        mHeaderRow.values = [
+          '#', 'Teacher Name', 'Supervisor', 'Mobile/ID', 'Date', 'Day', 'Booklet No', 'College Name',
+          'Subject / Purpose', 'Topics Covered', 'Conveyance Details', 'Planned Timing', 'No of hours',
+          'Punch In Time', 'Punch Out Time', 'Punch Duration', 'Status'
+        ];
+        mHeaderRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
+        mHeaderRow.eachCell((cell) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '2E7D32' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+        masterWs.getRow(3).height = 25;
+
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        filteredBreakLogs.forEach((b: any, idx: number) => {
+          const parsed = parseCollegeVisit(b);
+          const bDateObj = new Date(b.date);
+          const dayStr = daysOfWeek[bDateObj.getDay()];
+          const dateStr = bDateObj.toLocaleDateString('en-IN');
+          const supervisorNames = b.user?.supervisors?.map((s: any) => s.fullName).join(', ') || '--';
+
+          const att = monthlyAttendances.find(a => {
+            const aDate = new Date(a.date.getTime() + (5.5 * 60 * 60 * 1000));
+            const bDate = new Date(b.date.getTime() + (5.5 * 60 * 60 * 1000));
+            return a.userId === b.userId && aDate.toISOString().slice(0, 10) === bDate.toISOString().slice(0, 10);
+          });
+
+          let punchIn = '--';
+          let punchOut = '--';
+          let punchDuration = '--';
+          if (att && att.inTime) punchIn = new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          if (att && att.outTime) punchOut = new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          if (att && att.inTime && att.outTime) {
+            const diffMs = new Date(att.outTime).getTime() - new Date(att.inTime).getTime();
+            const mins = Math.round(diffMs / 60000);
+            if (mins > 0) punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
+          }
+
+          masterWs.addRow([
+            idx + 1,
+            b.user?.fullName || '--',
+            supervisorNames,
+            b.user?.identifier || '--',
+            dateStr,
+            dayStr,
+            parsed.bookletNo || '--',
+            parsed.collegeName || '--',
+            parsed.subject || b.reason || '--',
+            parsed.topicsCovered || '--',
+            parsed.conveyance || '--',
+            parsed.fromTime && parsed.toTime ? `${parsed.fromTime} - ${parsed.toTime}` : '--',
+            parsed.numberOfHours || '--',
+            punchIn,
+            punchOut,
+            punchDuration,
+            b.status
+          ]);
+        });
+      }
+
       const usedNames = new Set<string>();
+      if (type === 'COLLEGE_VISIT') {
+        usedNames.add('All College Visits');
+      }
 
       for (const user of targetUsersList) {
         // Excel sheet names are limited to 31 chars and must be unique
@@ -2846,7 +2981,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             { key: 'numberOfHours', width: 15 },
             { key: 'punchIn', width: 20 },
             { key: 'punchOut', width: 20 },
-            { key: 'punchDuration', width: 15 }
+            { key: 'punchDuration', width: 15 },
+            { key: 'status', width: 15 }
           ];
         } else {
           ws.columns = [
@@ -2861,7 +2997,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Title Block (Row 1)
         if (type === 'COLLEGE_VISIT') {
-          ws.mergeCells('A1:M1');
+          ws.mergeCells('A1:N1');
         } else {
           ws.mergeCells('A1:F1');
         }
@@ -2902,7 +3038,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             'No of hours', 
             'Punch In Time', 
             'Punch Out Time', 
-            'Punch Duration'
+            'Punch Duration',
+            'Status'
           ];
         } else {
           headerRow.values = ['Day', 'Date', 'Break Out Time', 'Break In Time', 'Duration', 'Reason for Break'];
@@ -2992,6 +3129,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           let breakOutVal = '--';
           let breakInVal = '--';
           let reasonVal = '--';
+          let statusVal = '--';
 
           if (dayBreaks.length > 0) {
             const bookletNoList: string[] = [];
@@ -3005,6 +3143,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             const outTimesList: string[] = [];
             const inTimesList: string[] = [];
             const reasonsList: string[] = [];
+            const statusList: string[] = [];
 
             dayBreaks.forEach((b: any, idx: number) => {
               const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -3030,6 +3169,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
                   outTimesList.push(`Break ${idx + 1}: ${outStr}`);
                   inTimesList.push(`Break ${idx + 1}: ${inStr}`);
+                  statusList.push(`Break ${idx + 1}: ${b.status}`);
                 } else {
                   bookletNoList.push(parsed.bookletNo);
                   collegeNameList.push(parsed.collegeName);
@@ -3041,6 +3181,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   numberOfHoursList.push(parsed.numberOfHours);
                   outTimesList.push(outStr);
                   inTimesList.push(inStr);
+                  statusList.push(b.status);
                 }
               } else {
                 if (dayBreaks.length > 1) {
@@ -3066,6 +3207,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
               numberOfHoursVal = numberOfHoursList.join('\n');
               breakOutVal = outTimesList.join('\n');
               breakInVal = inTimesList.join('\n');
+              statusVal = statusList.join('\n');
             } else {
               breakOutVal = outTimesList.join('\n');
               breakInVal = inTimesList.join('\n');
@@ -3074,7 +3216,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           }
 
           const rowData = type === 'COLLEGE_VISIT'
-            ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, punchInVal, punchOutVal, punchDurationVal]
+            ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, punchInVal, punchOutVal, punchDurationVal, statusVal]
             : [dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal];
 
           const row = ws.addRow(rowData);
