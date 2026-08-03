@@ -6249,6 +6249,18 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
   const [exportMonth, setExportMonth] = useState(new Date().toISOString().substring(0, 7));
   const [exporting, setExporting] = useState(false);
   const [expandedTeacher, setExpandedTeacher] = useState<string | null>(null);
+  const [traineeOptions, setTraineeOptions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (allTrainees && allTrainees.length > 0 && typeof allTrainees[0] === 'object' && allTrainees[0]?.fullName) {
+      setTraineeOptions(allTrainees);
+    } else {
+      const token = localStorage.getItem('token');
+      axios.get(`${API}/attendance`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => setTraineeOptions(res.data || []))
+        .catch(err => console.error(err));
+    }
+  }, [allTrainees]);
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -6531,9 +6543,9 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                   className="w-full border border-gray-300 rounded px-2.5 py-1.5 bg-white outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">-- Select Trainee --</option>
-                  {(allTrainees || []).map((t: any) => (
+                  {traineeOptions.map((t: any) => (
                     <option key={t.id} value={t.id}>
-                      {t.fullName} ({t.identifier})
+                      {t.fullName || t.name || 'Teacher'} ({t.identifier || t.mobile || t.id})
                     </option>
                   ))}
                 </select>
