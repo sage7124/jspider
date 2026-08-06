@@ -2702,7 +2702,13 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
     });
 
     const result = filteredLogs.map(b => {
-      const att = attendances.find(a => a.userId === b.userId);
+      const bDateKey = new Date(b.date.getTime() + (5.5 * 60 * 60 * 1000)).toISOString().split('T')[0];
+      const att = attendances.find(a => {
+        if (a.userId !== b.userId) return false;
+        const aDateKey = new Date(a.date.getTime() + (5.5 * 60 * 60 * 1000)).toISOString().split('T')[0];
+        return aDateKey === bDateKey;
+      });
+
       let punchIn = '--';
       let punchOut = '--';
       let punchDuration = '--';
