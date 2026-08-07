@@ -220,6 +220,7 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
 
     const getSlotInTimeStatus = (slot: any, slotInTime?: Date, isExtra?: boolean, branchName?: string, infoText?: string) => {
       if (slotInTime) {
+        if (branchName === 'COLLEGE_VISIT') return '--';
         const timeStr = new Date(slotInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const base = branchName ? `${timeStr}, ${branchName}` : timeStr;
         return infoText ? `${base} (${infoText})` : base;
@@ -229,6 +230,7 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
 
     const getSlotOutTimeStatus = (slot: any, slotOutTime?: Date, hasIn?: boolean, isExtra?: boolean, branchName?: string, infoText?: string) => {
       if (slotOutTime) {
+        if (branchName === 'COLLEGE_VISIT') return '--';
         const timeStr = new Date(slotOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const base = branchName ? `${timeStr}, ${branchName}` : timeStr;
         return infoText ? `${base} (${infoText})` : base;
@@ -405,6 +407,34 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     rowData.earlyDeparture = dayEarlyMins > 0 ? `${Math.floor(dayEarlyMins / 60)}h ${dayEarlyMins % 60}m` : '0m';
     rowData.extraWork = dayExtraMins > 0 ? `${Math.floor(dayExtraMins / 60)}h ${dayExtraMins % 60}m` : '0m';
 
+    let cvInStr = '--';
+    let cvOutStr = '--';
+    let cvLocStr = '--';
+
+    const dayBreakLogs = user.breakLogs || [];
+    const cvLog = dayBreakLogs.find((b: any) => {
+      const bDate = new Date(new Date(b.date).getTime() + (5.5 * 60 * 60 * 1000));
+      return bDate.getUTCDate() === day && (bDate.getUTCMonth() + 1) === mon && (b.collegeName || (b.reason && b.reason.startsWith('College Visit:')));
+    });
+
+    if (cvLog) {
+      if (cvLog.fromTime) cvInStr = cvLog.fromTime;
+      else if (cvLog.breakOut) cvInStr = new Date(cvLog.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      if (cvLog.toTime) cvOutStr = cvLog.toTime;
+      else if (cvLog.breakIn) cvOutStr = new Date(cvLog.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      cvLocStr = cvLog.punchInLocation || cvLog.collegeName || '--';
+    } else if (att && (att.inBranch1 === 'COLLEGE_VISIT' || att.inBranch2 === 'COLLEGE_VISIT')) {
+      if (att.inTime) cvInStr = new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (att.outTime) cvOutStr = new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      cvLocStr = 'College Visit';
+    }
+
+    rowData.collegeVisitIn = cvInStr;
+    rowData.collegeVisitOut = cvOutStr;
+    rowData.collegeVisitLocation = cvLocStr;
+
     const allInfos = att ? [att.info, att.info1, att.info2, att.info3, att.info4, att.info5]
       .filter(Boolean)
       .map(i => i as string)
@@ -458,6 +488,9 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   }
 
   const endColumns = [
+    { header: 'College Visit In', key: 'collegeVisitIn', width: 18 },
+    { header: 'College Visit Out', key: 'collegeVisitOut', width: 18 },
+    { header: 'College Visit Location', key: 'collegeVisitLocation', width: 28 },
     { header: 'Info', key: 'infoText', width: 25 },
     { header: 'Total Late', key: 'late', width: 15 },
     { header: 'Total Early', key: 'earlyDeparture', width: 15 },

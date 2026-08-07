@@ -288,6 +288,13 @@ model BreakLog {
   numberOfHours String?
   fromTime      String?
   toTime        String?
+
+  punchInLat       Float?
+  punchInLng       Float?
+  punchInLocation  String?
+  punchOutLat      Float?
+  punchOutLng      Float?
+  punchOutLocation String?
   
   createdAt     DateTime  @default(now())
 }

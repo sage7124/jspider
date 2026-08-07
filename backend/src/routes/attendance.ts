@@ -880,7 +880,7 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, fromTime, toTime, reason } = req.body;
+    const { type, bookletNo, collegeName, subject, topicsCovered, conveyance, fromTime, toTime, reason, lat, lng, locationName } = req.body;
     const breakType = type || 'NORMAL';
 
     const attendance = await prisma.attendance.findUnique({
@@ -956,7 +956,13 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
         conveyance: breakType === 'COLLEGE_VISIT' ? (conveyance ? conveyance.trim() : null) : null,
         fromTime: breakType === 'COLLEGE_VISIT' ? fromTime.trim() : null,
         toTime: breakType === 'COLLEGE_VISIT' ? toTime.trim() : null,
-        numberOfHours: computedHours
+        numberOfHours: computedHours,
+        punchInLat: lat ? parseFloat(lat) : null,
+        punchInLng: lng ? parseFloat(lng) : null,
+        punchInLocation: locationName || collegeName || null,
+        punchOutLat: lat ? parseFloat(lat) : null,
+        punchOutLng: lng ? parseFloat(lng) : null,
+        punchOutLocation: locationName || collegeName || null
       }
     });
 

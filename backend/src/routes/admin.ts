@@ -949,7 +949,7 @@ router.get('/reports/monthly', async (req: AuthRequest, res) => {
 
     const trainees = await prisma.user.findMany({ 
       where: { role: 'TRAINEE', hasLeft: false }, 
-      include: { slots: true },
+      include: { slots: true, breakLogs: true },
       orderBy: { fullName: 'asc' }
     });
 
@@ -1020,7 +1020,7 @@ router.get('/reports/individual/:userId', async (req: AuthRequest, res) => {
 
     if (!month || typeof month !== 'string') return res.status(400).json({ error: 'Month is required' });
 
-    const user = await prisma.user.findUnique({ where: { id: userId }, include: { slots: true } });
+    const user = await prisma.user.findUnique({ where: { id: userId }, include: { slots: true, breakLogs: true } });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const [year, mon] = (month as string).split('-').map(Number);
@@ -2607,6 +2607,9 @@ function parseCollegeVisit(b: any) {
     }
   }
 
+  const punchInLoc = b.punchInLocation || (b.punchInLat && b.punchInLng ? `${b.punchInLat.toFixed(4)}, ${b.punchInLng.toFixed(4)}` : '--');
+  const punchOutLoc = b.punchOutLocation || (b.punchOutLat && b.punchOutLng ? `${b.punchOutLat.toFixed(4)}, ${b.punchOutLng.toFixed(4)}` : '--');
+
   return {
     bookletNo,
     collegeName: collegeName || '--',
@@ -2615,7 +2618,9 @@ function parseCollegeVisit(b: any) {
     conveyance,
     numberOfHours,
     fromTime,
-    toTime
+    toTime,
+    punchInLocation: punchInLoc,
+    punchOutLocation: punchOutLoc
   };
 }
 
@@ -2763,7 +2768,9 @@ router.get('/reports/breaks', authenticateToken, async (req: AuthRequest, res) =
         conveyance: parsed.conveyance,
         numberOfHours: parsed.numberOfHours,
         fromTime: parsed.fromTime,
-        toTime: parsed.toTime
+        toTime: parsed.toTime,
+        punchInLocation: parsed.punchInLocation,
+        punchOutLocation: parsed.punchOutLocation
       };
     });
 
@@ -2913,11 +2920,13 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           { key: 'punchIn', width: 16 },
           { key: 'punchOut', width: 16 },
           { key: 'punchDuration', width: 18 },
+          { key: 'punchInLocation', width: 28 },
+          { key: 'punchOutLocation', width: 28 },
           { key: 'status', width: 14 }
         ];
 
         // Master Title
-        masterWs.mergeCells('A1:Q1');
+        masterWs.mergeCells('A1:S1');
         const mTitleCell = masterWs.getCell('A1');
         mTitleCell.value = `MASTER COLLEGE VISIT REPORT (${month})`;
         mTitleCell.font = { bold: true, size: 14, name: 'Calibri', color: { argb: 'FFFFFF' } };
@@ -2931,7 +2940,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
         mHeaderRow.values = [
           '#', 'Teacher Name', 'Supervisor', 'Mobile/ID', 'Date', 'Day', 'Booklet No', 'College Name',
           'Subject / Purpose', 'Topics Covered', 'Conveyance Details', 'Planned Timing', 'No of hours',
-          'Punch In Time', 'Punch Out Time', 'Punch Duration', 'Status'
+          'Punch In Time', 'Punch Out Time', 'Punch Duration', 'Punch In Location', 'Punch Out Location', 'Status'
         ];
         mHeaderRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
         mHeaderRow.eachCell((cell) => {
@@ -2982,6 +2991,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             punchIn,
             punchOut,
             punchDuration,
+            parsed.punchInLocation || '--',
+            parsed.punchOutLocation || '--',
             b.status
           ]);
         });
@@ -3021,6 +3032,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             { key: 'punchIn', width: 20 },
             { key: 'punchOut', width: 20 },
             { key: 'punchDuration', width: 15 },
+            { key: 'punchInLocation', width: 28 },
+            { key: 'punchOutLocation', width: 28 },
             { key: 'status', width: 15 }
           ];
         } else {
@@ -3036,7 +3049,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
 
         // Title Block (Row 1)
         if (type === 'COLLEGE_VISIT') {
-          ws.mergeCells('A1:N1');
+          ws.mergeCells('A1:P1');
         } else {
           ws.mergeCells('A1:F1');
         }
@@ -3078,6 +3091,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             'Punch In Time', 
             'Punch Out Time', 
             'Punch Duration',
+            'Punch In Location',
+            'Punch Out Location',
             'Status'
           ];
         } else {
@@ -3171,6 +3186,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
           let numberOfHoursVal = '--';
           let breakOutVal = '--';
           let breakInVal = '--';
+          let punchInLocVal = '--';
+          let punchOutLocVal = '--';
           let reasonVal = '--';
           let statusVal = '--';
 
@@ -3185,6 +3202,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             const numberOfHoursList: string[] = [];
             const outTimesList: string[] = [];
             const inTimesList: string[] = [];
+            const punchInLocList: string[] = [];
+            const punchOutLocList: string[] = [];
             const reasonsList: string[] = [];
             const statusList: string[] = [];
 
@@ -3212,6 +3231,8 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
                   numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
                   outTimesList.push(`Break ${idx + 1}: ${outStr}`);
                   inTimesList.push(`Break ${idx + 1}: ${inStr}`);
+                  punchInLocList.push(`Break ${idx + 1}: ${parsed.punchInLocation || '--'}`);
+                  punchOutLocList.push(`Break ${idx + 1}: ${parsed.punchOutLocation || '--'}`);
                   statusList.push(`Break ${idx + 1}: ${b.status}`);
                 } else {
                   bookletNoList.push(parsed.bookletNo);
