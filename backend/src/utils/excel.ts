@@ -11,8 +11,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
   today.setHours(0, 0, 0, 0);
   const now = new Date();
 
-  // Build a distinct sorted set of slot numbers actually assigned to this user
-  const assignedSlotNos: number[] = (user.slots || []).map((s: any) => Number(s.slotNo)).filter((v: number, i: number, a: number[]) => a.indexOf(v) === i).sort((a: number, b: number) => a - b);
+  // Build a distinct sorted set of ACTIVE slot numbers actually assigned to this user
+  const activeSlots = (user.slots || []).filter((s: any) => !s.effectiveTo);
+  const assignedSlotNos: number[] = activeSlots.map((s: any) => Number(s.slotNo)).filter((v: number, i: number, a: number[]) => a.indexOf(v) === i).sort((a: number, b: number) => a - b);
   const hasExtraSlots = assignedSlotNos.some(n => n > 3);
 
   for (let day = 1; day <= daysInMonth; day++) {
@@ -432,8 +433,9 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
 
 
 export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, attendances: any[], year: number, mon: number, daysInMonth: number, holidays: any[] = [], leaves: any[] = [], earlyLeaves: any[] = []) => {
-  // Build distinct sorted set of slot numbers — only columns for these will appear
-  const assignedSlotNos: number[] = (user.slots || []).map((s: any) => Number(s.slotNo)).filter((v: number, i: number, a: number[]) => a.indexOf(v) === i).sort((a: number, b: number) => a - b);
+  // Build distinct sorted set of ACTIVE slot numbers — only columns for these will appear
+  const activeSlots = (user.slots || []).filter((s: any) => !s.effectiveTo);
+  const assignedSlotNos: number[] = activeSlots.map((s: any) => Number(s.slotNo)).filter((v: number, i: number, a: number[]) => a.indexOf(v) === i).sort((a: number, b: number) => a - b);
   const hasExtraSlots = assignedSlotNos.some(n => n > 3);
 
   const baseColumns = [
