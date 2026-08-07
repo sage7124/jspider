@@ -240,10 +240,25 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
                 return '--';
             return hasIn ? 'MISSING OUT' : 'ABSENT';
         };
+        const dayBreakLogs = user.breakLogs || [];
+        const cvLog = dayBreakLogs.find((b) => {
+            const bDate = new Date(new Date(b.date).getTime() + (5.5 * 60 * 60 * 1000));
+            return bDate.getUTCDate() === day && (bDate.getUTCMonth() + 1) === mon && (b.collegeName || (b.reason && b.reason.startsWith('College Visit:')));
+        });
+        const isCollegeVisitDay = !!cvLog || (att && (att.inBranch1 === 'COLLEGE_VISIT' || att.inBranch2 === 'COLLEGE_VISIT'));
         // Core iteration — only process slots that are actually assigned
         for (const si of assignedSlotNos) {
             let slot = daySlots.find((s) => s.slotNo === si);
             const isExtra = si > 3; // Definition of Extra Slot
+            if (isCollegeVisitDay) {
+                rowData[`s${si}In`] = '--';
+                rowData[`s${si}Out`] = '--';
+                if (!isExtra) {
+                    rowData[`s${si}Late`] = '--';
+                    rowData[`s${si}Early`] = '--';
+                }
+                continue;
+            }
             // Check for approved slot-level leave
             const activeLeaveForSlot = dayLeaves.find(l => {
                 if (!l.slots)
@@ -405,11 +420,6 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
         let cvInStr = '--';
         let cvOutStr = '--';
         let cvLocStr = '--';
-        const dayBreakLogs = user.breakLogs || [];
-        const cvLog = dayBreakLogs.find((b) => {
-            const bDate = new Date(new Date(b.date).getTime() + (5.5 * 60 * 60 * 1000));
-            return bDate.getUTCDate() === day && (bDate.getUTCMonth() + 1) === mon && (b.collegeName || (b.reason && b.reason.startsWith('College Visit:')));
-        });
         if (cvLog) {
             if (cvLog.breakOut)
                 cvInStr = new Date(cvLog.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
