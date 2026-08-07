@@ -475,13 +475,15 @@ const generateTraineeWorksheet = (ws, user, attendances, year, mon, daysInMonth,
             slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18 });
         }
     }
-    const endColumns = [
-        { header: 'College Visit In', key: 'collegeVisitIn', width: 18 },
-        { header: 'College Visit Out', key: 'collegeVisitOut', width: 18 },
-        { header: 'Info', key: 'infoText', width: 25 },
-        { header: 'Total Late', key: 'late', width: 15 },
-        { header: 'Total Early', key: 'earlyDeparture', width: 15 },
-    ];
+    const hasCollegeVisits = (user.breakLogs || []).some((b) => b.collegeName || (b.reason && b.reason.startsWith('College Visit:')));
+    const endColumns = [];
+    if (hasCollegeVisits) {
+        endColumns.push({ header: 'College Visit In', key: 'collegeVisitIn', width: 18 });
+        endColumns.push({ header: 'College Visit Out', key: 'collegeVisitOut', width: 18 });
+    }
+    endColumns.push({ header: 'Info', key: 'infoText', width: 25 });
+    endColumns.push({ header: 'Total Late', key: 'late', width: 15 });
+    endColumns.push({ header: 'Total Early', key: 'earlyDeparture', width: 15 });
     // Conditionally gating extra work column to hide functionally per user's instructions (can restore boolean check later if wanted)
     if (false && hasExtraSlots) {
         endColumns.push({ header: 'TOTAL EXTRA WORK', key: 'extraWork', width: 20 });

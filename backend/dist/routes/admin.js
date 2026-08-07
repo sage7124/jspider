@@ -2529,16 +2529,20 @@ function parseCollegeVisit(b) {
             }
         }
     }
-    const formatLocationWithMapLink = (locName, lat, lng, fallbackLoc) => {
-        const name = locName || fallbackLoc || '';
-        if (lat && lng) {
-            const mapUrl = `https://maps.google.com/?q=${lat},${lng}`;
-            return name ? `${name} (${mapUrl})` : mapUrl;
+    const formatLocationWithMapLink = (locName, lat, lng) => {
+        if (locName && lat && lng) {
+            return `${locName} (https://maps.google.com/?q=${lat},${lng})`;
         }
-        return name || '--';
+        if (lat && lng) {
+            return `https://maps.google.com/?q=${lat},${lng}`;
+        }
+        if (locName) {
+            return locName;
+        }
+        return '--';
     };
-    const punchInLoc = formatLocationWithMapLink(b.punchInLocation, b.punchInLat, b.punchInLng, b.collegeName);
-    const punchOutLoc = formatLocationWithMapLink(b.punchOutLocation, b.punchOutLat, b.punchOutLng, b.collegeName);
+    const punchInLoc = formatLocationWithMapLink(b.punchInLocation, b.punchInLat, b.punchInLng);
+    const punchOutLoc = formatLocationWithMapLink(b.punchOutLocation, b.punchOutLat, b.punchOutLng);
     return {
         bookletNo,
         collegeName: collegeName || '--',
@@ -2638,17 +2642,27 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
                 const aDateKey = new Date(a.date.getTime() + (5.5 * 60 * 60 * 1000)).toISOString().split('T')[0];
                 return aDateKey === bDateKey;
             });
+            const parsed = parseCollegeVisit(b);
             let punchIn = '--';
             let punchOut = '--';
             let punchDuration = '--';
-            if (att && att.inTime) {
-                punchIn = new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (parsed.fromTime) {
+                punchIn = parsed.fromTime;
             }
-            if (att && att.outTime) {
-                punchOut = new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            else if (b.breakOut) {
+                punchIn = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
-            if (att && att.inTime && att.outTime) {
-                const diffMs = new Date(att.outTime).getTime() - new Date(att.inTime).getTime();
+            if (parsed.toTime) {
+                punchOut = parsed.toTime;
+            }
+            else if (b.breakIn) {
+                punchOut = new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            if (parsed.numberOfHours) {
+                punchDuration = parsed.numberOfHours;
+            }
+            else if (b.breakIn && b.breakOut) {
+                const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
                 const mins = Math.round(diffMs / 60000);
                 if (mins > 0) {
                     punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
@@ -2660,7 +2674,6 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
             const durationHrs = b.breakIn
                 ? Number(((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / 3600000).toFixed(2))
                 : null;
-            const parsed = parseCollegeVisit(b);
             return {
                 id: b.id,
                 userId: b.userId,
@@ -2874,12 +2887,23 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                     let punchIn = '--';
                     let punchOut = '--';
                     let punchDuration = '--';
-                    if (att && att.inTime)
-                        punchIn = new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    if (att && att.outTime)
-                        punchOut = new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    if (att && att.inTime && att.outTime) {
-                        const diffMs = new Date(att.outTime).getTime() - new Date(att.inTime).getTime();
+                    if (parsed.fromTime) {
+                        punchIn = parsed.fromTime;
+                    }
+                    else if (b.breakOut) {
+                        punchIn = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                    if (parsed.toTime) {
+                        punchOut = parsed.toTime;
+                    }
+                    else if (b.breakIn) {
+                        punchOut = new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+                    if (parsed.numberOfHours) {
+                        punchDuration = parsed.numberOfHours;
+                    }
+                    else if (b.breakIn && b.breakOut) {
+                        const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
                         const mins = Math.round(diffMs / 60000);
                         if (mins > 0)
                             punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
