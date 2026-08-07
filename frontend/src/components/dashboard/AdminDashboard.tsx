@@ -6467,10 +6467,11 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
     }
   };
 
-  const handleIndividualExport = async (teacherName: string, teacherPhone: string) => {
+  const handleIndividualExport = async (teacherName: string, teacherPhone: string, userId?: number) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&search=${encodeURIComponent(teacherPhone)}&status=${status}&type=COLLEGE_VISIT`, {
+      const param = userId ? `userId=${userId}` : `search=${encodeURIComponent(teacherPhone)}`;
+      const res = await axios.get(`${API}/reports/breaks/export?month=${exportMonth}&${param}&status=${status}&type=COLLEGE_VISIT`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob'
       });
@@ -6752,7 +6753,7 @@ const CollegeVisitLogsModal = ({ onClose, allTrainees }: { onClose: () => void; 
                             </td>
                             <td className="px-4 py-3 text-center">
                               <button
-                                onClick={() => handleIndividualExport(group.name, group.identifier)}
+                                onClick={() => handleIndividualExport(group.name, group.identifier, group.userId)}
                                 className="bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border border-blue-200 rounded p-1.5 inline-flex items-center justify-center transition-all active:scale-90 cursor-pointer animate-fade-in"
                                 title={`Export monthly report for ${group.name}`}
                               >

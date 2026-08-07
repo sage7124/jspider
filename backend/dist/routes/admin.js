@@ -2712,7 +2712,7 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
 });
 router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (req, res) => {
     try {
-        const { month, status, search, type } = req.query; // e.g., "2026-05", with optional search & type
+        const { date, month, status, search, type, userId } = req.query;
         if (req.user?.role === 'SUPERVISOR') {
             const supervisor = await prisma.user.findUnique({
                 where: { id: req.user.id },
@@ -2725,13 +2725,14 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
             }
         }
         if (!month || typeof month !== 'string') {
-            return res.status(400).json({ error: 'Month is required' });
+            return res.status(400).json({ error: 'Valid month (YYYY-MM) is required' });
         }
         const [year, mon] = month.split('-').map(Number);
         const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
         const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
         const daysInMonth = new Date(year, mon, 0).getDate();
         const searchStr = search;
+        const userIdNum = userId ? parseInt(userId) : undefined;
         let statusWhere;
         if (status && status !== 'ALL') {
             statusWhere = String(status);

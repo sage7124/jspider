@@ -959,10 +959,10 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
         numberOfHours: computedHours,
         punchInLat: lat ? parseFloat(lat) : null,
         punchInLng: lng ? parseFloat(lng) : null,
-        punchInLocation: locationName || collegeName || null,
+        punchInLocation: locationName ? locationName.trim() : null,
         punchOutLat: lat ? parseFloat(lat) : null,
         punchOutLng: lng ? parseFloat(lng) : null,
-        punchOutLocation: locationName || collegeName || null
+        punchOutLocation: locationName ? locationName.trim() : null
       }
     });
 
@@ -973,14 +973,14 @@ router.post('/break/out', authenticateToken, async (req: AuthRequest, res) => {
     res.status(201).json({ message: responseMsg, breakLog: newBreak });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Failed to start break' });
   }
 });
 
 router.post('/break/in', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
-    const { lat, lng } = req.body;
+    const { lat, lng, locationName } = req.body;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -1022,7 +1022,12 @@ router.post('/break/in', authenticateToken, async (req: AuthRequest, res) => {
     // Complete break
     const updatedBreak = await prisma.breakLog.update({
       where: { id: activeBreak.id },
-      data: { breakIn: new Date() }
+      data: {
+        breakIn: new Date(),
+        punchOutLat: lat ? parseFloat(lat) : undefined,
+        punchOutLng: lng ? parseFloat(lng) : undefined,
+        punchOutLocation: locationName ? locationName.trim() : undefined
+      }
     });
 
     res.json({ message: 'Welcome back! Break completed successfully.', breakLog: updatedBreak });

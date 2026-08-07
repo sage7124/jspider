@@ -1914,6 +1914,23 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
     );
   };
 
+  const fetchAreaNameFromGPS = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+      const data = await res.json();
+      if (data && data.address) {
+        const addr = data.address;
+        const area = addr.suburb || addr.neighbourhood || addr.residential || addr.road || addr.amenity || addr.city_district || addr.town || addr.city || '';
+        const city = addr.city || addr.town || addr.state_district || '';
+        if (area && city && !area.toLowerCase().includes(city.toLowerCase())) return `${area}, ${city}`;
+        return area || city || data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      }
+    } catch (err) {
+      console.warn('Reverse geocoding error:', err);
+    }
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  };
+
   const handleBreakOut = async () => {
     if (breakType === 'COLLEGE_VISIT') {
       if (!bookletNo.trim() || !collegeName.trim() || !subject.trim() || !topicsCovered.trim()) {
@@ -1934,6 +1951,23 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       ? `${visitHourTo}:${visitMinTo} ${visitPeriodTo}`
       : undefined;
 
+    let currentLat: number | undefined;
+    let currentLng: number | undefined;
+    let areaName: string | undefined;
+
+    if (navigator.geolocation) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 7000, enableHighAccuracy: true });
+        });
+        currentLat = pos.coords.latitude;
+        currentLng = pos.coords.longitude;
+        areaName = await fetchAreaNameFromGPS(currentLat, currentLng);
+      } catch (geoErr) {
+        console.warn('Location capture skipped:', geoErr);
+      }
+    }
+
     try {
       setStartingBreak(true);
       const token = localStorage.getItem('token');
@@ -1947,7 +1981,10 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
         conveyance: breakType === 'COLLEGE_VISIT' ? conveyance.trim() : undefined,
         fromTime: formattedFromTime,
         toTime: formattedToTime,
-        reason: breakType === 'NORMAL' ? breakReason.trim() : undefined
+        reason: breakType === 'NORMAL' ? breakReason.trim() : undefined,
+        lat: currentLat,
+        lng: currentLng,
+        locationName: areaName
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -1986,11 +2023,13 @@ const TraineeDashboard: React.FC<TraineeDashboardProps> = ({ user }) => {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          const areaName = await fetchAreaNameFromGPS(latitude, longitude);
           const token = localStorage.getItem('token');
           const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
           await axios.post(`${API_URL}/api/attendance/break/in`, {
             lat: latitude,
-            lng: longitude
+            lng: longitude,
+            locationName: areaName
           }, {
             headers: { Authorization: `Bearer ${token}` }
           });
