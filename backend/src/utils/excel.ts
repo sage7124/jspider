@@ -418,13 +418,13 @@ export const getTraineeReportData = (user: any, attendances: any[], year: number
     });
 
     if (cvLog) {
-      if (cvLog.fromTime) cvInStr = cvLog.fromTime;
-      else if (cvLog.breakOut) cvInStr = new Date(cvLog.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (cvLog.breakOut) cvInStr = new Date(cvLog.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      else if (cvLog.fromTime) cvInStr = cvLog.fromTime;
 
-      if (cvLog.toTime) cvOutStr = cvLog.toTime;
-      else if (cvLog.breakIn) cvOutStr = new Date(cvLog.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (cvLog.breakIn) cvOutStr = new Date(cvLog.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      else if (cvLog.toTime) cvOutStr = cvLog.toTime;
 
-      cvLocStr = cvLog.punchInLocation || cvLog.collegeName || '--';
+      cvLocStr = cvLog.punchInLocation || '--';
     } else if (att && (att.inBranch1 === 'COLLEGE_VISIT' || att.inBranch2 === 'COLLEGE_VISIT')) {
       if (att.inTime) cvInStr = new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       if (att.outTime) cvOutStr = new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

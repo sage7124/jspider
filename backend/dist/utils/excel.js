@@ -411,15 +411,15 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             return bDate.getUTCDate() === day && (bDate.getUTCMonth() + 1) === mon && (b.collegeName || (b.reason && b.reason.startsWith('College Visit:')));
         });
         if (cvLog) {
-            if (cvLog.fromTime)
-                cvInStr = cvLog.fromTime;
-            else if (cvLog.breakOut)
+            if (cvLog.breakOut)
                 cvInStr = new Date(cvLog.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            if (cvLog.toTime)
-                cvOutStr = cvLog.toTime;
-            else if (cvLog.breakIn)
+            else if (cvLog.fromTime)
+                cvInStr = cvLog.fromTime;
+            if (cvLog.breakIn)
                 cvOutStr = new Date(cvLog.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            cvLocStr = cvLog.punchInLocation || cvLog.collegeName || '--';
+            else if (cvLog.toTime)
+                cvOutStr = cvLog.toTime;
+            cvLocStr = cvLog.punchInLocation || '--';
         }
         else if (att && (att.inBranch1 === 'COLLEGE_VISIT' || att.inBranch2 === 'COLLEGE_VISIT')) {
             if (att.inTime)

@@ -2646,27 +2646,25 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
             let punchIn = '--';
             let punchOut = '--';
             let punchDuration = '--';
-            if (parsed.fromTime) {
-                punchIn = parsed.fromTime;
-            }
-            else if (b.breakOut) {
+            if (b.breakOut) {
                 punchIn = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
-            if (parsed.toTime) {
-                punchOut = parsed.toTime;
+            else if (parsed.fromTime) {
+                punchIn = parsed.fromTime;
             }
-            else if (b.breakIn) {
+            if (b.breakIn) {
                 punchOut = new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
-            if (parsed.numberOfHours) {
-                punchDuration = parsed.numberOfHours;
+            else if (parsed.toTime) {
+                punchOut = parsed.toTime;
             }
-            else if (b.breakIn && b.breakOut) {
+            if (b.breakIn && b.breakOut) {
                 const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
                 const mins = Math.round(diffMs / 60000);
-                if (mins > 0) {
-                    punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
-                }
+                punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
+            }
+            else if (parsed.numberOfHours) {
+                punchDuration = parsed.numberOfHours;
             }
             const duration = b.breakIn
                 ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
@@ -2887,28 +2885,35 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                     let punchIn = '--';
                     let punchOut = '--';
                     let punchDuration = '--';
-                    if (parsed.fromTime) {
-                        punchIn = parsed.fromTime;
-                    }
-                    else if (b.breakOut) {
+                    if (b.breakOut) {
                         punchIn = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     }
-                    if (parsed.toTime) {
-                        punchOut = parsed.toTime;
+                    else if (parsed.fromTime) {
+                        punchIn = parsed.fromTime;
                     }
-                    else if (b.breakIn) {
+                    if (b.breakIn) {
                         punchOut = new Date(b.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     }
-                    if (parsed.numberOfHours) {
-                        punchDuration = parsed.numberOfHours;
+                    else if (parsed.toTime) {
+                        punchOut = parsed.toTime;
                     }
-                    else if (b.breakIn && b.breakOut) {
+                    if (b.breakIn && b.breakOut) {
                         const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
                         const mins = Math.round(diffMs / 60000);
-                        if (mins > 0)
-                            punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
+                        punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
                     }
-                    masterWs.addRow([
+                    else if (parsed.numberOfHours) {
+                        punchDuration = parsed.numberOfHours;
+                    }
+                    const inMapUrl = (b.punchInLat && b.punchInLng) ? `https://maps.google.com/?q=${b.punchInLat},${b.punchInLng}` : null;
+                    const inCellVal = inMapUrl
+                        ? { text: b.punchInLocation ? `${b.punchInLocation} (View Map)` : 'View Map', hyperlink: inMapUrl }
+                        : (b.punchInLocation || '--');
+                    const outMapUrl = (b.punchOutLat && b.punchOutLng) ? `https://maps.google.com/?q=${b.punchOutLat},${b.punchOutLng}` : null;
+                    const outCellVal = outMapUrl
+                        ? { text: b.punchOutLocation ? `${b.punchOutLocation} (View Map)` : 'View Map', hyperlink: outMapUrl }
+                        : (b.punchOutLocation || '--');
+                    const row = masterWs.addRow([
                         idx + 1,
                         b.user?.fullName || '--',
                         supervisorNames,
@@ -2925,10 +2930,16 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         punchIn,
                         punchOut,
                         punchDuration,
-                        parsed.punchInLocation || '--',
-                        parsed.punchOutLocation || '--',
+                        inCellVal,
+                        outCellVal,
                         b.status
                     ]);
+                    if (inMapUrl) {
+                        row.getCell(17).font = { color: { argb: '0000FF' }, underline: true };
+                    }
+                    if (outMapUrl) {
+                        row.getCell(18).font = { color: { argb: '0000FF' }, underline: true };
+                    }
                 });
             }
             const usedNames = new Set();
@@ -3190,6 +3201,48 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                             breakOutVal = outTimesList.join('\n');
                             breakInVal = inTimesList.join('\n');
                             statusVal = statusList.join('\n');
+                            if (dayBreaks.length === 1) {
+                                const firstB = dayBreaks[0];
+                                const parsedB = parseCollegeVisit(firstB);
+                                if (firstB.breakOut) {
+                                    punchInVal = new Date(firstB.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                }
+                                else if (parsedB.fromTime) {
+                                    punchInVal = parsedB.fromTime;
+                                }
+                                if (firstB.breakIn) {
+                                    punchOutVal = new Date(firstB.breakIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                }
+                                else if (parsedB.toTime) {
+                                    punchOutVal = parsedB.toTime;
+                                }
+                                if (firstB.breakIn && firstB.breakOut) {
+                                    const diffMs = new Date(firstB.breakIn).getTime() - new Date(firstB.breakOut).getTime();
+                                    const mins = Math.round(diffMs / 60000);
+                                    punchDurationVal = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
+                                }
+                                else if (parsedB.numberOfHours) {
+                                    punchDurationVal = parsedB.numberOfHours;
+                                }
+                                if (firstB.punchInLat && firstB.punchInLng) {
+                                    const inMapUrl = `https://maps.google.com/?q=${firstB.punchInLat},${firstB.punchInLng}`;
+                                    punchInLocVal = { text: firstB.punchInLocation ? `${firstB.punchInLocation} (View Map)` : 'View Map', hyperlink: inMapUrl };
+                                }
+                                else {
+                                    punchInLocVal = firstB.punchInLocation || '--';
+                                }
+                                if (firstB.punchOutLat && firstB.punchOutLng) {
+                                    const outMapUrl = `https://maps.google.com/?q=${firstB.punchOutLat},${firstB.punchOutLng}`;
+                                    punchOutLocVal = { text: firstB.punchOutLocation ? `${firstB.punchOutLocation} (View Map)` : 'View Map', hyperlink: outMapUrl };
+                                }
+                                else {
+                                    punchOutLocVal = firstB.punchOutLocation || '--';
+                                }
+                            }
+                            else {
+                                punchInLocVal = punchInLocList.join('\n');
+                                punchOutLocVal = punchOutLocList.join('\n');
+                            }
                         }
                         else {
                             breakOutVal = outTimesList.join('\n');
@@ -3198,9 +3251,18 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         }
                     }
                     const rowData = type === 'COLLEGE_VISIT'
-                        ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, punchInVal, punchOutVal, punchDurationVal, statusVal]
+                        ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, punchInVal, punchOutVal, punchDurationVal, punchInLocVal, punchOutLocVal, statusVal]
                         : [dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal];
                     const row = ws.addRow(rowData);
+                    if (type === 'COLLEGE_VISIT' && dayBreaks.length === 1) {
+                        const firstB = dayBreaks[0];
+                        if (firstB.punchInLat && firstB.punchInLng) {
+                            row.getCell(14).font = { color: { argb: '0000FF' }, underline: true };
+                        }
+                        if (firstB.punchOutLat && firstB.punchOutLng) {
+                            row.getCell(15).font = { color: { argb: '0000FF' }, underline: true };
+                        }
+                    }
                     const durationColIndex = type === 'COLLEGE_VISIT' ? 13 : 5;
                     if (type === 'COLLEGE_VISIT') {
                         if (dayBreaks.length > 0) {
