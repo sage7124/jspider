@@ -2607,8 +2607,17 @@ function parseCollegeVisit(b: any) {
     }
   }
 
-  const punchInLoc = b.punchInLocation || (b.punchInLat && b.punchInLng ? `${b.punchInLat.toFixed(4)}, ${b.punchInLng.toFixed(4)}` : '--');
-  const punchOutLoc = b.punchOutLocation || (b.punchOutLat && b.punchOutLng ? `${b.punchOutLat.toFixed(4)}, ${b.punchOutLng.toFixed(4)}` : '--');
+  const formatLocationWithMapLink = (locName?: string | null, lat?: number | null, lng?: number | null, fallbackLoc?: string | null) => {
+    const name = locName || fallbackLoc || '';
+    if (lat && lng) {
+      const mapUrl = `https://maps.google.com/?q=${lat},${lng}`;
+      return name ? `${name} (${mapUrl})` : mapUrl;
+    }
+    return name || '--';
+  };
+
+  const punchInLoc = formatLocationWithMapLink(b.punchInLocation, b.punchInLat, b.punchInLng, b.collegeName);
+  const punchOutLoc = formatLocationWithMapLink(b.punchOutLocation, b.punchOutLat, b.punchOutLng, b.collegeName);
 
   return {
     bookletNo,

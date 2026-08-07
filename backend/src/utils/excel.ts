@@ -490,7 +490,6 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   const endColumns = [
     { header: 'College Visit In', key: 'collegeVisitIn', width: 18 },
     { header: 'College Visit Out', key: 'collegeVisitOut', width: 18 },
-    { header: 'College Visit Location', key: 'collegeVisitLocation', width: 28 },
     { header: 'Info', key: 'infoText', width: 25 },
     { header: 'Total Late', key: 'late', width: 15 },
     { header: 'Total Early', key: 'earlyDeparture', width: 15 },
