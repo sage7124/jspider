@@ -10,8 +10,9 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const now = new Date();
-    // Build a distinct sorted set of slot numbers actually assigned to this user
-    const assignedSlotNos = (user.slots || []).map((s) => Number(s.slotNo)).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
+    // Build a distinct sorted set of ACTIVE slot numbers actually assigned to this user
+    const activeSlots = (user.slots || []).filter((s) => !s.effectiveTo);
+    const assignedSlotNos = activeSlots.map((s) => Number(s.slotNo)).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
     const hasExtraSlots = assignedSlotNos.some(n => n > 3);
     for (let day = 1; day <= daysInMonth; day++) {
         const currentDate = new Date(year, mon - 1, day);
@@ -422,8 +423,9 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
 };
 exports.getTraineeReportData = getTraineeReportData;
 const generateTraineeWorksheet = (ws, user, attendances, year, mon, daysInMonth, holidays = [], leaves = [], earlyLeaves = []) => {
-    // Build distinct sorted set of slot numbers — only columns for these will appear
-    const assignedSlotNos = (user.slots || []).map((s) => Number(s.slotNo)).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
+    // Build distinct sorted set of ACTIVE slot numbers — only columns for these will appear
+    const activeSlots = (user.slots || []).filter((s) => !s.effectiveTo);
+    const assignedSlotNos = activeSlots.map((s) => Number(s.slotNo)).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
     const hasExtraSlots = assignedSlotNos.some(n => n > 3);
     const baseColumns = [
         { header: 'Day', key: 'day', width: 12 },
@@ -435,7 +437,6 @@ const generateTraineeWorksheet = (ws, user, attendances, year, mon, daysInMonth,
         const prefix = isExtra ? `🔥 Extra Slot ${i - 3}` : `Slot ${i}`;
         slotColumns.push({ header: `${prefix} In`, key: `s${i}In`, width: 15 });
         slotColumns.push({ header: `${prefix} Out`, key: `s${i}Out`, width: 15 });
-        // Only show Late/Early for regular slots, not extra work slots
         if (!isExtra) {
             slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18 });
             slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18 });
@@ -535,80 +536,11 @@ const generateTraineeWorksheet = (ws, user, attendances, year, mon, daysInMonth,
     scheduleTitleRow.font = { bold: true, size: 12, color: { argb: 'FF1976D2' } };
     const daysOfWeek = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
     for (const day of daysOfWeek) {
-        const daySlots = (user.slots || []).filter((s) => s.dayOfWeek === day).sort((a, b) => a.slotNo - b.slotNo);
+        const daySlots = (user.slots || []).filter((s) => s.dayOfWeek === day && !s.effectiveTo).sort((a, b) => a.slotNo - b.slotNo);
         if (daySlots.length > 0) {
             const scheduleString = daySlots.map((s) => `Slot ${s.slotNo}: ${s.startTime} - ${s.endTime}`).join('  |  ');
             const row = ws.addRow(['', day, scheduleString]);
             row.getCell(2).font = { bold: true };
-        }
-    }
-    // Calculate and display historical slot timing changes detected in the attendance records
-    const historicalChanges = [];
-    for (let si = 1; si <= 5; si++) {
-        const uniqueTimings = new Set();
-        // Check if the current weekly schedule has a defined timing for this slot number
-        const currentSlot = (user.slots || []).find((s) => s.slotNo === si);
-        if (currentSlot) {
-            uniqueTimings.add(`${currentSlot.startTime} - ${currentSlot.endTime}`);
-        }
-        // Inspect the actual monthly attendances to find historical slot timing snapshots
-        for (const att of attendances) {
-            const start = att[`slotStart${si}`];
-            const end = att[`slotEnd${si}`];
-            if (start && end) {
-                uniqueTimings.add(`${start} - ${end}`);
-            }
-        }
-        // If more than one timing is found, it indicates a timing change occurred
-        if (uniqueTimings.size > 1) {
-            // Find the last date where the old timing was active
-            const timingsArray = Array.from(uniqueTimings);
-            // Let's sort the attendances chronologically
-            const sortedAtt = [...attendances].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-            // Find where timings transitions occurred
-            let lastActiveDateStr = '';
-            let prevTiming = '';
-            let newTiming = '';
-            for (let i = 0; i < sortedAtt.length - 1; i++) {
-                const currentAtt = sortedAtt[i];
-                const nextAtt = sortedAtt[i + 1];
-                const currentStart = currentAtt[`slotStart${si}`];
-                const currentEnd = currentAtt[`slotEnd${si}`];
-                const nextStart = nextAtt[`slotStart${si}`];
-                const nextEnd = nextAtt[`slotEnd${si}`];
-                if (currentStart && currentEnd && nextStart && nextEnd) {
-                    const currentTiming = `${currentStart} - ${currentEnd}`;
-                    const nextTimingVal = `${nextStart} - ${nextEnd}`;
-                    if (currentTiming !== nextTimingVal) {
-                        lastActiveDateStr = new Date(currentAtt.date).toLocaleDateString('en-IN');
-                        prevTiming = currentTiming;
-                        newTiming = nextTimingVal;
-                    }
-                }
-            }
-            // Hardcoded fallback override for Meenakshi's June data (if automatic transition detection is blank due to legacy records missing start/end on some days)
-            if (user.identifier === '7406782079' && mon === 6 && year === 2026 && si === 1) {
-                lastActiveDateStr = '22/06/2026';
-                prevTiming = '07:00 AM - 09:30 AM';
-                newTiming = currentSlot ? `${currentSlot.startTime} - ${currentSlot.endTime}` : '07:00 AM - 11:00 AM';
-            }
-            if (user.identifier === '7406782079' && mon === 6 && year === 2026 && si === 2) {
-                lastActiveDateStr = '22/06/2026';
-                prevTiming = '02:00 PM - 08:00 PM';
-                newTiming = currentSlot ? `${currentSlot.startTime} - ${currentSlot.endTime}` : '03:30 PM - 08:00 PM';
-            }
-            if (lastActiveDateStr) {
-                historicalChanges.push(`Slot ${si} timing changed: Before ${lastActiveDateStr} it was [${prevTiming}], and starting after ${lastActiveDateStr} it became [${newTiming}].`);
-            }
-        }
-    }
-    if (historicalChanges.length > 0) {
-        ws.addRow([]);
-        const noticeHeaderRow = ws.addRow(['⚠️ HISTORICAL SLOT TIMING CHANGES DETECTED IN THIS MONTH']);
-        noticeHeaderRow.font = { bold: true, size: 10, color: { argb: 'FFD84315' } };
-        for (const note of historicalChanges) {
-            const noteRow = ws.addRow(['', '• ' + note]);
-            noteRow.getCell(2).font = { italic: true, size: 9, color: { argb: 'FF4E342E' } };
         }
     }
 };

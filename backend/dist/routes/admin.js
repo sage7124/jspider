@@ -2468,9 +2468,9 @@ function parseCollegeVisit(b) {
     let subject = b.subject || '';
     const topicsCovered = b.topicsCovered || '--';
     const conveyance = b.conveyance || '--';
-    const numberOfHours = b.numberOfHours || '--';
-    const fromTime = b.fromTime || '--';
-    const toTime = b.toTime || '--';
+    let numberOfHours = b.numberOfHours || '--';
+    let fromTime = b.fromTime || '--';
+    let toTime = b.toTime || '--';
     if (!collegeName && b.reason && b.reason.startsWith('College Visit:')) {
         if (b.reason.includes('Booklet No:')) {
             const parts = b.reason.split('|').map((p) => p.trim());
@@ -2499,6 +2499,36 @@ function parseCollegeVisit(b) {
             }
         }
     }
+    // Smart Auto-Correction for AM/PM duration errors (e.g. 01:45 AM to 03:45 PM -> 01:45 PM to 03:45 PM)
+    if (fromTime && toTime && fromTime !== '--' && toTime !== '--') {
+        const fromMatch = fromTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        const toMatch = toTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (fromMatch && toMatch) {
+            let fH = parseInt(fromMatch[1], 10);
+            const fM = parseInt(fromMatch[2], 10);
+            let fP = fromMatch[3].toUpperCase();
+            let tH = parseInt(toMatch[1], 10);
+            const tM = parseInt(toMatch[2], 10);
+            let tP = toMatch[3].toUpperCase();
+            let f24 = fH + (fP === 'PM' && fH < 12 ? 12 : 0);
+            if (fP === 'AM' && fH === 12)
+                f24 = 0;
+            let t24 = tH + (tP === 'PM' && tH < 12 ? 12 : 0);
+            if (tP === 'AM' && tH === 12)
+                t24 = 0;
+            let diffMin = (t24 * 60 + tM) - (f24 * 60 + fM);
+            // If duration is > 8 hours and start time is 1 AM - 8 AM ending in PM, user intended PM for start time
+            if (diffMin > 480 && fP === 'AM' && fH >= 1 && fH <= 8 && tP === 'PM') {
+                fP = 'PM';
+                f24 = fH < 12 ? fH + 12 : fH;
+                diffMin = (t24 * 60 + tM) - (f24 * 60 + fM);
+                fromTime = `${String(fH).padStart(2, '0')}:${String(fM).padStart(2, '0')} PM`;
+            }
+            if (diffMin > 0) {
+                numberOfHours = `${(diffMin / 60).toFixed(1)} hrs`;
+            }
+        }
+    }
     return {
         bookletNo,
         collegeName: collegeName || '--',
@@ -2513,7 +2543,7 @@ function parseCollegeVisit(b) {
 // ── Teacher Break System Reports Endpoints ─────────────────────────────────────
 router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, res) => {
     try {
-        const { date, search, type } = req.query;
+        const { date, month, status, search, type } = req.query;
         if (req.user?.role === 'SUPERVISOR') {
             const supervisor = await prisma.user.findUnique({
                 where: { id: req.user.id },
@@ -2525,14 +2555,31 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
                 return res.status(403).json({ error: `Access Denied: You do not have clearance to manage ${type === 'COLLEGE_VISIT' ? 'college visits' : 'breaks'}.` });
             }
         }
-        const targetDate = date ? new Date(date) : new Date();
-        targetDate.setHours(0, 0, 0, 0);
+        let dateWhere;
+        if (month && typeof month === 'string' && month.includes('-')) {
+            const [year, mon] = month.split('-').map(Number);
+            const startOfMonth = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0) - (5.5 * 60 * 60 * 1000));
+            const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
+            dateWhere = { gte: startOfMonth, lte: endOfMonth };
+        }
+        else {
+            const targetDate = date ? new Date(date) : new Date();
+            targetDate.setHours(0, 0, 0, 0);
+            dateWhere = targetDate;
+        }
+        let statusWhere;
+        if (status && status !== 'ALL') {
+            statusWhere = String(status);
+        }
+        else {
+            statusWhere = type === 'COLLEGE_VISIT' ? { in: ['APPROVED', 'PENDING', 'REJECTED'] } : 'APPROVED';
+        }
         const searchStr = search;
         const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisors: { some: { id: req.user.id } } } } : {};
         const breakLogs = await prisma.breakLog.findMany({
             where: {
-                date: targetDate,
-                status: type === 'COLLEGE_VISIT' ? { in: ['APPROVED', 'PENDING', 'REJECTED'] } : 'APPROVED',
+                date: dateWhere,
+                status: statusWhere,
                 ...supervisorFilter,
                 user: {
                     OR: searchStr ? [
@@ -2567,12 +2614,18 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
         const userIds = filteredLogs.map(b => b.userId);
         const attendances = await prisma.attendance.findMany({
             where: {
-                date: targetDate,
+                date: dateWhere,
                 userId: { in: userIds }
             }
         });
         const result = filteredLogs.map(b => {
-            const att = attendances.find(a => a.userId === b.userId);
+            const bDateKey = new Date(b.date.getTime() + (5.5 * 60 * 60 * 1000)).toISOString().split('T')[0];
+            const att = attendances.find(a => {
+                if (a.userId !== b.userId)
+                    return false;
+                const aDateKey = new Date(a.date.getTime() + (5.5 * 60 * 60 * 1000)).toISOString().split('T')[0];
+                return aDateKey === bDateKey;
+            });
             let punchIn = '--';
             let punchOut = '--';
             let punchDuration = '--';
@@ -2634,7 +2687,7 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
 });
 router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (req, res) => {
     try {
-        const { month, search, type } = req.query; // e.g., "2026-05", with optional search & type
+        const { month, status, search, type } = req.query; // e.g., "2026-05", with optional search & type
         if (req.user?.role === 'SUPERVISOR') {
             const supervisor = await prisma.user.findUnique({
                 where: { id: req.user.id },
@@ -2654,11 +2707,18 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
         const endOfMonth = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999) - (5.5 * 60 * 60 * 1000));
         const daysInMonth = new Date(year, mon, 0).getDate();
         const searchStr = search;
+        let statusWhere;
+        if (status && status !== 'ALL') {
+            statusWhere = String(status);
+        }
+        else {
+            statusWhere = type === 'COLLEGE_VISIT' ? { in: ['APPROVED', 'PENDING', 'REJECTED'] } : 'APPROVED';
+        }
         const supervisorFilter = req.user?.role === 'SUPERVISOR' ? { user: { supervisors: { some: { id: req.user.id } } } } : {};
         const breakLogs = await prisma.breakLog.findMany({
             where: {
                 date: { gte: startOfMonth, lte: endOfMonth },
-                status: 'APPROVED',
+                status: statusWhere,
                 ...supervisorFilter,
                 user: {
                     OR: searchStr ? [
@@ -2668,7 +2728,15 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                 }
             },
             include: {
-                user: { select: { id: true, fullName: true, identifier: true, department: true } }
+                user: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        identifier: true,
+                        department: true,
+                        supervisors: { select: { fullName: true } }
+                    }
+                }
             },
             orderBy: [
                 { date: 'asc' },
@@ -2693,7 +2761,13 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         { identifier: { contains: searchStr, mode: 'insensitive' } }
                     ]
                 },
-                select: { id: true, fullName: true, identifier: true, department: true }
+                select: {
+                    id: true,
+                    fullName: true,
+                    identifier: true,
+                    department: true,
+                    supervisors: { select: { fullName: true } }
+                }
             });
             if (targetUser) {
                 const hasLogs = filteredBreakLogs.some(b => b.userId === targetUser.id);
@@ -2725,7 +2799,100 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
             ws.getCell('A1').value = 'No break logs found for this month.';
         }
         else {
+            // ── MASTER SUMMARY SHEET FOR COLLEGE VISITS ──────────────────────────
+            if (type === 'COLLEGE_VISIT') {
+                const masterWs = workbook.addWorksheet('All College Visits');
+                masterWs.columns = [
+                    { key: 'index', width: 6 },
+                    { key: 'teacherName', width: 24 },
+                    { key: 'supervisor', width: 25 },
+                    { key: 'identifier', width: 16 },
+                    { key: 'date', width: 14 },
+                    { key: 'day', width: 12 },
+                    { key: 'bookletNo', width: 14 },
+                    { key: 'collegeName', width: 28 },
+                    { key: 'subject', width: 24 },
+                    { key: 'topicsCovered', width: 30 },
+                    { key: 'conveyance', width: 20 },
+                    { key: 'plannedTime', width: 22 },
+                    { key: 'numberOfHours', width: 14 },
+                    { key: 'punchIn', width: 16 },
+                    { key: 'punchOut', width: 16 },
+                    { key: 'punchDuration', width: 18 },
+                    { key: 'status', width: 14 }
+                ];
+                // Master Title
+                masterWs.mergeCells('A1:Q1');
+                const mTitleCell = masterWs.getCell('A1');
+                mTitleCell.value = `MASTER COLLEGE VISIT REPORT (${month})`;
+                mTitleCell.font = { bold: true, size: 14, name: 'Calibri', color: { argb: 'FFFFFF' } };
+                mTitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F4E79' } };
+                mTitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                masterWs.getRow(1).height = 40;
+                masterWs.getRow(2).height = 15;
+                // Master Header Row
+                const mHeaderRow = masterWs.getRow(3);
+                mHeaderRow.values = [
+                    '#', 'Teacher Name', 'Supervisor', 'Mobile/ID', 'Date', 'Day', 'Booklet No', 'College Name',
+                    'Subject / Purpose', 'Topics Covered', 'Conveyance Details', 'Planned Timing', 'No of hours',
+                    'Punch In Time', 'Punch Out Time', 'Punch Duration', 'Status'
+                ];
+                mHeaderRow.font = { bold: true, color: { argb: 'FFFFFF' }, size: 11, name: 'Calibri' };
+                mHeaderRow.eachCell((cell) => {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '2E7D32' } };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                });
+                masterWs.getRow(3).height = 25;
+                const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                filteredBreakLogs.forEach((b, idx) => {
+                    const parsed = parseCollegeVisit(b);
+                    const bDateObj = new Date(b.date);
+                    const dayStr = daysOfWeek[bDateObj.getDay()];
+                    const dateStr = bDateObj.toLocaleDateString('en-IN');
+                    const supervisorNames = b.user?.supervisors?.map((s) => s.fullName).join(', ') || '--';
+                    const att = monthlyAttendances.find(a => {
+                        const aDate = new Date(a.date.getTime() + (5.5 * 60 * 60 * 1000));
+                        const bDate = new Date(b.date.getTime() + (5.5 * 60 * 60 * 1000));
+                        return a.userId === b.userId && aDate.toISOString().slice(0, 10) === bDate.toISOString().slice(0, 10);
+                    });
+                    let punchIn = '--';
+                    let punchOut = '--';
+                    let punchDuration = '--';
+                    if (att && att.inTime)
+                        punchIn = new Date(att.inTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    if (att && att.outTime)
+                        punchOut = new Date(att.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    if (att && att.inTime && att.outTime) {
+                        const diffMs = new Date(att.outTime).getTime() - new Date(att.inTime).getTime();
+                        const mins = Math.round(diffMs / 60000);
+                        if (mins > 0)
+                            punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
+                    }
+                    masterWs.addRow([
+                        idx + 1,
+                        b.user?.fullName || '--',
+                        supervisorNames,
+                        b.user?.identifier || '--',
+                        dateStr,
+                        dayStr,
+                        parsed.bookletNo || '--',
+                        parsed.collegeName || '--',
+                        parsed.subject || b.reason || '--',
+                        parsed.topicsCovered || '--',
+                        parsed.conveyance || '--',
+                        parsed.fromTime && parsed.toTime ? `${parsed.fromTime} - ${parsed.toTime}` : '--',
+                        parsed.numberOfHours || '--',
+                        punchIn,
+                        punchOut,
+                        punchDuration,
+                        b.status
+                    ]);
+                });
+            }
             const usedNames = new Set();
+            if (type === 'COLLEGE_VISIT') {
+                usedNames.add('All College Visits');
+            }
             for (const user of targetUsersList) {
                 // Excel sheet names are limited to 31 chars and must be unique
                 let sheetName = user.fullName.substring(0, 30);
@@ -2752,7 +2919,8 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         { key: 'numberOfHours', width: 15 },
                         { key: 'punchIn', width: 20 },
                         { key: 'punchOut', width: 20 },
-                        { key: 'punchDuration', width: 15 }
+                        { key: 'punchDuration', width: 15 },
+                        { key: 'status', width: 15 }
                     ];
                 }
                 else {
@@ -2767,7 +2935,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                 }
                 // Title Block (Row 1)
                 if (type === 'COLLEGE_VISIT') {
-                    ws.mergeCells('A1:M1');
+                    ws.mergeCells('A1:N1');
                 }
                 else {
                     ws.mergeCells('A1:F1');
@@ -2808,7 +2976,8 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         'No of hours',
                         'Punch In Time',
                         'Punch Out Time',
-                        'Punch Duration'
+                        'Punch Duration',
+                        'Status'
                     ];
                 }
                 else {
@@ -2878,6 +3047,9 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         const bLocalDateKey = `${bYear}-${bMonth}-${bDay}`;
                         return bLocalDateKey === localDateKey;
                     });
+                    if (type === 'COLLEGE_VISIT' && dayBreaks.length === 0) {
+                        continue;
+                    }
                     let bookletNoVal = '--';
                     let collegeNameVal = '--';
                     let subjectVal = '--';
@@ -2889,6 +3061,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                     let breakOutVal = '--';
                     let breakInVal = '--';
                     let reasonVal = '--';
+                    let statusVal = '--';
                     if (dayBreaks.length > 0) {
                         const bookletNoList = [];
                         const collegeNameList = [];
@@ -2901,6 +3074,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         const outTimesList = [];
                         const inTimesList = [];
                         const reasonsList = [];
+                        const statusList = [];
                         dayBreaks.forEach((b, idx) => {
                             const outStr = new Date(b.breakOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                             const inStr = b.breakIn
@@ -2923,6 +3097,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                                     numberOfHoursList.push(`Break ${idx + 1}: ${parsed.numberOfHours}`);
                                     outTimesList.push(`Break ${idx + 1}: ${outStr}`);
                                     inTimesList.push(`Break ${idx + 1}: ${inStr}`);
+                                    statusList.push(`Break ${idx + 1}: ${b.status}`);
                                 }
                                 else {
                                     bookletNoList.push(parsed.bookletNo);
@@ -2935,6 +3110,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                                     numberOfHoursList.push(parsed.numberOfHours);
                                     outTimesList.push(outStr);
                                     inTimesList.push(inStr);
+                                    statusList.push(b.status);
                                 }
                             }
                             else {
@@ -2961,6 +3137,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                             numberOfHoursVal = numberOfHoursList.join('\n');
                             breakOutVal = outTimesList.join('\n');
                             breakInVal = inTimesList.join('\n');
+                            statusVal = statusList.join('\n');
                         }
                         else {
                             breakOutVal = outTimesList.join('\n');
@@ -2969,7 +3146,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         }
                     }
                     const rowData = type === 'COLLEGE_VISIT'
-                        ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, punchInVal, punchOutVal, punchDurationVal]
+                        ? [dayStr, dateStr, bookletNoVal, collegeNameVal, subjectVal, topicsCoveredVal, conveyanceVal, fromTimeVal, toTimeVal, numberOfHoursVal, punchInVal, punchOutVal, punchDurationVal, statusVal]
                         : [dayStr, dateStr, breakOutVal, breakInVal, '', reasonVal];
                     const row = ws.addRow(rowData);
                     const durationColIndex = type === 'COLLEGE_VISIT' ? 13 : 5;
@@ -4045,7 +4222,43 @@ router.put('/breaks/:id', authMiddleware_1.authenticateToken, async (req, res) =
         res.status(500).json({ error: 'Internal server error' });
     }
 });
-// 5. Edit Extra Class Log
+// 5. Delete Break / College Visit Log
+router.delete('/breaks/:id', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const logId = Number(id);
+        const breakLog = await prisma.breakLog.findUnique({
+            where: { id: logId },
+            include: { user: { include: { supervisors: true } } }
+        });
+        if (!breakLog) {
+            return res.status(404).json({ error: 'Break record not found.' });
+        }
+        if (req.user?.role === 'SUPERVISOR') {
+            const supervisor = await prisma.user.findUnique({
+                where: { id: req.user.id },
+                select: { permissions: true }
+            });
+            const perms = supervisor?.permissions ? supervisor.permissions.split(',') : [];
+            if (!perms.includes('MANAGE_BREAKS')) {
+                return res.status(403).json({ error: 'Access Denied: You do not have clearance to delete breaks.' });
+            }
+            const isAssigned = breakLog.user.supervisors.some(s => s.id === req.user.id);
+            if (!isAssigned) {
+                return res.status(403).json({ error: 'Access Denied: You can only delete breaks for trainees assigned under you.' });
+            }
+        }
+        await prisma.breakLog.delete({
+            where: { id: logId }
+        });
+        res.json({ message: 'Record deleted successfully.' });
+    }
+    catch (error) {
+        console.error('Error deleting break record:', error);
+        res.status(500).json({ error: 'Failed to delete record.' });
+    }
+});
+// 6. Edit Extra Class Log
 router.put('/extra-classes/:id', authMiddleware_1.authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
@@ -4592,6 +4805,193 @@ router.put('/other-center-classes/:id', authMiddleware_1.authenticateToken, asyn
     catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// ── Static QR Code & Inquiry Admin Endpoints ─────────────────────────────────
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const adminQrFilePath = path_1.default.join(__dirname, '../../static_qr.json');
+const adminInquiriesFilePath = path_1.default.join(__dirname, '../../qr_inquiries.json');
+// Admin GET static QR token
+router.get('/static-qr', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const record = await prisma.staticQR.findUnique({ where: { id: 1 } });
+        if (record) {
+            return res.json({ token: record.token, updatedAt: record.updatedAt.toISOString() });
+        }
+        const created = await prisma.staticQR.create({
+            data: { id: 1, token: 'NICT_STATIC_QR_1001' }
+        });
+        res.json({ token: created.token, updatedAt: created.updatedAt.toISOString() });
+    }
+    catch (error) {
+        try {
+            if (fs_1.default.existsSync(adminQrFilePath)) {
+                return res.json(JSON.parse(fs_1.default.readFileSync(adminQrFilePath, 'utf-8')));
+            }
+        }
+        catch (e) { }
+        res.json({ token: 'NICT_STATIC_QR_1001', updatedAt: new Date().toISOString() });
+    }
+});
+// Admin POST regenerate static QR token
+router.post('/static-qr/regenerate', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const newToken = 'NICT_QR_' + Date.now().toString(36).toUpperCase() + '_' + Math.random().toString(36).substring(2, 6).toUpperCase();
+        const updated = await prisma.staticQR.upsert({
+            where: { id: 1 },
+            update: { token: newToken },
+            create: { id: 1, token: newToken }
+        });
+        const data = {
+            token: updated.token,
+            updatedAt: updated.updatedAt.toISOString()
+        };
+        try {
+            fs_1.default.writeFileSync(adminQrFilePath, JSON.stringify(data, null, 2));
+        }
+        catch (e) { }
+        res.json({ message: 'Static QR code regenerated successfully', qrData: data });
+    }
+    catch (error) {
+        console.error('Error regenerating static QR:', error);
+        res.status(500).json({ error: 'Failed to regenerate static QR code' });
+    }
+});
+// Admin GET QR inquiries list (Merges DB + File inquiries)
+router.get('/qr-inquiries', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        let combinedInquiries = [];
+        // 1. Fetch from Database
+        try {
+            const dbInquiries = await prisma.qRInquiry.findMany({
+                orderBy: { createdAt: 'desc' }
+            });
+            if (dbInquiries) {
+                dbInquiries.forEach(inq => {
+                    combinedInquiries.push({
+                        id: inq.inquiryId,
+                        name: inq.name,
+                        mobile: inq.mobile,
+                        educationQualification: inq.educationQualification,
+                        nictPreference: inq.nictPreference || 'NICT Jayanagar Center',
+                        submittedAt: inq.createdAt.toISOString(),
+                        token: inq.token
+                    });
+                });
+            }
+        }
+        catch (dbErr) {
+            console.warn('DB inquiry fetch note:', dbErr);
+        }
+        // 2. Fetch from JSON File fallback
+        if (fs_1.default.existsSync(adminInquiriesFilePath)) {
+            try {
+                const fileInquiries = JSON.parse(fs_1.default.readFileSync(adminInquiriesFilePath, 'utf-8'));
+                if (Array.isArray(fileInquiries)) {
+                    fileInquiries.forEach(finq => {
+                        const exists = combinedInquiries.some(ci => ci.id === finq.id || (ci.name === finq.name && ci.mobile === finq.mobile));
+                        if (!exists) {
+                            combinedInquiries.push(finq);
+                        }
+                    });
+                }
+            }
+            catch (fErr) { }
+        }
+        // 3. Sort by submittedAt descending
+        combinedInquiries.sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+        res.json(combinedInquiries);
+    }
+    catch (error) {
+        console.error('Error fetching inquiries:', error);
+        res.status(500).json({ error: 'Failed to fetch inquiries' });
+    }
+});
+// Admin PUT update QR inquiry
+router.put('/qr-inquiries/:id', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const targetId = String(req.params.id);
+        const { name, mobile, educationQualification, nictPreference } = req.body;
+        if (!name || !mobile || !educationQualification) {
+            return res.status(400).json({ error: 'Name, mobile, and qualification are required' });
+        }
+        let updated = false;
+        // 1. Update in Database
+        try {
+            await prisma.qRInquiry.updateMany({
+                where: { inquiryId: targetId },
+                data: {
+                    name: String(name).trim(),
+                    mobile: String(mobile).trim(),
+                    educationQualification: String(educationQualification).trim(),
+                    nictPreference: String(nictPreference).trim()
+                }
+            });
+            updated = true;
+        }
+        catch (dbErr) {
+            console.warn('DB update inquiry note:', dbErr);
+        }
+        // 2. Update in JSON File fallback
+        if (fs_1.default.existsSync(adminInquiriesFilePath)) {
+            try {
+                let fileInquiries = JSON.parse(fs_1.default.readFileSync(adminInquiriesFilePath, 'utf-8'));
+                if (Array.isArray(fileInquiries)) {
+                    fileInquiries = fileInquiries.map(inq => {
+                        if (inq.id === targetId) {
+                            updated = true;
+                            return {
+                                ...inq,
+                                name: String(name).trim(),
+                                mobile: String(mobile).trim(),
+                                educationQualification: String(educationQualification).trim(),
+                                nictPreference: String(nictPreference).trim()
+                            };
+                        }
+                        return inq;
+                    });
+                    fs_1.default.writeFileSync(adminInquiriesFilePath, JSON.stringify(fileInquiries, null, 2));
+                }
+            }
+            catch (fErr) { }
+        }
+        res.json({ message: 'Inquiry updated successfully', id: targetId });
+    }
+    catch (error) {
+        console.error('Error updating inquiry:', error);
+        res.status(500).json({ error: 'Failed to update inquiry' });
+    }
+});
+// Admin DELETE QR inquiry
+router.delete('/qr-inquiries/:id', authMiddleware_1.authenticateToken, async (req, res) => {
+    try {
+        const targetId = String(req.params.id);
+        // 1. Delete from Database
+        try {
+            await prisma.qRInquiry.deleteMany({
+                where: { inquiryId: targetId }
+            });
+        }
+        catch (dbErr) {
+            console.warn('DB delete inquiry note:', dbErr);
+        }
+        // 2. Delete from JSON File fallback
+        if (fs_1.default.existsSync(adminInquiriesFilePath)) {
+            try {
+                let fileInquiries = JSON.parse(fs_1.default.readFileSync(adminInquiriesFilePath, 'utf-8'));
+                if (Array.isArray(fileInquiries)) {
+                    fileInquiries = fileInquiries.filter(inq => inq.id !== targetId);
+                    fs_1.default.writeFileSync(adminInquiriesFilePath, JSON.stringify(fileInquiries, null, 2));
+                }
+            }
+            catch (fErr) { }
+        }
+        res.json({ message: 'Inquiry deleted successfully', id: targetId });
+    }
+    catch (error) {
+        console.error('Error deleting inquiry:', error);
+        res.status(500).json({ error: 'Failed to delete inquiry' });
     }
 });
 exports.default = router;
