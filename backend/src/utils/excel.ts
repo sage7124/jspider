@@ -446,20 +446,14 @@ export const generateTraineeWorksheet = (ws: exceljs.Worksheet, user: any, atten
   const slotColumns: any[] = [];
   for (const i of assignedSlotNos.filter(n => n <= 3)) {
     const isExtra = i > 3;
-    const isCollegeVisit = (i === 3);
-
-    if (isCollegeVisit) {
-      slotColumns.push({ header: `College Visit In`, key: `s3In`, width: 18 });
-      slotColumns.push({ header: `College Visit Out`, key: `s3Out`, width: 18 });
-    } else {
-      const prefix = isExtra ? `🔥 Extra Slot ${i - 3}` : `Slot ${i}`;
-      slotColumns.push({ header: `${prefix} In`, key: `s${i}In`, width: 15 });
-      slotColumns.push({ header: `${prefix} Out`, key: `s${i}Out`, width: 15 });
-      
-      if (!isExtra) {
-        slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18 });
-        slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18 });
-      }
+    const prefix = isExtra ? `🔥 Extra Slot ${i - 3}` : `Slot ${i}`;
+    
+    slotColumns.push({ header: `${prefix} In`, key: `s${i}In`, width: 15 });
+    slotColumns.push({ header: `${prefix} Out`, key: `s${i}Out`, width: 15 });
+    
+    if (!isExtra) {
+      slotColumns.push({ header: `S${i} Late Arrival`, key: `s${i}Late`, width: 18 });
+      slotColumns.push({ header: `S${i} Early Dep`, key: `s${i}Early`, width: 18 });
     }
   }
 
