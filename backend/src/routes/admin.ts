@@ -3211,8 +3211,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
             punchOutVal = new Date(dayAtt.outTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           }
           if (dayAtt && dayAtt.inTime && dayAtt.outTime) {
-            const diffMs = new Date(dayAtt.outTime).getTime() - new Date(dayAtt.inTime).getTime();
-            dailyPunchMins = Math.round(diffMs / 60000);
+            dailyPunchMins = calcBreakDurationMins(dayAtt.inTime, dayAtt.outTime);
             if (dailyPunchMins > 0) {
               const actualHrs = (dailyPunchMins / 60).toFixed(2);
               punchDurationVal = `${dailyPunchMins} mins (${actualHrs} hrs)`;
@@ -3425,8 +3424,7 @@ router.get('/reports/breaks/export', authenticateToken, async (req: AuthRequest,
               let isOnBreak = false;
               dayBreaks.forEach((b: any) => {
                 if (b.breakIn) {
-                  const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
-                  const mins = Math.round(diffMs / 60000);
+                  const mins = calcBreakDurationMins(b.breakOut, b.breakIn);
                   if (mins > 0) totalMins += mins;
                 } else {
                   isOnBreak = true;
