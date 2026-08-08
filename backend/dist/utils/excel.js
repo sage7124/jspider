@@ -136,21 +136,15 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             if (!slot)
                 return '--';
             if (isExtra)
-                return '--'; // EXEMPT Extra Work from Lateness logic
+                return '--';
             const inTime = slotInTime || dayInTime;
-            if (!inTime) {
-                if (isFutureDay || isSunday)
-                    return '--';
-                const start = getSlotStartTime(slot);
-                if (isToday && start && start.getTime() > now.getTime())
-                    return '--';
-                return 'ABSENT';
-            }
-            const [time, mod] = slot.startTime.split(' ');
-            let [h, m] = time.split(':').map(Number);
-            if (mod === 'PM' && h < 12)
+            if (!inTime)
+                return getDefaultStatus(slot, isExtra);
+            const [sTime, sMod] = slot.startTime.split(' ');
+            let [h, m] = sTime.split(':').map(Number);
+            if (sMod === 'PM' && h < 12)
                 h += 12;
-            if (mod === 'AM' && h === 12)
+            if (sMod === 'AM' && h === 12)
                 h = 0;
             const [eTime, eMod] = slot.endTime.split(' ');
             let [eh, em] = eTime.split(':').map(Number);
@@ -162,11 +156,14 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             start.setHours(h, m, 0, 0);
             const end = new Date(currentDate);
             end.setHours(eh, em, 0, 0);
-            if (inTime.getTime() > end.getTime()) {
+            const normIn = new Date(currentDate);
+            normIn.setHours(inTime.getHours(), inTime.getMinutes(), inTime.getSeconds(), 0);
+            if (normIn.getTime() > end.getTime()) {
                 return isSunday ? '--' : 'ABSENT';
             }
-            if (inTime.getTime() > start.getTime()) {
-                return Math.floor((inTime.getTime() - start.getTime()) / 60000);
+            if (normIn.getTime() > start.getTime()) {
+                const lateMins = Math.floor((normIn.getTime() - start.getTime()) / 60000);
+                return lateMins > 0 ? lateMins : 0;
             }
             return 0;
         };
@@ -174,7 +171,7 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
             if (!slot)
                 return '--';
             if (isExtra)
-                return '--'; // EXEMPT Extra Work from early departure logic
+                return '--';
             const outTime = slotOutTime || dayOutTime;
             const inTime = slotInTime || dayInTime;
             const [eTime, eMod] = slot.endTime.split(' ');
@@ -185,8 +182,12 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
                 eh = 0;
             const slotEnd = new Date(currentDate);
             slotEnd.setHours(eh, em, 0, 0);
-            if (inTime && inTime.getTime() > slotEnd.getTime())
-                return '--';
+            if (inTime) {
+                const normIn = new Date(currentDate);
+                normIn.setHours(inTime.getHours(), inTime.getMinutes(), 0, 0);
+                if (normIn.getTime() > slotEnd.getTime())
+                    return '--';
+            }
             if (!outTime) {
                 if (isFutureDay || isSunday)
                     return '--';
@@ -194,8 +195,11 @@ const getTraineeReportData = (user, attendances, year, mon, daysInMonth, holiday
                     return '--';
                 return '--';
             }
-            if (outTime.getTime() < slotEnd.getTime()) {
-                return Math.floor((slotEnd.getTime() - outTime.getTime()) / 60000);
+            const normOut = new Date(currentDate);
+            normOut.setHours(outTime.getHours(), outTime.getMinutes(), outTime.getSeconds(), 0);
+            if (normOut.getTime() < slotEnd.getTime()) {
+                const earlyMins = Math.floor((slotEnd.getTime() - normOut.getTime()) / 60000);
+                return earlyMins > 0 ? earlyMins : 0;
             }
             return 0;
         };
