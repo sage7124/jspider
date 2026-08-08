@@ -2462,31 +2462,39 @@ router.get('/memos/received', authMiddleware_1.authenticateToken, async (req, re
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+const calcBreakDurationMins = (breakOut, breakIn) => {
+    const outTime = new Date(breakOut);
+    const inTime = new Date(breakIn);
+    let diffMs = inTime.getTime() - outTime.getTime();
+    let mins = Math.round(diffMs / 60000);
+    if (mins <= 0) {
+        const outMins = outTime.getHours() * 60 + outTime.getMinutes();
+        const inMins = inTime.getHours() * 60 + inTime.getMinutes();
+        mins = inMins - outMins;
+        if (mins <= 0)
+            mins += 1440;
+    }
+    return mins >= 0 ? mins : 0;
+};
+// Helper to parse college visit details from breakLog.reason or college fields
 function parseCollegeVisit(b) {
-    const bookletNo = b.bookletNo || '--';
+    let bookletNo = b.bookletNo || '';
     let collegeName = b.collegeName || '';
     let subject = b.subject || '';
-    const topicsCovered = b.topicsCovered || '--';
-    const conveyance = b.conveyance || '--';
-    let numberOfHours = b.numberOfHours || '--';
+    let topicsCovered = b.topicsCovered || '--';
+    let conveyance = b.conveyance || '--';
     let fromTime = b.fromTime || '--';
     let toTime = b.toTime || '--';
+    let numberOfHours = b.numberOfHours || '--';
     if (!collegeName && b.reason && b.reason.startsWith('College Visit:')) {
         if (b.reason.includes('Booklet No:')) {
             const parts = b.reason.split('|').map((p) => p.trim());
             const bookletPart = parts.find((p) => p.startsWith('Booklet No:'));
             const collegePart = parts.find((p) => p.startsWith('College:'));
             const subjectPart = parts.find((p) => p.startsWith('Subject:'));
-            return {
-                bookletNo: bookletPart ? bookletPart.replace('Booklet No:', '').trim() : '--',
-                collegeName: collegePart ? collegePart.replace('College:', '').trim() : '--',
-                subject: subjectPart ? subjectPart.replace('Subject:', '').trim() : '--',
-                topicsCovered: '--',
-                conveyance: '--',
-                numberOfHours: '--',
-                fromTime: '--',
-                toTime: '--'
-            };
+            bookletNo = bookletNo || (bookletPart ? bookletPart.replace('Booklet No:', '').trim() : '');
+            collegeName = collegeName || (collegePart ? collegePart.replace('College:', '').trim() : '');
+            subject = subject || (subjectPart ? subjectPart.replace('Subject:', '').trim() : '');
         }
         else {
             const match = b.reason.match(/College Visit:\s*(.*?)\s*\(Subject:\s*(.*?)\)/);
@@ -2659,18 +2667,17 @@ router.get('/reports/breaks', authMiddleware_1.authenticateToken, async (req, re
                 punchOut = parsed.toTime;
             }
             if (b.breakIn && b.breakOut) {
-                const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
-                const mins = Math.round(diffMs / 60000);
+                const mins = calcBreakDurationMins(b.breakOut, b.breakIn);
                 punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
             }
             else if (parsed.numberOfHours) {
                 punchDuration = parsed.numberOfHours;
             }
             const duration = b.breakIn
-                ? Math.round((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / (1000 * 60))
+                ? calcBreakDurationMins(b.breakOut, b.breakIn)
                 : null;
             const durationHrs = b.breakIn
-                ? Number(((new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime()) / 3600000).toFixed(2))
+                ? Number((calcBreakDurationMins(b.breakOut, b.breakIn) / 60).toFixed(2))
                 : null;
             return {
                 id: b.id,
@@ -2899,8 +2906,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                         punchOut = parsed.toTime;
                     }
                     if (b.breakIn && b.breakOut) {
-                        const diffMs = new Date(b.breakIn).getTime() - new Date(b.breakOut).getTime();
-                        const mins = Math.round(diffMs / 60000);
+                        const mins = calcBreakDurationMins(b.breakOut, b.breakIn);
                         punchDuration = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
                     }
                     else if (parsed.numberOfHours) {
@@ -3218,8 +3224,7 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                                     punchOutVal = parsedB.toTime;
                                 }
                                 if (firstB.breakIn && firstB.breakOut) {
-                                    const diffMs = new Date(firstB.breakIn).getTime() - new Date(firstB.breakOut).getTime();
-                                    const mins = Math.round(diffMs / 60000);
+                                    const mins = calcBreakDurationMins(firstB.breakOut, firstB.breakIn);
                                     punchDurationVal = `${mins} mins (${(mins / 60).toFixed(2)} hrs)`;
                                 }
                                 else if (parsedB.numberOfHours) {
@@ -3267,9 +3272,13 @@ router.get('/reports/breaks/export', authMiddleware_1.authenticateToken, async (
                     const durationColIndex = type === 'COLLEGE_VISIT' ? 13 : 5;
                     if (type === 'COLLEGE_VISIT') {
                         if (dayBreaks.length > 0) {
-                            if (dailyPunchMins > 0) {
-                                monthlyTotalMins += dailyPunchMins;
-                            }
+                            let dayPunchMins = 0;
+                            dayBreaks.forEach((b) => {
+                                if (b.breakIn && b.breakOut) {
+                                    dayPunchMins += calcBreakDurationMins(b.breakOut, b.breakIn);
+                                }
+                            });
+                            monthlyTotalMins += dayPunchMins;
                             if (dayBreaks.length > 1) {
                                 row.getCell(10).value = numberOfHoursVal;
                             }
